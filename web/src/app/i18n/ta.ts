@@ -1713,6 +1713,15 @@ export const ta: Dict = {
   'school.grades': 'வகுப்புகள்',
   'school.commuteMinutes': 'பயண நேரம் (நிமிடங்கள்)',
   'school.busService': 'பள்ளிப் பேருந்து',
+  // kinds PR 27 (2026-10-15): the school's checklist (docs/03 §18.21), a draft for the owner's review. Under review (owner rule: hi/ta/te ship marked under review).
+  'school.check.dropoff': 'பாதுகாப்பான இறக்கி-ஏற்றும் இடம்',
+  'school.check.grounds': 'வகுப்பறைகளும் விளையாட்டு மைதானமும்',
+  'school.check.sanitation': 'குடிநீரும் கழிப்பறைகளும்',
+  'school.check.teachers': 'ஆசிரியர்களை எளிதில் அணுக முடியும்',
+  'school.check.classsize': 'வகுப்பின் மாணவர் எண்ணிக்கை',
+  'school.check.homework': 'ஹோம்வொர்க்கும் தினசரி நேரமும்',
+  'school.check.activities': 'விளையாட்டும் செயல்பாடுகளும்',
+  'school.check.safety': 'பாதுகாப்பும் CCTV-யும்',
   // S4b-BL-212 (2026-10-14): kinds PR 8, spaces. Under review (owner rule: hi/ta/te ship marked under review).
   'title.chooser': 'தேர்ந்தெடு · Doorprints',
   'chooser.heading': 'நீங்கள் எதைத் தேடுகிறீர்கள்?',

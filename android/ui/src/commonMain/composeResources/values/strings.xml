@@ -1689,6 +1689,15 @@
     <string name="school_grades">Grades offered</string>
     <string name="school_commute">Commute (minutes)</string>
     <string name="school_bus">School bus</string>
+    <!-- kinds PR 27 (2026-10-15): the school's checklist (docs/03 §18.21), a draft for the owner's review. -->
+    <string name="school_check_dropoff">Safe drop-off and pick-up</string>
+    <string name="school_check_grounds">Classrooms and playground</string>
+    <string name="school_check_sanitation">Drinking water and toilets</string>
+    <string name="school_check_teachers">Teachers are approachable</string>
+    <string name="school_check_classsize">Class size</string>
+    <string name="school_check_homework">Homework and daily schedule</string>
+    <string name="school_check_activities">Sports and activities</string>
+    <string name="school_check_safety">Safety and CCTV</string>
     <string name="kind_option_not_set">Not set</string>
     <!-- S4b-BL-274 (2026-10-14): spaces on the phones (kinds PR C): the chooser, What you track, a school space's words, the tools per space. Hindi, Tamil and Telugu are under review (the website's words where it has them). -->
     <string name="chooser_heading">What are you looking for?</string>

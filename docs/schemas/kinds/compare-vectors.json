@@ -1,0 +1,572 @@
+{
+ "format": "doorprints-compare-vectors/1",
+ "note": "Compare per kind (kinds PR 27, docs/03 ADR-36 §18.21; DRAFT for the owner's review for the school's part): what a kind file's `capabilities.compare.criteria` resolves to, and what Compare shows for some sample entries. `kinds` gives, per built-in kind, the resolved criteria in the kind file's order: `source` is `check` (a checklist item, scored 0 to 5, higher better) or `extra` (a typed extra, a number or an amount, where the extra's own `better` says which way; an extra with none, and an enum or a switch, has `better` null and is shown, not marked), with the label key per stack (null: the stack has no such key) and the English words. A kind with no `compare` (`unknown`) has none. `resolve` tries lists of ids the resolver must read the same way on every stack: an id that is neither a checklist item nor a visible extra of the kind is dropped, and the order is kept. `scoring` is what each kind's checklist is scored under: the house's is the person's own (the same object; its ten items), the school's is its eight items, each Medium (weight 2) because Compare names them, none a must-have, under the person's rating share. `outcomes` give entries (a candidate's rating, checklist scores and extras as stored), the person's rating share, and what Compare shows: `ranking` (best first: must-haves met, overall score descending with none last, coverage, price, last edit, id), `overall` per entry (0 to 5, null when nothing is scored), and `best`, per criterion, the ids holding the best cell (none for a tie of every value or one extra value; a checklist row marks the highest score even when only some entries have one). Expected values were worked by hand from the rule (weighted mean of the scores, blended with the rating by the share), never read back from the code. Readers: web compare-criteria.spec.ts, the phones' CompareCriteriaVectorsTest (:shared). Change a case only with the change it pins.",
+ "kinds": {
+  "house": {
+   "criteria": [
+    {
+     "id": "water",
+     "source": "check",
+     "better": "higher",
+     "label": "Water supply",
+     "labelKey": {
+      "web": "check.water",
+      "android": "check_water"
+     }
+    },
+    {
+     "id": "power",
+     "source": "check",
+     "better": "higher",
+     "label": "Power backup",
+     "labelKey": {
+      "web": "check.power",
+      "android": "check_power"
+     }
+    },
+    {
+     "id": "parking",
+     "source": "check",
+     "better": "higher",
+     "label": "Parking",
+     "labelKey": {
+      "web": "check.parking",
+      "android": "check_parking"
+     }
+    },
+    {
+     "id": "sunlight",
+     "source": "check",
+     "better": "higher",
+     "label": "Sunlight",
+     "labelKey": {
+      "web": "check.sunlight",
+      "android": "check_sunlight"
+     }
+    },
+    {
+     "id": "ventilation",
+     "source": "check",
+     "better": "higher",
+     "label": "Ventilation",
+     "labelKey": {
+      "web": "check.ventilation",
+      "android": "check_ventilation"
+     }
+    },
+    {
+     "id": "noise",
+     "source": "check",
+     "better": "higher",
+     "label": "Quiet (low noise)",
+     "labelKey": {
+      "web": "check.noise",
+      "android": "check_noise"
+     }
+    },
+    {
+     "id": "security",
+     "source": "check",
+     "better": "higher",
+     "label": "Safety and security",
+     "labelKey": {
+      "web": "check.security",
+      "android": "check_security"
+     }
+    },
+    {
+     "id": "maintenance",
+     "source": "check",
+     "better": "higher",
+     "label": "Building condition",
+     "labelKey": {
+      "web": "check.maintenance",
+      "android": "check_maintenance"
+     }
+    },
+    {
+     "id": "neighbourhood",
+     "source": "check",
+     "better": "higher",
+     "label": "Neighbourhood",
+     "labelKey": {
+      "web": "check.neighbourhood",
+      "android": "check_neighbourhood"
+     }
+    },
+    {
+     "id": "commute",
+     "source": "check",
+     "better": "higher",
+     "label": "Commute",
+     "labelKey": {
+      "web": "check.commute",
+      "android": "check_commute"
+     }
+    }
+   ]
+  },
+  "school": {
+   "criteria": [
+    {
+     "id": "dropoff",
+     "source": "check",
+     "better": "higher",
+     "label": "Safe drop-off and pick-up",
+     "labelKey": {
+      "web": "school.check.dropoff",
+      "android": "school_check_dropoff"
+     }
+    },
+    {
+     "id": "grounds",
+     "source": "check",
+     "better": "higher",
+     "label": "Classrooms and playground",
+     "labelKey": {
+      "web": "school.check.grounds",
+      "android": "school_check_grounds"
+     }
+    },
+    {
+     "id": "sanitation",
+     "source": "check",
+     "better": "higher",
+     "label": "Drinking water and toilets",
+     "labelKey": {
+      "web": "school.check.sanitation",
+      "android": "school_check_sanitation"
+     }
+    },
+    {
+     "id": "teachers",
+     "source": "check",
+     "better": "higher",
+     "label": "Teachers are approachable",
+     "labelKey": {
+      "web": "school.check.teachers",
+      "android": "school_check_teachers"
+     }
+    },
+    {
+     "id": "classsize",
+     "source": "check",
+     "better": "higher",
+     "label": "Class size",
+     "labelKey": {
+      "web": "school.check.classsize",
+      "android": "school_check_classsize"
+     }
+    },
+    {
+     "id": "homework",
+     "source": "check",
+     "better": "higher",
+     "label": "Homework and daily schedule",
+     "labelKey": {
+      "web": "school.check.homework",
+      "android": "school_check_homework"
+     }
+    },
+    {
+     "id": "activities",
+     "source": "check",
+     "better": "higher",
+     "label": "Sports and activities",
+     "labelKey": {
+      "web": "school.check.activities",
+      "android": "school_check_activities"
+     }
+    },
+    {
+     "id": "safety",
+     "source": "check",
+     "better": "higher",
+     "label": "Safety and CCTV",
+     "labelKey": {
+      "web": "school.check.safety",
+      "android": "school_check_safety"
+     }
+    },
+    {
+     "id": "fees",
+     "source": "extra",
+     "better": "lower",
+     "label": "Fees per year",
+     "labelKey": {
+      "web": "school.feesPerYear",
+      "android": "school_fees"
+     }
+    },
+    {
+     "id": "commuteMinutes",
+     "source": "extra",
+     "better": "lower",
+     "label": "Commute (minutes)",
+     "labelKey": {
+      "web": "school.commuteMinutes",
+      "android": "school_commute"
+     }
+    }
+   ]
+  },
+  "unknown": {
+   "criteria": []
+  }
+ },
+ "unknown": [
+  "",
+  "unknown",
+  "House",
+  "SCHOOL",
+  "__proto__",
+  "constructor"
+ ],
+ "resolve": [
+  {
+   "name": "ids the kind does not have are dropped, the order is kept, an enum and a switch are shown with no direction",
+   "kind": "school",
+   "ids": [
+    "safety",
+    "nope",
+    "board",
+    "fees",
+    "busService",
+    "money",
+    "commuteMinutes"
+   ],
+   "resolved": [
+    {
+     "id": "safety",
+     "source": "check",
+     "better": "higher"
+    },
+    {
+     "id": "board",
+     "source": "extra",
+     "better": null
+    },
+    {
+     "id": "fees",
+     "source": "extra",
+     "better": "lower"
+    },
+    {
+     "id": "busService",
+     "source": "extra",
+     "better": null
+    },
+    {
+     "id": "commuteMinutes",
+     "source": "extra",
+     "better": "lower"
+    }
+   ]
+  },
+  {
+   "name": "the house's money is a core field, not an extra, so it is not a criterion",
+   "kind": "house",
+   "ids": [
+    "water",
+    "money",
+    "bedrooms",
+    "commute"
+   ],
+   "resolved": [
+    {
+     "id": "water",
+     "source": "check",
+     "better": "higher"
+    },
+    {
+     "id": "commute",
+     "source": "check",
+     "better": "higher"
+    }
+   ]
+  },
+  {
+   "name": "a text and an enum are shown with no direction; an amount keeps the extra's own",
+   "kind": "school",
+   "ids": [
+    "grades",
+    "admissionFee"
+   ],
+   "resolved": [
+    {
+     "id": "grades",
+     "source": "extra",
+     "better": null
+    },
+    {
+     "id": "admissionFee",
+     "source": "extra",
+     "better": "lower"
+    }
+   ]
+  },
+  {
+   "name": "nothing",
+   "kind": "school",
+   "ids": [],
+   "resolved": []
+  }
+ ],
+ "scoring": {
+  "house": {
+   "identity": true,
+   "keys": [
+    "water",
+    "power",
+    "parking",
+    "sunlight",
+    "ventilation",
+    "noise",
+    "security",
+    "maintenance",
+    "neighbourhood",
+    "commute"
+   ]
+  },
+  "school": {
+   "identity": false,
+   "ratingShare": "the person's",
+   "criteria": [
+    {
+     "key": "dropoff",
+     "weight": 2,
+     "mustHave": false
+    },
+    {
+     "key": "grounds",
+     "weight": 2,
+     "mustHave": false
+    },
+    {
+     "key": "sanitation",
+     "weight": 2,
+     "mustHave": false
+    },
+    {
+     "key": "teachers",
+     "weight": 2,
+     "mustHave": false
+    },
+    {
+     "key": "classsize",
+     "weight": 2,
+     "mustHave": false
+    },
+    {
+     "key": "homework",
+     "weight": 2,
+     "mustHave": false
+    },
+    {
+     "key": "activities",
+     "weight": 2,
+     "mustHave": false
+    },
+    {
+     "key": "safety",
+     "weight": 2,
+     "mustHave": false
+    }
+   ]
+  }
+ },
+ "outcomes": [
+  {
+   "name": "four schools: the best overall first, one with nothing scored last; the lower fees and commute marked",
+   "kind": "school",
+   "ratingShare": 0.5,
+   "entries": [
+    {
+     "id": "a",
+     "rating": 4,
+     "checklist": {
+      "safety": 5,
+      "teachers": 4,
+      "sanitation": 3
+     },
+     "extras": {
+      "fees": {
+       "amount": 72000,
+       "cadence": "year"
+      },
+      "commuteMinutes": 20
+     }
+    },
+    {
+     "id": "b",
+     "rating": 5,
+     "checklist": {
+      "safety": 3,
+      "teachers": 5
+     },
+     "extras": {
+      "fees": {
+       "amount": 96000,
+       "cadence": "year"
+      },
+      "commuteMinutes": 35
+     }
+    },
+    {
+     "id": "c",
+     "rating": null,
+     "checklist": {},
+     "extras": {
+      "fees": {
+       "amount": 72000,
+       "cadence": "year"
+      },
+      "commuteMinutes": 20
+     }
+    },
+    {
+     "id": "d",
+     "rating": 3,
+     "checklist": {
+      "safety": 5,
+      "teachers": 4,
+      "sanitation": 3
+     },
+     "extras": {}
+    }
+   ],
+   "ranking": [
+    "b",
+    "a",
+    "d",
+    "c"
+   ],
+   "overall": {
+    "a": 4.0,
+    "b": 4.5,
+    "c": null,
+    "d": 3.5
+   },
+   "best": {
+    "dropoff": [],
+    "grounds": [],
+    "sanitation": [
+     "a",
+     "d"
+    ],
+    "teachers": [
+     "b"
+    ],
+    "classsize": [],
+    "homework": [],
+    "activities": [],
+    "safety": [
+     "a",
+     "d"
+    ],
+    "fees": [
+     "a",
+     "c"
+    ],
+    "commuteMinutes": [
+     "a",
+     "c"
+    ]
+   }
+  },
+  {
+   "name": "a school's checklist keys are not the house's: a house key scores nothing, and the rating alone counts",
+   "kind": "school",
+   "ratingShare": 0.5,
+   "entries": [
+    {
+     "id": "x",
+     "rating": 2,
+     "checklist": {
+      "water": 5,
+      "power": 5
+     },
+     "extras": {}
+    },
+    {
+     "id": "y",
+     "rating": 4,
+     "checklist": {},
+     "extras": {
+      "fees": {
+       "amount": 50000,
+       "cadence": "year"
+      }
+     }
+    }
+   ],
+   "ranking": [
+    "y",
+    "x"
+   ],
+   "overall": {
+    "x": 2.0,
+    "y": 4.0
+   },
+   "best": {
+    "dropoff": [],
+    "grounds": [],
+    "sanitation": [],
+    "teachers": [],
+    "classsize": [],
+    "homework": [],
+    "activities": [],
+    "safety": [],
+    "fees": [],
+    "commuteMinutes": []
+   }
+  },
+  {
+   "name": "two houses: the person's ten checklist keys; the same overall score and the same coverage, so the id decides",
+   "kind": "house",
+   "ratingShare": 0.5,
+   "entries": [
+    {
+     "id": "h1",
+     "rating": 3,
+     "checklist": {
+      "water": 5,
+      "power": 3
+     },
+     "extras": {}
+    },
+    {
+     "id": "h2",
+     "rating": null,
+     "checklist": {
+      "water": 4,
+      "power": 3
+     },
+     "extras": {}
+    }
+   ],
+   "ranking": [
+    "h1",
+    "h2"
+   ],
+   "overall": {
+    "h1": 3.5,
+    "h2": 3.5
+   },
+   "best": {
+    "water": [
+     "h1"
+    ],
+    "power": [],
+    "parking": [],
+    "sunlight": [],
+    "ventilation": [],
+    "noise": [],
+    "security": [],
+    "maintenance": [],
+    "neighbourhood": [],
+    "commute": []
+   }
+  }
+ ]
+}

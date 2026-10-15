@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.163 |
+| Version | 0.164 |
 | Date | 2026-10-15 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -174,6 +174,7 @@
 | 0.161 | 2026-10-15 | Claude (Code), engineer | **§18.19 Capabilities** (kinds PR 25; `feat/kinds-25-capabilities-schema`): the kind file's optional `capabilities` block (map, Hunt, rooms, moving in, contacts, viewings, Compare, paths, identity), `house.json` and `school.json` declare what they do today, a resolver on the website and in `:shared`, shared vectors; schema and resolver only, nothing reads them yet. |
 | 0.162 | 2026-10-15 | Claude (Code), engineer | **§11.1 and §18.19: no map configuration in a kind file** (owner constraint, `feat/kinds-25-capabilities-schema`): the certification covers every space and every kind; `capabilities.map` is a boolean only; map keys are refused by the schema and tested on three stacks. |
 | 0.163 | 2026-10-15 | Claude (Code), engineer | **New §18.20, Hunt as a capability** (kinds PR 26; `feat/kinds-26-hunt-capability`; TC-U-269, TC-M-84): `capabilities.hunt {alertRadiusM 30..300, stayCreates, streetMemory, areas}`; the school has Hunt (100 m, all on), the house keeps today's (30 m, all on); the Hunt card and switch, the walk, the alerts, the notification, the channel and the deep links read the kind, not the house; the walk belongs to the space it was started in; twelve Hunt words in the kind files; the website has no Hunt UI and reads nothing; §18.19's table row and the S4b-BL-304 lines point here. |
+| 0.164 | 2026-10-15 | Claude (Code), engineer | **§18.21 Compare for any kind, and the school's checklist** (kinds PR 27; `feat/kinds-27-compare-capability`): Compare reads `capabilities.compare` of the kind (`compareCriteria`, `scoringForKind`): checklist items (higher is better) and typed extras (the extra's own `better`), the house's ten keys exactly as before; the school gains a draft checklist of eight items and `compare` over them, the fees and the commute. §18.19 and §18.9 corrected where they said nothing reads the resolver or the school hides the checklist. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -2387,8 +2388,8 @@ renderer yet; that is the work of the hidden `schools` kind (PR 5, S4b-BL-209). 
 reads kinds more widely (search and copies are PR 6, the AI PR 7, Settings PR 8). It needs nothing but labels, hidden
 sections and core fields, and typed extras, so the stop criterion of the row (no new screens) holds: one candidate page
 draws both kinds. A school shows the details, *Fees* (the house's `cost` section with the school's heading), area notes,
-distances, location, saved walks, visits and photos; it hides the rooms, the questions, the viewings, moving in and the
-checklist (and so the score), and its core `money` and `brokerId`. Its extras: `board` and `medium` (enums: CBSE, ICSE,
+distances, location, saved walks, visits and photos; it hides the rooms, the questions, the viewings and moving in (since kinds PR 27, §18.21, it has
+a checklist of its own and so a score), and its core `money` and `brokerId`. Its extras: `board` and `medium` (enums: CBSE, ICSE,
 State board, IB, Cambridge (IGCSE), Other; English, Hindi, State language, Other), `grades` (text, at most 40
 characters), `commuteMinutes` (a number, 0 to 300, unit `minute`), `busService` (a switch), `fees` (money, fixed cadence
 `year`) and `admissionFee` (money, `once`). The labels are keys, as for the house (door 11): 23 new web keys and 24
@@ -2479,8 +2480,8 @@ S4b-BL-266, S4b-BL-277).** With a school space on screen, nothing a school page 
   location lines, *School not found* (the space's kind while no candidate is loaded), the map's zoom title, the listing
   hint and the AI disclosure on it, Ask and Plan, the Areas and Places pages and their cards and the area-note
   composer (`SpaceWords.areaInReach`), and the list row without its price and score. Your data has no Criteria, Questions
-  or Viewings card while a school space is the last one (`isVisible('section.checklist' | 'section.questions' |
-  'section.viewings')`); the Brokers card stays (S4b-BL-260). `house-detail-page.ts` shrank to 1,185 lines (the draft's
+  or Viewings card while a school space is the last one (`isVisible('section.questions' | 'section.viewings')`, and the
+  Criteria card is the house's, §18.21); the Brokers card stays (S4b-BL-260). `house-detail-page.ts` shrank to 1,185 lines (the draft's
   small helpers moved to `house-page-input.ts`) and its budget entry was lowered.
 - *The copies speak in a voice.* `collect` gives a bundle a `voice` (the kind) when its copy is of one space, or when every
   candidate in it is of one kind that is not the house (`copyVoice`), and each school entry its own `kind`; a copy of
@@ -3163,7 +3164,7 @@ a walk running when Houses is turned off stops). The house-only path is unchange
 A kind file could only *hide* the house's features (the closed `sectionId` list) while Hunt, Compare, the broker and the rest were
 hard-coded to the house (`huntHere = built.id == HOUSE`, `Space.kt`). The owner's direction is that a kind acts like a product of
 its own under Doorprints, so the kind file gains one optional block, `capabilities`, that says what the kind can do. **PR 25 was the schema and the resolver only; PR 26 (§18.20) is the first
-feature that reads it, Hunt mode.** The
+feature that reads it, Hunt mode, and PR 27 (§18.21) the second, Compare.** The
 screens move onto it one feature at a time in later changes, each with the house's behaviour proved equal first.
 
 | Key | Meaning | Limits |
@@ -3186,7 +3187,7 @@ that rule is the caller's and is unchanged: it resolves the drawn kind, then ask
 `house.json` declares today's behaviour, no more: the map, Hunt at 30 m (the settings default of `AppSettings.alertRadiusM`; the
 person's own radius, 15 to 100 m, stays a setting) with `stayCreates`, the rooms, moving in, `contacts` broker with `autoCreateFromPhone`,
 `viewings` seeded by the house bank, `compare` over the ten checklist keys and the paths. `school.json` declares what the school has: the
-map, the paths, an admissions-office contact that never makes a broker (S4b-BL-260) and, since kinds PR 26 (§18.20), Hunt at 100 m; no rooms, moving in, viewings or Compare.
+map, the paths, an admissions-office contact that never makes a broker (S4b-BL-260), since kinds PR 26 (§18.20) Hunt at 100 m and since kinds PR 27 (§18.21) Compare over its checklist, fees and commute; no rooms, moving in or viewings.
 
 **The resolver** is `capabilitiesOf(kindId)` (website `core/kind-capabilities.ts`) and `KindCapabilities.of(kindId)` (`:shared`
 commonMain): the built-in sets are copies of the two files, in the way of `HOUSE_LABELS` and `SchoolKind`, and the tests read the files so
@@ -3267,6 +3268,51 @@ file was touched (ADR-22).
 no stay offer), `SpacesRootTest` (the school space has the card, its switch starts a school walk, a school walk stops on leaving, an area wake-up starts the default
 kind's walk, the stay alert makes a school), `HuntKindAlertsTest` (the notification wording and channel), `IosHuntTest`; mutation list
 `tools/mutations/kinds-26-hunt.json`, all killed; the baseline `school_map_hunt_{en,hi}_light.png` and **zero diff** in every house baseline.
+
+### 18.21 Compare for any kind, and the school's checklist (kinds PR 27, DRAFT for the owner's review)
+
+Compare was the house's: its scoring was the person's ten house criteria and its rows were fixed code. It now reads the kind. **The
+rule.** What Compare scores and marks is `capabilities.compare.criteria` of the kind file (§18.19), resolved by the pure function
+`compareCriteria(kind)` (website `shared/compare-criteria.ts`; the phones' `CompareCriteria` in `:shared`): each id is a **checklist
+item** of the kind (scored 0 to 5, a higher score is better) or a **typed extra** of the kind that its section shows (a number or an
+amount, and any other type, which is shown); an id the kind has neither of is dropped, and the order is the kind file's. **The
+direction is the extra's own `better`** (`lower` or `higher`, S4b-BL-292), declared once per field in the kind file, so the schema
+needed no new key: a number or an amount with no `better`, and a text, an option or a switch, is shown and never marked. A checklist
+item is always higher-is-better. A kind with no `compare` has no criteria and ranks by its rating (§18.13). Compare stays per space
+(§18.13): a mixed selection is not offered, and a pick of another space is refused with the same sentence as before.
+
+**What it changes.** `scoringForKind(kind, personScoring)` is what the candidates of a kind are ranked under: for the house it returns
+the person's own scoring, the same object, so the house's weights, must-haves, custom criteria, rows and ranking are exactly what they
+were (`compare-house-pins.spec.ts` and every house golden are untouched); for another kind it is the kind file's checklist in order,
+each item Medium (weight 2) and counted when `compare` names it (weight 0, shown "ignored" on the page, when it does not), no
+must-haves, under the person's rating share. The person's criteria records are the house's (Your data > Criteria stays the house's;
+a school's items count equally, and per-kind weights are not built). Three screens read it: the **Compare** table (a *Checklist* score
+row, one row per counted item with the best marked, the kind's extras with the best marked only for the ones `compare` names, in the
+direction the file gives), the **candidate page** (its checklist card asks the kind's items by the kind's words, with no link to the
+house's criteria) and the **list row** (the score). The best checklist cell is the highest score even when only some candidates have
+one; the best of an extra needs two values that do not tie.
+
+**The school (a draft: the items and the choice of criteria are for the owner to review; hi, ta and te under review).** `school.json`
+gains the `checklist` section and eight items, keys that do not clash with the house's (the criteria records are global by key):
+`dropoff` (Safe drop-off and pick-up), `grounds` (Classrooms and playground), `sanitation` (Drinking water and toilets), `teachers`
+(Teachers are approachable), `classsize` (Class size), `homework` (Homework and daily schedule), `activities` (Sports and activities)
+and `safety` (Safety and CCTV); their labels are web keys `school.check.<key>` and Android keys `school_check_<key>` in four languages.
+Its `compare.criteria` are the eight items, then `fees` (per year, lower is better) and `commuteMinutes` (lower is better); the
+admission fee is shown and not marked, because it is paid once and rarely decides between schools. Ten is the schema's limit.
+
+**Not here (stated, not hidden).** The readable copies and the backup's tables write a school's score and checklist as they did (a
+school's copy has no score or checklist section: `copyShows` keeps `section.checklist` the house's) and the AI's school slots do not
+name the checklist, so what a provider sees is unchanged; per-kind weights and a Criteria page for another kind are not built; a
+user-authored kind file is not read at run time yet. A checklist score of a school travels in the candidate's existing `checklist`
+map (any key, 0 to 5), so the backup, sync and the server need no change. The map's rules and India's boundaries are not touched
+(no map-rules file takes a kind).
+
+**Tests** ([06](06-test-plan.md) TC-U-271): `docs/schemas/kinds/compare-vectors.json` (format `doorprints-compare-vectors/1`: each kind's
+resolved criteria with direction, label keys and words, lists of ids the resolver must read alike, the scoring, and four entries to
+sorted, scored and marked outcomes worked by hand), read by the website's `compare-criteria.spec.ts`; `compare-space.spec.ts` (the
+school's table, checklist rows, best marks, four languages), `school-form.spec.ts` (the checklist card), `school-words.spec.ts`,
+`school-kind.spec.ts`, the layout gate with `GATE_DEV_KINDS=1` (384 of 388 here, the same four map-page layout shifts as the base),
+the accessibility sweep, and the mutation list `tools/mutations/kinds-27-compare.json`.
 
 ## 19. Voice input (ADR-37)
 

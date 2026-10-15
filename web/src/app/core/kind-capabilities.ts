@@ -18,9 +18,10 @@
 
 /**
  * What a kind can do beyond its fields (docs/03 ADR-36 §18.19): the `capabilities` block of a kind file
- * (`docs/schemas/kinds/kind.schema.json`), resolved. The website has no screen that reads {@link capabilitiesOf} yet: Hunt mode
- * (the one capability the phones read, docs/03 §18.20) is the phones' only, so the website shows no Hunt UI for any kind and
- * nothing here changes it; this module is the resolver the website's own capability screens will read, held to the shared vectors. `docs/schemas/kinds/capabilities-vectors.json` holds the resolved sets, the
+ * (`docs/schemas/kinds/kind.schema.json`), resolved. Compare reads `compare` through `compareCriteria`
+ * (`shared/compare-criteria.ts`, kinds PR 27, docs/03 §18.21); Hunt mode (the one other capability the phones read, docs/03
+ * §18.20) is the phones' only, so the website shows no Hunt UI for any kind; no other screen reads {@link capabilitiesOf} yet.
+ * `docs/schemas/kinds/capabilities-vectors.json` holds the resolved sets, the
  * defaults and the files that must be refused, and the phones' `KindCapabilities` answers the same.
  *
  * A feature a kind leaves out is `null` (or `false` for a plain switch). A kind the build does not know has
@@ -167,11 +168,16 @@ const BUILT_IN: Readonly<Record<string, KindCapabilities>> = Object.freeze({
     identity: null,
   }),
   // The school has a contact (the admissions office) that never makes a broker, Hunt at 100 m (a school is passed on foot or
-  // by car, not walked up to), no rooms, moving in, viewings or Compare; its walks stay.
+  // by car, not walked up to), no rooms, moving in or viewings; its walks stay. Compare scores its eight checklist items and
+  // two extras, the fees and the commute (kinds PR 27, §18.21).
   school: Object.freeze({
     map: true, hunt: Object.freeze({ alertRadiusM: 100, stayCreates: true, streetMemory: true, areas: true }), rooms: false, moveIn: false,
     contacts: Object.freeze({ role: 'office' as const, autoCreateFromPhone: false }),
-    viewings: null, compare: null, paths: true, identity: null,
+    viewings: null,
+    compare: Object.freeze({
+      criteria: Object.freeze(['dropoff', 'grounds', 'sanitation', 'teachers', 'classsize', 'homework', 'activities', 'safety', 'fees', 'commuteMinutes']),
+    }),
+    paths: true, identity: null,
   }),
 });
 

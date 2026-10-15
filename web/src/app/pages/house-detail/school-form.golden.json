@@ -35,6 +35,9 @@
   "3 label",
   "4 span.req aria-hidden=true",
   "3 input#house-name.ng-untouched.ng-pristine.ng-valid",
+ "2 div.score role=img aria-label=Overall score: 4.0 out of 5",
+ "3 b aria-hidden=true",
+ "3 span aria-hidden=true",
   "1 fieldset",
   "2 legend",
   "2 div.options",
@@ -271,6 +274,7 @@
    "location-heading \"Location\"",
    "house-check-heading \"Did I walk past this school?\"",
    "walks-heading \"Saved walks\"",
+   "checklist-heading \"Checklist\"",
    "visits-heading \"Visits\"",
    "photos-heading \"Photos\""
   ],
@@ -281,6 +285,7 @@
    "location-heading \"जगह\"",
    "house-check-heading \"क्या मैं इस स्कूल के पास से गुज़रा था?\"",
    "walks-heading \"सहेजी हुई सैरें\"",
+   "checklist-heading \"जाँच सूची\"",
    "visits-heading \"दौरे\"",
    "photos-heading \"तस्वीरें\""
   ],
@@ -291,6 +296,7 @@
    "location-heading \"இருப்பிடம்\"",
    "house-check-heading \"நான் இந்தப் பள்ளியைக் கடந்து நடந்திருக்கிறேனா?\"",
    "walks-heading \"சேமித்த நடைகள்\"",
+   "checklist-heading \"சரிபார்ப்புப் பட்டியல்\"",
    "visits-heading \"வருகைகள்\"",
    "photos-heading \"படங்கள்\""
   ],
@@ -301,6 +307,7 @@
    "location-heading \"స్థానం\"",
    "house-check-heading \"నేను ఈ పాఠశాల పక్కగా నడిచానా?\"",
    "walks-heading \"సేవ్ చేసిన నడకలు\"",
+   "checklist-heading \"తనిఖీ జాబితా\"",
    "visits-heading \"సందర్శనలు\"",
    "photos-heading \"ఫోటోలు\""
   ]

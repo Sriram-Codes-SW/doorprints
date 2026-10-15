@@ -1,6 +1,6 @@
 {
  "format": "doorprints-school-vectors/1",
- "note": "The hidden schools kind (kinds PR 5, S4b-BL-209; docs/03 ADR-36 §18.9): what docs/schemas/kinds/school.json resolves to, in the shape of kind-vectors.json (`kind`); what the typed-extras renderer draws for it per stack, in the shape of kind-field-vectors.json (`fields`, `rows`; a school has no money of its own, so its Details extras have rows of their own instead of the price's); and one school candidate that every stack keeps unchanged through its stores, its sync and its backups: `backup` is a doorprints-backup/1 file whose `candidates` each stack reads and writes back byte for byte, and `candidate` is the same school on the wire (`/api/candidates`, the Drive sync file, the website's IndexedDB) that each stack's mapping writes back as it came. The house's vectors and samples are unchanged. Written from school.json and the dictionaries on the branch feat/kinds-7-schools-kind; hi, ta and te are under review. Readers: web school-kind.spec.ts and school-kind-file.spec.ts, the server's SchoolKindTest and SchoolCandidateApiTest, and the phone's SchoolKindVectorsTest (:shared), SchoolKindScreensTest (:ui) and SchoolSampleTest (:app). Change a case only with the change it pins.",
+ "note": "The hidden schools kind (kinds PR 5, S4b-BL-209; docs/03 ADR-36 §18.9): what docs/schemas/kinds/school.json resolves to, in the shape of kind-vectors.json (`kind`); what the typed-extras renderer draws for it per stack, in the shape of kind-field-vectors.json (`fields`, `rows`; a school has no money of its own, so its Details extras have rows of their own instead of the price's); and one school candidate that every stack keeps unchanged through its stores, its sync and its backups: `backup` is a doorprints-backup/1 file whose `candidates` each stack reads and writes back byte for byte, and `candidate` is the same school on the wire (`/api/candidates`, the Drive sync file, the website's IndexedDB) that each stack's mapping writes back as it came. The house's vectors and samples are unchanged. Written from school.json and the dictionaries on the branch feat/kinds-7-schools-kind; hi, ta and te are under review. Since kinds PR 27 (docs/03 §18.21) the school has a checklist of eight items (`checklist`, the `checklist` section is shown, and `labels` carries `section.checklist` and `check.<key>` in both stacks); that part is a draft for the owner's review. Readers: web school-kind.spec.ts and school-kind-file.spec.ts, the server's SchoolKindTest and SchoolCandidateApiTest, and the phone's SchoolKindVectorsTest (:shared), SchoolKindScreensTest (:ui) and SchoolSampleTest (:app). Change a case only with the change it pins.",
  "kind": {
   "id": "school",
   "version": 1,
@@ -18,6 +18,7 @@
    "distances",
    "location",
    "walks",
+   "checklist",
    "visits",
    "photos"
   ],
@@ -26,8 +27,7 @@
     "rooms",
     "questions",
     "viewings",
-    "moveIn",
-    "checklist"
+    "moveIn"
    ],
    "fields": [
     "money",
@@ -132,7 +132,16 @@
     "locationSource"
    ]
   },
-  "checklist": [],
+  "checklist": [
+   "dropoff",
+   "grounds",
+   "sanitation",
+   "teachers",
+   "classsize",
+   "homework",
+   "activities",
+   "safety"
+  ],
   "questionScopes": {
    "BOTH": [
     "year",
@@ -202,6 +211,7 @@
      "section.distances": "Distances",
      "section.location": "Location",
      "section.walks": "Saved walks",
+     "section.checklist": "Checklist",
      "section.visits": "Visits",
      "section.photos": "Photos",
      "field.label": "School name",
@@ -232,7 +242,15 @@
      "field.commuteMinutes": "Commute (minutes)",
      "field.busService": "School bus",
      "field.fees": "Fees per year",
-     "field.admissionFee": "Admission fee"
+     "field.admissionFee": "Admission fee",
+     "check.dropoff": "Safe drop-off and pick-up",
+     "check.grounds": "Classrooms and playground",
+     "check.sanitation": "Drinking water and toilets",
+     "check.teachers": "Teachers are approachable",
+     "check.classsize": "Class size",
+     "check.homework": "Homework and daily schedule",
+     "check.activities": "Sports and activities",
+     "check.safety": "Safety and CCTV"
     },
     "hi": {
      "kind.new": "नया स्कूल",
@@ -249,6 +267,7 @@
      "section.distances": "दूरियाँ",
      "section.location": "जगह",
      "section.walks": "सहेजी हुई सैरें",
+     "section.checklist": "जाँच सूची",
      "section.visits": "दौरे",
      "section.photos": "तस्वीरें",
      "field.label": "स्कूल का नाम",
@@ -279,7 +298,15 @@
      "field.commuteMinutes": "आने-जाने का समय (मिनट)",
      "field.busService": "स्कूल बस",
      "field.fees": "सालाना फ़ीस",
-     "field.admissionFee": "दाख़िला फ़ीस"
+     "field.admissionFee": "दाख़िला फ़ीस",
+     "check.dropoff": "सुरक्षित छोड़ने और लेने की जगह",
+     "check.grounds": "कक्षाएँ और खेल का मैदान",
+     "check.sanitation": "पीने का पानी और शौचालय",
+     "check.teachers": "शिक्षक आसानी से मिलते हैं",
+     "check.classsize": "कक्षा में बच्चों की संख्या",
+     "check.homework": "गृहकार्य और रोज़ की दिनचर्या",
+     "check.activities": "खेल और गतिविधियाँ",
+     "check.safety": "सुरक्षा और CCTV"
     },
     "ta": {
      "kind.new": "புதிய பள்ளி",
@@ -296,6 +323,7 @@
      "section.distances": "தூரங்கள்",
      "section.location": "இருப்பிடம்",
      "section.walks": "சேமித்த நடைகள்",
+     "section.checklist": "சரிபார்ப்புப் பட்டியல்",
      "section.visits": "வருகைகள்",
      "section.photos": "படங்கள்",
      "field.label": "பள்ளியின் பெயர்",
@@ -326,7 +354,15 @@
      "field.commuteMinutes": "பயண நேரம் (நிமிடங்கள்)",
      "field.busService": "பள்ளிப் பேருந்து",
      "field.fees": "ஆண்டுக் கட்டணம்",
-     "field.admissionFee": "சேர்க்கைக் கட்டணம்"
+     "field.admissionFee": "சேர்க்கைக் கட்டணம்",
+     "check.dropoff": "பாதுகாப்பான இறக்கி-ஏற்றும் இடம்",
+     "check.grounds": "வகுப்பறைகளும் விளையாட்டு மைதானமும்",
+     "check.sanitation": "குடிநீரும் கழிப்பறைகளும்",
+     "check.teachers": "ஆசிரியர்களை எளிதில் அணுக முடியும்",
+     "check.classsize": "வகுப்பின் மாணவர் எண்ணிக்கை",
+     "check.homework": "ஹோம்வொர்க்கும் தினசரி நேரமும்",
+     "check.activities": "விளையாட்டும் செயல்பாடுகளும்",
+     "check.safety": "பாதுகாப்பும் CCTV-யும்"
     },
     "te": {
      "kind.new": "కొత్త పాఠశాల",
@@ -343,6 +379,7 @@
      "section.distances": "దూరాలు",
      "section.location": "స్థానం",
      "section.walks": "సేవ్ చేసిన నడకలు",
+     "section.checklist": "తనిఖీ జాబితా",
      "section.visits": "సందర్శనలు",
      "section.photos": "ఫోటోలు",
      "field.label": "పాఠశాల పేరు",
@@ -373,7 +410,15 @@
      "field.commuteMinutes": "ప్రయాణ సమయం (నిమిషాలు)",
      "field.busService": "స్కూల్ బస్సు",
      "field.fees": "సంవత్సర ఫీజు",
-     "field.admissionFee": "ప్రవేశ ఫీజు"
+     "field.admissionFee": "ప్రవేశ ఫీజు",
+     "check.dropoff": "సురక్షితంగా దింపడం, తీసుకెళ్లడం",
+     "check.grounds": "తరగతి గదులు, ఆటస్థలం",
+     "check.sanitation": "తాగునీరు, మరుగుదొడ్లు",
+     "check.teachers": "ఉపాధ్యాయులను సులభంగా కలవగలరు",
+     "check.classsize": "తరగతిలో విద్యార్థుల సంఖ్య",
+     "check.homework": "హోంవర్క్, రోజువారీ సమయపట్టిక",
+     "check.activities": "ఆటలు, కార్యకలాపాలు",
+     "check.safety": "భద్రత, CCTV"
     }
    },
    "android": {
@@ -392,6 +437,7 @@
      "section.distances": "Distances",
      "section.location": "Location",
      "section.walks": "Saved walks",
+     "section.checklist": "Checklist (0 = bad, 5 = great)",
      "section.visits": "Visits (%1$d)",
      "section.photos": "Photos",
      "field.label": "School name",
@@ -422,7 +468,15 @@
      "field.commuteMinutes": "Commute (minutes)",
      "field.busService": "School bus",
      "field.fees": "Fees per year (₹)",
-     "field.admissionFee": "Admission fee (₹)"
+     "field.admissionFee": "Admission fee (₹)",
+     "check.dropoff": "Safe drop-off and pick-up",
+     "check.grounds": "Classrooms and playground",
+     "check.sanitation": "Drinking water and toilets",
+     "check.teachers": "Teachers are approachable",
+     "check.classsize": "Class size",
+     "check.homework": "Homework and daily schedule",
+     "check.activities": "Sports and activities",
+     "check.safety": "Safety and CCTV"
     },
     "hi": {
      "kind.new": "स्कूल सहेजें",
@@ -439,6 +493,7 @@
      "section.distances": "दूरियाँ",
      "section.location": "जगह",
      "section.walks": "सहेजी गई सैर",
+     "section.checklist": "जाँच सूची (0 = खराब, 5 = बहुत अच्छा)",
      "section.visits": "दौरे (%1$d)",
      "section.photos": "तस्वीरें",
      "field.label": "स्कूल का नाम",
@@ -469,7 +524,15 @@
      "field.commuteMinutes": "आने-जाने का समय (मिनट)",
      "field.busService": "स्कूल बस",
      "field.fees": "सालाना फ़ीस (₹)",
-     "field.admissionFee": "दाख़िला फ़ीस (₹)"
+     "field.admissionFee": "दाख़िला फ़ीस (₹)",
+     "check.dropoff": "सुरक्षित छोड़ने और लेने की जगह",
+     "check.grounds": "कक्षाएँ और खेल का मैदान",
+     "check.sanitation": "पीने का पानी और शौचालय",
+     "check.teachers": "शिक्षक आसानी से मिलते हैं",
+     "check.classsize": "कक्षा में बच्चों की संख्या",
+     "check.homework": "गृहकार्य और रोज़ की दिनचर्या",
+     "check.activities": "खेल और गतिविधियाँ",
+     "check.safety": "सुरक्षा और CCTV"
     },
     "ta": {
      "kind.new": "பள்ளியைச் சேமிக்கவும்",
@@ -486,6 +549,7 @@
      "section.distances": "தூரங்கள்",
      "section.location": "இருப்பிடம்",
      "section.walks": "சேமித்த நடைகள்",
+     "section.checklist": "சரிபார்ப்புப் பட்டியல் (0 = மோசம், 5 = மிகச் சிறப்பு)",
      "section.visits": "வருகைகள் (%1$d)",
      "section.photos": "படங்கள்",
      "field.label": "பள்ளியின் பெயர்",
@@ -516,7 +580,15 @@
      "field.commuteMinutes": "பயண நேரம் (நிமிடங்கள்)",
      "field.busService": "பள்ளிப் பேருந்து",
      "field.fees": "ஆண்டுக் கட்டணம் (₹)",
-     "field.admissionFee": "சேர்க்கைக் கட்டணம் (₹)"
+     "field.admissionFee": "சேர்க்கைக் கட்டணம் (₹)",
+     "check.dropoff": "பாதுகாப்பான இறக்கி-ஏற்றும் இடம்",
+     "check.grounds": "வகுப்பறைகளும் விளையாட்டு மைதானமும்",
+     "check.sanitation": "குடிநீரும் கழிப்பறைகளும்",
+     "check.teachers": "ஆசிரியர்களை எளிதில் அணுக முடியும்",
+     "check.classsize": "வகுப்பின் மாணவர் எண்ணிக்கை",
+     "check.homework": "ஹோம்வொர்க்கும் தினசரி நேரமும்",
+     "check.activities": "விளையாட்டும் செயல்பாடுகளும்",
+     "check.safety": "பாதுகாப்பும் CCTV-யும்"
     },
     "te": {
      "kind.new": "పాఠశాలను సేవ్ చేయండి",
@@ -533,6 +605,7 @@
      "section.distances": "దూరాలు",
      "section.location": "స్థానం",
      "section.walks": "సేవ్ చేసిన నడకలు",
+     "section.checklist": "తనిఖీ జాబితా (0 = బాగాలేదు, 5 = చాలా బాగుంది)",
      "section.visits": "సందర్శనలు (%1$d)",
      "section.photos": "ఫోటోలు",
      "field.label": "పాఠశాల పేరు",
@@ -563,7 +636,15 @@
      "field.commuteMinutes": "ప్రయాణ సమయం (నిమిషాలు)",
      "field.busService": "స్కూల్ బస్సు",
      "field.fees": "సంవత్సర ఫీజు (₹)",
-     "field.admissionFee": "ప్రవేశ ఫీజు (₹)"
+     "field.admissionFee": "ప్రవేశ ఫీజు (₹)",
+     "check.dropoff": "సురక్షితంగా దింపడం, తీసుకెళ్లడం",
+     "check.grounds": "తరగతి గదులు, ఆటస్థలం",
+     "check.sanitation": "తాగునీరు, మరుగుదొడ్లు",
+     "check.teachers": "ఉపాధ్యాయులను సులభంగా కలవగలరు",
+     "check.classsize": "తరగతిలో విద్యార్థుల సంఖ్య",
+     "check.homework": "హోంవర్క్, రోజువారీ సమయపట్టిక",
+     "check.activities": "ఆటలు, కార్యకలాపాలు",
+     "check.safety": "భద్రత, CCTV"
     }
    }
   }

@@ -733,7 +733,7 @@
       <!-- Checklist -->
       @if (shows('section.checklist')) { <section class="card" aria-labelledby="checklist-heading">
         <h2 id="checklist-heading">{{ L.section('checklist') | t }}</h2>
-        <p class="muted small">{{ 'house.checklistHint' | t }} <a routerLink="/criteria">{{ 'house.criteriaLink' | t }}</a></p>
+        <p class="muted small">{{ 'house.checklistHint' | t }}@if (kind().id === 'house') { <a routerLink="/criteria">{{ 'house.criteriaLink' | t }}</a>}</p>
         @let scored = result(d);
         @if (scored.coverage !== null) {
           <p class="muted small" id="coverage-line">{{ 'house.coverage' | t: { n: scored.scored, total: scored.active } }}</p>

@@ -26,6 +26,7 @@ import { fixed, rupees } from './deterministic';
 import type { ExportBundle, ExportHouse } from './export-model';
 import { ExportStrings } from './export-strings';
 import type { ExportExtra } from './kind-copy';
+import { copyShows } from './kind-copy';
 import { photoFileName } from './photo-names';
 import { brokerLine } from '../shared/broker';
 import { isBuiltInKey } from '../shared/scoring';
@@ -133,7 +134,7 @@ export interface ExportTable {
 /** The four tables of a copy, in file order, then brokers (slice 1b), rooms (1c), criteria (slice 2) answers (3a) and viewings (3b-1) when it has them. */
 export function exportTables(bundle: ExportBundle): ExportTable[] {
   // A kind with no checklist (a school) has no Scores table: its rows would all be empty (S4b-BL-266).
-  const shows = (ref: string) => !bundle.voice || bundle.voice.labels.isVisible(ref);
+  const shows = (ref: string) => copyShows(bundle.voice, ref);
   const tables = [housesTable(bundle), ...(shows('section.checklist') ? [scoresTable(bundle)] : []), visitsTable(bundle), photosTable(bundle)];
   if (bundle.brokers.length > 0 && shows('field.brokerId')) tables.push(brokersTable(bundle));
   if (bundle.houses.some((h) => h.rooms?.length) && shows('section.rooms')) tables.push(roomsTable(bundle));
@@ -232,7 +233,7 @@ export function housesTable(bundle: ExportBundle): ExportTable {
     [null, s.get('col.updatedAt'), (e) => maybeStamp(e.house.updatedAt)],
     [null, s.get('col.id'), (e) => cellText(e.house.id)],
   ];
-  const shown = cols.filter(([ref]) => ref === null || !voice || voice.labels.isVisible(ref));
+  const shown = cols.filter(([ref]) => ref === null || copyShows(voice, ref));
   return {
     name: 'houses',
     title: s.get('table.houses'),
@@ -346,7 +347,7 @@ export function criteriaTable(bundle: ExportBundle): ExportTable {
 /** "Rating counts for 40%": the rating share, when the copy carries any criterion or preference record; else empty. */
 export function ratingShareLine(bundle: ExportBundle): string {
   // The share of the rating in the score: a kind with no checklist has no score (S4b-BL-266).
-  if ((bundle.criteria.length === 0 && bundle.preferences.length === 0) || (bundle.voice && !bundle.voice.labels.isVisible('section.checklist'))) return '';
+  if ((bundle.criteria.length === 0 && bundle.preferences.length === 0) || !copyShows(bundle.voice, 'section.checklist')) return '';
   return `${stringsOf(bundle).get('col.ratingShare')} ${Math.round(bundle.scoring.ratingShare * 100)}%`;
 }
 

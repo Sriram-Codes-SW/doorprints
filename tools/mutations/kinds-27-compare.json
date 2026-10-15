@@ -1,0 +1,176 @@
+{
+  "spec": [
+    "web/src/app/shared/compare-criteria.spec.ts",
+    "web/src/app/pages/compare/compare-space.spec.ts",
+    "web/src/app/pages/house-detail/school-form.spec.ts",
+    "web/src/app/school-words.spec.ts",
+    "web/src/app/core/kind-capabilities.spec.ts",
+    "web/src/app/core/school-kind.spec.ts",
+    "web/src/app/export/kind-copy-voice.spec.ts",
+    "web/src/app/export/kind-search.spec.ts"
+  ],
+  "mutations": [
+    {
+      "file": "web/src/app/shared/compare-criteria.ts",
+      "find": "return resolveCompareCriteria(capabilitiesOf(kind.id).compare?.criteria ?? [], kind);",
+      "replace": "return resolveCompareCriteria([], kind);",
+      "expect": "resolves each kind’s criteria"
+    },
+    {
+      "file": "web/src/app/shared/compare-criteria.ts",
+      "find": "out.push({ id, source: 'check', label: check, better: 'higher' });",
+      "replace": "out.push({ id, source: 'check', label: check, better: 'lower' });",
+      "expect": "resolves each kind’s criteria"
+    },
+    {
+      "file": "web/src/app/shared/compare-criteria.ts",
+      "find": "better: numeric ? (extra.better === 'lower' ? 'lower' : extra.better === 'higher' ? 'higher' : null) : null",
+      "replace": "better: numeric ? 'lower' : null",
+      "expect": "reads the direction from the extra"
+    },
+    {
+      "file": "web/src/app/shared/compare-criteria.ts",
+      "find": "if (!extra || !kind.labels.isVisible(`field.${id}`)) continue;",
+      "replace": "if (!extra) continue;",
+      "expect": "reads the direction from the extra"
+    },
+    {
+      "file": "web/src/app/shared/compare-criteria.ts",
+      "find": "if (kind.id === 'house') return base;",
+      "replace": "if (kind.id === 'xhouse') return base;",
+      "expect": "scores the house under the person’s own scoring"
+    },
+    {
+      "file": "web/src/app/shared/compare-criteria.ts",
+      "find": "weight: counted.has(key) ? DEFAULT_WEIGHT : 0",
+      "replace": "weight: DEFAULT_WEIGHT",
+      "expect": "counts a checklist item only when the kind’s Compare names it"
+    },
+    {
+      "file": "web/src/app/shared/compare-criteria.ts",
+      "find": "return { criteria, ratingShare: base.ratingShare };",
+      "replace": "return { criteria, ratingShare: 0.5 };",
+      "expect": "scores the house under the person’s own scoring"
+    },
+    {
+      "file": "web/src/app/shared/compare-criteria.ts",
+      "find": "const target = better === 'lower' ? Math.min(...present) : Math.max(...present);",
+      "replace": "const target = better === 'lower' ? Math.max(...present) : Math.min(...present);",
+      "expect": "marks the best by the direction"
+    },
+    {
+      "file": "web/src/app/shared/compare-criteria.ts",
+      "find": "if (!better) return new Set<number>();",
+      "replace": "if (false as boolean) return new Set<number>();",
+      "expect": "marks the best by the direction"
+    },
+    {
+      "file": "web/src/app/shared/compare-criteria.ts",
+      "find": "if (present.every((n) => n === target)) return new Set<number>();",
+      "replace": "if (false as boolean) return new Set<number>();",
+      "expect": "marks the best by the direction"
+    },
+    {
+      "file": "web/src/app/shared/compare-criteria.ts",
+      "find": ".sort(compareRanked)",
+      "replace": ".sort(() => 0)",
+      "expect": "shows what the vectors say"
+    },
+    {
+      "file": "web/src/app/shared/compare-criteria.ts",
+      "find": "return key ? t(key) : criterionName(c, t);",
+      "replace": "return criterionName(c, t);",
+      "expect": "names a criterion in the kind’s words"
+    },
+    {
+      "file": "web/src/app/shared/compare-criteria.ts",
+      "find": "const extra = kind.fields.extras.find((f) => f.id === id && !f.was);",
+      "replace": "const extra = kind.fields.extras.find((f) => f.id === id);",
+      "expect": "resolves a list of ids"
+    },
+    {
+      "file": "web/src/app/pages/compare/compare-page.ts",
+      "find": "scoringForKind(this.space.current(), this.personScoring())",
+      "replace": "this.personScoring()",
+      "expect": "scores the checklist"
+    },
+    {
+      "file": "web/src/app/pages/compare/compare-page.ts",
+      "find": "best: bestOfExtra(houses.map((h) => extraFigure(kind.fields, h, f.id)), criterion?.better ?? null),",
+      "replace": "best: bestOfExtra(houses.map((h) => extraFigure(kind.fields, h, f.id)), f.better ?? null),",
+      "expect": "counts only what the kind names"
+    },
+    {
+      "file": "web/src/app/shared/compare-criteria.ts",
+      "find": "(isHouse || c.weight > 0)",
+      "replace": "(true)",
+      "expect": "shows the rows of the items"
+    },
+    {
+      "file": "web/src/app/pages/compare/compare-page.ts",
+      "find": "label: kindCriterionName(kind, item, (key) => i18n.t(key)),",
+      "replace": "label: item.label ?? item.key,",
+      "expect": "has the kind file’s rows"
+    },
+    {
+      "file": "web/src/app/pages/house-detail/house-detail-page.ts",
+      "find": "protected readonly checklist = computed<Criterion[]>(() => scoringForKind(this.kind(), this.personScoring()).criteria",
+      "replace": "protected readonly checklist = computed<Criterion[]>(() => this.personScoring().criteria",
+      "expect": "asks the school’s eight items"
+    },
+    {
+      "file": "web/src/app/pages/house-detail/house-detail-page.ts",
+      "find": "return kindCriterionName(this.kind(), c, (key) => this.i18n.t(key));",
+      "replace": "return c.label ?? c.key;",
+      "expect": "asks the school’s eight items"
+    },
+    {
+      "file": "web/src/app/pages/house-detail/house-detail-page.html",
+      "find": "@if (kind().id === 'house') {",
+      "replace": "@if (true) {",
+      "expect": "asks the school’s eight items"
+    },
+    {
+      "file": "web/src/app/pages/data/data-page.html",
+      "find": " && space.current().id === 'house') {",
+      "replace": ") {",
+      "expect": "Your data without criteria"
+    },
+    {
+      "file": "web/src/app/pages/map/map-page.ts",
+      "find": "evaluateScore(house.checklist, house.rating, scoringForKind(this.space.current(), this.personScoring()))",
+      "replace": "evaluateScore(house.checklist, house.rating, this.personScoring())",
+      "expect": "a school’s row is its name, status, score and place"
+    },
+    {
+      "file": "web/src/app/core/kind-capabilities.ts",
+      "find": "'activities', 'safety', 'fees', 'commuteMinutes']",
+      "replace": "'activities', 'safety', 'fees']",
+      "expect": "the resolver answers"
+    },
+    {
+      "file": "web/src/app/core/school-kind.ts",
+      "find": "'section.checklist': 'house.checklist', ",
+      "replace": "",
+      "expect": "has every ref of the file"
+    },
+    {
+      "file": "web/src/app/core/kind-labels.ts",
+      "find": "return Object.keys(this.table.keys).filter((ref) => ref.startsWith('check.')).map((ref) => ref.slice('check.'.length));",
+      "replace": "return [];",
+      "expect": "has the checklist of the vectors"
+    },
+    {
+      "file": "web/src/app/export/kind-copy.ts",
+      "find": "(ref !== 'section.checklist' && voice.labels.isVisible(ref))",
+      "replace": "voice.labels.isVisible(ref)",
+      "expect": "school"
+    },
+    {
+      "file": "web/src/app/pages/house-detail/house-detail-page.ts",
+      "find": "return evaluateScore(h.checklist, h.rating, scoringForKind(this.kind(), this.personScoring()));",
+      "replace": "return evaluateScore(h.checklist, h.rating, this.personScoring());",
+      "expect": "asks the school’s eight items"
+    }
+  ]
+}

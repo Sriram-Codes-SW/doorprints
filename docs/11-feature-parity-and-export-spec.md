@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Feature parity and offline-copy export specification |
-| Version | 0.70 |
+| Version | 0.71 |
 | Date | 2026-10-15 |
 | Author | Claude (Cowork) – Product/Architecture |
 | Status | Draft: product-owner decisions D-01, D-02, D-03, D-08, D-21 (AI access) and D-23..D-25 (Sprint 4b reminders, hunting areas, location permissions) and D-26 (India's boundaries on the map, 2026-09-24) applied; ready for Sprint 4 planning |
@@ -82,6 +82,7 @@
 | 0.68 | 2026-10-15 | Claude (Code), engineer | **5.18a Microphone permission** (voice input, [03](03-design.md) ADR-37, S4b-BL-222): `RECORD_AUDIO` is asked only after a tap on the microphone and a rationale, never at install or start-up; foreground only; nothing is stored. |
 | 0.69 | 2026-10-15 | Claude (Code), engineer | **5.18b Microphone permission on the iPhone** (voice input, [03](03-design.md) ADR-37, S4b-BL-223): `NSMicrophoneUsageDescription` and iOS's own question, asked once and only after a tap on *Speak* and the in-app rationale; no `audio` background mode, so recording is foreground only; nothing is stored. |
 | 0.70 | 2026-10-15 | Claude (Code), engineer | **Hunt mode per kind** (kinds PR 26, [03](03-design.md) §18.20): section 10 gains the row *Hunt mode in a space*; the card, the walk, the alerts and the notification belong to the kind of the space (the house's and the school's); the website has no Hunt mode. |
+| 0.71 | 2026-10-15 | Claude (Code), engineer | **5.4 Another kind's criteria** (kinds PR 27, [03](03-design.md) §18.21): Compare and the checklist for any kind from its kind file; the school's draft checklist and Compare criteria; the house's criteria unchanged. |
 
 Related: [01 Requirements](01-requirements.md) · [02 Threat model](02-threat-model.md) · [03 Design](03-design.md) · [04 DFDs](04-data-flow-diagrams.md) · [05 UX/a11y/i18n](05-ux-accessibility-i18n.md) · [06 Test plan](06-test-plan.md) · [10 Sprint log](10-sprint-log.md) · [AI design](ai/ai-design.md)
 
@@ -322,6 +323,14 @@ must-have is "not checked yet", and a score under a key that is not a known crit
 and the readable copies rank by the five-step order above; a house that misses a must-have shows a chip and sorts after the rest. Settings >
 Criteria (a card on Your data on the web) sets weights, must-haves, order, archiving, custom criteria and the rating share, and resets to the
 defaults. Backup: `criteria` and `preferences` lists (docs/schemas §3.6). The objective criteria from data (D-13: budget fit, BHK match) are later.
+
+**Another kind's criteria (kinds PR 27, [03](03-design.md) §18.21; website and phones).** The criteria above are the *house's*: the person's own
+weights, must-haves and custom criteria apply to houses only, and are exactly as built. Compare and the checklist work for any kind from its
+kind file: `capabilities.compare.criteria` names what Compare scores and marks (checklist items, higher is better; typed extras, in the direction
+of the extra's own `better`), and a kind other than the house scores its own checklist with every counted item Medium, no must-haves, under the
+person's rating share (the same `wc` and `overall` arithmetic and the same five-step ranking). The school's draft checklist has eight items and
+its Compare adds the fees per year and the commute (both lower is better). Same on the website and the phones; the shared file
+`docs/schemas/kinds/compare-vectors.json` holds both to it. The readable copies and the backup's tables do not write a school's checklist yet.
 
 ### 5.5 Viewing question checklists
 

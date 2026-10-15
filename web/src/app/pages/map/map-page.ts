@@ -93,8 +93,8 @@ import { ExtraFilterState, ExtraFilters } from './extra-filters';
 import { fitPadding } from './fit-padding';
 import { HOUSE_PAINT, houseFeatures } from './house-markers';
 import { RunResult, nextRunResult, runResult } from '../../shared/run-result';
-import { DEFAULT_SCORING, compareRanked, evaluateScore } from '../../shared/scoring';
-import type { ScoreResult, Scoring } from '../../shared/scoring';
+import { DEFAULT_SCORING, compareRanked, evaluateScore, type ScoreResult, type Scoring } from '../../shared/scoring';
+import { scoringForKind } from '../../shared/compare-criteria';
 
 interface ListItem {
   house: HouseDto;
@@ -245,8 +245,8 @@ export class MapPage implements AfterViewInit, OnDestroy {
   /** Empty-state glyphs (Material, as in the navigation bar). */
   protected readonly glyphs = GLYPHS;
 
-  /** The effective scoring (criteria and rating share); the defaults until it is read. */
-  private readonly scoring = signal<Scoring>(DEFAULT_SCORING);
+  /** The person's effective scoring (criteria and rating share), the defaults until it is read; a school has its own checklist (kinds PR 27). */
+  private readonly personScoring = signal<Scoring>(DEFAULT_SCORING);
 
   protected readonly items = computed<ListItem[]>(() => {
     const q = this.search().trim().toLowerCase();
@@ -260,7 +260,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
       .filter((h) => this.extras.matches(this.space.current().fields, h))
       .filter((h) => !q || searchText(h, this.brokerWords().get(h.brokerId ?? ''), this.noteWords().get(h.id), localFloor, t).includes(q))
       .map((house) => {
-        const result = evaluateScore(house.checklist, house.rating, this.scoring());
+        const result = evaluateScore(house.checklist, house.rating, scoringForKind(this.space.current(), this.personScoring()));
         return { house, score: result.overall, result };
       });
     switch (this.sort()) {
@@ -553,8 +553,8 @@ export class MapPage implements AfterViewInit, OnDestroy {
       error: () => this.areaNotes.set([]),
     });
     this.api.scoring().subscribe({
-      next: (scoring) => this.scoring.set(scoring),
-      error: () => this.scoring.set(DEFAULT_SCORING),
+      next: (scoring) => this.personScoring.set(scoring),
+      error: () => this.personScoring.set(DEFAULT_SCORING),
     });
     this.api.stats().subscribe({
       next: (s) => this.stats.set(s),
@@ -941,7 +941,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
       `${STATUS_ICON[h.status]} ${this.i18n.t(this.statusKey()[h.status])}`,
       h.price != null ? this.i18n.price(h.price, h.priceType) : null,
       h.bedrooms != null ? this.i18n.t('common.bhk', { n: h.bedrooms }) : null,
-      this.space.current().labels.isVisible('section.checklist') ? this.i18n.t('common.scoreValue', { score: this.i18n.score(houseScore(h, this.scoring())) }) : null,
+      this.space.current().labels.isVisible('section.checklist') ? this.i18n.t('common.scoreValue', { score: this.i18n.score(houseScore(h, scoringForKind(this.space.current(), this.personScoring()))) }) : null,
     ].filter((x): x is string => !!x);
     const sub = document.createElement('div');
     sub.textContent = details.join(' · ');

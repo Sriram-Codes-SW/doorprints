@@ -1717,6 +1717,15 @@ export const en = {
   'school.grades': 'Grades offered',
   'school.commuteMinutes': 'Commute (minutes)',
   'school.busService': 'School bus',
+  // kinds PR 27 (2026-10-15): the school's checklist (docs/03 §18.21), a draft for the owner's review.
+  'school.check.dropoff': 'Safe drop-off and pick-up',
+  'school.check.grounds': 'Classrooms and playground',
+  'school.check.sanitation': 'Drinking water and toilets',
+  'school.check.teachers': 'Teachers are approachable',
+  'school.check.classsize': 'Class size',
+  'school.check.homework': 'Homework and daily schedule',
+  'school.check.activities': 'Sports and activities',
+  'school.check.safety': 'Safety and CCTV',
   // S4b-BL-212 (2026-10-14): kinds PR 8, spaces: the chooser, the space chip, a school space's words and Settings > Kinds.
   'title.chooser': 'Choose · Doorprints',
   'chooser.heading': 'What are you looking for?',

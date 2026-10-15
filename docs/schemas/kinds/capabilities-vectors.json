@@ -74,7 +74,20 @@
     "autoCreateFromPhone": false
    },
    "viewings": null,
-   "compare": null,
+   "compare": {
+    "criteria": [
+     "dropoff",
+     "grounds",
+     "sanitation",
+     "teachers",
+     "classsize",
+     "homework",
+     "activities",
+     "safety",
+     "fees",
+     "commuteMinutes"
+    ]
+   },
    "paths": true,
    "identity": null
   }

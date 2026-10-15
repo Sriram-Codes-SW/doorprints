@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | The complete manual test list for Doorprints before real-system testing starts and before Android/iOS development continues: every check a person redoes on real devices, whether or not an automated suite or a review session already covered it |
-| Version | 0.24 |
+| Version | 0.25 |
 | Date | 2026-10-15 |
 | Author | Claude, senior reviewer |
 | Status | Draft |
@@ -36,6 +36,7 @@
 | 0.22 | 2026-10-15 | Claude (Code), engineer | **MT-115** (TC-M-83; `fix/kinds-default-and-house-off`): the school as the default, and the house turned off, on the website and a phone, including *Start Hunt mode* refused with Houses off. |
 | 0.23 | 2026-10-15 | Claude (Code), docs | **Stale wording after "compiled in, off"** (`docs/school-compiled-in-wording`): §19 MT-96 says the iPhone lists the school too and the test phones are a release build and a debug build. |
 | 0.24 | 2026-10-15 | Claude (Code), engineer | **MT-116** (TC-M-84; kinds PR 26, [03](../03-design.md) §18.20): the school's Hunt mode on a real walk, the alert's words and channel, the lock screen, TalkBack; not run. |
+| 0.25 | 2026-10-15 | Claude (Code), engineer | MT-117: a school's Compare and checklist (kinds PR 27, [06](../06-test-plan.md) TC-M-85). |
 
 ## 1. How to use this list
 
@@ -1022,6 +1023,13 @@ TC-M-72 and TC-M-81 of [06](../06-test-plan.md); the website's twin is §18.
 - **Automated or reviewed by:** TC-U-266 (fake sources and recorders, the website's specs, the source scan). The real call, headset and phone: reviewer ran it: no.
 - Pass / Fail / Date: ____  by: ____
 
+#### MT-117 A school's Compare and checklist
+- **Area:** website and Android. **Who:** anyone, with natives for Hindi, Tamil and Telugu for the last step. **Env:** E3 and E4; School shown (Settings > What you track); three schools saved, one with fees and a commute.
+- **Steps:** (1) Open a school: a **Checklist** card with eight items (safe drop-off and pick-up, classrooms and playground, drinking water and toilets, teachers are approachable, class size, homework and daily schedule, sports and activities, safety and CCTV), each 0 to 5 or not scored; no link to *Change criteria*; a score at the top once one is given. (2) Score two schools differently, give each fees per year and a commute. (3) In the school space open **Compare** and pick all three: a *Checklist* row with each school's score, one row per item, the board, medium, grades, commute, bus, fees and admission fee, your rating, visits and street; the higher score, the lower commute and the lower fees are marked with a check and "(best)"; the admission fee is not marked; nothing about water supply, power backup or the other house items. (4) Open a house's Compare: its ten items, weights and must-haves are as before. (5) Hindi, Tamil and Telugu: the eight items' names (under review) read naturally and nothing is cut off at the largest text; the same in the dark theme. (6) TalkBack or a screen reader: each row's best cell is read as best.
+- **Expected:** the school is compared on its own checklist, fees and commute; the house is untouched; every word in the app's language (hi, ta, te *under review*).
+- **Automated or reviewed by:** TC-U-271 (`compare-vectors.json`, `compare-space.spec.ts`, `school-form.spec.ts`). Reviewer ran it: no.
+- Pass / Fail / Date: ____  by: ____
+
 ### 19.1 Summary rows (add to §13 when the owner starts the run)
 
 | Id | Title | Who | Env | Reviewer ran it | Result |
@@ -1031,6 +1039,7 @@ TC-M-72 and TC-M-81 of [06](../06-test-plan.md); the website's twin is §18.
 | MT-112 | The Android app, school compiled in and off: a fresh install, the switch, TalkBack, 200 % text | anyone | E4 | no | |
 | MT-113 | The iPhone, school compiled in and off: the switch, VoiceOver, 200 % text | owner, natives | E5 | no (built; not run on an iPhone) | |
 | MT-114 | A recording cut short keeps what was said: iPhone, Android, website | owner | E4, E5 | no | |
+| MT-117 | A school's Compare and checklist: website and Android | anyone, natives | E3, E4 | no | |
 
 ## 20. A school's pages and copies (S4b-BL-256, S4b-BL-259, S4b-BL-266, S4b-BL-277)
 

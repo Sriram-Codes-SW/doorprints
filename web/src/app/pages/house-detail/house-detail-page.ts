@@ -78,8 +78,8 @@ import { addUsual, answerFor, ordered, usualQuestions } from '../../shared/house
 import { duplicateFlats } from '../../shared/duplicate-flat';
 import { costSummary } from '../../shared/house-cost';
 import { brokerLine } from '../../shared/broker';
-import { criterionName } from '../../shared/criterion-name';
 import { DEFAULT_SCORING, evaluateScore } from '../../shared/scoring';
+import { kindCriterionName, scoringForKind } from '../../shared/compare-criteria';
 import type { Criterion, ScoreResult, Scoring } from '../../shared/scoring';
 import type { BrokerRow } from '../../shared/broker';
 import { LocalDataError } from '../../core/local-error';
@@ -289,13 +289,13 @@ export class HouseDetailPage implements OnInit, OnDestroy {
   });
   /** The ids of the answers in the order the cards are shown; kept while typing so a card does not jump when it turns Answered. */
   private answerIds: string[] = [];
-  /** The effective scoring (slice 2); the defaults until it is read. */
-  private readonly scoring = signal<Scoring>(DEFAULT_SCORING);
+  /** The person's effective scoring (slice 2), the defaults until it is read; the kind's own checklist scores a school (kinds PR 27, §18.21). */
+  private readonly personScoring = signal<Scoring>(DEFAULT_SCORING);
   /**
    * The criteria the checklist asks about: the active ones in the person's order, custom ones by label, weight-0 ones
    * marked "ignored". Archived criteria are hidden here but their stored scores stay on the house.
    */
-  protected readonly checklist = computed<Criterion[]>(() => this.scoring().criteria.filter((c) => c.archived !== true));
+  protected readonly checklist = computed<Criterion[]>(() => scoringForKind(this.kind(), this.personScoring()).criteria.filter((c) => c.archived !== true));
   protected readonly statuses = STATUSES;
   /** The status words of the candidate's kind (S4b-BL-256). */
   protected readonly statusKey = computed(() => statusKeys(this.kind().labels));
@@ -404,8 +404,8 @@ export class HouseDetailPage implements OnInit, OnDestroy {
       error: () => this.bank.set([]),
     });
     this.api.scoring().subscribe({
-      next: (scoring) => this.scoring.set(scoring),
-      error: () => this.scoring.set(DEFAULT_SCORING),
+      next: (scoring) => this.personScoring.set(scoring),
+      error: () => this.personScoring.set(DEFAULT_SCORING),
     });
     this.api.brokers().subscribe({
       next: (rows) => this.brokers.set(sortBrokers(rows)),
@@ -681,17 +681,17 @@ export class HouseDetailPage implements OnInit, OnDestroy {
 
   /** The score result of the house as edited: overall, coverage and the must-haves it misses or has not checked. */
   protected result(h: HouseDto): ScoreResult {
-    return evaluateScore(h.checklist, h.rating, this.scoring());
+    return evaluateScore(h.checklist, h.rating, scoringForKind(this.kind(), this.personScoring()));
   }
 
   /** A criterion's name: a built-in's translation, a custom criterion's own label. */
   protected nameOf(c: Pick<Criterion, 'key' | 'label'>): string {
-    return criterionName(c, (key) => this.i18n.t(key));
+    return kindCriterionName(this.kind(), c, (key) => this.i18n.t(key));
   }
 
   /** The names of some criterion keys, for the must-have lines. */
   protected namesOf(keys: readonly string[]): string {
-    return keys.map((key) => this.nameOf(this.scoring().criteria.find((c) => c.key === key) ?? { key })).join(', ');
+    return keys.map((key) => this.nameOf(scoringForKind(this.kind(), this.personScoring()).criteria.find((c) => c.key === key) ?? { key })).join(', ');
   }
 
   /**

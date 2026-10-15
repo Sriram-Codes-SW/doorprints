@@ -62,7 +62,7 @@ const SCHOOL: HouseDto = {
   street: 'GS Road', locality: 'Dispur', createdAt: '2026-09-20T10:00:00.000Z', updatedAt: '2026-09-20T10:00:00.000Z',
   extrasOther: { board: 'CBSE', fees: { amount: 96000, cadence: 'year' } },
 };
-const SCHOOL2: HouseDto = { ...SCHOOL, id: 's2', label: 'Oak Valley' };
+const SCHOOL2: HouseDto = { ...SCHOOL, id: 's2', label: 'Oak Valley', checklist: { safety: 5 } }; // 5 on one item and 4 stars: 4.5
 const HOUSE: HouseDto = {
   ...newHouse(26.15, 91.8), id: 'h1', label: 'Green View', status: 'SHORTLISTED', price: 32000, priceType: 'RENT', rating: 4,
   createdAt: '2026-09-21T10:00:00.000Z', updatedAt: '2026-09-21T10:00:00.000Z',
@@ -277,7 +277,9 @@ describe('a school space’s list and Your data (S4b-BL-277)', () => {
   const stubMap = () => vi.spyOn(MapPage.prototype, 'ngAfterViewInit').mockImplementation(() => undefined);
   const rowsOf = (host: HTMLElement) => [...host.querySelectorAll('ul.list li')].map((li) => text(li));
 
-  it('a school’s row is its name, status and place: no price, no score, no BHK (en, hi, ta, te)', async () => {
+  // The school has its own checklist since kinds PR 27 (docs/03 §18.21), so its row shows a score as the house's does (the rating
+  // here, as nothing is checked yet); it still has no price and no BHK.
+  it('a school’s row is its name, status, score and place: no price, no BHK (en, hi, ta, te)', async () => {
     stubMap();
     for (const lang of LANGS) {
       const m = await mount(MapPage, lang);
@@ -285,12 +287,12 @@ describe('a school space’s list and Your data (S4b-BL-277)', () => {
       expect(rows, lang).toHaveLength(2);
       const score = (DICTIONARIES[lang] as Record<string, string>)['common.score'];
       for (const row of rows) {
-        expect(row.includes(score), `${lang} ${row}`).toBe(false);
-        expect(row, lang).not.toMatch(/4\.0|₹|—/);
+        expect(row.includes(score), `${lang} ${row}`).toBe(true);
+        expect(row, lang).not.toMatch(/₹|—/);
       }
     }
     const en = rowsOf((await mount(MapPage, 'en')).host);
-    expect(en).toEqual(['Pine Hill School★ Shortlisted GS Road, Dispur', 'Oak Valley★ Shortlisted GS Road, Dispur']);
+    expect(en).toEqual(['Pine Hill School★ Shortlisted ★Score 4.0 GS Road, Dispur', 'Oak Valley★ Shortlisted ★Score 4.5 GS Road, Dispur']);
   });
 
   // S4b-BL-265: the chip rows over a kind's typed extras. The rules are kind-filter-vectors.json's (shared/extra-filter.spec.ts).

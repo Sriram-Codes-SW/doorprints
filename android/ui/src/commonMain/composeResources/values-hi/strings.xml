@@ -1692,6 +1692,15 @@
     <string name="school_grades">कक्षाएँ</string>
     <string name="school_commute">आने-जाने का समय (मिनट)</string>
     <string name="school_bus">स्कूल बस</string>
+    <!-- kinds PR 27 (2026-10-15): the school's checklist (docs/03 §18.21), a draft for the owner's review. Under review. -->
+    <string name="school_check_dropoff">सुरक्षित छोड़ने और लेने की जगह</string>
+    <string name="school_check_grounds">कक्षाएँ और खेल का मैदान</string>
+    <string name="school_check_sanitation">पीने का पानी और शौचालय</string>
+    <string name="school_check_teachers">शिक्षक आसानी से मिलते हैं</string>
+    <string name="school_check_classsize">कक्षा में बच्चों की संख्या</string>
+    <string name="school_check_homework">गृहकार्य और रोज़ की दिनचर्या</string>
+    <string name="school_check_activities">खेल और गतिविधियाँ</string>
+    <string name="school_check_safety">सुरक्षा और CCTV</string>
     <string name="kind_option_not_set">तय नहीं</string>
     <!-- S4b-BL-274 (2026-10-14): spaces on the phones (kinds PR C): the chooser, What you track, a school space's words, the tools per space. Hindi, Tamil and Telugu are under review (the website's words where it has them). -->
     <string name="chooser_heading">आप क्या ढूँढ रहे हैं?</string>

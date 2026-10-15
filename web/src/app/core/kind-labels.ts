@@ -101,6 +101,11 @@ export class KindLabels {
   check(key: string): TKey | undefined {
     return (has(this.table.keys, `check.${key}`) && this.table.keys[`check.${key}`]) || undefined;
   }
+
+  /** The kind's checklist keys, in the kind file's order (the house's ten; a kind with none has none). */
+  checklistKeys(): string[] {
+    return Object.keys(this.table.keys).filter((ref) => ref.startsWith('check.')).map((ref) => ref.slice('check.'.length));
+  }
 }
 
 const COST_FIELDS = ['deposit', 'depositMonths', 'maintenance', 'maintenanceIncluded', 'brokerage', 'brokerageMonths',

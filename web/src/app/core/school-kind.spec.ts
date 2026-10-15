@@ -46,11 +46,11 @@ import { searchText } from '../pages/map/map-list';
 
 interface Label { web: string | null; android: string | null }
 interface Field { id: string; type?: string; section: string; order: number; label: Label; options?: { id: string; label: Label }[]; [k: string]: unknown }
-interface Kind { labels: Record<string, Label>; statuses: { id: string; label: Label }[]; sections: { id: string; label: Label }[]; core: Field[]; extras: Field[] }
+interface Kind { labels: Record<string, Label>; statuses: { id: string; label: Label }[]; sections: { id: string; label: Label }[]; core: Field[]; extras: Field[]; checklist: { key: string; label: Label }[] }
 interface FieldVector { id: string; section: string; control: string; web: { id: string; label: string; suffix: string | null; input: Record<string, unknown> }; stored?: { cadence: string } }
 interface Vectors {
   format: string;
-  kind: { id: string; hidden: { sections: string[]; fields: string[] }; layout: Record<string, string[]>; labels: { web: Record<string, Record<string, string | null>> } };
+  kind: { id: string; checklist: string[]; hidden: { sections: string[]; fields: string[] }; layout: Record<string, string[]>; labels: { web: Record<string, Record<string, string | null>> } };
   fields: FieldVector[];
   rows: { stack: string; section: string; rows: string[][] }[];
   backup: Record<string, unknown> & { candidates: unknown[] };
@@ -66,6 +66,7 @@ function labelRefs(k: Kind): [string, Label][] {
   const refs: [string, Label][] = Object.entries(k.labels).map(([id, l]) => [`kind.${id}`, l]);
   k.statuses.forEach((s) => refs.push([`status.${s.id}`, s.label]));
   k.sections.forEach((s) => refs.push([`section.${s.id}`, s.label]));
+  k.checklist.forEach((c) => refs.push([`check.${c.key}`, c.label]));
   for (const f of [...k.core, ...k.extras]) {
     refs.push([`field.${f.id}`, f.label]);
     for (const o of f.options ?? []) refs.push([`option.${f.id}.${o.id}`, o.label]);
@@ -94,7 +95,15 @@ describe('the kind file for schools (docs/schemas/kinds/school.json)', () => {
     expect(SCHOOL_FIELDS.extras.map((f) => f.id)).toEqual(school.extras.map((f) => f.id));
   });
 
-  it('hides what the vectors say it hides: the money, the broker and five sections', () => {
+  it('has the checklist of the vectors: eight items, in the file’s order, shown as a section', () => {
+    expect(school.checklist.map((c) => c.key)).toEqual(V.kind.checklist);
+    expect(SCHOOL_LABELS.checklistKeys()).toEqual(V.kind.checklist);
+    expect(SCHOOL_LABELS.isVisible('section.checklist')).toBe(true);
+    for (const key of V.kind.checklist) expect(SCHOOL_LABELS.check(key), key).toBe(school.checklist.find((c) => c.key === key)!.label.web);
+    expect(SCHOOL_LABELS.check('water')).toBeUndefined(); // the house's keys are not the school's
+  });
+
+  it('hides what the vectors say it hides: the money, the broker and four sections', () => {
     for (const s of V.kind.hidden.sections) expect([SCHOOL_LABELS.section(s), SCHOOL_LABELS.isVisible(`section.${s}`)], s).toEqual([undefined, false]);
     for (const f of V.kind.hidden.fields) expect([SCHOOL_LABELS.field(f), SCHOOL_LABELS.isVisible(`field.${f}`)], f).toEqual([undefined, false]);
     for (const [section, ids] of Object.entries(V.kind.layout)) {

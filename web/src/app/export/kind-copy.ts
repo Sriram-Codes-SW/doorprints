@@ -98,9 +98,13 @@ export function copyWord(voice: KindFields | undefined, key: TKey): TKey {
   return toolWord(voice?.kind, key);
 }
 
-/** Whether the copy shows a place of its kind (`field.money`, `section.checklist`): every place, in a copy without a voice. */
+/**
+ * Whether the copy shows a place of its kind (`field.money`, `section.checklist`): every place, in a copy without a voice.
+ * A copy writes the checklist, its scores and its Scores table of the house only: the school's own checklist (kinds PR 27,
+ * docs/03 §18.21) is on the pages and in Compare, and a copy of it is a later change, so a school's copy is as it was.
+ */
 export function copyShows(voice: KindFields | undefined, ref: string): boolean {
-  return !voice || voice.labels.isVisible(ref);
+  return !voice || (ref !== 'section.checklist' && voice.labels.isVisible(ref));
 }
 
 /**

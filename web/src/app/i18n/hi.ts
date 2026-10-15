@@ -1713,6 +1713,15 @@ export const hi: Dict = {
   'school.grades': 'कक्षाएँ',
   'school.commuteMinutes': 'आने-जाने का समय (मिनट)',
   'school.busService': 'स्कूल बस',
+  // kinds PR 27 (2026-10-15): the school's checklist (docs/03 §18.21), a draft for the owner's review. Under review (owner rule: hi/ta/te ship marked under review).
+  'school.check.dropoff': 'सुरक्षित छोड़ने और लेने की जगह',
+  'school.check.grounds': 'कक्षाएँ और खेल का मैदान',
+  'school.check.sanitation': 'पीने का पानी और शौचालय',
+  'school.check.teachers': 'शिक्षक आसानी से मिलते हैं',
+  'school.check.classsize': 'कक्षा में बच्चों की संख्या',
+  'school.check.homework': 'गृहकार्य और रोज़ की दिनचर्या',
+  'school.check.activities': 'खेल और गतिविधियाँ',
+  'school.check.safety': 'सुरक्षा और CCTV',
   // S4b-BL-212 (2026-10-14): kinds PR 8, spaces. Under review (owner rule: hi/ta/te ship marked under review).
   'title.chooser': 'चुनें · Doorprints',
   'chooser.heading': 'आप क्या ढूँढ रहे हैं?',

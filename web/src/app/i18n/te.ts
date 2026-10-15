@@ -1713,6 +1713,15 @@ export const te: Dict = {
   'school.grades': 'తరగతులు',
   'school.commuteMinutes': 'ప్రయాణ సమయం (నిమిషాలు)',
   'school.busService': 'స్కూల్ బస్సు',
+  // kinds PR 27 (2026-10-15): the school's checklist (docs/03 §18.21), a draft for the owner's review. Under review (owner rule: hi/ta/te ship marked under review).
+  'school.check.dropoff': 'సురక్షితంగా దింపడం, తీసుకెళ్లడం',
+  'school.check.grounds': 'తరగతి గదులు, ఆటస్థలం',
+  'school.check.sanitation': 'తాగునీరు, మరుగుదొడ్లు',
+  'school.check.teachers': 'ఉపాధ్యాయులను సులభంగా కలవగలరు',
+  'school.check.classsize': 'తరగతిలో విద్యార్థుల సంఖ్య',
+  'school.check.homework': 'హోంవర్క్, రోజువారీ సమయపట్టిక',
+  'school.check.activities': 'ఆటలు, కార్యకలాపాలు',
+  'school.check.safety': 'భద్రత, CCTV',
   // S4b-BL-212 (2026-10-14): kinds PR 8, spaces. Under review (owner rule: hi/ta/te ship marked under review).
   'title.chooser': 'ఎంచుకోండి · Doorprints',
   'chooser.heading': 'మీరు ఏమి వెతుకుతున్నారు?',
