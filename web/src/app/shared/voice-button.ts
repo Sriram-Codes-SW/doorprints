@@ -76,7 +76,7 @@ type Phase = 'idle' | 'starting' | 'recording' | 'transcribing';
             <span class="voice-time" aria-hidden="true">{{ clock() }}</span>
           }
         </div>
-        <p [id]="fieldId() + '-voice-hint'" class="field-hint">{{ 'voice.hint' | t: { host: voice.host() } }}</p>
+        <p [id]="fieldId() + '-voice-hint'" class="field-hint">{{ (voice.shortLimit() ? 'voice.hintShort' : 'voice.hint') | t: { host: voice.host() } }}</p>
         <div class="field-hint voice-status" role="status" aria-live="polite">
           @if (status(); as key) {
             {{ key | t }}
@@ -250,7 +250,7 @@ export class VoiceButton implements OnDestroy {
     }
     const inserted = appendTranscript(this.value(), spoken, this.max());
     this.valueChange.emit(inserted.text);
-    this.status.set(inserted.cut ? 'voice.statusDoneCut' : clip.limit ? 'voice.statusDoneLimit' : 'voice.statusDone');
+    this.status.set(inserted.cut ? 'voice.statusDoneCut' : clip.limit ? (this.voice.shortLimit() ? 'voice.statusDoneLimitShort' : 'voice.statusDoneLimit') : 'voice.statusDone');
     afterNextRender(() => document.getElementById(this.fieldId())?.focus(), { injector: this.injector });
   }
 

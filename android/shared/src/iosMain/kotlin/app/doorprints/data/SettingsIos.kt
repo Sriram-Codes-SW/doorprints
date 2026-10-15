@@ -80,14 +80,20 @@ fun iosSettingsStore(): SettingsStore =
     iosSettingsStore(
         iosDataDirectory() + "/" + SettingsStore.FILE_NAME + ".preferences_pb", KeychainSecretStore(),
         KeychainSecretStore(account = "gemini_key", markerName = "geminiKeyKeychain"),
+        KeychainSecretStore(account = "sarvam_key", markerName = "sarvamKeyKeychain"),
     )
 
 /**
  * The iOS settings on the file at [path] with the key in [secrets] (for the simulator tests, S4b-BL-26). [path] must
  * end in `.preferences_pb` and have no other DataStore open on it in the process.
  */
-internal fun iosSettingsStore(path: String, secrets: SecretStore, geminiSecrets: SecretStore? = null): SettingsStore =
-    SettingsStore(PreferenceDataStoreFactory.createWithPath(produceFile = { path.toPath() }), secrets, geminiSecrets = geminiSecrets)
+internal fun iosSettingsStore(
+    path: String, secrets: SecretStore, geminiSecrets: SecretStore? = null, sarvamSecrets: SecretStore? = null,
+): SettingsStore =
+    SettingsStore(
+        PreferenceDataStoreFactory.createWithPath(produceFile = { path.toPath() }), secrets, geminiSecrets = geminiSecrets,
+        sarvamSecrets = sarvamSecrets,
+    )
 
 /**
  * The iOS [SecretStore]: the API key as a generic-password Keychain item (service `app.doorprints`, account

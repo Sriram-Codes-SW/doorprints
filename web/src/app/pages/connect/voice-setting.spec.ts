@@ -111,4 +111,33 @@ describe('VoiceSetting', () => {
     await fixture.whenStable();
     expect(text(host, '#voice-no-recorder')).toContain('cannot record audio');
   });
+
+  it('offers Sarvam with its own key: the key field, the disclosure naming api.sarvam.ai, and no switch until a key is saved', async () => {
+    const { fixture, host } = await open({ config: { kind: 'anthropic', baseUrl: '', model: 'm' } as AiProviderConfig });
+    expect(host.querySelector('#voice-input')).toBeNull();
+    const radio = host.querySelector<HTMLInputElement>('#voice-provider-sarvam')!;
+    radio.click();
+    await fixture.whenStable();
+    expect(host.querySelector('#voice-input')).toBeNull();
+    expect(text(host, '#voice-needs-sarvam')).toContain('Sarvam key');
+    const key = host.querySelector<HTMLInputElement>('#voice-sarvam-key')!;
+    expect(key.type).toBe('password');
+    key.value = ['sarvam', 'fake', 'key', '7777'].join('-');
+    key.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    host.querySelector<HTMLButtonElement>('#voice-sarvam-save')!.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(host.querySelector<HTMLInputElement>('#voice-sarvam-key')!.value).toBe('');
+    expect(text(host, '#voice-sarvam-hint')).toContain('ends …7777');
+    expect(host.querySelector('#voice-input')).not.toBeNull();
+    expect(text(host, '#voice-disclosure')).toContain('api.sarvam.ai (Sarvam AI, India)');
+    expect(text(host, '#voice-disclosure')).toContain('INR 0.50 a minute');
+    expect(text(host, '#voice-disclosure')).toContain('30 seconds');
+    expect(localStorage.getItem(VOICE_INPUT_KEY)).toBeNull();
+    host.querySelector<HTMLButtonElement>('#voice-sarvam-remove')!.click();
+    await fixture.whenStable();
+    expect(host.querySelector<HTMLInputElement>('#voice-provider-own')!.checked).toBe(true);
+    expect(TestBed.inject(VoiceInputService).hasSarvamKey()).toBe(false);
+  });
 });

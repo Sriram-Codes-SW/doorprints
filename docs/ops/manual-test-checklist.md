@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | The complete manual test list for Doorprints before real-system testing starts and before Android/iOS development continues: every check a person redoes on real devices, whether or not an automated suite or a review session already covered it |
-| Version | 0.18 |
+| Version | 0.19 |
 | Date | 2026-10-15 |
 | Author | Claude, senior reviewer |
 | Status | Draft |
@@ -30,6 +30,7 @@
 | 0.16 | 2026-10-15 | Claude (Code), engineer | **§16 voice input:** the website's side is built (S4b-BL-221); the header paragraph says `microphone=(self)` and the MT-32 header text reads it; MT-82..MT-87 stay to be run (the website's part: a real microphone, the permission dialog, Safari mp4, Chrome and Firefox webm, TalkBack and VoiceOver on the button). |
 | 0.17 | 2026-10-15 | Claude (Code), engineer | **§16 voice input: Android's side is built (S4b-BL-222):** MT-82..MT-87 name the Android steps (the rationale, *Not now*, a refusal and *Open settings*, a revoke, a pause by home, the lock screen, a call or a rotation, TalkBack on the button, `adb shell ls` of the app's folders); TC-M-79 ([06](../06-test-plan.md)) is the run; the rows stay to be run on a real phone (the tests use a fake microphone, a fake permission and a canned provider: TC-U-249..253, TC-S-52, TC-I-52). |
 | 0.18 | 2026-10-15 | Claude (Code), engineer | **§16.2, voice input on the iPhone** (S4b-BL-223, TC-M-80): MT-104 (the rationale, the system prompt on the first tap only, a refusal and *Open settings*), MT-105 (foreground only: home, lock, a call, Siri, headphones, Bluetooth; the music comes back), MT-106 (a real recording: the words, the 60 s stop, nothing heard, the permission lost mid-way), MT-107 (no audio at rest in the app's container, the console or a copy), MT-108 (VoiceOver, the largest text, four languages, both themes). Needs a Mac with Xcode and an iPhone (a simulator uses the Mac's microphone and cannot show a call or Bluetooth). Not run. |
+| 0.19 | 2026-10-15 | Claude (Code), engineer | **Voice with Sarvam and the clip suite (S4b-BL-224):** MT-109 (a live Sarvam key, the 30 s stop), MT-110 (the key in no copy, backup, sync or Drive file; removal), MT-111 (running the `voice` suite). |
 
 ## 1. How to use this list
 
@@ -924,6 +925,9 @@ Added 2026-10-15 with the iPhone's side of voice input ([03](../03-design.md) AD
 | MT-106 | A real recording: the words, the limits, nothing heard (iPhone) | owner | E5 | no (built; not run on an iPhone) | |
 | MT-107 | No audio at rest in the app's container (iPhone) | owner | E5 | no (built; not run on an iPhone) | |
 | MT-108 | VoiceOver, the largest text, four languages (iPhone) | owner, natives | E5 | no (built; not run on an iPhone) | |
+| MT-109 | Sarvam with a real key (website, Android, iPhone): choose *Sarvam*, save your own key, speak in Hindi, Tamil or Telugu and in English; the words land in the box; the recording stops by itself at 30 s with the 30-second message; the disclosure names api.sarvam.ai and INR 0.50 | owner (a free Sarvam account) | E5 | no (built; not run with a live key) | |
+| MT-110 | The Sarvam key stays put: *Save a copy*, a backup file, a sync file and a Drive backup do not contain it (open them in a text editor); *Remove Sarvam key* (and, on the website, *Remove all data*) removes it; the AI key is untouched | owner | E5 | no (built; not run) | |
+| MT-111 | The `voice` suite: run *AI evals* with suite `voice` and provider `gemini` (AI_API_KEY) and, with your own Sarvam key as the secret SARVAM_EVAL_API_KEY, `sarvam`; read the summary: entity error by language and the stop-rule line (clips are synthetic speech; real voices and noise are not measured) | owner | E5 | no (built; not run with a key) | |
 
 ## 17. A provider safety block (S4b-BL-232)
 

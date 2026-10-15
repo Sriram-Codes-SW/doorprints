@@ -48,6 +48,9 @@ object AudioLimits {
     /** The hard stop: the transcribers refuse a longer clip ([app.doorprints.shared.ai.AudioClip.MAX_DURATION_MS]). */
     const val MAX_DURATION_MS: Long = app.doorprints.shared.ai.AudioClip.MAX_DURATION_MS
 
+    /** Sarvam's hard stop: its REST call takes up to 30 s ([app.doorprints.shared.ai.AudioClip.SARVAM_MAX_DURATION_MS]). */
+    const val SARVAM_MAX_DURATION_MS: Long = app.doorprints.shared.ai.AudioClip.SARVAM_MAX_DURATION_MS
+
     /** The size cap: the transcribers refuse a larger clip ([app.doorprints.shared.ai.AudioClip.MAX_BYTES]). */
     const val MAX_BYTES: Int = app.doorprints.shared.ai.AudioClip.MAX_BYTES
 }

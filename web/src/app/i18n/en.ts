@@ -1639,6 +1639,7 @@ export const en = {
   'connect.aiService.openai': 'OpenAI',
   'connect.aiService.openrouter': 'OpenRouter',
   'connect.aiService.groq': 'Groq',
+  'connect.aiService.sarvam': 'Sarvam (India)',
   'connect.aiService.ollama': 'Ollama (on this device)',
   'connect.aiService.lmstudio': 'LM Studio (on this device)',
   'connect.aiService.anthropic': 'Anthropic',
@@ -1914,6 +1915,20 @@ export const en = {
   'voice.noDevice': 'No microphone was found. Type instead.',
   'voice.failed': 'The recording could not be made. Try again, or type instead.',
   'voice.tooLong': 'The recording was too long to send. Try a shorter one.',
+  'voice.provider': 'Write out the words with',
+  'voice.providerOwn': 'My AI provider (Gemini, OpenAI, Groq or OpenRouter)',
+  'voice.providerSarvam': 'Sarvam (speech to text, India), with its own key',
+  'voice.sarvamKey': 'Sarvam key',
+  'voice.sarvamKeyHint': 'Paste your own Sarvam key (from dashboard.sarvam.ai). It is kept in this browser only, apart from your AI key, and is sent only to api.sarvam.ai. It is never in a backup or a copy.',
+  'voice.sarvamKeySaved': 'A Sarvam key is saved (ends …{hint}). It is kept in this browser only and is never in a backup or a copy.',
+  'voice.sarvamRemember': 'Remember on this device',
+  'voice.sarvamSave': 'Save Sarvam key',
+  'voice.sarvamRemove': 'Remove Sarvam key',
+  'voice.switchHintSarvam': 'Off until you turn it on. Tap the microphone, speak for up to 30 seconds, and the words are written into the box for you to check and change. Nothing is sent until you press the box\'s own button.',
+  'voice.disclosureSarvam': 'Audio goes from this browser straight to {host} (Sarvam AI, India) with your own Sarvam key, about INR {price} a minute at their list price, up to 30 seconds at a time. Anything you say, including numbers and names, is sent as audio, and a phone number said aloud cannot be left out the way a typed one is. The recording is not saved on this device.',
+  'voice.needsSarvamKey': 'Save your own Sarvam key above to use Sarvam for voice input.',
+  'voice.hintShort': 'A short recording, up to 30 seconds, goes from this browser to {host} to be written out. It is not saved. Numbers and names you say are sent as audio too. Your browser asks to use the microphone the first time. Check the words before you send anything.',
+  'voice.statusDoneLimitShort': 'Done. The recording stopped at its 30-second limit. The words are in the box. Check them before you send.',
 };
 
 /** Every translation must have exactly these keys (checked by the compiler). */

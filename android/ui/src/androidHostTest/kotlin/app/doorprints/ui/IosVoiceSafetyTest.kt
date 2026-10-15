@@ -190,4 +190,24 @@ class IosVoiceSafetyTest {
             assertFalse(voiceTypes.containsMatchIn(code(file("$ios/$name"))), "$name must not mention voice types")
         }
     }
+
+    @Test
+    fun theSarvamKeyIsAKeychainItemOfItsOwnAndNoCopyBackupSyncExportOrDriveCodeMentionsSarvam() {
+        val settings = code(file("android/shared/src/iosMain/kotlin/app/doorprints/data/SettingsIos.kt"))
+        assertTrue(settings.contains("""KeychainSecretStore(account = "sarvam_key", markerName = "sarvamKeyKeychain")"""), "a Keychain item of its own: sarvam_key")
+        assertEquals(1, Regex("""account = "sarvam_key"""").findAll(settings).count())
+        val sarvam = Regex("""\b(SarvamTranscriber|sarvamKey|saveSarvamKey|removeSarvamKey|VoiceProvider|sarvamSecrets|sarvam_key)\b""")
+        val allowed = setOf(
+            "SarvamTranscriber.kt", "VoiceInput.kt", "VoiceRecorder.kt", "OwnKeyTranscription.kt", "Settings.kt", "SettingsIos.kt",
+            "VoiceInputSetting.kt", "VoiceMicButton.kt", "KeystoreSecretStore.kt", "SettingsStoreFactory.kt",
+        )
+        for (root in listOf("android/shared/src", "android/ui/src", "android/app/src")) {
+            file(root).walkTopDown()
+                .filter { it.isFile && it.extension == "kt" && "/build/" !in it.path && !isTest(it) }
+                .forEach { f -> if (f.name !in allowed) assertFalse(sarvam.containsMatchIn(code(f)), "${f.relativeTo(repo)} reaches the Sarvam key or its choice") }
+        }
+        for (name in listOf("IosCopies.kt", "IosDriveServices.kt", "IosDriveSection.kt")) {
+            assertFalse(code(file("$ios/$name")).contains("Sarvam", ignoreCase = true), "$name must not mention Sarvam")
+        }
+    }
 }

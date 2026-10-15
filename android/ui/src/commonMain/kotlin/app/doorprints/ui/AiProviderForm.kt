@@ -38,6 +38,7 @@ enum class AiService(val preset: AiPreset?, val modelExample: String = "", val k
     OPENAI(AiPreset.OPENAI, "gpt-4o-mini", "https://platform.openai.com/api-keys"),
     OPENROUTER(AiPreset.OPENROUTER, "openai/gpt-4o-mini", "https://openrouter.ai/keys"),
     GROQ(AiPreset.GROQ, "llama-3.3-70b-versatile", "https://console.groq.com/keys"),
+    SARVAM(AiPreset.SARVAM, "sarvam-105b", "https://dashboard.sarvam.ai"),
     OLLAMA(AiPreset.OLLAMA, "llama3.1"),
     LM_STUDIO(AiPreset.LM_STUDIO, "qwen2.5-7b-instruct"),
     ANTHROPIC(AiPreset.ANTHROPIC, keyPage = "https://console.anthropic.com/settings/keys"),
