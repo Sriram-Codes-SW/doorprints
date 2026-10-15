@@ -19,7 +19,7 @@ your own small server. Nothing costs money, by rule.
 Underneath, a house is one `candidate` record with a `kind`, typed `extras` and `money` with a cadence (rent a month, price
 once), described by a **kind file** ([`docs/schemas/kinds/house.json`](docs/schemas/kinds/house.json)). Its fields, sections,
 statuses, search, copies and AI prompts come from that file, and each kind lives in its own space. A second kind, schools,
-exists as a **developer preview: it is in no release and off by default**
+is **compiled into the web, Android and iPhone builds but off**: it is not released, and appears only after the device-local switch *Experimental: more than houses*
 ([ADR-36](docs/03-design.md#14-architecture-decision-records), [docs/03 §18](docs/03-design.md),
 [guide](guide/docs/other-kinds.md)).
 
@@ -57,8 +57,8 @@ optional server, with the contracts pinned by shared vector files ([docs/schemas
 | Hunt mode: alerts near a saved house or on a known street, stay detection, hunting areas | – | Yes | Yes | Yes |
 | Your paths: the walk you took, "Have I been here?" | Yes | Yes | Yes | Yes |
 | Save a copy (HTML, PDF, CSV, XLSX, Markdown) and a full backup; Import a backup | Yes | Yes | Yes | Yes |
-| **Schools** (developer preview) | | | | |
-| Board, medium, school bus, fees and commute as extras; its own statuses, words and AI prompts | Dev build | Dev build | Dev build | No |
+| **Schools** (experimental, off by default) | | | | |
+| Board, medium, school bus, fees and commute as extras; its own statuses, words and AI prompts | Compiled in, off | Compiled in, off | Compiled in, off | No |
 
 The map uses OpenFreeMap vector tiles (OpenStreetMap data, ODbL). **India's boundaries are shown as the Government of
 India depicts them**, the only view, on every platform; the rules, the data source and the known limits are in
@@ -159,5 +159,5 @@ no secrets in git; nothing that costs money.
 
 ## Status
 
-Where things stand, the open pull requests and the ordered next steps: [docs/14 §1 and §2](docs/14-lead-backlog-and-handoff.md); the next item is N13 of §2 (then N10), as §7 says.
+Where things stand, the open pull requests and the ordered next steps: [docs/14 §1 and §2](docs/14-lead-backlog-and-handoff.md); what is left is the owner's (device checks, the translation review, the release gate), listed first in §2.
 Release notes: [CHANGELOG.md](CHANGELOG.md).
