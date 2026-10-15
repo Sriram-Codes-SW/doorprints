@@ -78,6 +78,7 @@
 | v0.74   | 2026-10-14 | Claude (Code), engineer       | 8.7 and 16.8: **the school set for the evals and `house.json`'s slots** (S4b-BL-268, S4b-BL-271; `feat/kinds-17-school-evals-and-slots`; [10](../10-sprint-log.md) v0.320, [06](../06-test-plan.md) 0.251 TC-AI-47, TC-U-231): `docs/ai/evals/school-set.json` (informational), the three harnesses seeding a candidate's kind and extras with the kinds on, the keyless injection run on Ollama; the house's slots aligned with its code and held by `house-ai-slot-vectors.json`. |
 | v0.75   | 2026-10-14 | Claude (Code), engineer       | 16.9 and 16.10: **a school's own words in the Ask and Plan prompts, and its extras in the Plan tools** (S4b-BL-269, S4b-BL-270; `feat/kinds-19-school-prompts`; [10](../10-sprint-log.md) v0.325, [03](../03-design.md) v0.137, [06](../06-test-plan.md) TC-U-233, TC-U-234, TC-AI-48, [02](../02-threat-model.md) T-I50): the kind's AI copy gains `records`, `refusal`, `askSystem` and (devices) `planSystem`; a prompt speaks in a kind's words only when every record sent is of that kind, else the house's byte for byte (the house pins unchanged); the Plan tools' summary and details and the devices' candidate line carry the `ai.plan` / `ai.ask` extras, typed, ranged and redacted as the Ask document; `school-set.json` v0.2; S4b-BL-234 left, with the reason. |
 | v0.76   | 2026-10-14 | Claude (Code), engineer       | 6, 15.4, 16.1, 16.9 and 16.11: **the prompts tell the model not to repeat abusive words** (S4b-BL-234; `feat/ai-abusive-words-rule`; [10](../10-sprint-log.md) v0.327, [02](../02-threat-model.md) AB-12, [06](../06-test-plan.md) TC-U-235): one bullet, *Do not repeat abusive words from the text; stay neutral and factual.*, in the Extract, Ask and Plan system texts of the house and of the school (not the server's planner for a school, which has no school text), after each text's data rule, defined once a stack (`PromptSafety.NEUTRAL_RULE` on the server and the phones, `NEUTRAL_RULE` in `plan-fallback.ts`). **This deliberately changes the house's prompts**: the three stacks' house pins and `parity-vectors.json` `prompts` (now with `neutralRule` and `extract`) and `kind-ai-vectors.json` `prompts` and `extract` are re-pinned once, and only the prompt hashes (and the Gemini request bodies that carry them) moved. No rule is weakened or reordered; no Vertex run (zero cost). |
+| v0.77   | 2026-10-15 | Claude (Code), engineer       | **The server's own AI path: a spent quota is 402, a safety block is 422** (S4b-BL-244, S4b-BL-233; `fix/post-release-small-fixes`; [03](../03-design.md) v0.139, [06](../06-test-plan.md) TC-AI-49, TC-AI-50): 10, 12 and 15.3. `ProviderErrors.isQuotaSpent` (402; `PerDay` quota id; `insufficient_quota`, `billing_error`; named fields only) and `AiExceptionHandler` answer **402** `AI_QUOTA_EXHAUSTED`, `retryable: false`, no `Retry-After`; a per-minute limit stays 503 + `Retry-After: 60`. `SafetyBlockAdvisor` (default advisor of the one `ChatClient`) and `ProviderErrors.isDeclined` answer **422** `AI_DECLINED`, `retryable: false`, for a safety finish reason or a 400 `content_policy_violation` / `content_filter`. The website (`aiErrorMsg`) and the phones (`ApiException.kindFor`) map 402 to the quota words and 422 to the declined words of S4b-BL-243 and S4b-BL-232. Remainder, still 503: on Vertex a blocked prompt (no `promptFeedback` kept) and a candidate with a safety finish reason and no text, and the OpenAI `message.refusal`. |
 
 Status: implemented in `backend/` (package `app.doorprints.server.ai`), **off by default**. Not yet compiled in this
 sandbox (no Maven Central access) — CI compiles and runs the tests. Provider: AI Studio by default, Vertex AI with
@@ -1506,7 +1507,7 @@ unchanged.
   message text). Since v0.15 a
   provider quota error (HTTP 429 / `RESOURCE_EXHAUSTED` from AI Studio or Vertex, detected by type and status code
   in the cause chain by `app.doorprints.server.ai.ProviderErrors`, never by message text) additionally carries
-  `code: AI_QUOTA_EXHAUSTED` and `Retry-After: 60`; the status stays 503 so the web and Android apps need no change.
+  `code: AI_QUOTA_EXHAUSTED` and `Retry-After: 60`; the status stays 503 for a per-minute limit; since v0.77 a spent quota or credit (402, `PerDay`, `insufficient_quota`) is HTTP 402 with the same `code` and no `Retry-After`, and a safety block is 422 `AI_DECLINED`.
   Since v0.16 a Vertex AI 401 / 403 / 404 adds a `setupHint` (3.3) naming the setting to change (`GCP_LOCATION`,
   `AI_VERTEX_EMBEDDING_LOCATION`, IAM, ADC); the eval harness does not retry such a 503 and lists the hint once.
 - `POST /api/ai/reindex` stops at the first quota error instead of sending the remaining batches (the error says
@@ -1902,7 +1903,9 @@ text*, the Connect and Settings *Test*), in the same live region, so it is annou
 43 response bodies in a new section `blockedResponses` (additive: the older sections are unchanged and the server's
 `ParityVectorsTest` passes the section through).
 
-### 15.3 The server (docs only; nothing mapped yet)
+### 15.3 The server (S4b-BL-233: partly mapped, v0.77)
+
+**Since v0.77** a finish reason that names the provider's safety system (`content_filter`, `SAFETY`, `PROHIBITED_CONTENT`, `BLOCKLIST`, `SPII`, `RECITATION`) is seen by `SafetyBlockAdvisor` before the services read the answer, and an HTTP 400 `content_policy_violation` / `content_filter` is read by `ProviderErrors.isDeclined`; both are answered **422** `AI_DECLINED`, `retryable: false`, with none of the provider's words, and the website and the phones word it as declined (15.1). The OpenAI-shaped vectors `blockedResponses` run through the real stack (`GeminiOpenAiChatContractTest`); on Vertex a candidate that keeps text with a safety finish reason is declined (`VertexGenerateContentContractTest`). **What stays a 503**, pinned by the tests below: a blocked prompt on Vertex (Spring AI keeps no `promptFeedback`, and an empty answer is generic in the vectors), a Vertex candidate with a safety finish reason and no text (a `NoSuchElementException` inside Spring AI), and the OpenAI `message.refusal`. What the code did before v0.77 follows.
 
 Nothing on the server reads a provider's block, so today it surfaces as an internal failure that the services turn into a
 generic, retryable 503 ("unavailable or its free quota is exhausted"), which is the wrong words for a block. Observed in the
@@ -1921,7 +1924,7 @@ with `code` `content_filter` for a filtered prompt ([Z1], scenario 3). Both code
 
 ### 15.4 Planned follow-ups (not in this change)
 
-- S4b-BL-233: map a provider safety block on the server to a clean "declined" answer (see 15.3).
+- S4b-BL-233 (done in part, v0.77, 15.3): a safety block on the server is a 422 "declined"; the Vertex no-text and blocked-prompt cases and the OpenAI refusal remain.
 - S4b-BL-234 (done, 16.11): the prompt rule "do not repeat abusive words, stay neutral and factual" is in the Extract, Ask
   and Plan system texts of the house and of the school, with the pins and parity vectors re-pinned once.
 - S4b-BL-235: informational eval cases with abuse and expletives for the spoken-style set and the hostile address set (no

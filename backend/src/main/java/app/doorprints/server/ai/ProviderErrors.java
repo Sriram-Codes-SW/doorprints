@@ -27,6 +27,8 @@ import com.openai.errors.OpenAIServiceException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClientResponseException;
 
+import com.fasterxml.jackson.databind.JsonNode;
+
 import java.io.IOException;
 import java.util.Collections;
 import java.util.concurrent.TimeoutException;
@@ -49,22 +51,66 @@ import java.util.Set;
 public final class ProviderErrors {
 
     public static final int TOO_MANY_REQUESTS = 429;
+    /** Payment required: a spent balance or an unpaid account (any provider). */
+    public static final int PAYMENT_REQUIRED = 402;
+    private static final String DAILY_QUOTA = "PerDay";
     public static final String RESOURCE_EXHAUSTED = "RESOURCE_EXHAUSTED";
     private static final int MAX_DEPTH = 16;
 
     private ProviderErrors() {
     }
 
-    /** True when the provider rejected the call because a rate limit or quota is exhausted (HTTP 429). */
+    /** True when the provider rejected the call because a rate limit or quota is exhausted (HTTP 429 or 402). */
     public static boolean isQuotaExhausted(Throwable error) {
+        return anyInChain(error, ProviderErrors::quota);
+    }
+
+    /**
+     * True when the quota or credit is used up for the day or for good, so waiting a minute does not help (S4b-BL-244;
+     * the twin of the clients' {@code AiQuota}, same rules, pinned by the shared vectors {@code quotaResponses}): HTTP 402 from
+     * any provider, a Gemini 429 whose {@code error.details[].violations[].quotaId} holds {@code PerDay}, an
+     * {@code insufficient_quota} or {@code billing_error} code or type. Read from the status and the named fields only,
+     * never from free text a provider may have echoed. A plain 429 stays a wait.
+     */
+    public static boolean isQuotaSpent(Throwable error) {
+        return anyInChain(error, ProviderErrors::spent);
+    }
+
+    /**
+     * True when the provider's own safety system declined the text (S4b-BL-233; the clients' {@code AiBlocked}, shared vectors
+     * {@code blockedResponses}): a {@link ProviderBlockedException} from {@link SafetyBlockAdvisor}, or an HTTP 400 whose
+     * {@code error.code} is {@code content_policy_violation} or {@code content_filter} (the OpenAI-compatible endpoints). The
+     * code is read as a named field of the JSON body, never from free text; a 400 that is anything else is ours.
+     */
+    public static boolean isDeclined(Throwable error) {
+        return anyInChain(error, t -> t instanceof ProviderBlockedException
+                || (t instanceof OpenAIServiceException o && o.statusCode() == 400 && declinedCode(o)));
+    }
+
+    private static boolean declinedCode(OpenAIServiceException o) {
+        JsonNode body;
+        try {
+            body = o.body().convert(JsonNode.class);
+        } catch (RuntimeException e) {
+            return false;
+        }
+        if (body == null) return false;
+        JsonNode node = body.isArray() ? body.path(0) : body;
+        JsonNode error = node.has("error") ? node.path("error") : node;
+        var code = text(error.path("code"));
+        return "content_policy_violation".equals(code) || "content_filter".equals(code);
+    }
+
+    /** Walks the cause chain (and suppressed exceptions) to a bounded depth; true when {@code test} holds for a node. */
+    private static boolean anyInChain(Throwable error, java.util.function.Predicate<Throwable> test) {
         Set<Throwable> seen = Collections.newSetFromMap(new IdentityHashMap<>());
         int depth = 0;
         for (Throwable t = error; t != null && depth < MAX_DEPTH && seen.add(t); t = t.getCause(), depth++) {
-            if (quota(t)) return true;
+            if (test.test(t)) return true;
             var suppressed = t.getSuppressed();
             if (suppressed != null) {
                 for (var s : suppressed) {
-                    if (quota(s)) return true;
+                    if (test.test(s)) return true;
                 }
             }
         }
@@ -151,11 +197,60 @@ public final class ProviderErrors {
     private static boolean quota(Throwable t) {
         return switch (t) {
             case ReindexFailedException r -> r.quotaExhausted();
-            case GeminiEmbeddingException g -> g.httpStatus() == TOO_MANY_REQUESTS || RESOURCE_EXHAUSTED.equals(g.reason());
-            case ApiException a -> a.code() == TOO_MANY_REQUESTS;
-            case OpenAIServiceException o -> o.statusCode() == TOO_MANY_REQUESTS;
-            case RestClientResponseException r -> r.getStatusCode().value() == TOO_MANY_REQUESTS;
+            case GeminiEmbeddingException g -> g.httpStatus() == TOO_MANY_REQUESTS || g.httpStatus() == PAYMENT_REQUIRED
+                    || RESOURCE_EXHAUSTED.equals(g.reason());
+            case ApiException a -> a.code() == TOO_MANY_REQUESTS || a.code() == PAYMENT_REQUIRED;
+            case OpenAIServiceException o -> o.statusCode() == TOO_MANY_REQUESTS || o.statusCode() == PAYMENT_REQUIRED;
+            case RestClientResponseException r ->
+                    r.getStatusCode().value() == TOO_MANY_REQUESTS || r.getStatusCode().value() == PAYMENT_REQUIRED;
             default -> false;
         };
+    }
+
+    /** One node of {@link #isQuotaSpent}. */
+    private static boolean spent(Throwable t) {
+        return switch (t) {
+            case GeminiEmbeddingException g -> g.httpStatus() == PAYMENT_REQUIRED;
+            case ApiException a -> a.code() == PAYMENT_REQUIRED;
+            case RestClientResponseException r -> r.getStatusCode().value() == PAYMENT_REQUIRED;
+            case OpenAIServiceException o -> spentOpenAi(o);
+            default -> false;
+        };
+    }
+
+    private static String text(JsonNode n) {
+        return n.isTextual() ? n.asText() : null;
+    }
+
+    private static boolean spentOpenAi(OpenAIServiceException o) {
+        int status = o.statusCode();
+        if (status == PAYMENT_REQUIRED) return true;
+        if (status != TOO_MANY_REQUESTS && status != 400) return false;
+        // The body is read as plain JSON: the SDK's typed accessors (code(), type()) throw on a numeric code, which
+        // Gemini sends ({"error":{"code":429,...}}).
+        JsonNode body;
+        try {
+            body = o.body().convert(JsonNode.class);
+        } catch (RuntimeException e) {
+            return false; // no body (or one that is not JSON): a plain wait
+        }
+                if (body == null) return false;
+        // The SDK hands over the inner error object for an object body, and the whole array for Gemini's wrapped form.
+        JsonNode node = body.isArray() ? body.path(0) : body;
+        JsonNode error = node.has("error") ? node.path("error") : node;
+        if (!error.isObject()) return false;
+        if ("insufficient_quota".equals(text(error.path("code")))
+                || "insufficient_quota".equals(text(error.path("type")))
+                || "billing_error".equals(text(error.path("type")))) {
+            return true;
+        }
+        if (status != TOO_MANY_REQUESTS) return false;
+        for (JsonNode detail : error.path("details")) {
+            for (JsonNode violation : detail.path("violations")) {
+                var id = text(violation.path("quotaId"));
+                if (id != null && id.contains(DAILY_QUOTA)) return true;
+            }
+        }
+        return false;
     }
 }

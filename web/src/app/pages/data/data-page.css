@@ -30,6 +30,16 @@
   margin-bottom: 0;
 }
 
+/*
+ * Until the saved options and counts are read (a few hundred ms), only the heading and the export card's placeholder
+ * are on the page: that card then becomes the form, or the empty state, which is taller, and the cards under it (Import
+ * a backup, Connect...) would jump down the screen (a layout shift of 0.09 on a phone, S4b-BL-249). They are painted
+ * once, after it, and nothing that was on the screen moves.
+ */
+.page.loading > section:first-of-type ~ * {
+  display: none;
+}
+
 .card > h2 {
   margin-top: 0;
 }
