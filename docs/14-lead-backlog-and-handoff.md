@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.194 |
+| Version | 0.195 |
 | Date | 2026-10-14 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..183); this file lists the lead-level items and points to the rest. |
@@ -202,6 +202,7 @@
 | 0.192 | 2026-10-14 | Claude (Code), engineer | §1: **S4b-BL-268 and S4b-BL-271 In review** (`feat/kinds-17-school-evals-and-slots`; [10](10-sprint-log.md) v0.320): the school set for the AI evals and the keyless injection run on Ollama, and `house.json`'s slots aligned with the house's AI code. Two working notes in §7 terms: a local model (Ollama) can be fetched in a session without a key (the release tarball streamed through `zstd`, only the CPU libraries kept, about 60 MB, plus the 400 MB model), and the live spec's timeout for a loopback server (`AI_EVAL_TIMEOUT_MS`, up to 600,000) matters when the container is busy. |
 | 0.193 | 2026-10-14 | Claude (Code), engineer | §11.2: **S4b-BL-310 In review** (`chore/deps-angular-maplibre`): Angular 22.2.2 and maplibre-gl 6.13.0; the MapLibre worker is self-contained from 6.13, so the build, the PWA check and the live check follow the new layout ([10](10-sprint-log.md) v0.321). |
 | 0.194 | 2026-10-14 | Claude (Code), engineer | §11.2: **S4b-BL-311 In review** (`chore/deps-vitest5-jsdom30`): vitest 5.0.4 and jsdom 30.1.2; Vitest 5's on-disk module cache is turned off for the web tests ([10](10-sprint-log.md) v0.323). |
+| 0.195 | 2026-10-15 | Claude (Code), engineer | §7 **Status words** (owner request): Planned, In progress, In review (a PR number in the row), Done (PR number and short commit id); the merging session flips the row in the same pull request; a row never says In review without an open PR. Enforced offline by `tools/check-sprint-status.mjs` (docs/10 rows led by a ticket id; in `tools/check.sh` and the `security.yml` *Commit author emails* job). Evidence recipe: `git log origin/main --grep=<BL id>`. |
 
 ## 1. Where things stand (2026-10-01, all development of N14 built on branches)
 
@@ -584,6 +585,15 @@ suite runs in a cloud session; CI is the second check, never the first:
    **Version rows** (S4b-BL-156): `node tools/check-docs-versions.mjs` fails a document with two `| Version |` header rows, a header
    that is not its highest change-log version, a repeated change-log version, or the latest rows out of order. When two pull
    requests bump the same document, merge `main`, keep one header row, give your row the next free version, then re-run it.
+   **Status words** (owner request, 2026-10-15; the sprint log had about 100 rows saying *In review* for pull requests long merged,
+   so merged and unmerged could not be told apart): in `docs/10` a row's status is *Planned* (not started), *In progress* (a branch
+   exists), *In review* (a pull request is open; its number `#NNN` is in the row) or *Done* (merged to `main`; the pull request number and
+   the short commit id are in the row, for example `Done (#343, 341f5ba4)`; a part that merged is written as such, `Done (website #346)`,
+   and never more than `main` holds). **The merging session flips the row in the same pull request** (docs change with code, above), and
+   a row never says *In review* without an open pull request. `node tools/check-sprint-status.mjs` (offline; `tools/check.sh` and the
+   *Commit author emails* job of `security.yml`, next to the version rows) fails an id-led row whose cell starts with *In review* and has
+   no `#NNN`; it cannot know a pull request was merged, so the flip stays the session's step. Find the evidence on `main` with
+   `git log origin/main --oneline --grep=<BL id>`: the squash titles carry the ids and `(#NNN)`.
    **Floor guard** (S4b-BL-157): `node tools/check-floor.mjs` (in `tools/check.sh` and `security.yml`) fails a branch that loosens a
    gate against `origin/main`: a new skip or focus in a test file, a deleted test file or fewer test cases in one, a new
    suppression or empty catch, a mutation entry removed from `tools/mutations/*.json` without one added, a raised budget in
