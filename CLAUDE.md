@@ -16,7 +16,7 @@ server (Java 25, PostGIS). Shared Kotlin Multiplatform logic lives in `android/s
 ## Rules (owner decisions)
 
 - **Zero cost.** No paid services, plans or data.
-- **India's boundaries** are shown as the Government of India depicts them, on web and Android alike; the Survey of
+- **India's boundaries** are shown as the Government of India depicts them, on web, Android and iPhone alike and in every kind's space (a kind file has no map configuration); the Survey of
   India's maps and boundary data are the standard (DST geospatial guidelines of 2021, clause 8 xiii; self-certification
   in `docs/03-design.md` §11.1, re-read at each release) (`docs/03-design.md` ADR-22;
   `web/src/app/shared/india-boundaries.ts`, `android/.../ui/IndiaViewRules.kt`;
