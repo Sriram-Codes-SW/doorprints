@@ -45,6 +45,19 @@ export const AI_OPT_IN_KEY = `${STORAGE_PREFIX}ai-features`;
  */
 export const VOICE_INPUT_KEY = `${STORAGE_PREFIX}voice-input`;
 
+/**
+ * Which service writes out the spoken words, 'own' (the person's AI provider, the default) or 'sarvam' (localStorage; ADR-37,
+ * voice PR 7). A preference, never in a backup, copy, sync or share file; "Remove all data" sweeps it.
+ */
+export const VOICE_PROVIDER_KEY = `${STORAGE_PREFIX}voice-provider`;
+
+/**
+ * The person's own Sarvam key for speech to text (localStorage when remembered, else sessionStorage), a slot of its own beside
+ * {@link GEMINI_KEY_KEY}: never the AI key, never in a backup, copy, sync or share file, sent only to api.sarvam.ai
+ * (ADR-37, TC-U-170 pattern). "Remove all data" sweeps it with the other `doorprints.` keys. See core/voice/voice-input.service.ts.
+ */
+export const SARVAM_KEY_KEY = `${STORAGE_PREFIX}sarvam-key`;
+
 /** Who answers AI requests, 'server' or 'device' (localStorage; docs/03 §13.1). See AiService. */
 export const AI_PROVIDER_KEY = `${STORAGE_PREFIX}ai-provider`;
 

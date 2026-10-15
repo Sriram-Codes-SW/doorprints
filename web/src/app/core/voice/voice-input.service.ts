@@ -22,8 +22,11 @@ import { LANGUAGES } from '../../i18n/languages';
 import { AiService } from '../ai.service';
 import { type AiProviderConfig, aiHostOf } from '../ai/ai-provider-config';
 import { OnDeviceAiError } from '../ai/on-device-ai.service';
-import { GeminiTranscriber, OpenAiAudioTranscriber, type Transcriber, type Transcript, canTranscribe, transcribePresetOf } from '../ai/transcriber';
-import { VOICE_INPUT_KEY } from '../storage-keys';
+import {
+  GeminiTranscriber, MAX_AUDIO_MS, OpenAiAudioTranscriber, SARVAM_HOST, SARVAM_MAX_AUDIO_MS, SarvamTranscriber, type Transcriber, type Transcript,
+  canTranscribe, transcribePresetOf,
+} from '../ai/transcriber';
+import { SARVAM_KEY_KEY, VOICE_INPUT_KEY, VOICE_PROVIDER_KEY } from '../storage-keys';
 import { AudioRecorder, type RecordedClip, type RecorderEnv, browserRecorderEnv, canRecord } from './audio-recorder';
 
 /**
@@ -56,6 +59,12 @@ const TRANSCRIBE_MODELS: Readonly<Record<string, string>> = {
  */
 const PRICE_INR_PER_MINUTE: Readonly<Record<string, string>> = { gemini: '0.17', openai: '0.26', openrouter: '0.26', groq: '0.06' };
 
+/** Sarvam's list price, INR a minute (30 INR an hour, docs/ai/voice-input.md §2, read 2026-10-10). */
+export const SARVAM_PRICE_INR = '0.50';
+
+/** Which service writes out the words: the person's AI provider (the default) or Sarvam with its own key. */
+export type VoiceProvider = 'own' | 'sarvam';
+
 /** Words the model should spell right, by kind of space; a house hunt's are the default. Sent as the OpenAI form's `prompt`. */
 export function keyTermsFor(kind: string): string {
   return kind === 'school'
@@ -79,21 +88,74 @@ export class VoiceInputService {
   private readonly enabledState = signal(readVoice());
   /** This browser's own *Voice input* switch. */
   readonly enabled = this.enabledState.asReadonly();
+  private readonly providerState = signal<VoiceProvider>(readProvider());
+  /** Which service writes out the words (this browser's choice). */
+  readonly provider = this.providerState.asReadonly();
+  private readonly sarvamKeyState = signal(readSarvamKey());
+  /** Whether a Sarvam key is saved (the key itself is read only at the moment of a call). */
+  readonly hasSarvamKey = computed(() => this.sarvamKeyState() !== '');
+  /** The last four characters of the saved Sarvam key, for "saved (ends …)"; empty for a short key. */
+  readonly sarvamKeyHint = computed(() => (this.sarvamKeyState().length >= 8 ? this.sarvamKeyState().slice(-4) : ''));
 
   /** The person's own AI is the one in use and it takes audio: what the switch can do anything for. */
   readonly providerOk = computed(() => this.ai.usesOwnKey() && canTranscribe(this.ai.aiConfig()));
+
+  /** The chosen service can write out words now: the own AI takes audio, or Sarvam has its key. */
+  readonly usable = computed(() => (this.providerState() === 'sarvam' ? this.hasSarvamKey() : this.providerOk()));
 
   /**
    * The microphone is offered: the switch is on, AI features are on with the person's own key, the provider takes audio and
    * this browser can record. (The switch is read first: with it off, nothing else is looked at.)
    */
-  readonly available = computed(() => this.enabledState() && this.ai.enabled() && this.providerOk() && canRecord(this.env));
+  readonly available = computed(() => this.enabledState() && this.ai.enabled() && this.usable() && canRecord(this.env));
 
   /** The host the audio goes to, for the disclosure. */
-  readonly host = computed(() => aiHostOf(this.ai.aiConfig()));
+  readonly host = computed(() => (this.providerState() === 'sarvam' ? SARVAM_HOST : aiHostOf(this.ai.aiConfig())));
 
   /** The list price in INR a minute for the disclosure, or null where none is known. */
-  readonly price = computed<string | null>(() => PRICE_INR_PER_MINUTE[transcribePresetOf(this.ai.aiConfig())] ?? null);
+  readonly price = computed<string | null>(() =>
+    this.providerState() === 'sarvam' ? SARVAM_PRICE_INR : (PRICE_INR_PER_MINUTE[transcribePresetOf(this.ai.aiConfig())] ?? null),
+  );
+
+  /** The hard stop of a recording in milliseconds: Sarvam's 30 s, else a minute. */
+  readonly maxMs = computed(() => (this.providerState() === 'sarvam' ? SARVAM_MAX_AUDIO_MS : MAX_AUDIO_MS));
+  /** True when the limit is the short one (the words on screen say "30 seconds"). */
+  readonly shortLimit = computed(() => this.providerState() === 'sarvam');
+
+  /** Chooses the service (localStorage: a preference, not a secret). */
+  setProvider(p: VoiceProvider): void {
+    this.providerState.set(p);
+    try {
+      if (p === 'sarvam') localStorage.setItem(VOICE_PROVIDER_KEY, p);
+      else localStorage.removeItem(VOICE_PROVIDER_KEY);
+    } catch {
+      // Storage unavailable: the choice holds for this page only.
+    }
+  }
+
+  /**
+   * Saves the person's own Sarvam key in its own slot: localStorage with `remember`, else sessionStorage (gone when the tab
+   * closes). Only ever sent to api.sarvam.ai; never in a backup, copy, sync or share file.
+   */
+  saveSarvamKey(key: string, remember: boolean): void {
+    const clean = key.trim();
+    this.sarvamKeyState.set(clean);
+    for (const [s, keep] of [[() => sessionStorage, !remember], [() => localStorage, remember]] as const) {
+      try {
+        if (keep && clean !== '') s().setItem(SARVAM_KEY_KEY, clean);
+        else s().removeItem(SARVAM_KEY_KEY);
+      } catch {
+        // Storage unavailable: the key holds for this page only.
+      }
+    }
+  }
+
+  /** Forgets the Sarvam key and goes back to the person's AI provider. */
+  removeSarvamKey(): void {
+    this.saveSarvamKey('', false);
+    this.setProvider('own');
+  }
+
 
   /** Turns the switch on or off for this browser (localStorage: a preference, not a secret). */
   setEnabled(on: boolean): void {
@@ -108,7 +170,7 @@ export class VoiceInputService {
 
   /** A recorder on this browser's microphone; the microphone is asked for only when its `start()` is called. */
   newRecorder(): AudioRecorder {
-    return new AudioRecorder(this.env);
+    return new AudioRecorder(this.env, this.maxMs());
   }
 
   /** The spoken language as a BCP 47 tag, from the app's language (`hi-IN`); the provider may hear another one. */
@@ -122,7 +184,11 @@ export class VoiceInputService {
    * `kind` is the space on screen (key terms for the model).
    */
   transcribe(clip: RecordedClip, kind: string): Promise<Transcript> {
-    const t = this.available() ? transcriberFor(this.ai.aiConfig(), this.ai.ownKey(), kind) : null;
+    const t = !this.available()
+      ? null
+      : this.providerState() === 'sarvam'
+        ? new SarvamTranscriber(this.sarvamKeyState())
+        : transcriberFor(this.ai.aiConfig(), this.ai.ownKey(), kind);
     if (t === null) return Promise.reject(new OnDeviceAiError('unavailable'));
     return t.transcribe(clip.bytes, clip.mime, this.langHint(), clip.durationMs);
   }
@@ -134,4 +200,25 @@ function readVoice(): boolean {
   } catch {
     return false;
   }
+}
+
+function readProvider(): VoiceProvider {
+  try {
+    return typeof localStorage !== 'undefined' && localStorage.getItem(VOICE_PROVIDER_KEY) === 'sarvam' ? 'sarvam' : 'own';
+  } catch {
+    return 'own';
+  }
+}
+
+/** The Sarvam key: this tab's (sessionStorage) first, then the remembered one. */
+function readSarvamKey(): string {
+  for (const s of [() => sessionStorage, () => localStorage]) {
+    try {
+      const v = s().getItem(SARVAM_KEY_KEY);
+      if (v) return v;
+    } catch {
+      // ignore
+    }
+  }
+  return '';
 }

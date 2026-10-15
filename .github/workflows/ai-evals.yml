@@ -76,6 +76,13 @@
 # 2026-10-10 (S4b-BL-226): the input `address_set` (default `default`) picks a set of docs/ai/evals/address-variants.json for the
 # 2026-10-10 (S4b-BL-239): the `canary` input has a fourth live choice, `no-wrapping` (the nonce tag and the neutraliser off, one
 #   Ask rule removed, scored on six delimiter cases); its value is in the Validate-inputs regex below like the other three.
+# 2026-10-15 (S4b-BL-224, voice PR 7): the suite `voice` (job below) sends the eight audio clips of docs/ai/evals/voice/ (synthetic speech, CC0,
+#   about 115 KB, fake phone numbers) to the speech provider the owner picks in `voice_provider` (gemini with AI_API_KEY, sarvam with the
+#   optional repository secret SARVAM_EVAL_API_KEY, openai-compatible with AI_EVAL_API_KEY, `voice_base_url` and `voice_model`) and
+#   reports entity error on price, BHK and locality, phone digits heard and then redacted, and (with AI_API_KEY) one end-to-end Extract
+#   per clip and one Ask. Without a key for the chosen provider it prints "skipped: no key" and succeeds without installing anything.
+#   No paid service is added; Vertex is not used for audio (the website's Gemini adapter takes the AI Studio key). Informational: the stop
+#   rule of docs/ai/voice-input.md section 6 is printed as a line, not enforced.
 # 2026-10-15 (S4b-BL-220): `eval_set` has a fourth choice, `spoken-set` (docs/ai/evals/spoken-set.json: spoken-style text cases, no punctuation,
 #   number words, fillers, Hinglish and Hindi/Tamil/Telugu code-switching, homophones; the golden set's fixtures; informational, no
 #   thresholds). The server and the website (own-provider and local-model) read it; there is no phone side and the kinds stay as they are
@@ -116,6 +123,7 @@ on:
           - on-device
           - own-provider
           - local-model
+          - voice
           - key-check
       types:
         description: Case types to run
@@ -224,6 +232,22 @@ on:
         default: ""
       ai_model:
         description: "own-provider only: model name (empty = repository variable AI_EVAL_MODEL; not used for gemini)"
+        type: string
+        default: ""
+      voice_provider:
+        description: "voice suite only (S4b-BL-224): the speech provider. gemini = AI_API_KEY; sarvam = the optional repository secret SARVAM_EVAL_API_KEY (the owner's own Sarvam key, 30 s clips); openai-compatible = AI_EVAL_API_KEY with the address and model below"
+        type: choice
+        default: gemini
+        options:
+          - gemini
+          - sarvam
+          - openai-compatible
+      voice_base_url:
+        description: "voice suite, openai-compatible only: base URL, e.g. https://api.groq.com/openai/v1 (https only; the transcription path is added)"
+        type: string
+        default: ""
+      voice_model:
+        description: "voice suite, openai-compatible only: the transcription model, e.g. whisper-large-v3-turbo"
         type: string
         default: ""
       local_model:
@@ -703,6 +727,82 @@ jobs:
             cat "$RUNNER_TEMP/ai-eval-summary.md" >> "$GITHUB_STEP_SUMMARY"
           else
             echo "No summary was written: the setting was refused or the run failed before the first case (see the log)." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  # The audio clips through a speech provider (S4b-BL-224; docs/06 TC-AI-53; docs/ai/voice-input.md section 5). Read-only token, no
+  # id-token. The key of the chosen provider is passed to the one step that runs the spec, as DOORPRINTS_VOICE_KEY; the spec sends the
+  # clips only to that provider's own host (the website's adapters) and never prints a key. Without the key: "skipped: no key".
+  voice:
+    name: Audio clips through a speech provider (website adapters, optional)
+    if: inputs.suites == 'voice'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Validate inputs and skip cleanly without a key
+        id: key
+        env:
+          VOICE_PROVIDER: ${{ inputs.voice_provider }}
+          VOICE_BASE_URL: ${{ inputs.voice_base_url }}
+          VOICE_MODEL: ${{ inputs.voice_model }}
+          DELAY_MS: ${{ inputs.delay_ms }}
+          VOICE_KEY: ${{ (inputs.voice_provider == 'gemini' && secrets.AI_API_KEY) || (inputs.voice_provider == 'sarvam' && secrets.SARVAM_EVAL_API_KEY) || (inputs.voice_provider == 'openai-compatible' && secrets.AI_EVAL_API_KEY) || '' }}
+        run: |
+          if ! [[ "$VOICE_PROVIDER" =~ ^(gemini|sarvam|openai-compatible)$ ]]; then
+            echo "::error::voice_provider must be gemini, sarvam or openai-compatible"
+            exit 1
+          fi
+          if ! [[ "$DELAY_MS" =~ ^[0-9]{1,6}$ ]]; then
+            echo "::error::delay_ms must be a whole number of milliseconds"
+            exit 1
+          fi
+          if [ -z "$VOICE_KEY" ]; then
+            echo "skipped: no key" | tee -a "$GITHUB_STEP_SUMMARY"
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v7
+        if: steps.key.outputs.run == 'true'
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        if: steps.key.outputs.run == 'true'
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install the website's packages (no key in this step)
+        if: steps.key.outputs.run == 'true'
+        working-directory: web
+        run: npm ci --no-audit --no-fund
+
+      - name: Run the clips
+        if: steps.key.outputs.run == 'true'
+        working-directory: web
+        env:
+          DOORPRINTS_VOICE_KEY: ${{ (inputs.voice_provider == 'gemini' && secrets.AI_API_KEY) || (inputs.voice_provider == 'sarvam' && secrets.SARVAM_EVAL_API_KEY) || (inputs.voice_provider == 'openai-compatible' && secrets.AI_EVAL_API_KEY) || '' }}
+          # The chat key for the end-to-end Extract and Ask rows (Gemini's); without it those rows say "not run".
+          DOORPRINTS_EVAL_KEY: ${{ secrets.AI_API_KEY }}
+          VOICE_EVAL_PROVIDER: ${{ inputs.voice_provider }}
+          VOICE_EVAL_BASE_URL: ${{ inputs.voice_base_url }}
+          VOICE_EVAL_MODEL: ${{ inputs.voice_model }}
+          VOICE_EVAL_DELAY_MS: ${{ inputs.delay_ms }}
+        run: |
+          export DOORPRINTS_EVAL_SUMMARY="$RUNNER_TEMP/voice-eval-summary.md"
+          npx ng test --watch=false --include src/app/core/voice/voice-clips.live.spec.ts
+
+      - name: Publish the summary
+        if: always() && steps.key.outputs.run == 'true'
+        run: |
+          if [ -f "$RUNNER_TEMP/voice-eval-summary.md" ]; then
+            cat "$RUNNER_TEMP/voice-eval-summary.md" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No summary was written: the setting was refused or the run failed before the first clip (see the log)." >> "$GITHUB_STEP_SUMMARY"
           fi
 
   # The golden set through a small real model that runs on the runner, with no key (S4b-BL-175; docs/06 TC-AI-25;

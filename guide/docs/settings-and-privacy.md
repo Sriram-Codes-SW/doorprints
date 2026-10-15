@@ -211,6 +211,14 @@ computer, or with a custom address; Settings then says why.
   screen: switching to another app, locking the phone, a call, turning the phone round or pressing **Cancel** throws the
   recording away.
 
+### Voice input with Sarvam {#voice-input-sarvam}
+
+Instead of your AI service, **Sarvam** (an Indian speech-to-text service, Sarvam AI) can write out your words. Under **Voice input** on the Connect page (website) or in **Settings** under **AI features** (Android and iPhone), choose **Sarvam** and paste your **own** Sarvam key (from dashboard.sarvam.ai). The Sarvam key is its own: it is kept apart from your AI key, only on this device, and it is never put in a backup, a copy, a sync file or a Drive file. Remove it with **Remove Sarvam key**. Sarvam also works when your server, Anthropic or a program on your computer answers the AI, because only the speech goes to Sarvam.
+
+- **Where the audio goes.** A recording of up to **30 seconds** goes straight to api.sarvam.ai, about INR 0.50 a minute at their list price. Numbers and names you say are sent as audio, as with the other services. The recording is not saved.
+- **Sarvam as a chat service.** Sarvam is also in the **AI service** list for the AI itself (Ask, Plan, Fill in); that is a separate choice with its own key and has nothing to do with speech.
+- **Everything else is as above:** off until you turn on **Voice input**, the words land in the box for you to check, nothing is sent until the box's own button, the microphone is asked for only when you tap it.
+
 ## More than houses (experimental) {#other-kinds}
 
 **Your data** on the website has one more section in a build that ships schools, **What you track**, with the switch

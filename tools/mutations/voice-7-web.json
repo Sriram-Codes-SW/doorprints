@@ -1,0 +1,111 @@
+{
+ "spec": [
+  "web/src/app/core/ai/transcriber.spec.ts",
+  "web/src/app/core/voice/voice-input.service.spec.ts",
+  "web/src/app/pages/connect/voice-setting.spec.ts"
+ ],
+ "mutations": [
+  {
+   "file": "web/src/app/core/ai/transcriber.ts",
+   "find": "{ 'api-subscription-key': apiKey.trim() }",
+   "replace": "{ Authorization: apiKey.trim() }",
+   "expect": "sarvamRequest vectors: the form fields"
+  },
+  {
+   "file": "web/src/app/core/ai/transcriber.ts",
+   "find": "SARVAM_MAX_AUDIO_MS = 30_000",
+   "replace": "SARVAM_MAX_AUDIO_MS = 60_000",
+   "expect": "a clip over 30 seconds"
+  },
+  {
+   "file": "web/src/app/core/ai/transcriber.ts",
+   "find": "language === 'hi' || language === 'ta' || language === 'te' ?",
+   "replace": "language === 'hi' || language === 'ta' ?",
+   "expect": "the language codes"
+  },
+  {
+   "file": "web/src/app/core/ai/transcriber.ts",
+   "find": "transcriptLanguage(answer['language_code'], langHint)",
+   "replace": "transcriptLanguage(null, langHint)",
+   "expect": "sarvamContent vectors"
+  },
+  {
+   "file": "web/src/app/core/ai/transcriber.ts",
+   "find": "['ollama', 'lmstudio', 'sarvam']",
+   "replace": "['ollama', 'lmstudio']",
+   "expect": "the Sarvam chat preset takes no OpenAI-style audio"
+  },
+  {
+   "file": "web/src/app/core/ai/transcriber.ts",
+   "find": "SARVAM_STT_URL = 'https://api.sarvam.ai/speech-to-text'",
+   "replace": "SARVAM_STT_URL = 'https://api.sarvam.ai/speech-to-text/'",
+   "expect": "sarvamRequest vectors: the form fields"
+  },
+  {
+   "file": "web/src/app/core/ai/transcriber.ts",
+   "find": "checkClip(bytes.byteLength, mime, durationMs, SARVAM_MAX_AUDIO_MS)",
+   "replace": "checkClip(bytes.byteLength, mime, durationMs)",
+   "expect": "a clip over 30 seconds"
+  },
+  {
+   "file": "web/src/app/core/voice/voice-input.service.ts",
+   "find": "new SarvamTranscriber(this.sarvamKeyState())",
+   "replace": "new SarvamTranscriber(this.ai.ownKey())",
+   "expect": "the call goes to api.sarvam.ai with the Sarvam key"
+  },
+  {
+   "file": "web/src/app/core/voice/voice-input.service.ts",
+   "find": "this.providerState() === 'sarvam' ? SARVAM_MAX_AUDIO_MS : MAX_AUDIO_MS",
+   "replace": "MAX_AUDIO_MS",
+   "expect": "names Sarvam as the host"
+  },
+  {
+   "file": "web/src/app/core/voice/voice-input.service.ts",
+   "find": "return new AudioRecorder(this.env, this.maxMs());",
+   "replace": "return new AudioRecorder(this.env);",
+   "expect": "a recording is stopped at 30 seconds"
+  },
+  {
+   "file": "web/src/app/core/voice/voice-input.service.ts",
+   "find": "[() => localStorage, remember]",
+   "replace": "[() => localStorage, !remember]",
+   "expect": "works with the server answering"
+  },
+  {
+   "file": "web/src/app/core/voice/voice-input.service.ts",
+   "find": "    this.saveSarvamKey('', false);\n    this.setProvider('own');",
+   "replace": "    this.saveSarvamKey('', false);",
+   "expect": "removing the key forgets it"
+  },
+  {
+   "file": "web/src/app/core/voice/voice-input.service.ts",
+   "find": "this.enabledState() && this.ai.enabled() && this.usable()",
+   "replace": "this.enabledState() && this.ai.enabled() && this.providerOk()",
+   "expect": "Sarvam needs its own key"
+  },
+  {
+   "file": "web/src/app/core/voice/voice-input.service.ts",
+   "find": "this.providerState() === 'sarvam' ? SARVAM_HOST",
+   "replace": "this.providerState() === 'own' ? SARVAM_HOST",
+   "expect": "names Sarvam as the host"
+  },
+  {
+   "file": "web/src/app/core/voice/voice-input.service.ts",
+   "find": "this.providerState() === 'sarvam' ? SARVAM_PRICE_INR",
+   "replace": "this.providerState() === 'own' ? SARVAM_PRICE_INR",
+   "expect": "names Sarvam as the host"
+  },
+  {
+   "file": "web/src/app/pages/connect/voice-setting.ts",
+   "find": "(voice.provider() === 'sarvam' ? 'voice.disclosureSarvam' : 'voice.disclosure')",
+   "replace": "'voice.disclosure'",
+   "expect": "offers Sarvam with its own key"
+  },
+  {
+   "file": "web/src/app/pages/connect/voice-setting.ts",
+   "find": "this.voice.saveSarvamKey(this.sarvamKey, this.remember);\n    this.sarvamKey = '';",
+   "replace": "this.voice.saveSarvamKey(this.sarvamKey, this.remember);",
+   "expect": "offers Sarvam with its own key"
+  }
+ ]
+}

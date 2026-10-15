@@ -451,6 +451,7 @@ private fun serviceLabel(service: AiService): StringResource = when (service) {
     AiService.OPENAI -> Res.string.settings_ai_service_openai
     AiService.OPENROUTER -> Res.string.settings_ai_service_openrouter
     AiService.GROQ -> Res.string.settings_ai_service_groq
+    AiService.SARVAM -> Res.string.settings_ai_service_sarvam
     AiService.OLLAMA -> Res.string.settings_ai_service_ollama
     AiService.LM_STUDIO -> Res.string.settings_ai_service_lmstudio
     AiService.ANTHROPIC -> Res.string.settings_ai_service_anthropic
@@ -474,7 +475,7 @@ private fun FieldError(text: String?) {
 
 /** The API key field, masked, with a 48 dp show and hide button (as the Gemini key field always had). */
 @Composable
-private fun KeyField(
+internal fun KeyField(
     value: String,
     onChange: (String) -> Unit,
     label: String,
@@ -573,7 +574,7 @@ fun ownAiHost(): String {
 
 /** One choice of who answers: a radio row with a title and a hint, the whole row a 48 dp target. */
 @Composable
-private fun ProviderRow(selected: Boolean, enabled: Boolean, title: String, hint: String, onSelect: () -> Unit) {
+internal fun ProviderRow(selected: Boolean, enabled: Boolean, title: String, hint: String, onSelect: () -> Unit) {
     Row(
         Modifier.fillMaxWidth().heightIn(min = 48.dp)
             .selectable(selected = selected, enabled = enabled, role = Role.RadioButton, onClick = onSelect)

@@ -51,6 +51,7 @@ import app.doorprints.shared.ai.AiProviderConfig
 import app.doorprints.shared.ai.BaseUrlCheck
 import app.doorprints.shared.ai.BaseUrlValidator
 import app.doorprints.shared.voice.VoiceChoice
+import app.doorprints.shared.voice.VoiceProvider
 import app.doorprints.shared.voice.VoiceInput
 import app.doorprints.shared.voice.VoicePhase
 import app.doorprints.shared.voice.VoiceProblem
@@ -69,8 +70,8 @@ internal fun voiceHost(config: AiProviderConfig): String = when (config.kind) {
     else -> (BaseUrlValidator.check(config.baseUrl) as? BaseUrlCheck.Valid)?.host.orEmpty()
 }
 
-/** The microphone is offered, and where the audio would go. */
-internal class VoiceOffer(val host: String, val price: String?)
+/** The microphone is offered, where the audio would go, and the hard stop of a recording (Sarvam's is the short one, 30 s). */
+internal class VoiceOffer(val host: String, val price: String?, val maxMs: Long, val short: Boolean)
 
 /**
  * Whether the microphone is offered now (docs/03 ADR-37): the *Voice input* switch is on, *AI features* are on with the
@@ -86,7 +87,10 @@ internal fun rememberVoiceOffer(): VoiceOffer? {
     val aiOn by repo.aiEnabled.collectAsStateWithLifecycle()
     val ownKey by repo.aiOwnKey.collectAsStateWithLifecycle()
     if (!VoiceInput.available(choice, aiOn, ownKey, services.voice.recordable)) return null
-    return VoiceOffer(voiceHost(choice.config), VoiceInput.priceInr(choice.config))
+    return VoiceOffer(
+        VoiceInput.host(choice, voiceHost(choice.config)), VoiceInput.price(choice), VoiceInput.maxDurationMs(choice),
+        short = choice.provider == VoiceProvider.SARVAM,
+    )
 }
 
 /**
@@ -123,6 +127,7 @@ private fun VoiceMic(offer: VoiceOffer, value: String, onValue: (String) -> Unit
     val space by rememberUpdatedState(kind)
     val lang by rememberUpdatedState(language)
     val limit by rememberUpdatedState(max)
+    val maxMs by rememberUpdatedState(offer.maxMs)
     var rationale by remember { mutableStateOf(false) }
     val session = remember {
         VoiceSession(
@@ -130,6 +135,7 @@ private fun VoiceMic(offer: VoiceOffer, value: String, onValue: (String) -> Unit
             newRecorder = voice::newRecorder,
             permitted = voice::microphoneGranted,
             transcribe = { clip -> voice.transcribe(clip, space, lang) },
+            maxDurationMs = { maxMs },
             onWords = { words ->
                 val inserted = appendTranscript(text, words, limit)
                 put(inserted.text)
@@ -199,11 +205,17 @@ private fun VoiceMic(offer: VoiceOffer, value: String, onValue: (String) -> Unit
             }
         }
         Text(
-            stringResource(if (voice.iphoneWording) Res.string.voice_hint_ios else Res.string.voice_hint, offer.host),
+            stringResource(
+                when {
+                    offer.short -> if (voice.iphoneWording) Res.string.voice_hint_ios_short else Res.string.voice_hint_short
+                    else -> if (voice.iphoneWording) Res.string.voice_hint_ios else Res.string.voice_hint
+                },
+                offer.host,
+            ),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        val statusText = ui.status?.let { stringResource(it.res()) }
+        val statusText = ui.status?.let { stringResource(it.res(offer.short)) }
         LiveMessage {
             statusText?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
@@ -225,7 +237,17 @@ private fun VoiceMic(offer: VoiceOffer, value: String, onValue: (String) -> Unit
         AlertDialog(
             onDismissRequest = { rationale = false },
             title = { Text(stringResource(Res.string.voice_rationale_title)) },
-            text = { Text(stringResource(if (voice.iphoneWording) Res.string.voice_rationale_body_ios else Res.string.voice_rationale_body, offer.host)) },
+            text = {
+                Text(
+                    stringResource(
+                        when {
+                            offer.short -> if (voice.iphoneWording) Res.string.voice_rationale_body_ios_short else Res.string.voice_rationale_body_short
+                            else -> if (voice.iphoneWording) Res.string.voice_rationale_body_ios else Res.string.voice_rationale_body
+                        },
+                        offer.host,
+                    ),
+                )
+            },
             confirmButton = {
                 TextButton(onClick = { rationale = false; request() }) { Text(stringResource(Res.string.voice_rationale_go)) }
             },
@@ -234,12 +256,12 @@ private fun VoiceMic(offer: VoiceOffer, value: String, onValue: (String) -> Unit
     }
 }
 
-private fun VoiceStatus.res() = when (this) {
+private fun VoiceStatus.res(short: Boolean) = when (this) {
     VoiceStatus.STARTING -> Res.string.voice_status_starting
     VoiceStatus.RECORDING -> Res.string.voice_status_recording
     VoiceStatus.WORKING -> Res.string.voice_status_working
     VoiceStatus.DONE -> Res.string.voice_status_done
-    VoiceStatus.DONE_LIMIT -> Res.string.voice_status_done_limit
+    VoiceStatus.DONE_LIMIT -> if (short) Res.string.voice_status_done_limit_short else Res.string.voice_status_done_limit
     VoiceStatus.DONE_CUT -> Res.string.voice_status_done_cut
     VoiceStatus.CANCELLED -> Res.string.voice_status_cancelled
 }

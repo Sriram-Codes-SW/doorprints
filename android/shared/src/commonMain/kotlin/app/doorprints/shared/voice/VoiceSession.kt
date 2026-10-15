@@ -67,6 +67,8 @@ class VoiceSession(
     /** Puts [String] in the box; true when the box could not hold all of it. */
     private val onWords: (String) -> Boolean,
     private val tickMs: Long = 200,
+    /** The hard stop of a recording, read on every tick (60 s, or Sarvam's 30 s). */
+    private val maxDurationMs: () -> Long = { AudioLimits.MAX_DURATION_MS },
 ) {
     private val state = MutableStateFlow(VoiceUi())
     val ui: StateFlow<VoiceUi> = state.asStateFlow()
@@ -132,7 +134,7 @@ class VoiceSession(
         when {
             failure != null -> fail(mine, failure.problem())
             !permitted() -> fail(mine, VoiceProblem.DENIED)
-            r.elapsedMs() >= AudioLimits.MAX_DURATION_MS -> finishRecording(mine, VoiceLimit.TIME)
+            r.elapsedMs() >= maxDurationMs() -> finishRecording(mine, VoiceLimit.TIME)
             r.sizeBytes() >= AudioLimits.MAX_BYTES -> finishRecording(mine, VoiceLimit.SIZE)
             else -> state.value = state.value.copy(seconds = (r.elapsedMs() / 1000).toInt())
         }

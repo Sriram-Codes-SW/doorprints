@@ -5642,5 +5642,342 @@
       "quota" : false
     },
     "note" : "a 429 page that is not JSON waits"
+  } ],
+  "sarvamRequest" : [ {
+    "provider" : "sarvam",
+    "apiKey" : "xxxxxxxxxxxxxxxx",
+    "mime" : "audio/webm;codecs=opus",
+    "langHint" : "hi-IN",
+    "expected" : {
+      "url" : "https://api.sarvam.ai/speech-to-text",
+      "headers" : {
+        "api-subscription-key" : "xxxxxxxxxxxxxxxx"
+      },
+      "fields" : [ {
+        "name" : "file",
+        "fileName" : "audio.webm",
+        "contentType" : "audio/webm"
+      }, {
+        "name" : "language_code",
+        "value" : "hi-IN"
+      } ]
+    }
+  }, {
+    "provider" : "sarvam",
+    "apiKey" : "xxxxxxxxxxxxxxxx",
+    "mime" : "audio/mp4",
+    "langHint" : "ta",
+    "expected" : {
+      "url" : "https://api.sarvam.ai/speech-to-text",
+      "headers" : {
+        "api-subscription-key" : "xxxxxxxxxxxxxxxx"
+      },
+      "fields" : [ {
+        "name" : "file",
+        "fileName" : "audio.mp4",
+        "contentType" : "audio/mp4"
+      }, {
+        "name" : "language_code",
+        "value" : "ta-IN"
+      } ]
+    }
+  }, {
+    "provider" : "sarvam",
+    "apiKey" : "xxxxxxxxxxxxxxxx",
+    "mime" : "audio/ogg",
+    "langHint" : "te-IN",
+    "expected" : {
+      "url" : "https://api.sarvam.ai/speech-to-text",
+      "headers" : {
+        "api-subscription-key" : "xxxxxxxxxxxxxxxx"
+      },
+      "fields" : [ {
+        "name" : "file",
+        "fileName" : "audio.ogg",
+        "contentType" : "audio/ogg"
+      }, {
+        "name" : "language_code",
+        "value" : "te-IN"
+      } ]
+    }
+  }, {
+    "provider" : "sarvam",
+    "apiKey" : "xxxxxxxxxxxxxxxx",
+    "mime" : "audio/webm",
+    "langHint" : "en-IN",
+    "expected" : {
+      "url" : "https://api.sarvam.ai/speech-to-text",
+      "headers" : {
+        "api-subscription-key" : "xxxxxxxxxxxxxxxx"
+      },
+      "fields" : [ {
+        "name" : "file",
+        "fileName" : "audio.webm",
+        "contentType" : "audio/webm"
+      }, {
+        "name" : "language_code",
+        "value" : "unknown"
+      } ]
+    }
+  }, {
+    "provider" : "sarvam",
+    "apiKey" : "xxxxxxxxxxxxxxxx",
+    "mime" : "audio/m4a",
+    "langHint" : null,
+    "expected" : {
+      "url" : "https://api.sarvam.ai/speech-to-text",
+      "headers" : {
+        "api-subscription-key" : "xxxxxxxxxxxxxxxx"
+      },
+      "fields" : [ {
+        "name" : "file",
+        "fileName" : "audio.m4a",
+        "contentType" : "audio/m4a"
+      }, {
+        "name" : "language_code",
+        "value" : "unknown"
+      } ]
+    }
+  }, {
+    "provider" : "sarvam",
+    "apiKey" : "xxxxxxxxxxxxxxxx",
+    "mime" : "audio/wav",
+    "langHint" : "fr-FR",
+    "expected" : {
+      "url" : "https://api.sarvam.ai/speech-to-text",
+      "headers" : {
+        "api-subscription-key" : "xxxxxxxxxxxxxxxx"
+      },
+      "fields" : [ {
+        "name" : "file",
+        "fileName" : "audio.wav",
+        "contentType" : "audio/wav"
+      }, {
+        "name" : "language_code",
+        "value" : "unknown"
+      } ]
+    }
+  }, {
+    "provider" : "clip",
+    "size" : 2097152,
+    "mime" : "audio/webm",
+    "durationMs" : 30000,
+    "expected" : {
+      "mime" : "audio/webm"
+    }
+  }, {
+    "provider" : "clip",
+    "size" : 1,
+    "mime" : "audio/webm",
+    "durationMs" : 30001,
+    "expected" : {
+      "rejected" : "tooLong"
+    }
+  }, {
+    "provider" : "clip",
+    "size" : 2097153,
+    "mime" : "audio/webm",
+    "durationMs" : 1000,
+    "expected" : {
+      "rejected" : "tooLarge"
+    }
+  }, {
+    "provider" : "clip",
+    "size" : 0,
+    "mime" : "audio/webm",
+    "durationMs" : 1000,
+    "expected" : {
+      "rejected" : "empty"
+    }
+  }, {
+    "provider" : "clip",
+    "size" : 5,
+    "mime" : "audio/webm",
+    "durationMs" : null,
+    "expected" : {
+      "mime" : "audio/webm"
+    }
+  }, {
+    "provider" : "clip",
+    "size" : 5,
+    "mime" : "video/webm",
+    "durationMs" : 1000,
+    "expected" : {
+      "rejected" : "unsupportedType"
+    }
+  } ],
+  "sarvamContent" : [ {
+    "provider" : "sarvam",
+    "status" : 200,
+    "body" : "{\"request_id\":\"r1\",\"transcript\":\"अंधेरी वेस्ट में दो बीएचके, किराया अट्ठाईस हज़ार\",\"language_code\":\"hi-IN\"}",
+    "langHint" : "hi-IN",
+    "expected" : {
+      "text" : "अंधेरी वेस्ट में दो बीएचके, किराया अट्ठाईस हज़ार",
+      "language" : "hi-IN"
+    }
+  }, {
+    "provider" : "sarvam",
+    "status" : 200,
+    "body" : "{\"transcript\":\"  rent nine thousand in Beltola  \",\"language_code\":\"en-IN\",\"diarized_transcript\":null}",
+    "langHint" : null,
+    "expected" : {
+      "text" : "rent nine thousand in Beltola",
+      "language" : "en-IN"
+    }
+  }, {
+    "provider" : "sarvam",
+    "status" : 200,
+    "body" : "{\"transcript\":\"வாடகை ஒன்பதாயிரம்\",\"language_code\":null}",
+    "langHint" : "ta-IN",
+    "expected" : {
+      "text" : "வாடகை ஒன்பதாயிரம்",
+      "language" : "ta"
+    }
+  }, {
+    "provider" : "sarvam",
+    "status" : 200,
+    "body" : "{\"transcript\":\"two bhk\",\"language_code\":\"\"}",
+    "langHint" : null,
+    "expected" : {
+      "text" : "two bhk",
+      "language" : "und"
+    }
+  }, {
+    "provider" : "sarvam",
+    "status" : 200,
+    "body" : "{\"transcript\":\"\",\"language_code\":\"hi-IN\"}",
+    "langHint" : "hi-IN",
+    "expected" : {
+      "text" : "",
+      "language" : "hi-IN"
+    }
+  }, {
+    "provider" : "sarvam",
+    "status" : 200,
+    "body" : "{\"language_code\":\"hi-IN\"}",
+    "langHint" : null,
+    "expected" : {
+      "error" : "unavailable"
+    },
+    "note" : "no transcript"
+  }, {
+    "provider" : "sarvam",
+    "status" : 200,
+    "body" : "{\"transcript\":42}",
+    "langHint" : null,
+    "expected" : {
+      "error" : "unavailable"
+    },
+    "note" : "transcript is not a string"
+  }, {
+    "provider" : "sarvam",
+    "status" : 200,
+    "body" : "not json",
+    "langHint" : null,
+    "expected" : {
+      "error" : "unavailable"
+    },
+    "note" : "not JSON"
+  }, {
+    "provider" : "sarvam",
+    "status" : 200,
+    "body" : "[]",
+    "langHint" : null,
+    "expected" : {
+      "error" : "unavailable"
+    },
+    "note" : "an array"
+  }, {
+    "provider" : "sarvam",
+    "status" : 200,
+    "body" : "",
+    "langHint" : null,
+    "expected" : {
+      "error" : "unavailable"
+    },
+    "note" : "empty body"
+  }, {
+    "provider" : "sarvam",
+    "status" : 400,
+    "body" : "{\"error\":{\"message\":\"Invalid file format.\",\"type\":\"invalid_request_error\"}}",
+    "langHint" : null,
+    "expected" : {
+      "error" : "unavailable"
+    }
+  }, {
+    "provider" : "sarvam",
+    "status" : 400,
+    "body" : "{\"error\":{\"message\":\"API key not valid\"}}",
+    "langHint" : null,
+    "expected" : {
+      "error" : "unavailable"
+    }
+  }, {
+    "provider" : "sarvam",
+    "status" : 401,
+    "body" : "{\"error\":{\"message\":\"Incorrect API key provided\"}}",
+    "langHint" : null,
+    "expected" : {
+      "error" : "keyRejected"
+    }
+  }, {
+    "provider" : "sarvam",
+    "status" : 403,
+    "body" : "{\"error\":{\"message\":\"Forbidden\"}}",
+    "langHint" : null,
+    "expected" : {
+      "error" : "keyRejected"
+    }
+  }, {
+    "provider" : "sarvam",
+    "status" : 404,
+    "body" : "{\"error\":{\"message\":\"The model does not exist\"}}",
+    "langHint" : null,
+    "expected" : {
+      "error" : "modelNotFound"
+    }
+  }, {
+    "provider" : "sarvam",
+    "status" : 413,
+    "body" : "",
+    "langHint" : null,
+    "expected" : {
+      "error" : "unavailable"
+    }
+  }, {
+    "provider" : "sarvam",
+    "status" : 429,
+    "body" : "{\"error\":{\"message\":\"Rate limit reached\"}}",
+    "retryAfter" : "12",
+    "langHint" : null,
+    "expected" : {
+      "error" : "rateLimited",
+      "retryAfterSeconds" : 12
+    }
+  }, {
+    "provider" : "sarvam",
+    "status" : 429,
+    "body" : "{\"error\":{\"message\":\"Rate limit reached\"}}",
+    "retryAfter" : "soon",
+    "langHint" : null,
+    "expected" : {
+      "error" : "rateLimited"
+    }
+  }, {
+    "provider" : "sarvam",
+    "status" : 500,
+    "body" : "",
+    "langHint" : null,
+    "expected" : {
+      "error" : "unavailable"
+    }
+  }, {
+    "provider" : "sarvam",
+    "status" : 502,
+    "body" : "<html>Bad gateway</html>",
+    "langHint" : null,
+    "expected" : {
+      "error" : "unavailable"
+    }
   } ]
 }

@@ -82,12 +82,14 @@ class VoiceSessionTest {
         val clips = mutableListOf<RecordedClip>()
         val box = mutableListOf<String>()
         var boxCuts = false
+        var maxMs = AudioLimits.MAX_DURATION_MS
         val session = VoiceSession(
             scope = scope.backgroundScope,
             newRecorder = { next().also { recorders += it } },
             permitted = { granted },
             transcribe = { clip -> clips += clip; answer(clip) },
             onWords = { box += it; boxCuts },
+            maxDurationMs = { maxMs },
         )
         val last get() = recorders.last()
     }
@@ -148,6 +150,22 @@ class VoiceSessionTest {
         assertEquals(VoiceLimit.TIME, r.clips.single().limit)
         assertEquals(VoiceStatus.DONE_LIMIT, r.session.ui.value.status)
         assertEquals(1, r.box.size)
+    }
+
+    @Test
+    fun sarvamsThirtySecondLimitStopsTheRecordingByItselfWhereTheMinuteWouldNot() = runTest {
+        val r = Rig(this)
+        r.maxMs = AudioLimits.SARVAM_MAX_DURATION_MS
+        r.session.start()
+        r.last.ms = 29_000
+        advanceTimeBy(250); runCurrent()
+        assertEquals(0, r.last.stopped, "29 s is inside the limit")
+        r.last.ms = 30_000
+        advanceTimeBy(250); runCurrent()
+        assertEquals(1, r.last.stopped)
+        assertEquals(VoiceLimit.TIME, r.clips.single().limit)
+        assertEquals(VoiceStatus.DONE_LIMIT, r.session.ui.value.status)
+        assertEquals(30_000L, AudioLimits.SARVAM_MAX_DURATION_MS)
     }
 
     @Test

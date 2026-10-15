@@ -1,0 +1,324 @@
+{
+ "version": "0.1",
+ "date": "2026-10-15",
+ "description": "The audio clips of the voice suite (S4b-BL-224, docs/ai/voice-input.md section 5): eight short clips of synthetic speech about made-up listings, with fake phone numbers. Informational; no thresholds except the stop rule printed by the suite.",
+ "licence": "CC0-1.0. The clips were synthesised for this repository by the author with eSpeak NG (a speech synthesiser) from the texts below and encoded as Ogg Opus; no recording of a person is used. The texts are invented; every phone number is fake.",
+ "limits": {
+  "maxClips": 8,
+  "maxSecondsEach": 20,
+  "maxBytesTotal": 307200
+ },
+ "clips": [
+  {
+   "id": "en-extract-rent",
+   "lang": "en",
+   "voice": "en-gb",
+   "text": "Two BHK semi furnished flat for rent in Indiranagar. Rent twenty eight thousand a month. Call Ramesh on nine eight four five zero one two three four five.",
+   "entities": {
+    "price": [
+     "28000",
+     "28,000",
+     "28k",
+     "28 k",
+     "twenty eight thousand",
+     "twenty-eight thousand",
+     "28 thousand"
+    ],
+    "bhk": [
+     "2 bhk",
+     "two bhk",
+     "2bhk",
+     "2 b h k",
+     "two b h k",
+     "2 bedroom",
+     "two bedroom"
+    ],
+    "locality": [
+     "indiranagar",
+     "indira nagar"
+    ]
+   },
+   "phoneDigits": "9845012345",
+   "extract": {
+    "price": 28000,
+    "bedrooms": 2,
+    "locality": "Indiranagar"
+   },
+   "file": "en-extract-rent.ogg",
+   "durationSeconds": 11.7,
+   "bytes": 19711
+  },
+  {
+   "id": "en-extract-sale",
+   "lang": "en",
+   "voice": "en-gb",
+   "text": "Three BHK flat for sale in HSR Layout. Price one point three five crore. Call Priya on nine nine zero zero one two three four five six.",
+   "entities": {
+    "price": [
+     "1.35 crore",
+     "1.35 cr",
+     "one point three five crore",
+     "one point three five cr",
+     "13500000",
+     "1,35,00,000",
+     "1.35crore"
+    ],
+    "bhk": [
+     "3 bhk",
+     "three bhk",
+     "3bhk",
+     "3 b h k",
+     "three b h k",
+     "3 bedroom",
+     "three bedroom"
+    ],
+    "locality": [
+     "hsr layout",
+     "h s r layout",
+     "hsr lay out"
+    ]
+   },
+   "phoneDigits": "9900123456",
+   "extract": {
+    "price": 13500000,
+    "bedrooms": 3,
+    "locality": "HSR Layout"
+   },
+   "file": "en-extract-sale.ogg",
+   "durationSeconds": 11.5,
+   "bytes": 19363
+  },
+  {
+   "id": "en-ask-water",
+   "lang": "en",
+   "voice": "en-gb",
+   "text": "Which house had the best water situation?",
+   "entities": {
+    "price": [],
+    "bhk": [],
+    "locality": []
+   },
+   "ask": {
+    "mustContain": [
+     "Blue gate"
+    ]
+   },
+   "file": "en-ask-water.ogg",
+   "durationSeconds": 3.3,
+   "bytes": 5582
+  },
+  {
+   "id": "hi-extract-rent",
+   "lang": "hi",
+   "voice": "hi",
+   "text": "इंदिरानगर में दो बीएचके फ्लैट किराए पर है। किराया अट्ठाईस हज़ार रुपये महीना। फ़ोन नौ आठ चार पाँच शून्य एक दो तीन चार पाँच।",
+   "entities": {
+    "price": [
+     "28000",
+     "28,000",
+     "२८०००",
+     "२८,०००",
+     "अट्ठाईस हज़ार",
+     "अट्ठाइस हजार",
+     "अठाईस हज़ार",
+     "अट्ठाईस हजार",
+     "28 हज़ार",
+     "28 हजार",
+     "28 thousand"
+    ],
+    "bhk": [
+     "2 bhk",
+     "2bhk",
+     "दो बीएचके",
+     "2 बीएचके",
+     "२ बीएचके",
+     "दो बी एच के",
+     "दो bhk"
+    ],
+    "locality": [
+     "इंदिरानगर",
+     "इंदिरा नगर",
+     "indiranagar",
+     "indira nagar"
+    ]
+   },
+   "phoneDigits": "9845012345",
+   "extract": {
+    "price": 28000,
+    "bedrooms": 2,
+    "locality": "Indiranagar"
+   },
+   "file": "hi-extract-rent.ogg",
+   "durationSeconds": 11.2,
+   "bytes": 17689
+  },
+  {
+   "id": "hi-extract-sale",
+   "lang": "hi",
+   "voice": "hi",
+   "text": "तीन बीएचके फ्लैट बिक्री के लिए, एचएसआर लेआउट में। कीमत एक करोड़ पैंतीस लाख रुपये।",
+   "entities": {
+    "price": [
+     "13500000",
+     "1,35,00,000",
+     "१,३५,००,०००",
+     "एक करोड़ पैंतीस लाख",
+     "1.35 करोड़",
+     "1.35 crore",
+     "1 करोड़ 35 लाख",
+     "१ करोड़ ३५ लाख"
+    ],
+    "bhk": [
+     "3 bhk",
+     "3bhk",
+     "तीन बीएचके",
+     "3 बीएचके",
+     "३ बीएचके",
+     "तीन बी एच के",
+     "तीन bhk"
+    ],
+    "locality": [
+     "एचएसआर लेआउट",
+     "एच एस आर लेआउट",
+     "hsr layout",
+     "एचएसआर layout",
+     "hsr लेआउट"
+    ]
+   },
+   "extract": {
+    "price": 13500000,
+    "bedrooms": 3,
+    "locality": "HSR Layout"
+   },
+   "file": "hi-extract-sale.ogg",
+   "durationSeconds": 7.7,
+   "bytes": 11917
+  },
+  {
+   "id": "ta-extract-rent",
+   "lang": "ta",
+   "voice": "ta",
+   "text": "இந்திராநகரில் இரண்டு பிஎச்கே வீடு வாடகைக்கு. வாடகை இருபத்தெட்டாயிரம் ரூபாய்.",
+   "entities": {
+    "price": [
+     "28000",
+     "28,000",
+     "௨௮௦௦௦",
+     "இருபத்தெட்டாயிரம்",
+     "இருபத்து எட்டாயிரம்",
+     "இருபத்தெட்டு ஆயிரம்",
+     "இருபத்து எட்டு ஆயிரம்",
+     "28 ஆயிரம்",
+     "28 thousand"
+    ],
+    "bhk": [
+     "2 bhk",
+     "2bhk",
+     "இரண்டு பிஎச்கே",
+     "2 பிஎச்கே",
+     "இரண்டு பி.எச்.கே",
+     "2 பி.எச்.கே",
+     "இரண்டு bhk",
+     "இரண்டு பிஹெச்கே",
+     "இரண்டு பிஎச்.கே"
+    ],
+    "locality": [
+     "இந்திராநகர",
+     "இந்திரா நகர",
+     "indiranagar",
+     "indira nagar"
+    ]
+   },
+   "extract": {
+    "price": 28000,
+    "bedrooms": 2,
+    "locality": "Indiranagar"
+   },
+   "file": "ta-extract-rent.ogg",
+   "durationSeconds": 6.7,
+   "bytes": 11073
+  },
+  {
+   "id": "te-extract-rent",
+   "lang": "te",
+   "voice": "te",
+   "text": "ఇందిరానగర్‌లో రెండు బీహెచ్‌కే ఇల్లు అద్దెకు ఉంది. అద్దె ఇరవై ఎనిమిది వేలు.",
+   "entities": {
+    "price": [
+     "28000",
+     "28,000",
+     "౨౮౦౦౦",
+     "ఇరవై ఎనిమిది వేలు",
+     "28 వేలు",
+     "ఇరవై ఎనిమిది వేల",
+     "28 thousand"
+    ],
+    "bhk": [
+     "2 bhk",
+     "2bhk",
+     "రెండు బీహెచ్‌కే",
+     "రెండు బీహెచ్కే",
+     "2 బీహెచ్‌కే",
+     "2 బీహెచ్కే",
+     "రెండు బిహెచ్‌కే",
+     "రెండు bhk",
+     "రెండు బి హెచ్ కె"
+    ],
+    "locality": [
+     "ఇందిరానగర్",
+     "ఇందిరా నగర్",
+     "indiranagar",
+     "indira nagar"
+    ]
+   },
+   "extract": {
+    "price": 28000,
+    "bedrooms": 2,
+    "locality": "Indiranagar"
+   },
+   "file": "te-extract-rent.ogg",
+   "durationSeconds": 6.7,
+   "bytes": 11133
+  },
+  {
+   "id": "hinglish-extract-rent",
+   "lang": "hi",
+   "voice": "en-gb",
+   "text": "Haan ji, two BHK Baner mein hai. Rent twenty five thousand, deposit two lakh. Number nine eight two zero one two three four five six.",
+   "entities": {
+    "price": [
+     "25000",
+     "25,000",
+     "25k",
+     "twenty five thousand",
+     "twenty-five thousand",
+     "25 thousand",
+     "पच्चीस हज़ार",
+     "पच्चीस हजार"
+    ],
+    "bhk": [
+     "2 bhk",
+     "two bhk",
+     "2bhk",
+     "2 b h k",
+     "two b h k",
+     "दो bhk",
+     "दो बीएचके"
+    ],
+    "locality": [
+     "baner",
+     "बानेर"
+    ]
+   },
+   "phoneDigits": "9820123456",
+   "extract": {
+    "price": 25000,
+    "bedrooms": 2,
+    "locality": "Baner"
+   },
+   "file": "hinglish-extract-rent.ogg",
+   "durationSeconds": 11.6,
+   "bytes": 19129
+  }
+ ]
+}

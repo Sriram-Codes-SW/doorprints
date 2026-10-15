@@ -22,6 +22,7 @@ import app.doorprints.shared.ai.AiKind
 import app.doorprints.shared.ai.AiProviderConfig
 import app.doorprints.shared.ai.GeminiTranscriber
 import app.doorprints.shared.ai.OpenAiAudioTranscriber
+import app.doorprints.shared.ai.SarvamTranscriber
 import app.doorprints.shared.ai.TranscribeCapability
 import app.doorprints.shared.ai.Transcriber
 import io.ktor.client.HttpClient
@@ -30,7 +31,23 @@ import io.ktor.client.HttpClient
  * The *Voice input* setting on this phone: the switch (off by default, a plain preference of this phone, never exported,
  * synced or backed up) and the provider choice it works with (a plain setting, no key).
  */
-data class VoiceChoice(val enabled: Boolean = false, val config: AiProviderConfig = AiProviderConfig.GEMINI)
+data class VoiceChoice(
+    val enabled: Boolean = false,
+    val config: AiProviderConfig = AiProviderConfig.GEMINI,
+    /** Which service writes out the words (voice PR 7): the person's AI provider, or Sarvam with its own key. */
+    val provider: VoiceProvider = VoiceProvider.OWN_AI,
+    /** A Sarvam key is saved (the key itself is read only at the moment of a call). */
+    val sarvamKeySaved: Boolean = false,
+)
+
+/** Which service writes out the words: `own` (the default, absent in the settings) or `sarvam` (a key slot of its own). */
+enum class VoiceProvider(val wire: String) {
+    OWN_AI("own"), SARVAM("sarvam");
+
+    companion object {
+        fun fromWire(wire: String?): VoiceProvider = entries.firstOrNull { it.wire == wire } ?: OWN_AI
+    }
+}
 
 /**
  * The rules of voice input that do not need a screen or a microphone (docs/03 ADR-37, docs/ai/voice-input.md): who gets a
@@ -77,7 +94,22 @@ object VoiceInput {
      * can record ([recordable]). (The switch is read first: with it off nothing else counts.)
      */
     fun available(choice: VoiceChoice, aiEnabled: Boolean, ownKey: Boolean, recordable: Boolean): Boolean =
-        choice.enabled && aiEnabled && providerOk(ownKey, choice.config) && recordable
+        choice.enabled && aiEnabled && usable(choice, ownKey) && recordable
+
+    /** The chosen service can write out words now: Sarvam has its own key, or the own AI takes audio ([providerOk]). */
+    fun usable(choice: VoiceChoice, ownKey: Boolean): Boolean =
+        if (choice.provider == VoiceProvider.SARVAM) choice.sarvamKeySaved else providerOk(ownKey, choice.config)
+
+    /** The host the audio goes to, for the disclosure: Sarvam's, else the AI provider's ([aiHost], which the screen computes). */
+    fun host(choice: VoiceChoice, aiHost: String): String = if (choice.provider == VoiceProvider.SARVAM) SarvamTranscriber.HOST else aiHost
+
+    /** The list price of a minute, INR: Sarvam's, else [priceInr] of the AI provider. */
+    fun price(choice: VoiceChoice): String? =
+        if (choice.provider == VoiceProvider.SARVAM) SarvamTranscriber.PRICE_INR_PER_MINUTE else priceInr(choice.config)
+
+    /** The hard stop of a recording, milliseconds: Sarvam's 30 s, else a minute. */
+    fun maxDurationMs(choice: VoiceChoice): Long =
+        if (choice.provider == VoiceProvider.SARVAM) AudioLimits.SARVAM_MAX_DURATION_MS else AudioLimits.MAX_DURATION_MS
 
     /** The spoken language as a BCP 47 tag from the app's language (`hi-IN`); the provider may hear another one. */
     fun langHint(appLanguage: String?): String = when (appLanguage?.lowercase()?.substringBefore('-')) {

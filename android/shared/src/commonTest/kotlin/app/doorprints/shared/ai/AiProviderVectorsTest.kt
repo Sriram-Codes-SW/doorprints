@@ -295,12 +295,13 @@ class AiProviderVectorsTest {
     @Test
     fun theSixPresetsFillTheAddressesOfAdr35AndTheyAllPassTheValidator() {
         assertEquals(
-            listOf("openai", "openrouter", "groq", "ollama", "lmstudio", "custom"),
+            listOf("openai", "openrouter", "groq", "sarvam", "ollama", "lmstudio", "custom"),
             AiPreset.ALL.map { it.id },
         )
         assertEquals("https://api.openai.com/v1", AiPreset.OPENAI.baseUrl)
         assertEquals("https://openrouter.ai/api/v1", AiPreset.OPENROUTER.baseUrl)
         assertEquals("https://api.groq.com/openai/v1", AiPreset.GROQ.baseUrl)
+        assertEquals("https://api.sarvam.ai/v1", AiPreset.SARVAM.baseUrl)
         assertEquals("http://localhost:11434/v1", AiPreset.OLLAMA.baseUrl)
         assertEquals("http://localhost:1234/v1", AiPreset.LM_STUDIO.baseUrl)
         assertEquals(listOf("ollama", "lmstudio"), AiPreset.ALL.filter { it.keyOptional }.map { it.id })

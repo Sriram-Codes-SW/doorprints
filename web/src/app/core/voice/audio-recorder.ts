@@ -115,7 +115,8 @@ export class AudioRecorder {
     if (typeof document !== 'undefined' && document.visibilityState === 'hidden') this.cancel();
   };
 
-  constructor(private readonly env: RecorderEnv = browserRecorderEnv()) {}
+  /** `maxMs` is the hard stop of this recording (60 s, or Sarvam's 30 s). */
+  constructor(private readonly env: RecorderEnv = browserRecorderEnv(), private readonly maxMs: number = MAX_AUDIO_MS) {}
 
   /** True from a successful {@link start} until the recording ends. */
   get recording(): boolean {
@@ -161,7 +162,7 @@ export class AudioRecorder {
       this.startedAt = this.env.now();
       rec.start(SLICE_MS);
       this.active = true;
-      this.timer = setTimeout(() => this.stopFor('time'), MAX_AUDIO_MS);
+      this.timer = setTimeout(() => this.stopFor('time'), this.maxMs);
       window.addEventListener('pagehide', this.hide);
       document.addEventListener('visibilitychange', this.visibility);
     } catch {

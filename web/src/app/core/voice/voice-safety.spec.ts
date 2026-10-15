@@ -272,14 +272,41 @@ describe('voice input safety proof (T-I48)', () => {
   it('the provider key path is the existing own-key path: the voice code reads the key only from AiService.ownKey() and keeps no secret', () => {
     const files = voiceSources();
     for (const [file, text] of files) {
-      expect(text, file).not.toMatch(/GEMINI_KEY_KEY|apiKey\s*=|sessionStorage|STORAGE_PREFIX|localStorage\.(?:get|set|remove)Item\((?!VOICE_INPUT_KEY)/);
+      // The one place that reads or writes a Sarvam key is the service, and only in its own slot (SARVAM_KEY_KEY); no other
+      // voice file touches storage, the AI key slot or the prefix.
+      const own = file === 'core/voice/voice-input.service.ts';
+      const storage = own ? /GEMINI_KEY_KEY|apiKey\s*=|STORAGE_PREFIX|localStorage\.(?:get|set|remove)Item\((?!VOICE_INPUT_KEY|VOICE_PROVIDER_KEY)/
+        : /GEMINI_KEY_KEY|SARVAM_KEY_KEY|apiKey\s*=|sessionStorage|STORAGE_PREFIX|localStorage\.(?:get|set|remove)Item\((?!VOICE_INPUT_KEY)/;
+      expect(text, file).not.toMatch(storage);
     }
     expect(files.get('core/voice/voice-input.service.ts')).toContain('this.ai.ownKey()');
   });
 
   it('the voice source cannot store, log, copy or beacon audio: no IndexedDB, Cache, blob address, data URL, console or beacon', () => {
     for (const [file, text] of voiceSources()) {
-      expect(text, file).not.toMatch(/indexedDB|caches\.|createObjectURL|readAsDataURL|console\.|sendBeacon|new Audio\(|\.play\(\)|localStorage\.setItem\((?!VOICE_INPUT_KEY)/);
+      expect(text, file).not.toMatch(/indexedDB|caches\.|createObjectURL|readAsDataURL|console\.|sendBeacon|new Audio\(|\.play\(\)|localStorage\.setItem\((?!VOICE_INPUT_KEY|VOICE_PROVIDER_KEY)/);
+    }
+  });
+
+  it('TC-S-52: the Sarvam key has a slot of its own, goes only to the Sarvam adapter and its fixed address, and no backup, copy, sync or share file reads it', () => {
+    const files = voiceSources();
+    const service = files.get('core/voice/voice-input.service.ts')!;
+    expect(service).toContain('new SarvamTranscriber(this.sarvamKeyState())');
+    expect(service.split('\n').filter((l) => l.includes('SarvamTranscriber(')).join('')).not.toContain('ownKey');
+    const whole = readFileSync('src/app/core/ai/transcriber.ts', 'utf8');
+    const adapter = whole.slice(whole.indexOf('export const SARVAM_STT_URL'));
+    expect(adapter.length).toBeGreaterThan(500);
+    expect(adapter).toContain("SARVAM_STT_URL = 'https://api.sarvam.ai/speech-to-text'");
+    expect(adapter).toContain("'api-subscription-key'");
+    // The key reaches no other place: not the address, not a log, not an error.
+    expect(adapter).not.toMatch(/SARVAM_STT_URL\s*\+|\$\{[^}]*apiKey[^}]*\}/);
+    for (const [file, text] of allSources()) {
+      if (/SARVAM_KEY_KEY|doorprints\.sarvam-key|VOICE_PROVIDER_KEY/.test(text)) {
+        expect(['core/storage-keys.ts', 'core/voice/voice-input.service.ts'].includes(file) || file.endsWith('.spec.ts'), file).toBe(true);
+      }
+      if (/^(export|data|share)\//.test(file) || /sync|backup/i.test(file)) {
+        expect(text, file).not.toMatch(/sarvam|SARVAM/i);
+      }
     }
   });
 

@@ -114,10 +114,10 @@ describe('ConnectPage AI service', () => {
 
   it('offers Gemini first, then every preset with Anthropic before Custom', () => {
     const options = [...host.querySelectorAll<HTMLOptionElement>('#ai-service option')];
-    expect(options.map((o) => o.value)).toEqual(['gemini', 'openai', 'openrouter', 'groq', 'ollama', 'lmstudio', 'anthropic', 'custom']);
+    expect(options.map((o) => o.value)).toEqual(['gemini', 'openai', 'openrouter', 'groq', 'sarvam', 'ollama', 'lmstudio', 'anthropic', 'custom']);
     expect(options.map((o) => o.value).filter((v) => v !== 'gemini' && v !== 'anthropic')).toEqual(AI_PRESETS.map((p) => p.id));
     expect(options.map((o) => o.textContent?.trim())).toEqual([
-      'Google Gemini', 'OpenAI', 'OpenRouter', 'Groq', 'Ollama (on this device)', 'LM Studio (on this device)', 'Anthropic', 'Custom (OpenAI-compatible)',
+      'Google Gemini', 'OpenAI', 'OpenRouter', 'Groq', 'Sarvam (India)', 'Ollama (on this device)', 'LM Studio (on this device)', 'Anthropic', 'Custom (OpenAI-compatible)',
     ]);
     expect(el<HTMLSelectElement>('#ai-service')!.value).toBe('gemini');
     expect(el('#gemini-key')).not.toBeNull();

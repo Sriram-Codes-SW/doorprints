@@ -304,6 +304,7 @@ describe('baseUrl vectors and the presets', () => {
       openai: 'https://api.openai.com/v1',
       openrouter: 'https://openrouter.ai/api/v1',
       groq: 'https://api.groq.com/openai/v1',
+      sarvam: 'https://api.sarvam.ai/v1',
       ollama: 'http://localhost:11434/v1',
       lmstudio: 'http://localhost:1234/v1',
       custom: '',

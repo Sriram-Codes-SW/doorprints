@@ -21,7 +21,8 @@ import type { AiKind } from './ai-provider-config';
 import { REQUEST_TIMEOUT_MS, postAiMultipart } from './ai-request';
 import { OnDeviceAiError } from './on-device-ai.service';
 import {
-  AudioClipRejectedError, GeminiTranscriber, MAX_AUDIO_BYTES, MAX_AUDIO_MS, OpenAiAudioTranscriber, type Transcriber,
+  AudioClipRejectedError, GeminiTranscriber, MAX_AUDIO_BYTES, MAX_AUDIO_MS, OpenAiAudioTranscriber, SARVAM_MAX_AUDIO_MS, SarvamTranscriber, type Transcriber,
+  sarvamLanguageCode, sarvamTranscribeFields, sarvamTranscribeHeaders, sarvamTranscript,
   canTranscribe, checkClip, clipProblem, geminiTranscribeBody, geminiTranscribeUrl, geminiTranscript, languageOf,
   openAiTranscribeFields, openAiTranscribeHeaders, openAiTranscript, transcribePresetOf, transcribeSupport,
 } from './transcriber';
@@ -323,5 +324,101 @@ describe('the transcribers through a fake fetch', () => {
     }
     expect(lines).toEqual([]);
     expect(localStorage.length + sessionStorage.length, 'something was stored').toBe(0);
+  });
+});
+
+/** Made-up keys built at run time: no key-shaped literal is committed. */
+const SARVAM_FAKE = ['sarvam', 'fake', 'key', '0001'].join('-');
+const SARVAM_FAKE2 = ['sarvam', 'fake', 'key', '9999'].join('-');
+
+describe('TC-U-259 Sarvam speech to text (voice PR 7, S4b-BL-224)', () => {
+  const sarvamRows = (section: 'sarvamRequest' | 'sarvamContent', provider: string): Row[] =>
+    ((vectors as Record<string, unknown>)[section] as Row[]).filter((r) => r['provider'] === provider);
+  const sarvam = (f: ReturnType<typeof fakeFetch>, key = SARVAM_FAKE) => new SarvamTranscriber(key, f.fetchImpl);
+  const sarvamOk = (transcript = SPOKEN, language: string | null = 'en-IN') => JSON.stringify({ request_id: 'r', transcript, language_code: language });
+
+  it('sarvamRequest vectors: the form fields, the header and the address', async () => {
+    const rowsOf = sarvamRows('sarvamRequest', 'sarvam');
+    expect(rowsOf.length).toBe(6);
+    for (const r of rowsOf) {
+      const mime = checkClip(1, r['mime'], null);
+      expect(sarvamTranscribeFields(mime, r['langHint']), r['mime']).toEqual(r['expected']['fields']);
+      expect(sarvamTranscribeHeaders(r['apiKey'])).toEqual(r['expected']['headers']);
+      const f = fakeFetch({ status: 200, body: sarvamOk() });
+      await new SarvamTranscriber(r['apiKey'], f.fetchImpl).transcribe(audio(), r['mime'], r['langHint'], null);
+      expect(f.calls[0].url).toBe(r['expected']['url']);
+      expect([...(f.calls[0].init.body as FormData).keys()]).toEqual(['file', 'language_code']);
+      expect(new Headers(f.calls[0].init.headers).get('api-subscription-key')).toBe(r['apiKey']);
+      expect(new Headers(f.calls[0].init.headers).get('Authorization')).toBeNull();
+    }
+  });
+
+  it('sarvamRequest vectors: the 30 second cap and the other clip checks', () => {
+    for (const r of sarvamRows('sarvamRequest', 'clip')) {
+      const label = `${r['size']} bytes, ${r['mime']}, ${r['durationMs']} ms`;
+      if (r['expected']['rejected'] === undefined) expect(checkClip(r['size'], r['mime'], r['durationMs'], SARVAM_MAX_AUDIO_MS), label).toBe(r['expected']['mime']);
+      else expect(clipProblem(r['size'], r['mime'], r['durationMs'], SARVAM_MAX_AUDIO_MS), label).toBe(r['expected']['rejected']);
+    }
+  });
+
+  it('sarvamContent vectors: answers and refusals', () => {
+    const list = sarvamRows('sarvamContent', 'sarvam');
+    expect(list.length).toBe(20);
+    for (const r of list) {
+      const run = () => sarvamTranscript(r['status'], r['body'], r['retryAfter'] ?? null, r['langHint']);
+      if (r['expected']['error'] === undefined) expect(run(), r['note'] ?? r['body']).toEqual(r['expected']);
+      else {
+        let error: unknown;
+        try { run(); } catch (e) { error = e; }
+        expect(error, r['body']).toBeInstanceOf(OnDeviceAiError);
+        expect((error as OnDeviceAiError).kind, r['body']).toBe(r['expected']['error']);
+      }
+    }
+  });
+
+  it('the language codes: hi, ta and te as hi-IN, ta-IN, te-IN; anything else unknown', () => {
+    expect(['hi', 'ta-IN', 'te_IN', 'en-IN', 'fr', null, undefined, ''].map((h) => sarvamLanguageCode(h))).toEqual([
+      'hi-IN', 'ta-IN', 'te-IN', 'unknown', 'unknown', 'unknown', 'unknown', 'unknown',
+    ]);
+  });
+
+  it('sends one multipart call to api.sarvam.ai with the key in api-subscription-key only, and returns the words', async () => {
+    const f = fakeFetch({ status: 200, body: sarvamOk(SPOKEN, 'hi-IN') });
+    const heard = await sarvam(f).transcribe(audio(), 'audio/webm;codecs=opus', 'hi-IN', 12_000);
+    expect(heard).toEqual({ text: SPOKEN, language: 'hi-IN' });
+    expect(f.calls.length).toBe(1);
+    expect(f.calls[0].url).toBe('https://api.sarvam.ai/speech-to-text');
+    expect(f.calls[0].init).toMatchObject({ method: 'POST', redirect: 'manual', credentials: 'omit', cache: 'no-store' });
+    expect(f.calls[0].url).not.toContain(SARVAM_FAKE);
+    const form = f.calls[0].init.body as FormData;
+    expect(form.get('language_code')).toBe('hi-IN');
+    expect(new TextDecoder().decode(await (form.get('file') as File).arrayBuffer())).toBe(AUDIO_TEXT);
+  });
+
+  it('a clip over 30 seconds (or empty, too large, not audio) is refused before anything is sent; 30 seconds exactly is sent', async () => {
+    const f = fakeFetch({ status: 200, body: sarvamOk() });
+    expect(SARVAM_MAX_AUDIO_MS).toBe(30_000);
+    expect(SARVAM_MAX_AUDIO_MS).toBeLessThan(MAX_AUDIO_MS);
+    expect(await kindOf(sarvam(f).transcribe(audio(), 'audio/webm', null, 30_001))).toBe('rejected:tooLong');
+    expect(await kindOf(sarvam(f).transcribe(new Uint8Array(0), 'audio/webm', null, 1_000))).toBe('rejected:empty');
+    expect(await kindOf(sarvam(f).transcribe(audio(), 'video/webm', null, 1_000))).toBe('rejected:unsupportedType');
+    expect(f.calls.length).toBe(0);
+    await sarvam(f).transcribe(audio(), 'audio/webm', null, 30_000);
+    expect(f.calls.length).toBe(1);
+  });
+
+  it('T-I48: neither the audio, the words nor the key reach an error or a console line', async () => {
+    const spies = (['log', 'info', 'warn', 'error', 'debug'] as const).map((m) => vi.spyOn(console, m));
+    for (const step of [{ status: 401 }, { status: 500, body: SPOKEN }, 'network' as const, { status: 200, body: 'not json' }]) {
+      const e = await errorOf(call(sarvam(fakeFetch(step), SARVAM_FAKE2)));
+      for (const secret of [...SECRETS, SARVAM_FAKE2]) expect(String((e as Error).message ?? e)).not.toContain(secret);
+    }
+    for (const s of spies) expect(s).not.toHaveBeenCalled();
+    vi.restoreAllMocks();
+  });
+
+  it('the Sarvam chat preset takes no OpenAI-style audio: its speech has its own adapter and key', () => {
+    expect(transcribePresetOf({ kind: 'openai-compatible', baseUrl: 'https://api.sarvam.ai/v1' })).toBe('sarvam');
+    expect(transcribeSupport({ kind: 'openai-compatible', baseUrl: 'https://api.sarvam.ai/v1' })).toBe('no');
   });
 });

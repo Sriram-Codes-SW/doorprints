@@ -39,6 +39,7 @@ import app.doorprints.shared.voice.RecordedClip
 import app.doorprints.shared.voice.VoiceFailure
 import app.doorprints.shared.voice.VoiceRecorderException
 import app.doorprints.shared.voice.VoicePhase
+import app.doorprints.shared.voice.VoiceProvider
 import app.doorprints.shared.voice.VoiceSession
 import app.doorprints.shared.voice.VoiceStatus
 import app.doorprints.voice.AndroidVoiceServices
@@ -105,6 +106,7 @@ class VoiceSafetyTest {
         PreferenceDataStoreFactory.create(scope = CoroutineScope(Dispatchers.IO + job)) { settingsFile },
         KeystoreSecretStore(seal, open = open),
         geminiSecrets = KeystoreSecretStore(seal, KeystoreSecretStore.GEMINI_ENTRY, open),
+        sarvamSecrets = KeystoreSecretStore(seal, KeystoreSecretStore.SARVAM_ENTRY, open),
     )
 
     @After fun tearDown() {
@@ -148,7 +150,7 @@ class VoiceSafetyTest {
         val client = HttpClient(MockEngine { request ->
             requests += request
             bodies += request.body.toByteArray()
-            respond("""{"text":"WORDS-SAFETY-MARKER nine eight four five zero"}""", HttpStatusCode.OK, Headers.build { append(HttpHeaders.ContentType, "application/json") })
+            respond(if ("sarvam" in request.url.host) """{"transcript":"WORDS-SAFETY-MARKER nine eight four five zero","language_code":"hi-IN"}""" else """{"text":"WORDS-SAFETY-MARKER nine eight four five zero"}""", HttpStatusCode.OK, Headers.build { append(HttpHeaders.ContentType, "application/json") })
         })
     }
 
@@ -326,7 +328,7 @@ class VoiceSafetyTest {
     private val uiMain = "ui/src/commonMain/kotlin/app/doorprints/ui"
 
     private fun voiceSources(): List<File> =
-        kotlinFiles("$shared/shared/voice") + kotlinFiles("$appMain/voice") + File(root(), uiMain).listFiles { f -> f.name.startsWith("Voice") && f.extension == "kt" }!!.toList()
+        kotlinFiles("$shared/shared/voice") + kotlinFiles("$shared/shared/ai/SarvamTranscriber.kt") + kotlinFiles("$appMain/voice") + File(root(), uiMain).listFiles { f -> f.name.startsWith("Voice") && f.extension == "kt" }!!.toList()
 
     @Test fun theVoiceCodeWritesNoFilePreferenceLogShareOrRow() {
         val sources = voiceSources()
@@ -348,7 +350,8 @@ class VoiceSafetyTest {
         )
         val forbidden = listOf(
             "shared.voice", "VoiceChoice", "voiceChoice", "voiceInput", "voice.input", "RecordedClip", "OwnKeyTranscription", "VoiceSession",
-            "PcmVoiceRecorder", "AudioRecord", "saveVoiceInput",
+            "PcmVoiceRecorder", "AudioRecord", "saveVoiceInput", "SarvamTranscriber", "sarvamKey", "saveSarvamKey", "removeSarvamKey",
+            "SARVAM_ENTRY", "sarvamKeyEnc", "voice.provider", "VoiceProvider", "saveVoiceProvider",
         )
         var scanned = 0
         for (p in paths) for (f in kotlinFiles(p)) {
@@ -364,6 +367,63 @@ class VoiceSafetyTest {
         assertEquals(listOf("Settings.kt"), mentions)
         assertTrue(AppSettings::class.java.declaredFields.none { it.name.contains("voice", ignoreCase = true) })
         assertFalse(AppSettings().toString().contains("voice", ignoreCase = true))
+        // The speech provider's choice and the Sarvam key's slot likewise: one file each, and no field of the exported settings.
+        val provider = File(root(), "shared/src/commonMain").walkTopDown().filter { it.isFile && it.extension == "kt" }
+            .filter { code(it).contains("\"voice.provider\"") }.map { it.name }.toList()
+        assertEquals(listOf("Settings.kt"), provider)
+        assertTrue(AppSettings::class.java.declaredFields.none { it.name.contains("sarvam", ignoreCase = true) })
+        assertFalse(AppSettings().toString().contains("sarvam", ignoreCase = true))
+    }
+
+    // --- Sarvam, the speech provider with a key of its own (voice PR 7, S4b-BL-224) ----------------------------------------
+
+    private val sarvamKey = "sarvam-" + "fake-" + "k".repeat(6)
+
+    private fun configureSarvam(voice: Boolean = true, features: Boolean = true, key: String = sarvamKey, provider: Boolean = true) = runBlocking {
+        // An AI key that must not follow the audio to Sarvam, on a service that takes no audio at all.
+        store.saveAiProviderConfig(AiProviderConfig(AiKind.ANTHROPIC, AiPreset.ANTHROPIC.baseUrl, "claude"), this@VoiceSafetyTest.key)
+        store.saveAiFeatures(features)
+        store.saveAiProvider(AiProviderChoice.DEVICE)
+        store.saveVoiceInput(voice)
+        if (provider) store.saveVoiceProvider(VoiceProvider.SARVAM)
+        store.saveSarvamKey(key)
+    }
+
+    @Test fun sarvamIsCalledAtItsOwnHostWithItsOwnKeyInItsOwnHeaderAndTheAiKeyStaysHome() {
+        configureSarvam()
+        val provider = Provider()
+        val clip = RecordedClip(ByteArray(2_000) { 1 }, "audio/wav", 1_000)
+        val heard = runBlocking { OwnKeyTranscription(store, provider.client).transcribe(clip, "house", "ta") }
+        assertEquals(words, heard.text)
+        val request = provider.requests.single()
+        assertEquals("api.sarvam.ai", request.url.host)
+        assertEquals("/speech-to-text", request.url.encodedPath)
+        assertEquals(sarvamKey, request.headers["api-subscription-key"])
+        assertEquals(null, request.headers[HttpHeaders.Authorization])
+        assertFalse(request.url.toString().contains(sarvamKey))
+        val body = provider.bodies.single()
+        assertFalse("the Sarvam key is not in the body", contains(body, sarvamKey.encodeToByteArray()))
+        assertFalse("the AI key is not in the body", contains(body, key.encodeToByteArray()))
+        assertTrue(contains(body, "ta-IN".encodeToByteArray()))
+        // The settings file holds the sealed key in its own entry and never the plain text.
+        val file = settingsFile.readBytes()
+        assertFalse(contains(file, sarvamKey.encodeToByteArray()))
+        assertTrue(contains(file, "sarvamKeyEnc".encodeToByteArray()))
+    }
+
+    @Test fun sarvamIsRefusedWithoutTheSwitchTheAiFeaturesOrItsKey() {
+        refused("sarvam, voice off") { configureSarvam(voice = false) }
+        refused("sarvam, AI features off") { configureSarvam(features = false) }
+        refused("sarvam, no key") { configureSarvam(key = "") }
+    }
+
+    @Test fun sarvamRefusesAClipOverThirtySecondsBeforeAnythingIsSent() {
+        configureSarvam()
+        val provider = Provider()
+        val clip = RecordedClip(ByteArray(2_000) { 1 }, "audio/wav", 31_000)
+        val e = runCatching { runBlocking { OwnKeyTranscription(store, provider.client).transcribe(clip, "house", "en") } }.exceptionOrNull()
+        assertTrue(e is app.doorprints.shared.ai.AudioClipRejected)
+        assertTrue(provider.requests.isEmpty())
     }
 
     // --- the manifest and Android's backup ------------------------------------------------------------------------------------
