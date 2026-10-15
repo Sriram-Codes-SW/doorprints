@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.141 |
+| Version | 0.142 |
 | Date | 2026-10-15 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -152,6 +152,7 @@
 | 0.139 | 2026-10-15 | Claude (Code), engineer | **§18.16 The website's leftovers of the kinds** (kinds PR 20; S4b-BL-261 item 2, -265, -267, -272, -278, -282, -288, -291, -292; `feat/kinds-20-web-leftovers`; [06](06-test-plan.md) TC-U-236, TC-M-77; [10](10-sprint-log.md) v0.328): the walk-end sheet's search, the marks of a kind's extras, the space words in the kind files, a filter by a typed extra, a space picker on Your data, `better`, the kind-neutral backup and import words, a number extra's range, and the phones' twin list. |
 | 0.140 | 2026-10-15 | Claude (Code), engineer | **The AI endpoints' error statuses** (S4b-BL-244, S4b-BL-233; `fix/post-release-small-fixes`; [ai-design](ai/ai-design.md) v0.77): a spent quota or credit is `402` `AI_QUOTA_EXHAUSTED` (not retryable, no `Retry-After`) and a provider safety block is `422` `AI_DECLINED` (not retryable); a per-minute limit stays `503` with `Retry-After: 60`. The clients read the status; the website and the phones use their existing "used up" and "declined" words. |
 | 0.141 | 2026-10-15 | Claude (Code), engineer | **§18.16 The phones' part** (kinds PR 21; S4b-BL-261 item 2, -265, -267, -272, -273, -278, -291, -292, -300, -301; `feat/kinds-21-phone-leftovers`; [06](06-test-plan.md) TC-U-239, TC-M-78; [10](10-sprint-log.md) v0.331): the eight items of the twin list on Android and the iPhone, and the phone-only rows; S4b-BL-302 and S4b-BL-304 left to the owner, S4b-BL-303 to its own pull request. |
+| 0.142 | 2026-10-15 | Claude (Code), engineer | **Room 13: an index on the kind** (S4b-BL-303; `feat/kinds-22-room-space-query`, stacked on `feat/kinds-21-phone-leftovers`; [06](06-test-plan.md) TC-U-240; [10](10-sprint-log.md) v0.332): a space's list and the chooser's tally read through `index_houses_kind`. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -820,6 +821,10 @@ constructor, which reads them back out (`Candidates.houseExtrasOf`, by type, not
 (the list and its search, the form, the cost summary, the copies, the AI) reads the same values as before, the twin of
 the website's `data/candidate-rows.ts`. `CommonRepository` and the DAOs are unchanged; the internal names (`houses`,
 `houseId`) stay, as on the website.
+
+#### Room 13 (S4b-BL-303): an index on the kind
+
+`MIGRATION_12_13` and `13.json` (identity hash `71cf6f1d4190491691b73989cab3e4f9`): `index_houses_kind` on `houses.kind`, nothing else; no row changes. With two or more kinds on, a space's list (`rememberSpaceHouses`) and the chooser's cards read through it instead of filtering the whole list in memory: `Repository.housesOf(space)` runs `HouseDao.observeKinds` (the kinds a space holds) or `observeKindsExcept` (the default space also holds a kind this build does not have), chosen by `SpaceView.query()`, which `SpaceQueryTest` holds to `SpaceView.holds` for every kind in every space; `Repository.kindTallies` is one row per kind (`count`, newest `updatedAt`) and `spaceCardsOf` makes the cards from it (`SpaceCardsTest`, `SpaceQueryTest`). With one kind on `rememberSpaceHouses` is `repo.houses`, as before. `SpacesRepositoryTest` runs both on real Room against the in-memory rule, a tombstone and a kind this build does not have included; `AppDatabaseMigrationTest.migration12To13AddsTheKindIndexAndKeepsEveryRow` the migration.
 
 ### 6.3 Derived values
 

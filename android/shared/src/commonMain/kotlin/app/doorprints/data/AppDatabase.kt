@@ -18,6 +18,7 @@
 
 package app.doorprints.data
 
+import app.doorprints.shared.model.KindTally
 import androidx.room.*
 import androidx.room.migration.Migration
 import androidx.sqlite.SQLiteConnection
@@ -108,6 +109,21 @@ class Converters {
 interface HouseDao {
     @Query("SELECT * FROM houses WHERE deleted = 0 ORDER BY updatedAt DESC")
     fun observeAll(): Flow<List<HouseEntity>>
+
+    /**
+     * The live candidates of these kinds, newest edit first, read through `index_houses_kind` (S4b-BL-303): one space of the
+     * list, so a screen of a space does not read the other spaces' rows. `kinds` is never empty (the caller answers that itself).
+     */
+    @Query("SELECT * FROM houses WHERE deleted = 0 AND kind IN (:kinds) ORDER BY updatedAt DESC")
+    fun observeKinds(kinds: List<String>): Flow<List<HouseEntity>>
+
+    /** The live candidates of every kind but these, newest edit first: the default space also holds a kind this build does not have. */
+    @Query("SELECT * FROM houses WHERE deleted = 0 AND kind NOT IN (:kinds) ORDER BY updatedAt DESC")
+    fun observeKindsExcept(kinds: List<String>): Flow<List<HouseEntity>>
+
+    /** One row per kind that has a live candidate: how many, and when the newest changed (the chooser's cards). */
+    @Query("SELECT kind, COUNT(*) AS count, MAX(updatedAt) AS updated FROM houses WHERE deleted = 0 GROUP BY kind")
+    fun observeKindTallies(): Flow<List<KindTally>>
 
     @Query("SELECT * FROM houses WHERE deleted = 0")
     suspend fun all(): List<HouseEntity>
@@ -454,7 +470,7 @@ interface RecordDao {
         HouseEntity::class, VisitEntity::class, PhotoEntity::class, TrackPointEntity::class, RecordEntity::class,
         SavedWalkEntity::class,
     ],
-    version = 12,
+    version = 13,
     exportSchema = true,
 )
 /**
@@ -658,6 +674,16 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * v13 (S4b-BL-303, 2026-10-15): `index_houses_kind` on `houses.kind`, so a space's list and the chooser's tally read the
+         * rows of a kind through an index instead of the whole table. No row changes. The SQL is Room's own, from `13.json`.
+         */
+        val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(connection: SQLiteConnection) {
+                connection.execSQL("CREATE INDEX IF NOT EXISTS `index_houses_kind` ON `houses` (`kind`)")
+            }
+        }
+
         /** The `houses` table of version 12, Room's own SQL from `12.json`. */
         private const val HOUSES_V12 =
             "CREATE TABLE IF NOT EXISTS `houses` (`id` TEXT NOT NULL, `label` TEXT NOT NULL, `address` TEXT, " +
@@ -688,7 +714,7 @@ abstract class AppDatabase : RoomDatabase() {
          */
         val MIGRATIONS: Array<Migration> = arrayOf(
             MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8,
-            MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12,
+            MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13,
         )
     }
 }

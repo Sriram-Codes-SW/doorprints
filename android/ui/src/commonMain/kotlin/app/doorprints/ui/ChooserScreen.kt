@@ -47,10 +47,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.doorprints.shared.model.SpaceCard
-import app.doorprints.shared.model.SpaceRow
-import app.doorprints.shared.model.spaceCards
+import app.doorprints.shared.model.KindTally
+import app.doorprints.shared.model.spaceCardsOf
 import app.doorprints.ui.res.*
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
@@ -70,12 +69,12 @@ fun ChooserScreen(onOpen: (String) -> Unit, onOpenSettings: () -> Unit) {
     val space = LocalSpace.current
     val setting = space.setting
     val scope = rememberCoroutineScope()
-    // The tally is read from the live list, so it follows a sync or an import while the chooser is open (no index: S4b-BL-286).
-    val rows: List<SpaceRow>? by remember(repo) { repo.houses.map { list -> list.map { SpaceRow(it.kind, it.updatedAt) } } }
-        .collectAsStateWithLifecycle(initialValue = null)
+    // One count and newest change per kind, read from the store through the `kind` index (S4b-BL-303), so it follows a sync or an
+    // import while the chooser is open without loading every candidate.
+    val tallies: List<KindTally>? by remember(repo) { repo.kindTallies }.collectAsStateWithLifecycle(initialValue = null)
     val hint by remember(repo) { repo.settings.chooserHintShown() }.collectAsStateWithLifecycle(initialValue = false)
-    val cards = remember(rows, setting) {
-        spaceCards(rows.orEmpty(), setting.enabled, setting.default, setting.available)
+    val cards = remember(tallies, setting) {
+        spaceCardsOf(tallies.orEmpty(), setting.enabled, setting.default, setting.available)
     }
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState())

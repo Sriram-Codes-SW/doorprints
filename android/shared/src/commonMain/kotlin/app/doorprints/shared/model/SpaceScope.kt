@@ -35,6 +35,23 @@ data class SpaceView(val kind: String, val multi: Boolean, val default: String, 
     }
 }
 
+/**
+ * How the store is asked for one space's candidates (S4b-BL-303), the same set [SpaceView.holds] chooses in memory: the rows of
+ * these [kinds] ([except] false), or the rows of every kind but these ([except] true: the default space also holds a kind this
+ * build does not have). [none] holds nothing (a space that is neither an available kind nor the default).
+ */
+data class SpaceQuery(val kinds: List<String>, val except: Boolean) {
+    val none: Boolean get() = !except && kinds.isEmpty()
+}
+
+/** The store query that selects exactly the candidates [SpaceView.holds] (`SpaceQueryTest` holds the two together). */
+fun SpaceView.query(): SpaceQuery = when {
+    !multi -> SpaceQuery(emptyList(), except = true)
+    kind == default -> SpaceQuery(available.filter { it != kind }, except = true)
+    kind in available -> SpaceQuery(listOf(kind), except = false)
+    else -> SpaceQuery(emptyList(), except = false)
+}
+
 /** A candidate as Compare's rules read it: its id, kind (`null`: a house), status by name and whether it is deleted. */
 data class ScopedCandidate(
     val id: String,

@@ -489,6 +489,36 @@ class AppDatabaseMigrationTest {
         }
     }
 
+    /**
+     * v13 (S4b-BL-303): `index_houses_kind` on `houses.kind`, nothing else. The rows of a version 12 database, a tombstone and a
+     * school among them, are read back as they were, and the index is the one Room's `13.json` lists (the helper validates it).
+     */
+    @Test
+    fun migration12To13AddsTheKindIndexAndKeepsEveryRow() = runBlocking {
+        writeVersion1(helperFile)
+        helper.runMigrationsAndValidate(12, AppDatabase.MIGRATIONS.toList().take(11)).use { v12 ->
+            for ((id, kind, deleted) in listOf(Triple("s1", "school", 0), Triple("h9", "house", 1))) {
+                v12.execSQL(
+                    "INSERT INTO houses (id, label, lat, lon, status, kind, deleted, dirty, checklist, createdAt, updatedAt) " +
+                        "VALUES ('$id', 'Pine Hill', 26.14, 91.79, 'NEW', '$kind', $deleted, 0, '{}', 10, 20)",
+                )
+            }
+        }
+        val db = helper.runMigrationsAndValidate(13, listOf(AppDatabase.MIGRATION_12_13))
+        try {
+            assertEquals(
+                listOf("h1|house|0", "h9|house|1", "s1|school|0"),
+                db.rows("SELECT id, kind, deleted FROM houses ORDER BY id"),
+            )
+            assertEquals(
+                listOf("index_houses_kind|houses", "index_houses_street|houses"),
+                db.rows("SELECT name, tbl_name FROM sqlite_master WHERE type = 'index' AND tbl_name = 'houses' AND name LIKE 'index_houses_%' ORDER BY name"),
+            )
+        } finally {
+            db.close()
+        }
+    }
+
     @Test
     fun aVersion1HousehuntDatabaseMovesMigratesAndOpensWithItsRows() = runBlocking {
         val legacy = context.getDatabasePath(DatabaseFile.LEGACY_NAME)

@@ -27,9 +27,25 @@ data class SpaceCards(val shown: List<SpaceCard>, val hidden: List<SpaceCard>)
 /** A candidate as the chooser tallies it: its kind (`null`: a house) and when it last changed (epoch ms). */
 data class SpaceRow(val kind: String?, val updatedAt: Long)
 
+/**
+ * How many live candidates a kind holds and when the newest changed (epoch ms): the chooser's tally, one row per kind, read by
+ * `HouseDao.observeKindTallies` so the chooser does not load every candidate (S4b-BL-303). A Room query projection, not a table.
+ */
+data class KindTally(val kind: String, val count: Int, val updated: Long)
+
 /** How many candidates each space holds (a kind with none is absent): *What you track*'s *Saved: N*. */
 fun spaceCounts(rows: List<SpaceRow>, default: String, available: List<String>): Map<String, Int> =
     rows.groupingBy { r -> (r.kind ?: KindSettingRules.HOUSE).let { if (it in available) it else default } }.eachCount()
+
+/** [spaceCounts] from the store's tallies (S4b-BL-303): the same numbers without reading every candidate. */
+fun spaceCountsOf(tallies: List<KindTally>, default: String, available: List<String>): Map<String, Int> {
+    val out = HashMap<String, Int>()
+    for (t in tallies) {
+        val space = if (t.kind in available) t.kind else default
+        out[space] = (out[space] ?: 0) + t.count
+    }
+    return out
+}
 
 /**
  * Groups the live candidates by space for the chooser (kinds PR C, S4b-BL-274; the twin of the website's `spaceCards`): one
@@ -37,14 +53,24 @@ fun spaceCounts(rows: List<SpaceRow>, default: String, available: List<String>):
  * but still has entries (`hidden`), so a kind with data is never hidden silently and never deleted. A candidate of a kind
  * that is not [available] counts in the default space, as everywhere (`SpaceScope.holdsFor`).
  */
-fun spaceCards(rows: List<SpaceRow>, enabled: List<String>, default: String, available: List<String>): SpaceCards {
+fun spaceCards(rows: List<SpaceRow>, enabled: List<String>, default: String, available: List<String>): SpaceCards =
+    spaceCardsOf(
+        rows.groupBy { it.kind ?: KindSettingRules.HOUSE }.map { (kind, list) -> KindTally(kind, list.size, list.maxOf { it.updatedAt }) },
+        enabled, default, available,
+    )
+
+/**
+ * The same cards from the store's tallies, one per kind (S4b-BL-303): the chooser reads a count and a newest time per kind
+ * instead of every candidate. A kind that is not [available] counts in the [default] space; the numbers are those of
+ * [spaceCards] over the rows the tallies sum.
+ */
+fun spaceCardsOf(tallies: List<KindTally>, enabled: List<String>, default: String, available: List<String>): SpaceCards {
     val count = HashMap<String, Int>()
     val updated = HashMap<String, Long>()
-    for (r in rows) {
-        val kind = r.kind ?: KindSettingRules.HOUSE
-        val space = if (kind in available) kind else default
-        count[space] = (count[space] ?: 0) + 1
-        if (r.updatedAt > (updated[space] ?: Long.MIN_VALUE)) updated[space] = r.updatedAt
+    for (t in tallies) {
+        val space = if (t.kind in available) t.kind else default
+        count[space] = (count[space] ?: 0) + t.count
+        if (t.updated > (updated[space] ?: Long.MIN_VALUE)) updated[space] = t.updated
     }
     fun card(kind: String) = SpaceCard(kind, count[kind] ?: 0, updated[kind], kind == default)
     val order = listOf(default) + enabled.filter { it != default }
