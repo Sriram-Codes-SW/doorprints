@@ -199,7 +199,7 @@ private fun VoiceMic(offer: VoiceOffer, value: String, onValue: (String) -> Unit
             }
         }
         Text(
-            stringResource(Res.string.voice_hint, offer.host),
+            stringResource(if (voice.iphoneWording) Res.string.voice_hint_ios else Res.string.voice_hint, offer.host),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -225,7 +225,7 @@ private fun VoiceMic(offer: VoiceOffer, value: String, onValue: (String) -> Unit
         AlertDialog(
             onDismissRequest = { rationale = false },
             title = { Text(stringResource(Res.string.voice_rationale_title)) },
-            text = { Text(stringResource(Res.string.voice_rationale_body, offer.host)) },
+            text = { Text(stringResource(if (voice.iphoneWording) Res.string.voice_rationale_body_ios else Res.string.voice_rationale_body, offer.host)) },
             confirmButton = {
                 TextButton(onClick = { rationale = false; request() }) { Text(stringResource(Res.string.voice_rationale_go)) }
             },

@@ -91,6 +91,23 @@ indicator shows while it runs; *Always* is never asked for), the alerts as local
 the Swift app sets the notification delegate in its `init`, `MainViewControllerKt.installNotifications()`), street
 names and the new house's address from Apple's `CLGeocoder`, the battery from `UIDevice`. `docs/10` §13.14.
 
+## Voice input (S4b-BL-223)
+
+The microphone button under *Ask a question*, *Plan notes* and *Fill in from listing text* and the *Voice input* switch
+are the common screens of `:ui` (S4b-BL-222); the iPhone supplies the microphone (`IosPcmSource.kt`, `IosMicrophone.kt`,
+`IosVoiceServices.kt` in android/ui's iosMain; the arithmetic, `Pcm16Resampler`, `ByteQueue` and `CaptureEndRules`, is
+common code in `:shared` and tested on every machine). **Off by default; own key only** (Gemini, OpenAI, Groq,
+OpenRouter). An `AVAudioEngine` input tap feeds samples into memory; **no `AVAudioRecorder`, no file, no log line**, the
+bytes are in no preference, Keychain, database, backup, copy or sync file (nothing is written, so there is nothing for an
+iCloud or computer backup to pick up either; the data folder is excluded from those anyway). `Info.plist` has `NSMicrophoneUsageDescription` (four languages in `<lang>.lproj/InfoPlist.strings`,
+Hindi, Tamil and Telugu *under review*); iOS shows it the first time, after the app's own rationale, and only after a
+tap on *Speak*. The audio session is set to record when the microphone opens and put down (other apps' audio resumes)
+when it closes. Recording is foreground only (no `audio` background mode): the app resigning active, a call or Siri, a
+change of microphone (headphones, Bluetooth) and a reset of the media services all end it with nothing kept.
+**Not built or run on a Mac in the session that wrote it:** Xcode, the simulator and an iPhone were not available, so
+only the Kotlin/Native compile and the common tests ran; the owner's checks are MT-104..MT-108 in
+`docs/ops/manual-test-checklist.md`, and the guide calls the iPhone app *early*.
+
 ## The map (CMP-8c)
 
 MapLibre iOS 6.31.0 from MapLibre's Swift package, pinned by commit in `project.yml` (Xcode resolves it on the first
@@ -104,8 +121,8 @@ boundary files are Android's own (`android/app/src/main/assets/geo`), bundled as
 Job `ios-app` in `.github/workflows/shared-ios.yml` (macOS runner, free for public repositories): installs XcodeGen
 from its pinned release zip, generates the project, checks the plists, builds the Debug app for the arm64 simulator
 ad-hoc signed (`CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO`; owner-approved, no identity or Apple account), checks
-that the app holds `compose-resources`, the 120 Hz key, both purpose strings, the location background mode and a
-valid signature, and runs `ci/launch-smoke.sh`: it installs the app on an iPhone simulator, grants it location and
+that the app holds `compose-resources`, the 120 Hz key, the purpose strings (the microphone's too), the location
+background mode and no `audio` one, and a valid signature, and runs `ci/launch-smoke.sh`: it installs the app on an iPhone simulator, grants it location and
 sets a simulated location next to the self-check's house (`simctl privacy`, `simctl location`), launches it with
 `-DoorprintsSelfCheck`, passes only on `DOORPRINTS-SELFCHECK done PASS` with the `keychain`, `indiaView`, `map` and `hunt` lines each `PASS` and no `SKIP` line
 (read from the console, or from the simulator's unified log when the console has no `done` line) and saves a

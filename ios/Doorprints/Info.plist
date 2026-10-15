@@ -101,6 +101,11 @@
 	<!-- The enrolment QR scanner (S4b-BL-136): AVFoundation, asked only when the person taps Scan a QR code. -->
 	<key>NSCameraUsageDescription</key>
 	<string>Doorprints uses the camera to scan a Doorprints enrolment code from your other device. Nothing is stored or sent.</string>
+	<!-- Voice input (S4b-BL-223, docs/03 ADR-37): the microphone, asked only when the person taps Speak and has read the
+	     rationale, never at install or start-up. The recording stays in memory and goes to the person's own AI service; no
+	     background mode for audio is declared, so recording is foreground only. Keep the four InfoPlist.strings the same. -->
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Doorprints uses the microphone only when you tap Speak, to write out what you say for the AI boxes. The recording is sent to the AI service you chose, with your own key, and is not saved on this iPhone.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Doorprints uses Face ID to unlock the app when the app lock is on.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>

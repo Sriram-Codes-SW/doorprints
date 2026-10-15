@@ -1,0 +1,119 @@
+{
+  "spec": "android/ui/src/androidHostTest/kotlin/app/doorprints/ui/IosVoiceSafetyTest.kt",
+  "gradle": [
+    ":ui:testAndroidHostTest",
+    "--rerun",
+    "--tests",
+    "app.doorprints.ui.IosVoiceSafetyTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/ui/src/iosMain/kotlin/app/doorprints/ui/IosPcmSource.kt",
+      "find": "session.setCategory(AVAudioSessionCategoryRecord, error.ptr)",
+      "replace": "session.setCategory(AVAudioSessionCategoryPlayAndRecord, error.ptr)",
+      "expect": "theAudioSessionIsSetToRecordOnlyAndPutDown"
+    },
+    {
+      "file": "android/ui/src/iosMain/kotlin/app/doorprints/ui/IosPcmSource.kt",
+      "find": "private val lock = NSCondition()",
+      "replace": "private val lock = NSCondition()\n    private val recorder = platform.AVFAudio.AVAudioRecorder()",
+      "expect": "theIphoneVoiceCodeWritesNoAudioToDiskOrAnyStore"
+    },
+    {
+      "file": "android/ui/src/iosMain/kotlin/app/doorprints/ui/IosPcmSource.kt",
+      "find": "private var tornDown = false // guarded by lock: close() has run its clean-up",
+      "replace": "private var tornDown = false\n    private fun trace() = NSLog(\"closed\")",
+      "expect": "theIphoneVoiceCodeLogsAndPrintsNothing"
+    },
+    {
+      "file": "android/ui/src/iosMain/kotlin/app/doorprints/ui/IosPcmSource.kt",
+      "find": "IosForeground.install()\n        if (!IosForeground.active)",
+      "replace": "IosForeground.install(); AVAudioApplication.requestRecordPermissionWithCompletionHandler { }\n        if (!IosForeground.active)",
+      "expect": "theMicrophoneIsAskedForInOnePlaceAndOnlyFromTheButtonsRequest"
+    },
+    {
+      "file": "android/ui/src/iosMain/kotlin/app/doorprints/ui/IosPcmSource.kt",
+      "find": "setActive(false, AVAudioSessionSetActiveOptionNotifyOthersOnDeactivation",
+      "replace": "setActive(true, AVAudioSessionSetActiveOptionNotifyOthersOnDeactivation",
+      "expect": "theAudioSessionIsSetToRecordOnlyAndPutDown"
+    },
+    {
+      "file": "android/ui/src/iosMain/kotlin/app/doorprints/ui/IosPcmSource.kt",
+      "find": "add(AVAudioSessionInterruptionNotification, null)",
+      "replace": "add(AVAudioSessionInterruptionNotificationX, null)",
+      "expect": "recordingEndsWhenTheAppLeavesTheFrontOrTheMicrophoneIsTakenOrChanged"
+    },
+    {
+      "file": "android/ui/src/iosMain/kotlin/app/doorprints/ui/IosPcmSource.kt",
+      "find": "add(UIApplicationWillResignActiveNotification, null) { close() }",
+      "replace": "add(UIApplicationDidBecomeActiveNotification, null) { close() }",
+      "expect": "recordingEndsWhenTheAppLeavesTheFrontOrTheMicrophoneIsTakenOrChanged"
+    },
+    {
+      "file": "android/ui/src/iosMain/kotlin/app/doorprints/ui/IosPcmSource.kt",
+      "find": "if (!running) throw VoiceRecorderException(VoiceFailure.FAILED)",
+      "replace": "if (!running) throw IllegalStateException(\"bad $mono\")",
+      "expect": "noMessageOrStringTemplateCarriesTheAudio"
+    },
+    {
+      "file": "android/ui/src/iosMain/kotlin/app/doorprints/ui/IosPcmSource.kt",
+      "find": "it.stop()\n        }",
+      "replace": "it.stop()\n            NSURL.fileURLWithPath(\"/tmp/clip.caf\")\n        }",
+      "expect": "theIphoneVoiceCodeWritesNoAudioToDiskOrAnyStore"
+    },
+    {
+      "file": "android/ui/src/iosMain/kotlin/app/doorprints/ui/IosVoiceServices.kt",
+      "find": "override val supported: Boolean get() = true",
+      "replace": "override val supported: Boolean get() = platform.Foundation.NSUserDefaults.standardUserDefaults.boolForKey(\"v\")",
+      "expect": "theIphoneVoiceCodeWritesNoAudioToDiskOrAnyStore"
+    },
+    {
+      "file": "android/ui/src/iosMain/kotlin/app/doorprints/ui/IosMicrophone.kt",
+      "find": "internal fun microphonePermission(): MicrophonePermission =",
+      "replace": "internal fun microphonePermission(): MicrophonePermission { println(\"p\"); return microphonePermissionX() }\nprivate fun microphonePermissionX(): MicrophonePermission =",
+      "expect": "theIphoneVoiceCodeLogsAndPrintsNothing"
+    },
+    {
+      "file": "android/ui/src/iosMain/kotlin/app/doorprints/ui/IosAppServices.kt",
+      "find": "override val voice: VoiceServices = IosVoiceServices(repository.settings) { IosAppContainer.http }",
+      "replace": "override val voice: VoiceServices = IosVoiceServices(repository.settings) { IosAppContainer.http }.also { requestMicrophone { } }",
+      "expect": "theMicrophoneIsAskedForInOnePlaceAndOnlyFromTheButtonsRequest"
+    },
+    {
+      "file": "android/ui/src/iosMain/kotlin/app/doorprints/ui/IosCopies.kt",
+      "find": "package app.doorprints.ui\n",
+      "replace": "package app.doorprints.ui\n\nprivate typealias Clip = app.doorprints.shared.voice.RecordedClip\n",
+      "expect": "noCopyBackupSyncExportOrDriveCodeCanReachARecorderOrAClip"
+    },
+    {
+      "file": "android/ui/src/iosMain/kotlin/app/doorprints/ui/IosDriveServices.kt",
+      "find": "package app.doorprints.ui\n",
+      "replace": "package app.doorprints.ui\n\nprivate typealias Rec = app.doorprints.shared.voice.PcmSource\n",
+      "expect": "noCopyBackupSyncExportOrDriveCodeCanReachARecorderOrAClip"
+    },
+    {
+      "file": "ios/Doorprints/Info.plist",
+      "find": "<key>NSMicrophoneUsageDescription</key>",
+      "replace": "<key>NSMicrophoneUsageDescriptionX</key>",
+      "expect": "infoPlistExplainsTheMicrophoneInAllFourLanguagesAndNothingElseIsAdded"
+    },
+    {
+      "file": "ios/Doorprints/Info.plist",
+      "find": "\t\t<string>location</string>\n\t</array>\n\t<key>UIRequiredDeviceCapabilities</key>",
+      "replace": "\t\t<string>location</string>\n\t\t<string>audio</string>\n\t</array>\n\t<key>UIRequiredDeviceCapabilities</key>",
+      "expect": "recordingEndsWhenTheAppLeavesTheFrontOrTheMicrophoneIsTakenOrChanged"
+    },
+    {
+      "file": "ios/Doorprints/te.lproj/InfoPlist.strings",
+      "find": "\"NSMicrophoneUsageDescription\" =",
+      "replace": "\"NSMicrophoneUsageDescriptionX\" =",
+      "expect": "infoPlistExplainsTheMicrophoneInAllFourLanguagesAndNothingElseIsAdded"
+    },
+    {
+      "file": "ios/Doorprints/Info.plist",
+      "find": "is not saved on this iPhone.</string>",
+      "replace": "is kept on this iPhone.</string>",
+      "expect": "infoPlistExplainsTheMicrophoneInAllFourLanguagesAndNothingElseIsAdded"
+    }
+  ]
+}

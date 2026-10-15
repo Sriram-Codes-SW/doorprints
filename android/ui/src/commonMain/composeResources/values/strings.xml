@@ -1841,6 +1841,7 @@
     <string name="voice_cancel">Cancel</string>
     <string name="voice_cancel_desc">Cancel and throw the recording away</string>
     <string name="voice_hint">A short recording, up to a minute, goes from this phone to %1$s to be written out. It is not saved. Numbers and names you say are sent as audio too. Android asks to use the microphone the first time. Check the words before you send anything.</string>
+    <string name="voice_hint_ios">A short recording, up to a minute, goes from this phone to %1$s to be written out. It is not saved. Numbers and names you say are sent as audio too. iOS asks to use the microphone the first time. Check the words before you send anything.</string>
     <string name="voice_status_starting">Waiting for the microphone…</string>
     <string name="voice_status_recording">Recording. Speak now, then press Stop.</string>
     <string name="voice_status_working">Writing out the words…</string>
@@ -1856,6 +1857,7 @@
     <string name="voice_too_long">The recording was too long to send. Try a shorter one.</string>
     <string name="voice_rationale_title">Use the microphone?</string>
     <string name="voice_rationale_body">Doorprints records only after you tap Speak, for at most a minute, to write out what you say. The recording goes to %1$s with your own key, stays in memory and is never saved. Android asks for your permission next.</string>
+    <string name="voice_rationale_body_ios">Doorprints records only after you tap Speak, for at most a minute, to write out what you say. The recording goes to %1$s with your own key, stays in memory and is never saved. iOS asks for your permission next.</string>
     <string name="voice_rationale_go">Continue</string>
     <string name="voice_rationale_no">Not now</string>
 </resources>
