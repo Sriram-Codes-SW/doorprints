@@ -100,6 +100,9 @@ class SpaceWords(
     val tracePickSearch: StringResource,
     val tracePickNone: StringResource,
     val traceSaveFull: StringResource,
+    /** The iPhone's empty list and its note that the map is not there yet (docs/03 section 18.25). */
+    val listEmptyIos: StringResource,
+    val mapNotHere: StringResource,
 ) {
     companion object {
         /** The words of the kind whose file keys are [keys] (`KindWordKeys`): every word is the file's `android` key, none is this class's. */
@@ -119,6 +122,7 @@ class SpaceWords(
                 needsPreciseNoHunt = w("needsPreciseNoHunt"), saveNeedsLocation = w("saveNeedsLocation"),
                 traceEndBody = w("traceEndBody"), traceEndSave = w("traceEndSave"), tracePickTitle = w("tracePickTitle"),
                 tracePickSearch = w("tracePickSearch"), tracePickNone = w("tracePickNone"), traceSaveFull = w("traceSaveFull"),
+                listEmptyIos = w("listEmptyIos"), mapNotHere = w("mapNotHere"),
             )
         }
 

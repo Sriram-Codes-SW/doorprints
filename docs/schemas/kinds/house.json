@@ -165,7 +165,9 @@
   "tracePickNone": { "web": "trace.pick.none", "android": "trace_pick_none" },
   "tracePickList": { "web": "trace.pick.listLabel", "android": null },
   "tracePickNoMatch": { "web": "trace.pick.noMatch", "android": null },
-  "traceSaveFull": { "web": "trace.save.houseFull", "android": "trace_save_house_full" }
+  "traceSaveFull": { "web": "trace.save.houseFull", "android": "trace_save_house_full" },
+  "listEmptyIos": { "web": null, "android": "houses_empty_ios" },
+  "mapNotHere": { "web": null, "android": "map_not_on_this_phone" }
  },
  "statuses": [
   { "id": "NEW", "label": { "web": "status.NEW", "android": "status_NEW" } },

@@ -165,7 +165,9 @@
   "tracePickNone": { "web": "school.tracePickNone", "android": "school_trace_pick_none" },
   "tracePickList": { "web": "school.tracePickList", "android": null },
   "tracePickNoMatch": { "web": "school.tracePickNoMatch", "android": null },
-  "traceSaveFull": { "web": "school.traceSaveFull", "android": "school_trace_save_full" }
+  "traceSaveFull": { "web": "school.traceSaveFull", "android": "school_trace_save_full" },
+  "listEmptyIos": { "web": null, "android": "school_houses_empty_ios" },
+  "mapNotHere": { "web": null, "android": "school_map_not_on_this_phone" }
  },
  "statuses": [
   { "id": "NEW", "label": { "web": "status.NEW", "android": "status_NEW" } },

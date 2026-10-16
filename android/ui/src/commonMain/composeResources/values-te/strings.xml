@@ -1962,4 +1962,7 @@
     <string name="tour_kind_done_body">ఇవి Doorprints యొక్క ముఖ్య భాగాలు. మీ %1$sకి జోడించడం ప్రారంభించండి, వెళ్లినప్పుడు యాప్‌ను తెరిచి ఉంచండి.</string>
     <string name="tour_kind_done_action">ముగించు నొక్కి, మీ మొదటిదాన్ని చేర్చండి.</string>
     <string name="tour_kind_compare_title">%1$sను పోల్చండి</string>
+    <!-- Kinds PR 31 (docs/03 section 18.25, 2026-10-15): under review. -->
+    <string name="school_houses_empty_ios">ఇంకా పాఠశాలలు లేవు. iPhoneలో ఇంకా పాఠశాలలు చేర్చలేరు. మీకు Doorprints సర్వర్ ఉంటే, దాన్ని సెట్టింగ్‌లలో కనెక్ట్ చేయండి; మీ పాఠశాలలు ఇక్కడ కనిపిస్తాయి.</string>
+    <string name="school_map_not_on_this_phone">మ్యాప్ ఇంకా iPhoneలో లేదు. మీ పాఠశాలలన్నీ ‘పాఠశాలలు’ ట్యాబ్‌లో ఉన్నాయి.</string>
 </resources>

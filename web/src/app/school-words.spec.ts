@@ -187,6 +187,17 @@ describe('the school’s words in the dictionaries (docs/03 §18.9)', () => {
   });
 });
 
+describe('the voice words name no kind (kinds PR 31)', () => {
+  it('no voice.* text says house in any language: the hints, the rationale and the statuses hold for every kind', () => {
+    for (const lang of LANGS) {
+      const d = DICTIONARIES[lang] as Record<string, string>;
+      const keys = Object.keys(d).filter((k) => k.startsWith('voice.'));
+      expect(keys.length, lang).toBeGreaterThan(30);
+      for (const k of keys) expect(d[k].replace(/\{\w+\}/g, '').match(HOUSE_WORD[lang]), `${lang} ${k}`).toBeNull();
+    }
+  });
+});
+
 describe('the space words that name the areas a candidate is in (S4b-BL-256)', () => {
   it('a school’s are the school’s keys, a house’s the keys they were', () => {
     expect([spaceWords('school').areaInReach, spaceWords('school').areaNotesNone]).toEqual(['school.areaNotesInReach', 'school.areaNotesNone']);

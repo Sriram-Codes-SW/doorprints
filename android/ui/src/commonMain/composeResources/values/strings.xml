@@ -1959,4 +1959,7 @@
     <string name="tour_kind_done_body">These are the main parts of Doorprints. Start by adding to your %1$s, and keep the app open when you visit.</string>
     <string name="tour_kind_done_action">Tap Finish, then add your first one.</string>
     <string name="tour_kind_compare_title">Compare %1$s</string>
+    <!-- Kinds PR 31 (docs/03 section 18.25): words of the kind files. -->
+    <string name="school_houses_empty_ios">No schools yet. You can’t add schools on iPhone yet. If you have a Doorprints server, connect it in Settings and your schools will show up here.</string>
+    <string name="school_map_not_on_this_phone">The map isn’t on iPhone yet. All your schools are in the ‘Schools’ tab.</string>
 </resources>

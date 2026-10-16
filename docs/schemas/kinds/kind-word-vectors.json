@@ -2650,6 +2650,46 @@
      "en": "This school already has %1$d saved walks. Delete one first."
     }
    }
+  },
+  {
+   "id": "listEmptyIos",
+   "house": {
+    "web": null,
+    "android": "houses_empty_ios",
+    "text": {
+     "en": "No houses yet. You can’t add houses on iPhone yet. If you have a Doorprints server, connect it in Settings and your houses will show up here.",
+     "hi": "अभी कोई मकान नहीं। iPhone पर अभी मकान जोड़े नहीं जा सकते। अगर आपका Doorprints सर्वर है, तो उसे सेटिंग्स में जोड़ें, फिर आपके मकान यहाँ दिखने लगेंगे।",
+     "ta": "இன்னும் வீடுகள் இல்லை. iPhone-இல் இப்போது வீடுகளைச் சேர்க்க முடியாது. உங்களிடம் Doorprints சர்வர் இருந்தால், அதை அமைப்புகளில் இணைக்கவும்; உங்கள் வீடுகள் இங்கே தோன்றும்.",
+     "te": "ఇంకా ఇళ్లు లేవు. iPhoneలో ఇంకా ఇళ్లు చేర్చలేరు. మీకు Doorprints సర్వర్ ఉంటే, దాన్ని సెట్టింగ్‌లలో కనెక్ట్ చేయండి; మీ ఇళ్లు ఇక్కడ కనిపిస్తాయి."
+    }
+   },
+   "school": {
+    "web": null,
+    "android": "school_houses_empty_ios",
+    "text": {
+     "en": "No schools yet. You can’t add schools on iPhone yet. If you have a Doorprints server, connect it in Settings and your schools will show up here."
+    }
+   }
+  },
+  {
+   "id": "mapNotHere",
+   "house": {
+    "web": null,
+    "android": "map_not_on_this_phone",
+    "text": {
+     "en": "The map isn’t on iPhone yet. All your houses are in the ‘Houses’ tab.",
+     "hi": "नक्शा अभी iPhone पर नहीं है। आपके सभी मकान ‘मकान’ टैब में हैं।",
+     "ta": "வரைபடம் இன்னும் iPhone-இல் இல்லை. உங்கள் எல்லா வீடுகளும் ‘வீடுகள்’ தாவலில் உள்ளன.",
+     "te": "మ్యాప్ ఇంకా iPhoneలో లేదు. మీ ఇళ్లన్నీ ‘ఇళ్లు’ ట్యాబ్‌లో ఉన్నాయి."
+    }
+   },
+   "school": {
+    "web": null,
+    "android": "school_map_not_on_this_phone",
+    "text": {
+     "en": "The map isn’t on iPhone yet. All your schools are in the ‘Schools’ tab."
+    }
+   }
   }
  ]
 }

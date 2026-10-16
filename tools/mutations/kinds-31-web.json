@@ -1,0 +1,65 @@
+{
+  "spec": [
+    "web/src/app/core/kind-words.spec.ts",
+    "web/src/app/core/space.spec.ts",
+    "web/src/app/shared/tour-text.spec.ts",
+    "web/src/app/core/viewing-reminder.service.spec.ts",
+    "web/src/app/pages/map/walk-end-sheet.spec.ts"
+  ],
+  "mutations": [
+    {
+      "file": "web/src/app/core/kind-word-table.ts",
+      "find": "return (kind ? COLUMN.get(kind) : undefined) ?? 0;",
+      "replace": "return 0;",
+      "expect": "toolWord reads each word’s key in the school"
+    },
+    {
+      "file": "web/src/app/core/kind-word-table.ts",
+      "find": "if (!row) throw new Error(`no word ${id} in the kind files`);",
+      "replace": "if (!row) return null;",
+      "expect": "an id the files do not have is an error"
+    },
+    {
+      "file": "web/src/app/core/space.service.ts",
+      "find": "readonly neutral = computed(() => this.multi() || !isBaselineKind(this.dflt()));",
+      "replace": "readonly neutral = computed(() => this.multi());",
+      "expect": "or the school alone, read the neutral ones"
+    },
+    {
+      "file": "web/src/app/core/space.service.ts",
+      "find": "return toolWord(this.neutral() ? '*' : null, key);",
+      "replace": "return toolWord(null, key);",
+      "expect": "or the school alone, read the neutral ones"
+    },
+    {
+      "file": "web/src/app/shared/tour-steps.ts",
+      "find": "if (isBaselineKind(kind) || !step.kind) return base;",
+      "replace": "if (!step.kind) return base;",
+      "expect": "the house tour is the steps’ own keys"
+    },
+    {
+      "file": "web/src/app/shared/tour-steps.ts",
+      "find": "body: { '*': 'tour.kind.body', welcome: 'tour.kind.welcome', done: 'tour.kind.doneBody' },",
+      "replace": "body: { '*': 'tour.kind.body', welcome: 'tour.kind.welcome', done: 'tour.kind.body' },",
+      "expect": "the school names its own Add button"
+    },
+    {
+      "file": "web/src/app/core/tour.service.ts",
+      "find": "return step.tool ? this.space.toolLink(step.tool) : step.route;",
+      "replace": "return step.route;",
+      "expect": "Compare is on the address the space has for it"
+    },
+    {
+      "file": "web/src/app/core/viewing-reminder.service.ts",
+      "find": "return this.i18n.t(toolWord(kind, 'viewings.remind.text'), { time: this.time(startsAt) });",
+      "replace": "return this.i18n.t('viewings.remind.text', { time: this.time(startsAt) });",
+      "expect": "a school’s viewing is a visit"
+    },
+    {
+      "file": "web/src/app/pages/map/walk-end-sheet.ts",
+      "find": "return { key: toolWord(kind, 'trace.save.houseFull'), params:",
+      "replace": "return { key: 'trace.save.houseFull', params:",
+      "expect": "in a school space it says school"
+    }
+  ]
+}

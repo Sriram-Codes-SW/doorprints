@@ -108,6 +108,26 @@ class SpaceUiTest {
     }
 
     @Test
+    fun theAppWideTextsAreNeutralOnceMoreThanTheHouseIsInUse() {
+        // Kinds PR 31 (docs/03 section 18.25): the house alone reads the house's Settings texts; two kinds, or another default kind, say entries.
+        assertFalse(SpaceUi.HOUSE.neutral)
+        assertFalse(SpaceUi(houseOnly, "house").neutral)
+        assertTrue(SpaceUi(both, "house").neutral)
+        assertTrue(SpaceUi(both, "school").neutral)
+        val schoolOnly = both.withDefault("school").withKindEnabled("house", false)
+        assertTrue(SpaceUi.resolve(schoolOnly, null).neutral)
+    }
+
+    @Test
+    fun theWordsOfAKindWithNoFileAreTheHousesAndEveryKindFileHasItsOwn() {
+        assertEquals(listOf("house", "school"), KindWordKeys.KINDS)
+        assertSame(PageWords.HOUSE, PageWords.of("zz_none"))
+        assertSame(HuntWords.HOUSE, HuntWords.of("zz_none"))
+        assertEquals(KindWordKeys.HOUSE, KindWordKeys.of("zz_none"))
+        assertEquals(KindWordKeys.SCHOOL, KindWordKeys.of("school"))
+    }
+
+    @Test
     fun aSpaceIsHiddenOnlyWhenTheKindIsOffButOpenedAnyway() {
         assertFalse(SpaceUi(both, "school").hidden)
         assertFalse(SpaceUi(houseOnly, "school").hidden) // one kind on: no spaces, so nothing is hidden

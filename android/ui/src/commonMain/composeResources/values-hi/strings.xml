@@ -1962,4 +1962,7 @@
     <string name="tour_kind_done_body">ये Doorprints के मुख्य हिस्से हैं। अपने %1$s में जोड़ना शुरू करें, और जाते समय ऐप खुला रखें।</string>
     <string name="tour_kind_done_action">समाप्त करें दबाएँ, फिर अपना पहला जोड़ें।</string>
     <string name="tour_kind_compare_title">%1$s की तुलना करें</string>
+    <!-- Kinds PR 31 (docs/03 section 18.25, 2026-10-15): under review. -->
+    <string name="school_houses_empty_ios">अभी कोई स्कूल नहीं। iPhone पर अभी स्कूल जोड़े नहीं जा सकते। अगर आपका Doorprints सर्वर है, तो उसे सेटिंग्स में जोड़ें, फिर आपके स्कूल यहाँ दिखने लगेंगे।</string>
+    <string name="school_map_not_on_this_phone">नक्शा अभी iPhone पर नहीं है। आपके सभी स्कूल ‘स्कूल’ टैब में हैं।</string>
 </resources>

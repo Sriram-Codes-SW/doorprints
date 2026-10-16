@@ -1210,7 +1210,7 @@ private fun MapNotOnThisPhone(onOpenHouses: () -> Unit) {
             modifier = Modifier.widthIn(max = ContentMaxWidth).fillMaxWidth(),
         ) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(stringResource(Res.string.map_not_on_this_phone), style = MaterialTheme.typography.bodyLarge)
+                Text(stringResource(LocalSpace.current.words.mapNotHere), style = MaterialTheme.typography.bodyLarge)
                 Button(onClick = onOpenHouses, modifier = Modifier.heightIn(min = 48.dp)) {
                     ButtonLabel(stringResource(Res.string.map_open_houses))
                 }

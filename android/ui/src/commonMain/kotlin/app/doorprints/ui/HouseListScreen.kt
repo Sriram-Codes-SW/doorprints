@@ -505,7 +505,7 @@ fun HouseListScreen(
                     HeroEmptyState(
                         icon = Icons.Default.Home,
                         title = stringResource(Res.string.app_tagline),
-                        body = stringResource(Res.string.houses_empty_ios),
+                        body = stringResource(LocalSpace.current.words.listEmptyIos),
                         horizontalPadding = 0.dp,
                         action = {
                             Button(onClick = onOpenSettings, modifier = Modifier.heightIn(min = 48.dp)) {

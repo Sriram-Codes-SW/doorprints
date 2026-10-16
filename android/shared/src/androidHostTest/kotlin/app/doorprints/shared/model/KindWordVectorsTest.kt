@@ -112,4 +112,15 @@ class KindWordVectorsTest {
             }
         }
     }
+
+    // Kinds PR 31: the Voice hints, the rationale and the statuses say nothing of a kind, so they hold in every space.
+    @Test
+    fun noVoiceTextNamesAHouseInAnyLanguage() {
+        val house = mapOf("en" to Regex("(?i)house"), "hi" to Regex("मकान"), "ta" to Regex("வீடு|வீட்"), "te" to Regex("ఇల్లు|ఇళ్|ఇంటి"))
+        for ((lang, pattern) in house) {
+            val voice = composeStrings(lang).filterKeys { it.startsWith("voice_") }
+            assert(voice.size > 25) { "$lang has ${voice.size} voice texts" }
+            for ((key, text) in voice) assert(!pattern.containsMatchIn(text)) { "$lang $key names a house" }
+        }
+    }
 }

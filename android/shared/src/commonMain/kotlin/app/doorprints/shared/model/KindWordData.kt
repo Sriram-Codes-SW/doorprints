@@ -51,7 +51,7 @@ internal object KindWordData {
         "expScopeSelected", "expRejectedIncluded", "expRejectedLeftOut", "expPhotosAll", "expPhotosShortlisted", "expColName",
         "expNone", "viewingRemindText", "mapOnServerTitle", "mapOffline", "viewingIcsWord", "traceEndBody",
         "traceEndSave", "tracePickTitle", "tracePickSearch", "tracePickNone", "tracePickList", "tracePickNoMatch",
-        "traceSaveFull",
+        "traceSaveFull", "listEmptyIos", "mapNotHere",
     )
 
     private fun table(vararg keys: Pair<String, String?>): Map<String, String?> {
@@ -114,7 +114,7 @@ internal object KindWordData {
             "mapOffline" to null, "viewingIcsWord" to null, "traceEndBody" to "trace_end_body",
             "traceEndSave" to "trace_end_save", "tracePickTitle" to "trace_pick_title", "tracePickSearch" to "trace_pick_search",
             "tracePickNone" to "trace_pick_none", "tracePickList" to null, "tracePickNoMatch" to null,
-            "traceSaveFull" to "trace_save_house_full",
+            "traceSaveFull" to "trace_save_house_full", "listEmptyIos" to "houses_empty_ios", "mapNotHere" to "map_not_on_this_phone",
         ),
         "school" to table(
             "heading" to "schools_title", "regionLabel" to "school_region_desc", "regionHint" to null,
@@ -169,7 +169,7 @@ internal object KindWordData {
             "mapOffline" to null, "viewingIcsWord" to null, "traceEndBody" to "school_trace_end_body",
             "traceEndSave" to "school_trace_end_save", "tracePickTitle" to "school_trace_pick_title", "tracePickSearch" to "school_trace_pick_search",
             "tracePickNone" to "school_trace_pick_none", "tracePickList" to null, "tracePickNoMatch" to null,
-            "traceSaveFull" to "school_trace_save_full",
+            "traceSaveFull" to "school_trace_save_full", "listEmptyIos" to "school_houses_empty_ios", "mapNotHere" to "school_map_not_on_this_phone",
         ),
     )
 }
