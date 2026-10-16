@@ -14,7 +14,7 @@
     },
     {
       "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/QuestionStore.kt",
-      "find": "if (kind == KindSettingRules.HOUSE || DefaultQuestions.of(kind).isEmpty()) return",
+      "find": "if (KindCapabilities.of(kind).baseline || DefaultQuestions.of(kind).isEmpty()) return",
       "replace": "if (DefaultQuestions.of(kind).isEmpty()) return",
       "expect": "aKindWhoseSeedingIsMarkedDoneOnThisPhoneSeedsNothing"
     },

@@ -32,7 +32,7 @@
     },
     {
       "file": "android/app/src/main/java/app/doorprints/ViewingReminderScheduler.kt",
-      "find": ".takeIf { it != KindSettingRules.HOUSE && it in KindCapabilities.KINDS } ?: return null",
+      "find": ".takeIf { !KindCapabilities.of(it).baseline && it in KindCapabilities.KINDS } ?: return null",
       "replace": ".takeIf { it in KindCapabilities.KINDS } ?: return null",
       "expect": "aHousesReminderIsTheWordsAndTheChannelItAlwaysHad"
     }

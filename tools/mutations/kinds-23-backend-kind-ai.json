@@ -152,7 +152,7 @@
     },
     {
       "file": "backend/src/main/java/app/doorprints/server/ai/agent/HouseSearchService.java",
-      "find": "return kind == null || kind.equals(h.kind() == null ? House.HOUSE_KIND : h.kind());",
+      "find": "return kind == null || kind.equals(AiKinds.kindOf(h.kind()));",
       "replace": "return true;",
       "expect": "everyToolReadsTheKindsCandidatesOnly"
     },

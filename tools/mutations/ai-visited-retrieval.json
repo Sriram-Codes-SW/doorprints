@@ -6,8 +6,8 @@
   "mutations": [
     {
       "file": "backend/src/main/java/app/doorprints/server/ai/rag/RagService.java",
-      "find": "if (VisitQuestions.isAbout(question)) docs = withVisited",
-      "replace": "if (!VisitQuestions.isAbout(question)) docs = withVisited",
+      "find": "VisitQuestions.isAbout(question) ? visitedDocs",
+      "replace": "!VisitQuestions.isAbout(question) ? visitedDocs",
       "expect": "aQuestionNotAboutVisitsMakesNoExtraSearch"
     },
     {
@@ -24,14 +24,14 @@
     },
     {
       "file": "backend/src/main/java/app/doorprints/server/ai/rag/RagService.java",
-      "find": ".filterExpression(AskPrompts.filter(filters, !negated))",
-      "replace": ".filterExpression(AskPrompts.filter(filters, true))",
+      "find": ".filterExpression(AskPrompts.filter(filters, !negated, stamp))",
+      "replace": ".filterExpression(AskPrompts.filter(filters, true, stamp))",
       "expect": "aNegatedVisitQuestionFiltersOnVisitedFalseAndKeepsTheStoresOrder"
     },
     {
       "file": "backend/src/main/java/app/doorprints/server/ai/rag/RagService.java",
-      "find": ".filterExpression(AskPrompts.filter(filters, !negated))",
-      "replace": ".filterExpression(AskPrompts.filter((AskFilters) null, !negated))",
+      "find": ".filterExpression(AskPrompts.filter(filters, !negated, stamp))",
+      "replace": ".filterExpression(AskPrompts.filter((AskFilters) null, !negated, stamp))",
       "expect": "theExtraSearchFiltersOnVisitedTrueKeepsTheCallersFiltersAndTheTopK"
     },
     {
@@ -72,8 +72,8 @@
     },
     {
       "file": "backend/src/main/java/app/doorprints/server/ai/rag/AskPrompts.java",
-      "find": "FilterExpressionBuilder.Op op = visited == null ? null : b.eq(\"visited\", visited);",
-      "replace": "FilterExpressionBuilder.Op op = visited == null ? null : b.eq(\"visitedX\", visited);",
+      "find": "b.eq(\"visited\", visited)",
+      "replace": "b.eq(\"visitedX\", visited)",
       "expect": "theExtraSearchFiltersOnVisitedTrueKeepsTheCallersFiltersAndTheTopK"
     },
     {
@@ -102,8 +102,8 @@
     },
     {
       "file": "backend/src/main/java/app/doorprints/server/ai/rag/HouseDocuments.java",
-      "find": "text(h, visits, viewings, areas), metadata(h, visits));",
-      "replace": "text(h, visits, viewings, areas), metadata(h));",
+      "find": "KindDocuments.metadata(h, visits, k));",
+      "replace": "KindDocuments.metadata(h, List.of(), k));",
       "expect": "indexingAHouseWritesItsCurrentVisitsIntoTheMetadata"
     }
   ]

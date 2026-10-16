@@ -71,8 +71,8 @@
     },
     {
       "file": "backend/src/main/java/app/doorprints/server/ai/agent/HouseSearchService.java",
-      "find": ".stream().sorted(NEAREST_FIRST).map(this::forPlan)",
-      "replace": ".stream().sorted(NEAREST_FIRST)",
+      "find": ".sorted(NEAREST_FIRST).map(this::forPlan)",
+      "replace": ".sorted(NEAREST_FIRST)",
       "expect": "aSummaryHasOnlyWhatThePlanSlotNames"
     },
     {
@@ -119,8 +119,8 @@
     },
     {
       "file": "backend/src/main/java/app/doorprints/server/ai/extract/ListingExtractionService.java",
-      "find": "if (k == null || k.extract().isEmpty() || k.extractFields().isEmpty()) {",
-      "replace": "if (false) {",
+      "find": "        kinds.require(kind);\n        var k = kinds.of(kind);",
+      "replace": "        var k = kinds.of(kind);",
       "expect": "aSchoolNeedsTheFlagAndAnyOtherKindIsRefused"
     },
     {

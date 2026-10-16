@@ -43,7 +43,7 @@
     },
     {
       "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/PasteListing.kt",
-      "find": "internal fun pasteKind(kind: BuiltInKind): String? = kind.id.takeIf { it != KindSettingRules.HOUSE && kind.extracts }",
+      "find": "internal fun pasteKind(kind: BuiltInKind): String? = kind.id.takeIf { !KindCapabilities.of(it).baseline && kind.extracts }",
       "replace": "internal fun pasteKind(kind: BuiltInKind): String? = null",
       "expect": "theDialogAsksForTheSchoolsKindAndAHouseKeepsItsOwnCall"
     },
@@ -73,20 +73,20 @@
     },
     {
       "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/Space.kt",
-      "find": "saveNeedsLocation = Res.string.school_map_save_needs_location,",
-      "replace": "saveNeedsLocation = Res.string.map_save_needs_location,",
+      "find": "saveNeedsLocation = w(\"saveNeedsLocation\"),",
+      "replace": "saveNeedsLocation = w(\"needsPreciseNoHunt\"),",
       "expect": "theSchoolsMapLocationNotesSayNoHouse"
     },
     {
       "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/Space.kt",
-      "find": "            many = word(s, \"heading\"), search",
-      "replace": "            many = word(h, \"heading\"), search",
+      "find": "many = w(\"heading\"), search",
+      "replace": "many = w(\"emptyBody\"), search",
       "expect": "theWordsTheKindFileHasAreReadFromItsAndroidKeys"
     },
     {
       "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/PageWords.kt",
-      "find": "areaNotesNone = word(KindWordKeys.SCHOOL, \"areaNotesNone\"), areaHere = word(KindWordKeys.SCHOOL, \"areaInReach\"),",
-      "replace": "areaNotesNone = word(KindWordKeys.HOUSE, \"areaNotesNone\"), areaHere = word(KindWordKeys.SCHOOL, \"areaInReach\"),",
+      "find": "areaNotesNone = w(\"areaNotesNone\"), areaHere = w(\"areaInReach\"),",
+      "replace": "areaNotesNone = w(\"areaInReach\"), areaHere = w(\"areaInReach\"),",
       "expect": "theWordsTheKindFileHasAreReadFromItsAndroidKeys"
     }
   ]
