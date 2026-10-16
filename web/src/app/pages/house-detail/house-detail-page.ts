@@ -54,11 +54,10 @@ import { LocalStore } from '../../data/local-store.service';
 import type { HouseAnswer, MoveIn } from '../../core/models';
 import { MOVE_IN_TAG } from '../../shared/photo-tags';
 import type { PhotoMetaInput } from '../../data/photo-store';
-import { HouseMoveInCard } from './house-move-in-card';
+import { HouseMoveInCard, type OpenedPhoto } from './house-move-in-card';
 import { HouseCheckCard } from './house-check-card';
 import { HouseWalksCard } from './house-walks-card';
 import { TraceStore } from '../../data/trace-store';
-import type { OpenedPhoto } from './house-move-in-card';
 import { PhotoMetaEditor } from './photo-meta-editor';
 import { HousePhotos, isStorageFull } from './house-photos';
 import { HouseRooms } from './house-rooms';
@@ -70,8 +69,7 @@ import { SpaceService } from '../../core/space.service';
 import { type SpaceWords, spaceWords } from '../../core/space-words';
 import { toolWord } from '../../core/space-tool-words';
 import { blankToNull, clone, sharedFromNavigation, sortBrokers, toWholeNumber, withCost } from './house-page-input';
-import { QUESTION_CATEGORIES, questionsOfKind } from '../../shared/question';
-import type { Question, QuestionCategory } from '../../shared/question';
+import { QUESTION_CATEGORIES, questionsOfKind, type Question, type QuestionCategory } from '../../shared/question';
 import { HouseViewingsCard } from '../viewings/house-viewings-card';
 import { HouseAreaNotesCard, HouseDistancesCard } from '../areas/house-area-cards';
 import { addUsual, answerFor, ordered, usualQuestions } from '../../shared/house-answers';
@@ -187,8 +185,7 @@ export class HouseDetailPage implements OnInit, OnDestroy {
   protected readonly space = inject(SpaceService);
   /** The kind's words for the save button and the area-notes line (a school's, S4b-BL-212). */
   protected get W(): SpaceWords { return spaceWords(this.kind().id); }
-  /** The candidate's kind is the baseline kind (the house): its checklist links to the person's own criteria. */
-  protected isBaseline(): boolean { return isBaselineKind(this.kind().id); }
+  protected readonly isBaseline = computed(() => isBaselineKind(this.kind().id)); // the checklist links to the person's own criteria only for the baseline kind
   /**
    * A house word of the page in the kind's own (S4b-BL-259): the house's key for a house, a school's for a school; with no
    * candidate loaded (the *not found* card) the kind of the space on screen.
