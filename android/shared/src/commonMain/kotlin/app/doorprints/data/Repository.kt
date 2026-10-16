@@ -151,6 +151,12 @@ interface Repository {
     suspend fun restoreHouseFromBin(id: String, fetch: suspend (PhotoRestoreRequest) -> PhotoRestoreReport): BinRestore? =
         if (restoreHouse(id)) BinRestore.PLAIN else null
 
+    /**
+     * *Retry photos* under the result of [restoreHouseFromBin] (S4b-BL-293): asks [fetch] again for the photos [retry] still
+     * lacks and stores the ones that answer, each once. The candidate is not touched. The default does nothing.
+     */
+    suspend fun retryBinPhotos(retry: BinRetry, fetch: suspend (PhotoRestoreRequest) -> PhotoRestoreReport): BinRestore = BinRestore.PLAIN
+
     /** [restoreHouse] for many at once (*Undo* of *Delete all in this space*); returns the ids brought back. */
     suspend fun restoreHouses(ids: List<String>): List<String>
 

@@ -1,0 +1,184 @@
+{
+ "format": "doorprints-photo-sweep-vectors/1",
+ "status": "proposed",
+ "note": "The 30-day clean-up of the person's own Google Drive (S4b-BL-293, docs/15 section 5.1, docs/03 section 20): which deleted photos' encrypted files leave Drive. Not part of any backup or sync format. A file is taken when its photo's tombstone is more than `windowDays` days before `now` AND strictly older than the oldest backup that stays (`oldestStayingBackupAgoMs`, milliseconds before `now`; null when no backup stays). `deletedAgoMs` is milliseconds before `now`; `driveFileId` null means none is known. `expect` lists the Drive file ids to take, in order, each once. The vectors are never edited to make a test pass.",
+ "windowDays": 30,
+ "now": 172800000000,
+ "cases": [
+  {
+   "name": "a file older than the window is taken when no backup stays",
+   "oldestStayingBackupAgoMs": null,
+   "photos": [
+    {
+     "id": "p1",
+     "deletedAgoMs": 2678400000,
+     "driveFileId": "file-p1"
+    }
+   ],
+   "expect": [
+    "file-p1"
+   ]
+  },
+  {
+   "name": "a file at exactly the window is kept",
+   "oldestStayingBackupAgoMs": null,
+   "photos": [
+    {
+     "id": "p1",
+     "deletedAgoMs": 2592000000,
+     "driveFileId": "file-p1"
+    }
+   ],
+   "expect": []
+  },
+  {
+   "name": "a file one millisecond older than the window is taken",
+   "oldestStayingBackupAgoMs": null,
+   "photos": [
+    {
+     "id": "p1",
+     "deletedAgoMs": 2592000001,
+     "driveFileId": "file-p1"
+    }
+   ],
+   "expect": [
+    "file-p1"
+   ]
+  },
+  {
+   "name": "a file is taken when the oldest staying backup was made after the deletion",
+   "oldestStayingBackupAgoMs": 3369600000,
+   "photos": [
+    {
+     "id": "p1",
+     "deletedAgoMs": 3456000000,
+     "driveFileId": "file-p1"
+    }
+   ],
+   "expect": [
+    "file-p1"
+   ]
+  },
+  {
+   "name": "a file is kept when the oldest staying backup predates the deletion",
+   "oldestStayingBackupAgoMs": 3542400000,
+   "photos": [
+    {
+     "id": "p1",
+     "deletedAgoMs": 3456000000,
+     "driveFileId": "file-p1"
+    }
+   ],
+   "expect": []
+  },
+  {
+   "name": "a file is kept when the oldest staying backup was made at the very moment of the deletion",
+   "oldestStayingBackupAgoMs": 3456000000,
+   "photos": [
+    {
+     "id": "p1",
+     "deletedAgoMs": 3456000000,
+     "driveFileId": "file-p1"
+    }
+   ],
+   "expect": []
+  },
+  {
+   "name": "a file inside the window is kept even when a backup was made after it",
+   "oldestStayingBackupAgoMs": 345600000,
+   "photos": [
+    {
+     "id": "p1",
+     "deletedAgoMs": 432000000,
+     "driveFileId": "file-p1"
+    }
+   ],
+   "expect": []
+  },
+  {
+   "name": "a file inside the window is kept when no backup stays",
+   "oldestStayingBackupAgoMs": null,
+   "photos": [
+    {
+     "id": "p1",
+     "deletedAgoMs": 432000000,
+     "driveFileId": "file-p1"
+    }
+   ],
+   "expect": []
+  },
+  {
+   "name": "a file inside the window is kept when an older backup stays",
+   "oldestStayingBackupAgoMs": 518400000,
+   "photos": [
+    {
+     "id": "p1",
+     "deletedAgoMs": 432000000,
+     "driveFileId": "file-p1"
+    }
+   ],
+   "expect": []
+  },
+  {
+   "name": "a photo with no Drive file named is skipped",
+   "oldestStayingBackupAgoMs": null,
+   "photos": [
+    {
+     "id": "p1",
+     "deletedAgoMs": 3456000000,
+     "driveFileId": null
+    }
+   ],
+   "expect": []
+  },
+  {
+   "name": "a file named by two photos is returned once",
+   "oldestStayingBackupAgoMs": null,
+   "photos": [
+    {
+     "id": "p1",
+     "deletedAgoMs": 3456000000,
+     "driveFileId": "shared"
+    },
+    {
+     "id": "p2",
+     "deletedAgoMs": 4320000000,
+     "driveFileId": "shared"
+    }
+   ],
+   "expect": [
+    "shared"
+   ]
+  },
+  {
+   "name": "only the photos that qualify are swept, in order",
+   "oldestStayingBackupAgoMs": 6912000000,
+   "photos": [
+    {
+     "id": "old",
+     "deletedAgoMs": 7776000000,
+     "driveFileId": "file-old"
+    },
+    {
+     "id": "young",
+     "deletedAgoMs": 172800000,
+     "driveFileId": "file-young"
+    },
+    {
+     "id": "mid",
+     "deletedAgoMs": 2678400000,
+     "driveFileId": null
+    }
+   ],
+   "expect": [
+    "file-old"
+   ]
+  },
+  {
+   "name": "no photos, nothing to sweep",
+   "oldestStayingBackupAgoMs": null,
+   "photos": [],
+   "expect": []
+  }
+ ]
+}

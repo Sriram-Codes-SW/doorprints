@@ -18,9 +18,6 @@
 
 package app.doorprints.drive.backup
 
-import app.doorprints.drive.photo.GonePhoto
-import app.doorprints.drive.photo.PhotoSweepRules
-
 import app.doorprints.crypto.Bytes
 import app.doorprints.crypto.CryptoProvider
 import app.doorprints.crypto.DevicePlatform
@@ -53,6 +50,8 @@ import app.doorprints.drive.downloadVerified
 import app.doorprints.drive.ensureFolder
 import app.doorprints.drive.listAll
 import app.doorprints.drive.markComplete
+import app.doorprints.drive.photo.GonePhoto
+import app.doorprints.drive.photo.PhotoSweepRules
 import app.doorprints.drive.uploadResumable
 import app.doorprints.shared.export.BackupFormat
 import kotlinx.coroutines.CancellationException

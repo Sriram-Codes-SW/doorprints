@@ -38,6 +38,7 @@ import app.doorprints.ui.res.chooser_heading
 import app.doorprints.ui.res.chooser_hidden_heading
 import app.doorprints.ui.res.kinds_heading
 import app.doorprints.ui.res.delete_restore
+import app.doorprints.ui.res.delete_retry_photos
 import app.doorprints.ui.res.delete_space_do
 import app.doorprints.ui.res.schools_title
 import android.graphics.Bitmap
@@ -649,6 +650,23 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
         shoot("recently_deleted_result", messages.first()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 for (m in messages) Snackbar { Text(m) }
+            }
+        }
+    }
+
+    /**
+     * *Recently deleted* with the result of a restore that Google Drive could not finish, and *Retry photos* under it
+     * (S4b-BL-293): the words in a live region, the button outside it. English light and Hindi dark (hi under review).
+     */
+    @Test fun recentlyDeletedRetry() {
+        assumeTrue((lang == "en" && !dark) || (lang == "hi" && dark))
+        val message = runBlocking { binRestoreMessage("Green View", BinRestore(4, 3, 3, listOf(PhotoRestoreReason.OFFLINE))) }
+        shoot("recently_deleted_retry", text(Res.string.delete_retry_photos)) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                RecentlyDeletedList(
+                    listOf(BinLine("b", "Lake Road flat", "9 Oct 2026, 18:05")),
+                    hidden = 0, note = message, retryName = "Green View", onRetry = {}, onRestore = {},
+                )
             }
         }
     }

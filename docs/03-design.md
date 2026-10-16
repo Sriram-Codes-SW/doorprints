@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.171 |
+| Version | 0.172 |
 | Date | 2026-10-16 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -182,6 +182,7 @@
 | 0.169 | 2026-10-16 | Claude (Code), engineer | **New §18.26, the conformance suite and the kind tripwire, and ADR-36b** (kinds PR 32; `feat/kinds-32-conformance-suite`; [06](06-test-plan.md) TC-U-281, TC-M-89): the synthetic kind `zz_all`, the same website flows for house, school and `zz_all`, the boundary rules checked for every kind, `tools/check-kind-literals.mjs`; the backup keeps a candidate's kind; the generic AI document reads money, checklist and date. User-authored kinds stay Planned. |
 | 0.170 | 2026-10-16 | Claude (Code), engineer | **§18.23: the school's question headers are its own** (`fix/kinds-question-categories-and-handoff`): `school-questions.json` gains `categoryLabels` (the bank's six category ids kept, so a stored question keeps its category, each worded for a school in en, hi, ta and te: Fees and money, Water and toilets, Teaching, Safety and facilities, Admission, Daily routine and other; hi, ta and te under review); the admission question moves from `MONEY` to `LEGAL` (labelled *Admission*). A category the kind has no label for, and every category of the house, reads the house's `questions.category.*` word, so the house is word for word what it was. |
 | 0.171 | 2026-10-16 | Claude (Code), engineer | **§20: restoring photos from the person's own Google Drive** (S4b-BL-293, owner decision 2026-10-16; `feat/restore-photos-from-drive`): *Restore* in *Recently deleted* brings the candidate back first and then reads each photo it lost from Drive (still there for at least 30 days after the delete, [15](15-google-drive-backup-and-sharing.md) §1.4 item 11), decrypts it like a sync download and stores it under a new id; the result says how many of how many came back and why the others did not (five reasons); the shared rules and vectors `docs/schemas/photo-restore-vectors.json`; no new scope, flow or store. |
+| 0.172 | 2026-10-16 | Claude (Code), engineer | **§20: Retry photos and the 30-day clean-up on the phones** (S4b-BL-293, `feat/photo-sweep-android-finish`): `BinRestore.retry`, `Repository.retryBinPhotos`, the result and the *Retry photos* button in *Recently deleted* (live region, focus, in memory only); `PhotoSweepRules`, the tidy's sweep and `PhotoTombstoneSource`. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -3651,6 +3652,21 @@ A short summary of a design that is already written in several places; the ticke
   deleted; the Drive read matters for photos another device deleted with it. *Delete everything* removes the photo files, so
   nothing is restorable after it. The server (self-hosted) has no part: it keeps no deleted photo bytes and the feature reads
   only Google Drive.
+- **Retry photos and the 30-day clean-up on the phones (S4b-BL-293).** The twin of the website's (`delete-undo.service.ts`
+  `retryPhotos`, `photo-sweep-rules.ts`). *Retry photos*: `BinRestore` (what `Repository.restoreHouseFromBin` returns) carries
+  `retry`, a `BinRetry`, while a second try can help, that is while the words name *Google Drive is not connected on this device*
+  or *there was no connection to Google Drive*; the screen (`RecentlyDeletedSection`) keeps the words under the heading, in a
+  polite live region, with a *Retry photos* button outside that region (named "Retry restoring the photos of {name}"), and
+  `Repository.retryBinPhotos` asks again through the same `bringPhotosBack` as the restore. A retry carries only the photos that
+  still have no bytes and failed for a retryable reason; because the sync file lists all of a candidate's photos on every read,
+  it also carries the ids already settled (stored here, or failed for good) and never takes them again, so no photo is stored
+  twice, and the counts and reasons of the earlier attempts, so the words add up. A reason a retry cannot fix (past the window,
+  no copy left, unreadable) is never retried. When the photos are back the button goes and focus moves to the heading. The retry
+  context is in memory only: leaving Settings forgets it (the candidate is already back; only its photos wait). A restore with no
+  retry shows the words in the snackbar as before. *The clean-up*: `PhotoSweepRules.photoFilesToSweep` (shared vectors
+  `photo-sweep-vectors.json`), run by `DriveBackupService.tidy` after retention with the oldest backup that stays and the tombstones
+  of `PhotoTombstoneSource` ([15](15-google-drive-backup-and-sharing.md) §5.1); the controller's `ownPhotoTombstones` is the
+  read (no lock: it runs inside a backup run), and a read that fails sweeps nothing and never fails the backup.
 - **Delete all in this space** (Settings > What you track, one card per space) tombstones that space's live candidates only, in
   one transaction (`deleteHouses` on the website's `LocalStore` and on the phones' `Repository`; the vectors' `deleteSpace` step), after a dialog with the count and the kind, a tick
   box over 10 rows, *Save a copy first*, first focus on Cancel; *Undo* for 10 s (`restoreHouses`); at most one bulk action per 10

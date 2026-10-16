@@ -1787,6 +1787,9 @@
     <string name="delete_bin_more">இன்னும் %1$d பதிவுகள் 30 நாட்களுக்கு வைக்கப்படும். அடுத்ததைப் பார்க்க ஒன்றை மீட்கவும்.</string>
     <string name="delete_restore">மீட்கவும்</string>
     <string name="delete_restore_aria">%1$s ஐ மீட்கவும்</string>
+    <!-- S4b-BL-293 (2026-10-16): Retry photos under the result of a restore (the website's delete.retryPhotos, delete.retryAria). Under review (owner rule: hi/ta/te ship marked under review). -->
+    <string name="delete_retry_photos">படங்களை மீண்டும் முயலவும்</string>
+    <string name="delete_retry_aria">%1$s இன் படங்களை மீண்டும் முயலவும்</string>
     <string name="delete_deleted_on">நீக்கிய நேரம்: %1$s</string>
     <string name="drive_delete_all_kinds">இது எல்லா வகைகளையும் நீக்கும்: வீடுகள், பள்ளிகள் மற்றும் மற்ற எல்லா இடங்களும், நீங்கள் இருக்கும் இடம் மட்டுமல்ல.</string>
     <!-- S4b-BL-256, S4b-BL-259, S4b-BL-266, S4b-BL-277 (2026-10-14): under review (the website's school words where it has the key, else the house string with the school's noun). -->
