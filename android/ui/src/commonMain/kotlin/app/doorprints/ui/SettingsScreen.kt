@@ -779,10 +779,8 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {},
 fun LegalNoticeBlock(openUrl: (String) -> Boolean) {
     var failedUrl by remember { mutableStateOf<String?>(null) }
     Text(LegalNotice.COPYRIGHT, style = MaterialTheme.typography.bodySmall)
-    Text(
-        stringResource(Res.string.settings_licence) + " " + stringResource(Res.string.settings_warranty),
-        style = MaterialTheme.typography.bodySmall,
-    )
+    Text(stringResource(Res.string.settings_licence) + " " + stringResource(Res.string.settings_warranty),
+        style = MaterialTheme.typography.bodySmall)
     // The Survey of India's acknowledgement for the map's boundary lines (its condition of use; S4b-BL-114).
     Text(stringResource(Res.string.settings_about_boundary), style = MaterialTheme.typography.bodySmall)
     val sourceDesc = stringResource(Res.string.settings_source_desc)

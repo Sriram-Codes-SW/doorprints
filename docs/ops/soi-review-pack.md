@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | Statement for the Survey of India's reviewers: the data used, what was done to it, how to check it, and our questions |
-| Version | 0.2 |
-| Date | 2026-10-01 |
+| Version | 0.4 |
+| Date | 2026-10-16 |
 | Author | Claude (Code), lead, for the owner (Sriram, maintainer of Doorprints) |
 | Status | Draft, not sent. Branch `feat/soi-boundary-data`; since S4b-BL-114 the compact file (Himalayan states and the Assam-Arunachal Pradesh line) is drawn by the web, Android and iPhone maps |
 
@@ -12,9 +12,10 @@
 
 | Version | Date | Author | Change |
 |---|---|---|---|
-| 0.1 | 2026-10-01 | Claude (Code), lead | First version, after the Survey of India's reply of 2026-10-01 ([soi-boundary-data-request.md](soi-boundary-data-request.md): no prior permission needed; no alteration or modification of the dataset; acknowledgement; National Geospatial Policy 2022). Pipeline `web/scripts/geo/build_in_boundaries_soi.py`, checker `tools/soi-verify.py`, data `web/public/geo/in-boundaries-soi.json`. |
+| 0.4 | 2026-10-16 | Claude (Code), lead | Synced with `main` after the kinds refactor (#373, #374); no change to the data, the build, the questions or the statement. The draft stays unmerged until the Survey of India answers and the TC-M-25 device look is done. |
 | 0.3 | 2026-10-01 | Claude (Code), lead | The owner sent the second letter to the Survey of India (the 17 questions below, as a reply in the same thread). Waiting for the answer; record its date and gist in docs/10 S4b-BL-114. |
 | 0.2 | 2026-10-01 | Claude (Code), lead | The apps draw the compact file (S4b-BL-114): §3 says what is shipped and how the apps use it (decoded unaltered, MapLibre's screen generalisation only, the corridor mask, the credit); §4's rebuild names the selection reference (`--ne`, commit 52453f7). |
+| 0.1 | 2026-10-01 | Claude (Code), lead | First version, after the Survey of India's reply of 2026-10-01 ([soi-boundary-data-request.md](soi-boundary-data-request.md): no prior permission needed; no alteration or modification of the dataset; acknowledgement; National Geospatial Policy 2022). Pipeline `web/scripts/geo/build_in_boundaries_soi.py`, checker `tools/soi-verify.py`, data `web/public/geo/in-boundaries-soi.json`. |
 
 ## 1. What we did to your data, step by step
 
