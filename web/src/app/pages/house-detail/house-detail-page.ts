@@ -811,7 +811,6 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     afterNextRender(() => document.getElementById('questions-add')?.focus(), { injector: this.injector });
   }
 
-  /** The header of a category in the picker: the candidate's kind's own word when its question file has one, else the house's. */
   protected categoryText(category: QuestionCategory): string {
     return questionCategoryLabel(this.kind().id, category, this.i18n.lang()) ?? this.i18n.t(`questions.category.${category}` as TKey);
   }
