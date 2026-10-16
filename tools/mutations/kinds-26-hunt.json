@@ -29,7 +29,7 @@
     {
       "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/HuntSpace.kt",
       "find": "Starter.REMINDER -> caps.viewings != null",
-      "replace": "Starter.REMINDER -> true",
+      "replace": "Starter.REMINDER -> false",
       "expect": "aRemindersWalkIsTheKindWithViewingsAndAnAreasWalkIsTheDefaultKindFirst"
     },
     {
@@ -70,7 +70,7 @@
     },
     {
       "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/Space.kt",
-      "find": "fun of(kind: String): HuntWords = if (kind == \"school\") SCHOOL else HOUSE",
+      "find": "fun of(kind: String): HuntWords = BY_KIND[kind] ?: HOUSE",
       "replace": "fun of(kind: String): HuntWords = HOUSE",
       "expect": "theHuntWordsAreTheKindFilesAndTheHousesAreTheStringsHuntModeAlwaysHad"
     }

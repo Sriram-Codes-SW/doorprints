@@ -36,8 +36,8 @@
     },
     {
       "file": "web/src/app/shared/compare-criteria.ts",
-      "find": "if (kind.id === 'house') return base;",
-      "replace": "if (kind.id === 'xhouse') return base;",
+      "find": "if (isBaselineKind(kind.id)) return base;",
+      "replace": "if (isBaselineKind('x' + kind.id)) return base;",
       "expect": "scores the house under the person’s own scoring"
     },
     {
@@ -126,13 +126,13 @@
     },
     {
       "file": "web/src/app/pages/house-detail/house-detail-page.html",
-      "find": "@if (kind().id === 'house') {",
-      "replace": "@if (true) {",
+      "find": "@if (isBaseline()) { <a routerLink=\"/criteria\">",
+      "replace": "@if (true) { <a routerLink=\"/criteria\">",
       "expect": "asks the school’s eight items"
     },
     {
       "file": "web/src/app/pages/data/data-page.html",
-      "find": " && space.current().id === 'house') {",
+      "find": " && isBaseline()) {",
       "replace": ") {",
       "expect": "Your data without criteria"
     },
