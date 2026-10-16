@@ -179,6 +179,8 @@ export class RecentlyDeleted {
       const result = await this.undo.retryPhotos(retry, Date.now(), this.drive);
       this.note.set(this.words(result, retry.name));
       this.retry.set(result.retry);
+      // Once the photos are back the Retry button is gone, and it held focus: land it on the heading.
+      if (!result.retry) setTimeout(() => this.heading().nativeElement.focus());
     } catch (err: unknown) {
       this.error.set({ key: 'delete.restoreFailed', params: { reason: errorMsg(err) } });
     }
