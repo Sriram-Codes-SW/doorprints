@@ -22,6 +22,8 @@ import { DriveSyncBackend } from '../drive-sync-backend';
 import { DrivePhotos } from '../drive-photos';
 import { DrivePhotoRestorer, notConnectedReport } from '../photo-restorer';
 import type { PhotoRestoreReport, PhotoRestoreRequest } from '../photo-restorer';
+import { goneOfRow } from '../photo-restore-rules';
+import type { GonePhoto } from '../photo-restore-rules';
 import {
   DEFAULT_PHOTO_CONFIG,
   EMPTY_PHOTO_STATE,
@@ -123,6 +125,21 @@ export class DriveSyncAdapter {
       this.clock,
       true, // webUnknownAllowed: on web, UNKNOWN is treated as unmetered
     );
+  }
+
+  /**
+   * The photo tombstones of this device's own sync file, for the 30-day clean-up (docs/15 §5.1, S4b-BL-293): the photos
+   * whose bytes are gone here but whose Drive file may still hold them. Empty before a session exists, or if the file
+   * cannot be read — a clean-up that cannot see its tombstones simply sweeps nothing.
+   */
+  async photoTombstones(): Promise<readonly GonePhoto[]> {
+    this.ensureInitialized();
+    if (!this.engine) return [];
+    try {
+      return (await this.engine.ownPhotoRows()).map(goneOfRow).filter((p): p is GonePhoto => p != null);
+    } catch {
+      return [];
+    }
   }
 
   /** Lazy initialize engine, backend and photos (deferred until session is available). */
