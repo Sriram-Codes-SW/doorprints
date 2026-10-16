@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Agile sprint log (goals, stories, sign-offs, CI results, retrospectives) |
-| Version | 0.353 |
+| Version | 0.354 |
 | Date | 2026-10-15 |
 | Author | Claude (Cowork), Docs team |
 | Status | Draft (Sprint 3.5 KMP foundation delivered and green on `19006bc`; Sprint 4a in progress, section 11; web host **Firebase Hosting at `https://doorprints.web.app`** since 2026-09-23, owner setup done, first deploy pending, §11.6; Sprint 4b scope set by the product owner with the 2026-09-22 additions and the 2026-09-23 import definition, section 12; **whole-app UX audit approved on both clients**, the go-ahead for the first deploy, §11.7; owner's security guard rule, release security gate, process improvements and **first-release Definition of Done** (hi/ta/te ship *under review*) §12.5; licence change to AGPL-3.0-only approved, done 2026-09-29, §12.6; pre-deploy close-out, what is left, backlog tickets and rule candidates, §12.7; **owner issue P0 of 2026-09-24, India's boundaries on the map, merged (PRs #13 and #14) and live**, §12.8; **story S4b-BR-1, the app icon's footprints (option C), PR #15, merged (`76449fb`)**, §12.9; **owner request of 2026-09-24, the doubled lines and the Assam-Arunachal Pradesh state line, fixed on branch `fix/india-boundary-lines`, PR #16, merged (`4100f7a`)**, §12.10; **owner request of 2026-09-24, the Compose Multiplatform track (ADR-23), CMP-1 done in `be86f50`**, §13; **owner request of 2026-09-24, testing the APK and the live web UI, CMP-0 in `afe4064`**, §13.3; **the Sprint 4b/4c finishing batch (slice 5 to Wave E) built on stacked branches, not merged, 2026-10-01**, §13.29..§13.40) |
@@ -358,6 +358,7 @@
 | 0.351 | 2026-10-15 | Claude (Code), engineer | **Kinds PR 27 In review** (`feat/kinds-27-compare-capability`; [03](03-design.md) §18.21, [06](06-test-plan.md) TC-U-271, TC-M-85): the text of S4b-BL-279 and S4b-BL-292 now says Compare reads the kind file's `capabilities.compare` and the school has a draft checklist. No row added. |
 | 0.352 | 2026-10-15 | Claude (Code), engineer | **S4b-BL-271's text** (`feat/kinds-28-server-kind-reader`; [03](03-design.md) §18.22, [06](06-test-plan.md) TC-U-272..277): the generic reader the row asked for before it serves the house now exists on the server; the row says so. No new row. |
 | 0.353 | 2026-10-15 | Claude (Code), engineer | **S4b-BL-316's text** (`feat/kinds-31-words-from-files`; [03](03-design.md) §18.25, [06](06-test-plan.md) TC-U-280, TC-M-88): its item (1) is finished for the website too: the hand-written `space-tool-words.ts` and `space-words.ts` tables and the phones' key map are generated from the kind files, with 65 more word ids. |
+| 0.354 | 2026-10-16 | Claude (Code), engineer | **S4b-BL-316's text** (`feat/kinds-32-conformance-suite`; [03](03-design.md) §18.26, [06](06-test-plan.md) TC-U-281): the kind tripwire (`tools/check-kind-literals.mjs`) now guards the baseline-literal rule the item introduced; no new row. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Build and deploy](07-secure-build-and-deploy.md) · [Runbook](08-operations-runbook.md) · [CHANGELOG](../CHANGELOG.md)
 

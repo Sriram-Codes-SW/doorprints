@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | `doorprints-backup/1` — the one backup format for server, Android and web |
-| Version | 1.70 |
+| Version | 1.71 |
 | Date | 2026-10-14 |
 | Date | 2026-10-06 |
 | Author | Claude (Cowork) – Backend team |
@@ -84,6 +84,7 @@
 | 1.68 | 2026-10-15 | Claude (Code), engineer | §8.4: **viewings, questions and contacts per kind** (kinds PR 29; `feat/kinds-29-contacts-rooms-viewings`; [03](../03-design.md) §18.23): new [`kinds/school-questions.json`](kinds/school-questions.json) (`doorprints-kind-questions/1`); `kind.schema.json`'s `viewings.questionsSeed` is `house` or `school` and `words` gains eighteen ids; `school.json` lists the `questions` and `viewings` sections and names the new seed; `capabilities-vectors.json` (the school's `viewings`, a valid case, `sectionsFollow.questions`), `kind-word-vectors.json` and `school-vectors.json` follow. The kind's `version` stays 1; not a backup or sync change. |
 | 1.69 | 2026-10-15 | Claude (Code), engineer | §8.4: **filters and the baseline kind** (kinds PR 30; `feat/kinds-30-copies-filters`; [03](../03-design.md) §18.24): `kind.schema.json`'s `capabilities` gains `baseline` (a boolean, the house's) and `filters` (at most six extra ids); `house.json` and `school.json` declare them (the school's `board`, `medium`, `busService`); `capabilities-vectors.json` carries both members in every resolved set, two valid and six invalid cases. The kind's `version` stays 1; not a backup or sync change. |
 | 1.70 | 2026-10-15 | Claude (Code), engineer | §8.4: **every word has an id** (kinds PR 31; `feat/kinds-31-words-from-files`; [03](../03-design.md) §18.25): `kind.schema.json` `words` names 65 more ids (159 in all; additive), `web` and `android` null where only one stack has the word; the website's and the phones' tables of words are generated from `house.json` and `school.json` by `tools/gen-kind-words.mjs`; `kind-word-vectors.json` pins 143 words after the sixteen; the backend's copies of the two files are updated. |
+| 1.71 | 2026-10-16 | Claude (Code), engineer | `test-all.json`, the synthetic conformance kind `zz_all` (kinds PR 32; [03](../03-design.md) §18.26): every capability on, valid against the schema and the Java loader, in no build's list. A kind's `ai.extract` names no number extra (the loader refuses it). |
 
 Related: [11 Feature parity and export spec](../11-feature-parity-and-export-spec.md) section 5.2 ·
 [03 Design](../03-design.md) ADR-20 and the API table (`GET /api/export`, `POST /api/import`) ·

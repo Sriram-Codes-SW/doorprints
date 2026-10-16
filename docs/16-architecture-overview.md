@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Architecture overview: the one entry page for the high-level and low-level design |
-| Version | 0.5 |
+| Version | 0.6 |
 | Date | 2026-10-15 |
 | Owner | Lead (Claude, Code); product owner: Sriram |
 | Status | Draft |
@@ -22,6 +22,7 @@ stays in [03](03-design.md) and the satellites named below.
 | 0.3 | 2026-10-15 | Claude (Code), docs | Voice stated as built on the web, Android and the iPhone; the PR numbers dropped. |
 | 0.4 | 2026-10-15 | Claude (Code), docs | The `school` kind is described as compiled in but off, offered after the switch (`docs/school-compiled-in-wording`). |
 | 0.5 | 2026-10-15 | Claude (Code), docs | Kinds: capabilities, every word from the kind file and the generated word tables (kinds PR 25 to 31, [03](03-design.md) §18.19 to §18.25) in §6. |
+| 0.6 | 2026-10-16 | Claude (Code), docs | Kinds: the conformance kind `zz_all` and the kind tripwire (kinds PR 32, [03](03-design.md) §18.26, ADR-36b) in §6. |
 
 ## 1. Ten minutes
 

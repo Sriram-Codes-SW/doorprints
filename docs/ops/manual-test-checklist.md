@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | The complete manual test list for Doorprints before real-system testing starts and before Android/iOS development continues: every check a person redoes on real devices, whether or not an automated suite or a review session already covered it |
-| Version | 0.28 |
+| Version | 0.29 |
 | Date | 2026-10-15 |
 | Author | Claude, senior reviewer |
 | Status | Draft |
@@ -40,6 +40,7 @@
 | 0.26 | 2026-10-15 | Claude (Code), engineer | **MT-118** (TC-M-86; kinds PR 29, [03](../03-design.md) §18.23): a school's visits and questions, a visit reminder on its own channel, the iPhone body, no broker from a school's phone. Not run. |
 | 0.27 | 2026-10-15 | Claude (Code), engineer | **MT-119** (TC-M-87; kinds PR 30, [03](../03-design.md) §18.24): a school's filters and copy. Not run. |
 | 0.28 | 2026-10-15 | Claude (Code), engineer | **MT-120** (TC-M-88; kinds PR 31, [03](../03-design.md) §18.25): a school's tour, walk check and Settings. Not run. |
+| 0.29 | 2026-10-16 | Claude (Code), engineer | **MT-121** (TC-M-89; kinds PR 32, [03](../03-design.md) §18.26): TC-M-25 in a school's and the synthetic kind's space. Not run. |
 
 ## 1. How to use this list
 
@@ -1054,6 +1055,13 @@ TC-M-72 and TC-M-81 of [06](../06-test-plan.md); the website's twin is §18.
 - **Automated or reviewed by:** TC-U-280. Reviewer ran it: no.
 - Pass / Fail / Date: ____  by: ____
 
+#### MT-121 India's boundaries in every kind's space
+- **Area:** website and Android, a development build. **Who:** owner. **Env:** E3 and E4; the experimental kinds on and the developer flag on (the synthetic kind `zz_all` is in no release build).
+- **Steps:** (1) Open the Map in the house's space, the school's space and the synthetic kind's space. (2) In each, zoom 5, 6, 7 and 8 over Kashmir and Ladakh, then over Arunachal Pradesh (TC-M-25 steps 1 to 3). (3) Compare the three: the lines are identical.
+- **Expected:** the same outline and lines in every space; nothing kind-specific near the boundaries.
+- **Automated or reviewed by:** TC-U-281 (style byte-identical, tripwire). Reviewer ran it: no.
+- Pass / Fail / Date: ____  by: ____
+
 ### 19.1 Summary rows (add to §13 when the owner starts the run)
 
 | Id | Title | Who | Env | Reviewer ran it | Result |
@@ -1067,6 +1075,7 @@ TC-M-72 and TC-M-81 of [06](../06-test-plan.md); the website's twin is §18.
 | MT-118 | A school's visits and questions, and a visit reminder: Android, iPhone, website | owner, natives | E3, E4, E5 | no | |
 | MT-119 | A school's filters and copy: website and Android | anyone | E3, E4 | no | |
 | MT-120 | A school's tour, walk check and Settings: website and Android | anyone | E3, E4 | no | |
+| MT-121 | India's boundaries in every kind's space: website and Android | owner | E3, E4 | no | |
 
 ## 20. A school's pages and copies (S4b-BL-256, S4b-BL-259, S4b-BL-266, S4b-BL-277)
 
