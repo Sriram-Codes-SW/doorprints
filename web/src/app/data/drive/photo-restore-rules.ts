@@ -104,9 +104,16 @@ export function planRestore(input: {
   readonly local: readonly GonePhoto[];
   readonly file: readonly SyncRow[];
   readonly refs: Readonly<Record<string, PhotoRef>>;
+  /**
+   * Photo ids an earlier attempt already brought back. The sync file keeps a deleted photo's tombstone until the clean-up
+   * takes its file (the restorer writes nothing), so a second attempt would otherwise re-plan and re-store a photo that is
+   * already back — a duplicate. Skipping them here is what makes a retry safe. Defaults to none.
+   */
+  readonly skip?: ReadonlySet<string>;
 }): PlanItem[] {
   const byId = new Map<string, GonePhoto>();
   const consider = (p: GonePhoto): void => {
+    if (input.skip?.has(p.id)) return;
     if (!deletedWithCandidate(p.deletedAt, input.houseDeletedAt)) return;
     const had = byId.get(p.id);
     byId.set(p.id, had ? { ...had, ref: had.ref ?? p.ref } : p);

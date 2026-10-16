@@ -87,4 +87,20 @@ describe('photo restore rules', () => {
       });
     }
   });
+
+  describe('a photo an earlier attempt already brought back (the retry guard)', () => {
+    const at = 1_000_000;
+    const photo = (id: string): GonePhoto => ({ id, deletedAt: at, contentType: null, createdAt: null, meta: cleanMeta({}), ref: { driveFileId: `file-${id}`, sha256: 'a'.repeat(64) } });
+    const base = { houseId: 'h1', houseDeletedAt: at, now: at + 1_000, refs: {} };
+
+    it('is planned when nothing is skipped, so a first attempt fetches it', () => {
+      expect(planRestore({ ...base, local: [photo('p1')], file: [] }).map((i) => i.photo.id)).toEqual(['p1']);
+    });
+
+    it('is left out once its id is skipped, so a second attempt cannot store a copy of it', () => {
+      // The same `consider` runs for the device's own tombstones and for the sync file's rows, so the guard holds for both —
+      // which is the point: the sync file keeps re-offering the tombstone after the bytes are already back.
+      expect(planRestore({ ...base, local: [photo('p1')], file: [], skip: new Set(['p1']) })).toEqual([]);
+    });
+  });
 });

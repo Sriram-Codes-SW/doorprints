@@ -35,6 +35,11 @@ export interface PhotoRestoreRequest {
   readonly houseDeletedAt: number;
   /** The photos with a tombstone still stored on this device (their bytes are gone). */
   readonly known: readonly GonePhoto[];
+  /**
+   * Photo ids an earlier attempt already brought back. The sync file keeps re-offering a deleted photo's tombstone, so
+   * without this a retry would fetch a photo that is already stored and put a second copy of it back. Defaults to none.
+   */
+  readonly done?: readonly string[];
 }
 
 /** One photo that came back from Drive. */
@@ -109,7 +114,7 @@ export class DrivePhotoRestorer {
     } catch {
       refs = {};
     }
-    const plan = planRestore({ houseId: req.houseId, houseDeletedAt: req.houseDeletedAt, now: this.clock(), local: req.known, file: rows, refs });
+    const plan = planRestore({ houseId: req.houseId, houseDeletedAt: req.houseDeletedAt, now: this.clock(), local: req.known, file: rows, refs, skip: new Set(req.done ?? []) });
     const fetched: FetchedPhoto[] = [];
     const failed: { photo: GonePhoto; reason: PhotoRestoreReason }[] = [];
     let fault: Fault | null = null;
