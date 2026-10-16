@@ -227,9 +227,9 @@ open class CommonRepository(
     override suspend fun deleteHouses(ids: List<String>): List<String> = houseWriter.deleteMany(ids)
 
     override suspend fun restoreHouse(id: String): Boolean = houseWriter.restoreMany(listOf(id)).isNotEmpty()
-
     override suspend fun restoreHouses(ids: List<String>): List<String> = houseWriter.restoreMany(ids)
     override suspend fun restoreHouseFromBin(id: String, fetch: suspend (app.doorprints.drive.photo.PhotoRestoreRequest) -> app.doorprints.drive.photo.PhotoRestoreReport): BinRestore? = BinRestorer(db, photoStore, ::now) { restoreHouse(it) }.restore(id, fetch)
+    override suspend fun retryBinPhotos(retry: BinRetry, fetch: suspend (app.doorprints.drive.photo.PhotoRestoreRequest) -> app.doorprints.drive.photo.PhotoRestoreReport): BinRestore = BinRestorer(db, photoStore, ::now) { restoreHouse(it) }.retry(retry, fetch)
 
     override fun observeDeletedHouses(): Flow<List<HouseEntity>> = houseWriter.observeDeleted()
 

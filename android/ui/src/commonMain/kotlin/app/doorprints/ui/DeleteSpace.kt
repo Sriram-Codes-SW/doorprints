@@ -18,6 +18,7 @@
 
 package app.doorprints.ui
 
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -51,12 +52,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.doorprints.data.BinRetry
 import app.doorprints.shared.model.BulkGuard
 import app.doorprints.shared.model.DeleteScope
 import app.doorprints.shared.model.ScopedCandidate
@@ -149,8 +153,10 @@ class BinLine(val id: String, val name: String, val deletedOn: String)
  * entries from the last 30 days, newest first, each with *Restore*. A delete is a tombstone that syncs, so *Restore* writes
  * the row back live with a newer `updatedAt` (`Repository.restoreHouseFromBin`); the phone does not remove a house's photos or
  * visits when it deletes it, so they are back with it; photos another device deleted with it are read back from the person's own
- * Google Drive (30 days), and the words say how many came back and why the others did not. The twin of the website's *Recently deleted* in *Your data*. Only
- * this space's rows are read.
+ * Google Drive (30 days), and the words say how many came back and why the others did not. While a second try can help (Drive
+ * not connected, or no answer) the words stay under the heading with *Retry photos* (S4b-BL-293); the retry context is held here
+ * in memory only, so leaving the screen forgets it (the candidate is already back; only its photos wait). The twin of the
+ * website's *Recently deleted* in *Your data*. Only this space's rows are read.
  */
 @Composable
 fun RecentlyDeletedSection() {
@@ -168,20 +174,79 @@ fun RecentlyDeletedSection() {
     }
     val unnamed = stringResource(space.words.unnamed)
     val lines = bin.take(BIN_SHOWN).map { BinLine(it.id, it.label.ifBlank { unnamed }, stringResource(Res.string.delete_deleted_on, it.updatedAt.dateText())) }
-    RecentlyDeletedList(lines, hidden = bin.size - lines.size) { id ->
+    var after by remember { mutableStateOf<RestoreNote?>(null) }
+    var busy by remember { mutableStateOf(false) }
+    val headingFocus = remember { FocusRequester() }
+    // Once the photos are back the Retry button is gone, and it held focus: land it on the heading.
+    LaunchedEffect(after) { if (after?.let { it.retry == null && it.again } == true) runCatching { headingFocus.requestFocus() } }
+    RecentlyDeletedList(
+        lines, hidden = bin.size - lines.size, busy = busy, note = after?.text, retryName = after?.name, headingFocus = headingFocus,
+        onRetry = after?.retry?.let { retry ->
+            {
+                scope.launch {
+                    busy = true
+                    val name = after?.name.orEmpty()
+                    try {
+                        // The candidate is already back: only its photos are asked of Google Drive again.
+                        val r = repo.retryBinPhotos(retry, services.photoRestore::restore)
+                        after = RestoreNote(name, binRestoreMessage(name, r), r.retry, again = true)
+                    } finally {
+                        busy = false
+                    }
+                }
+            }
+        },
+    ) { id ->
         scope.launch {
-            val name = lines.first { it.id == id }.name
-            // The candidate first; its photos are asked of the person's own Google Drive afterwards and cannot undo it (S4b-BL-293).
-            repo.restoreHouseFromBin(id, services.photoRestore::restore)?.let { snackbar?.showSnackbar(binRestoreMessage(name, it)) }
+            busy = true
+            try {
+                val name = lines.first { it.id == id }.name
+                // The candidate first; its photos are asked of the person's own Google Drive afterwards and cannot undo it (S4b-BL-293).
+                val r = repo.restoreHouseFromBin(id, services.photoRestore::restore)
+                if (r != null) {
+                    val text = binRestoreMessage(name, r)
+                    // A result with a retry stays on screen beside its button; any other is the usual snackbar.
+                    after = if (r.retry != null) RestoreNote(name, text, r.retry, again = false) else null
+                    if (r.retry == null) snackbar?.showSnackbar(text)
+                }
+            } finally {
+                busy = false
+            }
         }
     }
 }
 
-/** The heading, the sentence and the lines of *Recently deleted*, apart from where they come from (a screenshot draws it). */
+/** The words after a restore (or a retry) that stay under the heading while *Retry photos* can help; [again] after a retry. */
+private class RestoreNote(val name: String, val text: String, val retry: BinRetry?, val again: Boolean)
+
+/**
+ * The heading, the sentence and the lines of *Recently deleted*, apart from where they come from (a screenshot draws it).
+ * [note] is the result of the restore just done, a live region (announced once, politely); [onRetry] is *Retry photos*, a
+ * button outside that region so a screen reader does not read it as part of the words, named for [retryName]. [busy] holds
+ * every button while a restore or a retry runs.
+ */
 @Composable
-fun RecentlyDeletedList(lines: List<BinLine>, hidden: Int = 0, onRestore: (String) -> Unit) {
-    SectionHeading(stringResource(Res.string.delete_recently_deleted))
+fun RecentlyDeletedList(
+    lines: List<BinLine>,
+    hidden: Int = 0,
+    busy: Boolean = false,
+    note: String? = null,
+    retryName: String? = null,
+    onRetry: (() -> Unit)? = null,
+    headingFocus: FocusRequester? = null,
+    onRestore: (String) -> Unit,
+) {
+    SectionHeading(stringResource(Res.string.delete_recently_deleted), if (headingFocus != null) Modifier.focusRequester(headingFocus).focusable() else Modifier)
     Text(stringResource(Res.string.delete_bin_body), style = MaterialTheme.typography.bodySmall)
+    if (note != null) {
+        Text(note, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite })
+    }
+    if (onRetry != null) {
+        val retryLabel = stringResource(Res.string.delete_retry_aria, retryName.orEmpty())
+        TextButton(onClick = onRetry, enabled = !busy, modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = retryLabel }) {
+            ButtonLabel(stringResource(Res.string.delete_retry_photos))
+        }
+    }
     if (lines.isEmpty()) {
         Text(stringResource(Res.string.delete_bin_empty), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
@@ -192,7 +257,7 @@ fun RecentlyDeletedList(lines: List<BinLine>, hidden: Int = 0, onRestore: (Strin
                 Text(line.name, style = MaterialTheme.typography.bodyLarge)
                 Text(line.deletedOn, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            TextButton(onClick = { onRestore(line.id) }, modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = restoreLabel }) {
+            TextButton(onClick = { onRestore(line.id) }, enabled = !busy, modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = restoreLabel }) {
                 ButtonLabel(stringResource(Res.string.delete_restore))
             }
         }

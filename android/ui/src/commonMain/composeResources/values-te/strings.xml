@@ -1787,6 +1787,9 @@
     <string name="delete_bin_more">మరో %1$d 30 రోజుల పాటు ఉంచబడతాయి. తర్వాతిది చూడటానికి ఒకదాన్ని పునరుద్ధరించండి.</string>
     <string name="delete_restore">పునరుద్ధరించు</string>
     <string name="delete_restore_aria">%1$s ను పునరుద్ధరించు</string>
+    <!-- S4b-BL-293 (2026-10-16): Retry photos under the result of a restore (the website's delete.retryPhotos, delete.retryAria). Under review (owner rule: hi/ta/te ship marked under review). -->
+    <string name="delete_retry_photos">ఫోటోలను మళ్లీ ప్రయత్నించండి</string>
+    <string name="delete_retry_aria">%1$s ఫోటోలను మళ్లీ ప్రయత్నించండి</string>
     <string name="delete_deleted_on">తొలగించిన సమయం: %1$s</string>
     <string name="drive_delete_all_kinds">ఇది అన్ని రకాలను తొలగిస్తుంది: ఇళ్లు, పాఠశాలలు మరియు ప్రతి ఇతర స్థలం, మీరు ఉన్నది మాత్రమే కాదు.</string>
     <!-- S4b-BL-256, S4b-BL-259, S4b-BL-266, S4b-BL-277 (2026-10-14): under review (the website's school words where it has the key, else the house string with the school's noun). -->

@@ -60,6 +60,7 @@ import app.doorprints.drive.photo.PhotoNetworkStatus
 import app.doorprints.drive.photo.PhotoRestoreReport
 import app.doorprints.drive.photo.PhotoRestoreRequest
 import app.doorprints.drive.photo.PhotoRestorer
+import app.doorprints.drive.photo.ownPhotoTombstones
 import app.doorprints.drive.photo.PhotoSettings
 import app.doorprints.drive.photo.PhotoUploadGate
 import app.doorprints.drive.sync.DriveSyncBackend
@@ -471,7 +472,7 @@ class DriveConnectController(
     suspend fun syncNow(confirmShrink: Boolean = false): SyncInfo {
         val s = session ?: return SyncInfo(SyncState.ERROR, lastSync?.lastSyncAt, error = DriveReason.NOT_CONNECTED)
         return ops.withLock {
-            val r = if (rig != null && rigSession === s) rig!! else syncRigs.create(s).also { rig = it; rigSession = s }
+            val r = rigFor(s)
             val backend = r.backend
             val before = backend.lastResult
             val info = try {
@@ -508,7 +509,7 @@ class DriveConnectController(
         val s = session ?: return PhotoRestoreReport.noConnection(req.known)
         return try {
             ops.withLock {
-                val r = if (rig != null && rigSession === s) rig!! else syncRigs.create(s).also { rig = it; rigSession = s }
+                val r = rigFor(s)
                 r.engine?.let { PhotoRestorer(it, r.photos, clock).restore(req) } ?: PhotoRestoreReport.noConnection(req.known)
             }
         } catch (e: CancellationException) {
@@ -571,13 +572,12 @@ class DriveConnectController(
     }
 
     /** Builds the sync stack for the open folder (so [pendingPhotoBytes] has an answer before the first pass). */
-    fun prepareSync() {
-        val s = session ?: return
-        if (rig == null || rigSession !== s) {
-            rig = syncRigs.create(s)
-            rigSession = s
-        }
-    }
+    fun prepareSync() { session?.let { rigFor(it) } }
+
+    private fun rigFor(s: FolderSession): SyncRig = rig?.takeIf { rigSession === s } ?: syncRigs.create(s).also { rig = it; rigSession = s }
+
+    /** Own photo tombstones for the 30-day clean-up (S4b-BL-293): no lock (a backup run holds it); empty with no folder; may throw. */
+    suspend fun ownPhotoTombstones(): List<app.doorprints.drive.photo.GonePhoto> = session?.let { rigFor(it).ownPhotoTombstones() }.orEmpty()
 
     // ==================== Devices and enrolment ====================
 

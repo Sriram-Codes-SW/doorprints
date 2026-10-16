@@ -1785,6 +1785,9 @@
     <string name="delete_bin_more">%1$d more are kept for 30 days. Restore one to see the next.</string>
     <string name="delete_restore">Restore</string>
     <string name="delete_restore_aria">Restore %1$s</string>
+    <!-- S4b-BL-293 (2026-10-16): Retry photos under the result of a restore (the website's delete.retryPhotos, delete.retryAria). -->
+    <string name="delete_retry_photos">Retry photos</string>
+    <string name="delete_retry_aria">Retry restoring the photos of %1$s</string>
     <string name="delete_deleted_on">Deleted %1$s</string>
     <string name="drive_delete_all_kinds">This deletes all kinds: houses, schools and every other space, not only the one you are in.</string>
     <!-- S4b-BL-256, S4b-BL-259, S4b-BL-266, S4b-BL-277 (2026-10-14): the phone half of kinds PR 16: the house words left on a school's pages. The website's words where it has the key (school.titleDetails, school.notFound, school.saveFirstPhotos, school.walk*, school.areaNotesEmpty, school.placesEmpty), else the phone's house string with the school's noun. Hindi, Tamil and Telugu are under review. -->

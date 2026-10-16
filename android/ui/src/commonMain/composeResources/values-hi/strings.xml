@@ -1787,6 +1787,9 @@
     <string name="delete_bin_more">30 दिन तक %1$d और रखे गए हैं। अगला देखने के लिए एक वापस लाएँ।</string>
     <string name="delete_restore">वापस लाएँ</string>
     <string name="delete_restore_aria">%1$s वापस लाएँ</string>
+    <!-- S4b-BL-293 (2026-10-16): Retry photos under the result of a restore (the website's delete.retryPhotos, delete.retryAria). Under review (owner rule: hi/ta/te ship marked under review). -->
+    <string name="delete_retry_photos">तस्वीरें फिर से लाने की कोशिश करें</string>
+    <string name="delete_retry_aria">%1$s की तस्वीरें फिर से लाने की कोशिश करें</string>
     <string name="delete_deleted_on">हटाया गया: %1$s</string>
     <string name="drive_delete_all_kinds">यह सभी प्रकार हटाता है: मकान, स्कूल और हर दूसरा स्थान, सिर्फ़ वह नहीं जिसमें आप हैं।</string>
     <!-- S4b-BL-256, S4b-BL-259, S4b-BL-266, S4b-BL-277 (2026-10-14): under review (the website's school words where it has the key, else the house string with the school's noun). -->

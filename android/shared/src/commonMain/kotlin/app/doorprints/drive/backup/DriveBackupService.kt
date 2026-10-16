@@ -50,6 +50,8 @@ import app.doorprints.drive.downloadVerified
 import app.doorprints.drive.ensureFolder
 import app.doorprints.drive.listAll
 import app.doorprints.drive.markComplete
+import app.doorprints.drive.photo.GonePhoto
+import app.doorprints.drive.photo.PhotoSweepRules
 import app.doorprints.drive.uploadResumable
 import app.doorprints.shared.export.BackupFormat
 import kotlinx.coroutines.CancellationException
@@ -82,6 +84,11 @@ class DriveBackupService(
     /** The device's offset from UTC now, in minutes (file names and retention's days). */
     private val utcOffsetMinutes: () -> Int,
     private val scratch: ScratchSpace = MemoryScratchSpace,
+    /**
+     * The photo tombstones of this device's own sync file, for the 30-day clean-up (docs/15 §5.1, S4b-BL-293); without
+     * it no clean-up runs (a build that syncs nothing, and most tests).
+     */
+    private val photoTombstones: (suspend () -> List<GonePhoto>)? = null,
 ) {
     private val keysFile = KeysFile(p)
     private val controlFile = ControlFile(p)
@@ -495,6 +502,17 @@ class DriveBackupService(
             )
             hold = result.hold
             for (id in result.prune) if (trashQuietly(id)) trashed += id
+            // The 30-day clean-up (docs/15 §5.1): a deleted photo's file leaves Drive once it can no longer be wanted.
+            // The oldest backup that STAYS, not retention's `keep`: when the shrink guard holds, `prune` is empty and
+            // the backups that would have gone are still here, still able to refer to a photo's file.
+            val goneIds = result.prune.toSet()
+            var oldestStaying: Long? = null
+            for (b in backups) {
+                if (b.fileId in goneIds) continue
+                val o = oldestStaying
+                if (o == null || b.createdAt < o) oldestStaying = b.createdAt
+            }
+            for (id in sweepFiles(oldestStaying, now)) if (trashQuietly(id)) trashed += id
             null
         } catch (e: CancellationException) {
             throw e
@@ -502,6 +520,22 @@ class DriveBackupService(
             DriveProblem.of(e, STEP_BACKUP)
         }
         return TidyReport(trashed, completed, hold, problem) to missing
+    }
+
+    /**
+     * The Drive files the 30-day clean-up may take (docs/15 §5.1, [PhotoSweepRules.photoFilesToSweep]), or none when no
+     * tombstone source is wired. A clean-up that cannot read its tombstones is skipped, never thrown: it must not fail a
+     * backup.
+     */
+    private suspend fun sweepFiles(oldestKeptBackupAt: Long?, now: Long): List<String> {
+        val source = photoTombstones ?: return emptyList()
+        return try {
+            PhotoSweepRules.photoFilesToSweep(source(), oldestKeptBackupAt, now)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            emptyList()
+        }
     }
 
     /** Moves [fileId] to Drive's bin; one already gone counts as done. Other failures propagate. */

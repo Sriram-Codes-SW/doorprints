@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | The complete manual test list for Doorprints before real-system testing starts and before Android/iOS development continues: every check a person redoes on real devices, whether or not an automated suite or a review session already covered it |
-| Version | 0.30 |
+| Version | 0.31 |
 | Date | 2026-10-15 |
 | Author | Claude, senior reviewer |
 | Status | Draft |
@@ -42,6 +42,7 @@
 | 0.28 | 2026-10-15 | Claude (Code), engineer | **MT-120** (TC-M-88; kinds PR 31, [03](../03-design.md) §18.25): a school's tour, walk check and Settings. Not run. |
 | 0.29 | 2026-10-16 | Claude (Code), engineer | **MT-121** (TC-M-89; kinds PR 32, [03](../03-design.md) §18.26): TC-M-25 in a school's and the synthetic kind's space. Not run. |
 | 0.30 | 2026-10-16 | Claude (Code), engineer | **MT-122** (TC-M-90; S4b-BL-293, [15](../15-google-drive-backup-and-sharing.md) §1.4 item 11): a deleted candidate's photos come back from the real Google Drive on *Restore*, and what is said when they cannot. Not run. |
+| 0.31 | 2026-10-16 | Claude (Code), engineer | **MT-123** (TC-M-91; S4b-BL-293, [15](../15-google-drive-backup-and-sharing.md) §5.1): the 30-day clean-up and *Retry photos* against the real Drive on the phone. Not run. |
 
 ## 1. How to use this list
 
@@ -1211,3 +1212,26 @@ Expected: the candidate is restored every time, whatever happens to the photos; 
 | ID | Name | Who | Env | Pass | Notes |
 |---|---|---|---|---|---|
 | MT-122 | Restore brings the photos back from the real Drive, and says why when it cannot | owner | E3, E4 | no | |
+
+## 22. The 30-day clean-up and Retry photos against the real Drive (S4b-BL-293, TC-M-91)
+
+Needs the owner's test Google account with Google Drive connected on one phone (E3), photos synced to Drive, a way to move the
+phone's clock forward by more than 30 days (or patience), and about 30 minutes. Nothing here is run; the unit tests use a fake
+Drive.
+
+#### MT-123 A deleted photo's file leaves Drive after 30 days, and Retry photos brings the rest back
+
+1. On the phone, open a candidate with three photos and wait for the sync (Settings > Google Drive says *Synced*). In Drive, *Doorprints* > *Photos* has one file per photo.
+2. Delete the candidate, and make a backup (Settings > Google Drive > *Back up now*). The photo files are still in *Photos* (not in Drive's bin).
+3. Move the phone's clock forward by 31 days (or wait), make another backup. The three photo files are in Drive's bin if no backup that stays could still hold them; if the first backup (made before the deletion) stays, they are **not** moved until that backup is pruned. Check both cases: the files of a photo deleted *before* the oldest kept backup was made go; those deleted after stay.
+4. With a candidate deleted less than 30 days ago: switch on airplane mode just after pressing *Restore*, or restore while Drive is disconnected on the phone: the words name the reason and *Retry photos* appears under them. Reconnect and press *Retry photos*: the photos come back once each (no duplicates), the button goes and focus is on the *Recently deleted* heading.
+5. Press *Retry photos* while still offline: the words stay, the button stays. Leave Settings and come back: the button is gone (the candidate is back; only its photos waited).
+6. With TalkBack, the words under the heading are read once when they change and *Retry photos* is its own control, announced as "Retry restoring the photos of {name}". In Hindi, Tamil and Telugu the button reads naturally to a native speaker (under review).
+
+Expected: no photo is stored twice; a backup never fails because the clean-up could not read the sync file; nothing is deleted from Drive by a retry. Record any line that does not follow, with the platform, the language and the steps.
+
+### 22.1 Summary rows (add to §13 when the owner starts the run)
+
+| ID | Name | Who | Env | Pass | Notes |
+|---|---|---|---|---|---|
+| MT-123 | The 30-day clean-up takes a deleted photo's file, and Retry photos brings the rest back | owner | E3 | no | |

@@ -17,6 +17,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import vectorsJson from '../../../../../docs/schemas/photo-sweep-vectors.json';
 import { cleanMeta } from '../../shared/photo-tags';
 import { RESTORE_WINDOW_DAYS } from './photo-restore-rules';
 import type { GonePhoto } from './photo-restore-rules';
@@ -33,7 +34,26 @@ function gone(id: string, deletedAt: number, file: string | null = `file-${id}`)
 
 const sweep = (photos: readonly GonePhoto[], oldestKeptBackupAt: number | null) => photoFilesToSweep({ photos, oldestKeptBackupAt, now: NOW });
 
+interface SweepCase {
+  name: string;
+  oldestStayingBackupAgoMs: number | null;
+  photos: { id: string; deletedAgoMs: number; driveFileId: string | null }[];
+  expect: string[];
+}
+const vectors = vectorsJson as unknown as { format: string; windowDays: number; now: number; cases: SweepCase[] };
+
 describe('photo sweep rules', () => {
+  it('uses the shared vectors (docs/schemas/photo-sweep-vectors.json, read by the phones too)', () => {
+    expect(vectors.format).toBe('doorprints-photo-sweep-vectors/1');
+    expect(SWEEP_WINDOW_DAYS).toBe(vectors.windowDays);
+    expect(vectors.cases.length).toBeGreaterThan(0);
+    for (const c of vectors.cases) {
+      const photos = c.photos.map((p) => gone(p.id, vectors.now - p.deletedAgoMs, p.driveFileId));
+      const kept = c.oldestStayingBackupAgoMs == null ? null : vectors.now - c.oldestStayingBackupAgoMs;
+      expect(photoFilesToSweep({ photos, oldestKeptBackupAt: kept, now: vectors.now }), c.name).toEqual(c.expect);
+    }
+  });
+
   it('is the restore window itself, so the clean-up cannot take a file Restore still promises', () => {
     expect(SWEEP_WINDOW_DAYS).toBe(RESTORE_WINDOW_DAYS);
     expect(SWEEP_WINDOW_DAYS).toBe(30);
