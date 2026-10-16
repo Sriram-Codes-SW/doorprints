@@ -160,6 +160,37 @@ export class DriveSyncEngine {
     }
   }
 
+  /**
+   * The photo rows this device knows of, deleted ones included (S4b-BL-293, *Recently deleted* getting photos back from
+   * Drive): the rows of its own last file (the whole of its state: its photos and the tombstones it took from the
+   * others) and the tombstones staged for the next pass, the newer of a row winning. Read through the pin like any file
+   * and held to the same checks; the file is not downloaded again while it is the one this device wrote last. Nothing is
+   * written. An unreadable or missing file answers the staged rows alone; a network failure is thrown.
+   */
+  async ownPhotoRows(): Promise<SyncRow[]> {
+    if ((await this.session.guard.watermark()) === null) throw new KeysError('NOT_PINNED', 'no pin for this folder: nothing is opened');
+    const rows = new Map<string, SyncRow>();
+    const st = await this.state.load();
+    let file: SyncFile | null = null;
+    if (st.lastChecksum !== null && this.ownCache?.checksum === st.lastChecksum) {
+      file = this.ownCache.verified.file;
+    } else if (st.syncFolderId !== null) {
+      const ctx: Ctx = { keys: await this.session.refresh(), refreshed: false };
+      const own = this.ownCandidates(await listAll(this.drive, { parentId: st.syncFolderId, appProperties: { [DRIVE_LAYOUT.kind]: KIND_SYNC } }));
+      for (const f of own) {
+        try {
+          const v = await this.verify(ctx, f, this.session.deviceId);
+          if (!file || v.file.seq > file.seq) file = v.file;
+        } catch (e) {
+          if (!(e instanceof Skip)) throw e;
+        }
+      }
+    }
+    for (const r of file?.rows.photos ?? []) putIfNewer(rows, r);
+    for (const r of this.staged.values()) if (r.kind === 'photos') putIfNewer(rows, r);
+    return [...rows.values()];
+  }
+
   // ---- The pass ---------------------------------------------------------------------------------------------------
 
   private async pass(initial: DriveSyncState, now: number, confirmShrink: boolean): Promise<SyncPassResult> {

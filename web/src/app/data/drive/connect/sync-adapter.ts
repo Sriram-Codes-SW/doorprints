@@ -20,6 +20,8 @@ import { WebCryptoProvider } from '../../crypto/crypto-provider';
 import { DriveSyncEngine } from '../drive-sync-engine';
 import { DriveSyncBackend } from '../drive-sync-backend';
 import { DrivePhotos } from '../drive-photos';
+import { DrivePhotoRestorer, notConnectedReport } from '../photo-restorer';
+import type { PhotoRestoreReport, PhotoRestoreRequest } from '../photo-restorer';
 import {
   DEFAULT_PHOTO_CONFIG,
   EMPTY_PHOTO_STATE,
@@ -276,6 +278,24 @@ export class DriveSyncAdapter {
   }
 
   /**
+   * Gets the photos of a restored candidate back from the person's own Google Drive (S4b-BL-293, *Recently deleted*): the
+   * photos it can find are fetched, checked and decrypted, nothing is uploaded or deleted. Under the same lock as a sync
+   * pass. Before the folder is open (not connected on this page) every known photo answers *not connected*. Never throws.
+   */
+  async restorePhotos(req: PhotoRestoreRequest): Promise<PhotoRestoreReport> {
+    if (!this.session) return notConnectedReport(req.known);
+    try {
+      return await this.locks.request(DRIVE_SYNC_LOCK, async () => {
+        this.ensureInitialized();
+        if (!this.engine || !this.photos) return notConnectedReport(req.known);
+        return new DrivePhotoRestorer(this.engine, this.photos, this.clock).restore(req);
+      });
+    } catch {
+      return notConnectedReport(req.known);
+    }
+  }
+
+  /**
    * Check if this device is behind peers: unread files from other devices, or a difference in generation.
    * Before backup connect, returns false (not behind; sync will fail with 'not connected').
    */
@@ -378,4 +398,5 @@ export interface IDriveSyncAdapter {
   uploadPhotosNowOverMobile(): OneOffGrant;
   pendingPhotoBytes(): Promise<number | null>;
   decideBackup(force?: boolean): boolean;
+  restorePhotos(req: PhotoRestoreRequest): Promise<PhotoRestoreReport>;
 }

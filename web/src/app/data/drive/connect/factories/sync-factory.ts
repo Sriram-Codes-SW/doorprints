@@ -19,6 +19,8 @@
 import { DriveSyncAdapter, type IDriveSyncAdapter, type SyncAdapterStatus } from '../sync-adapter';
 import type { DriveRuntime } from './runtime';
 import { LocalRowsAdapter } from '../local/local-rows';
+import { notConnectedReport } from '../../photo-restorer';
+import type { PhotoRestoreReport, PhotoRestoreRequest } from '../../photo-restorer';
 
 /**
  * Creates a real sync adapter from the Drive runtime.
@@ -123,6 +125,14 @@ export function createLazySyncAdapterProxy(getRuntime: () => Promise<DriveRuntim
           return 0;
         }
         throw err;
+      }
+    },
+
+    async restorePhotos(req: PhotoRestoreRequest): Promise<PhotoRestoreReport> {
+      try {
+        return await (await ensureAdapter()).restorePhotos(req);
+      } catch {
+        return notConnectedReport(req.known);
       }
     },
 

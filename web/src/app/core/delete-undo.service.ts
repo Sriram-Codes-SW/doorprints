@@ -23,8 +23,13 @@ import { SyncService } from '../data/sync.service';
 import { Announcer } from './announcer.service';
 import { LocalDataService } from './local-data.service';
 import { SpaceService } from './space.service';
-import { binRows, parseNotes, withNote } from '../data/house-bin';
+import { binRows, parseNotes, restoredPhoto, withNote } from '../data/house-bin';
 import type { RestoreResult } from '../data/house-bin';
+import { notConnectedReport } from '../data/drive/photo-restorer';
+import type { PhotoRestoreReport, PhotoRestoreRequest } from '../data/drive/photo-restorer';
+import { summarize } from '../data/drive/photo-restore-rules';
+import type { PhotoRestoreReason, RestoreConnection } from '../data/drive/photo-restore-rules';
+import { isoNow } from '../data/records';
 import { SETTING_KEYS, type HouseRecord, type PhotoRecord } from '../data/records';
 
 /** How long *Undo* is offered after a delete, in milliseconds (the phones' snackbar is shown as long: DeletedHouseUndo.kt). */
@@ -50,11 +55,22 @@ export interface BinEntry {
   readonly photos: number;
 }
 
+/** Where a restore gets photos back from besides this device: the person's own Google Drive (the Data page provides it). */
+export interface PhotoRestorer {
+  restorePhotos(req: PhotoRestoreRequest): Promise<PhotoRestoreReport>;
+}
+
 /** What a restore from the list did, for the words after it. */
 export interface Restored {
   readonly name: string;
-  /** Photos that could not come back (their bytes are gone), 0 when none was lost. */
-  readonly photosGone: number;
+  /** How many photos the candidate had (0 when none, or when nobody recorded any). */
+  readonly photosTotal: number;
+  /** How many are back, from the copies on this device or from the person's Google Drive. */
+  readonly photosBack: number;
+  /** Of those, how many came from Google Drive. */
+  readonly photosFromDrive: number;
+  /** Why the others did not come back, each reason once. */
+  readonly reasons: readonly PhotoRestoreReason[];
 }
 
 /** The name a candidate goes by in the words around a delete: its label, else its address, else ''. */
@@ -161,14 +177,46 @@ export class DeleteUndoService {
     return binRows(rows, space, now).map((r) => ({ id: r.id, name: nameOfRow(r), deletedAt: r.updatedAt ?? '', photos: notes[r.id] ?? 0 }));
   }
 
-  /** Restores one entry of the list. Undefined when it is no longer a tombstone (restored on another device meanwhile). */
-  async restore(entry: BinEntry, now: number = Date.now()): Promise<Restored | undefined> {
+  /**
+   * Restores one entry of the list. Undefined when it is no longer a tombstone (restored on another device meanwhile).
+   * The candidate comes back first and whatever happens to its photos cannot undo that: the photos with no bytes left here
+   * are asked of `restorer` (the person's own Google Drive, which keeps the encrypted copy of a deleted photo for 30 days,
+   * docs/15 §1.4) and put back one by one; each that cannot come back is counted with its reason (S4b-BL-293).
+   */
+  async restore(entry: BinEntry, now: number = Date.now(), restorer: PhotoRestorer | null = null): Promise<Restored | undefined> {
     const result: RestoreResult | undefined = await this.store.restoreHouse(entry.id, now);
     if (!result) return undefined;
     await this.note(entry.id, 0);
+    const noted = Math.max(entry.photos, result.photosBack + result.photosGone);
+    let fromDrive = 0;
+    let failed: PhotoRestoreReason[] = result.gone.map(() => 'MISSING');
+    let connection: RestoreConnection = 'OK';
+    // Drive is always asked: a candidate deleted on another device leaves no note or tombstone here, only its sync file.
+    if (restorer) {
+      let report: PhotoRestoreReport;
+      try {
+        report = await restorer.restorePhotos({ houseId: entry.id, houseDeletedAt: result.deletedAt, known: result.gone });
+      } catch {
+        report = notConnectedReport(result.gone);
+      }
+      connection = report.connection;
+      failed = report.failed.map((f) => f.reason);
+      const stamp = isoNow(now);
+      for (const got of report.fetched) {
+        try {
+          await this.store.photos.put(restoredPhoto(got.photo, entry.id, got.bytes, stamp));
+          fromDrive++;
+        } catch {
+          failed.push('UNREADABLE');
+        }
+      }
+    } else {
+      connection = 'NOT_CONNECTED';
+      failed = result.gone.map(() => 'NOT_CONNECTED');
+    }
     this.sync.syncSoon();
-    const had = Math.max(entry.photos, result.photosBack + result.photosGone);
-    return { name: entry.name, photosGone: had - result.photosBack };
+    const summary = summarize(noted, result.photosBack + fromDrive, failed, connection);
+    return { name: entry.name, photosTotal: summary.total, photosBack: summary.restored, photosFromDrive: fromDrive, reasons: summary.reasons };
   }
 
   /** {@link note} for many at once: one read and one write of the notes. */
