@@ -30,6 +30,7 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.Density
@@ -81,6 +82,10 @@ class TourOverlayTest {
                 ProvideAppServices { DoorprintsRoot(links, onDeepLinkHandled = { links.value = null }) }
             }
         }
+        // The shipped lists (house, school) make the root wait one read of the settings store before it draws anything, so a single
+        // waitForIdle can return before the first frame and a tap on a tab finds nothing (CI flake of theCardNeverCoversWhatItPointsAt):
+        // wait for the first draw, as RootNavigationTest.start does.
+        compose.waitUntil(10_000) { compose.onRoot().fetchSemanticsNode().children.isNotEmpty() }
         compose.waitForIdle()
     }
 
@@ -96,6 +101,7 @@ class TourOverlayTest {
     private fun waitFor(text: String) = compose.waitUntil(5_000) { has(text) }
 
     private fun tap(text: String) {
+        waitFor(text)
         compose.onNodeWithText(text).performClick()
         compose.waitForIdle()
     }
@@ -194,6 +200,7 @@ class TourOverlayTest {
 
         // Take it again from Settings, and leave with the system Back.
         tap("Settings")
+        waitFor("Take the tour")
         compose.onNodeWithText("Take the tour").performScrollTo().performClick()
         waitFor("Welcome to Doorprints")
         back()
@@ -206,6 +213,7 @@ class TourOverlayTest {
         runBlocking { settings.setTourEnd(TourEnd.DONE) }
         start(DeepLink.OpenScreen(Routes.SETTINGS))
         assertFalse(has("New here? Take a quick tour"))
+        waitFor("Take the tour")
         compose.onNodeWithText("Take the tour").performScrollTo().performClick()
         waitFor("Welcome to Doorprints")
         assertEquals(1, counter().first)
@@ -219,8 +227,9 @@ class TourOverlayTest {
         runBlocking { settings.setTourEnd(TourEnd.SKIPPED) }
         start()
         // Replay from Settings, then on to the Criteria step.
-        compose.onNodeWithText("Settings").performClick()
+        tap("Settings")
         compose.waitForIdle()
+        waitFor("Take the tour")
         compose.onNodeWithText("Take the tour").performScrollTo().performClick()
         waitFor("Welcome to Doorprints")
         nextUntil("Say what matters to you")
@@ -235,8 +244,9 @@ class TourOverlayTest {
     private fun cardNeverCoversTheTarget(fontScale: Float) {
         runBlocking { settings.setTourEnd(TourEnd.SKIPPED) }
         start(fontScale = fontScale)
-        compose.onNodeWithText("Settings").performClick()
+        tap("Settings")
         compose.waitForIdle()
+        waitFor("Take the tour")
         compose.onNodeWithText("Take the tour").performScrollTo().performClick()
         waitFor("Welcome to Doorprints")
         // (title of the step, the text of the control it points at)

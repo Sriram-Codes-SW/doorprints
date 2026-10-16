@@ -275,7 +275,7 @@ private fun QuestionPicker(
                     val group = left.filter { it.questionCategory == category }
                     if (group.isEmpty()) continue
                     Text(
-                        stringResource(category.labelResource), style = MaterialTheme.typography.titleSmall,
+                        category.label(LocalSpace.current.built.id), style = MaterialTheme.typography.titleSmall,
                         modifier = Modifier.padding(top = 8.dp).semantics { heading() },
                     )
                     group.forEach { q ->

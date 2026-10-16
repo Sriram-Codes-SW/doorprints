@@ -28,7 +28,7 @@ import { SpaceService } from '../../core/space.service';
 import type { TKey } from '../../i18n/en';
 import { TPipe } from '../../i18n/t.pipe';
 import { Msg, TranslationService } from '../../i18n/translation.service';
-import { MAX_QUESTIONS, MAX_QUESTION_TEXT, QUESTION_CATEGORIES, questionScopesOf, questionsOfKind, sortQuestions } from '../../shared/question';
+import { MAX_QUESTIONS, MAX_QUESTION_TEXT, QUESTION_CATEGORIES, questionCategoryLabel, questionScopesOf, questionsOfKind, sortQuestions } from '../../shared/question';
 import type { Question, QuestionCategory, QuestionScope } from '../../shared/question';
 import { RunResult, nextRunResult } from '../../shared/run-result';
 import { isBaselineKind } from '../../core/kind-capabilities';
@@ -112,8 +112,9 @@ export class QuestionsPage {
     });
   }
 
-  protected categoryKey(category: QuestionCategory): TKey {
-    return `questions.category.${category}` as TKey;
+  /** The header of a category: the kind's own word when its question file has one, else the house's (door 9). */
+  protected categoryText(category: QuestionCategory): string {
+    return questionCategoryLabel(this.space.kind(), category, this.i18n.lang()) ?? this.i18n.t(`questions.category.${category}` as TKey);
   }
 
   protected scopeKey(scope: QuestionScope): TKey {

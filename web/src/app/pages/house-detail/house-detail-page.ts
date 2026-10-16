@@ -69,7 +69,7 @@ import { SpaceService } from '../../core/space.service';
 import { type SpaceWords, spaceWords } from '../../core/space-words';
 import { toolWord } from '../../core/space-tool-words';
 import { blankToNull, clone, sharedFromNavigation, sortBrokers, toWholeNumber, withCost } from './house-page-input';
-import { QUESTION_CATEGORIES, questionsOfKind, type Question, type QuestionCategory } from '../../shared/question';
+import { QUESTION_CATEGORIES, questionCategoryLabel, questionsOfKind, type Question, type QuestionCategory } from '../../shared/question';
 import { HouseViewingsCard } from '../viewings/house-viewings-card';
 import { HouseAreaNotesCard, HouseDistancesCard } from '../areas/house-area-cards';
 import { addUsual, answerFor, ordered, usualQuestions } from '../../shared/house-answers';
@@ -811,8 +811,8 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     afterNextRender(() => document.getElementById('questions-add')?.focus(), { injector: this.injector });
   }
 
-  protected categoryKey(category: QuestionCategory): TKey {
-    return `questions.category.${category}` as TKey;
+  protected categoryText(category: QuestionCategory): string {
+    return questionCategoryLabel(this.kind().id, category, this.i18n.lang()) ?? this.i18n.t(`questions.category.${category}` as TKey);
   }
 
   // ---- The duplicate-flat warning (S4b-BL-85) ----

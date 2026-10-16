@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | Test plan (functional, security, accessibility, i18n, AI) |
-| Version | 0.290 |
-| Date | 2026-10-15 |
+| Version | 0.291 |
+| Date | 2026-10-16 |
 | Author | Claude (Cowork) |
 | Status | Draft |
 
@@ -298,6 +298,7 @@
 | 0.288 | 2026-10-15 | Claude (Code), engineer | **TC-U-280 and TC-M-88** (kinds PR 31, [03](03-design.md) §18.25; `feat/kinds-31-words-from-files`): every word from the kind file, the tour, the app-wide neutral texts, the walk check and the reminder in a school's words. |
 | 0.289 | 2026-10-16 | Claude (Code), engineer | **TC-U-281 and TC-M-89** (kinds PR 32, [03](03-design.md) §18.26; `feat/kinds-32-conformance-suite`): the conformance suite for house, school and `zz_all`, the tripwire, India's boundaries for every kind (a clause of TC-M-25). |
 | 0.290 | 2026-10-16 | Claude (Code), engineer | TC-M-89 web half run (house and school space map, zoom 5-8, Kashmir and Arunachal Pradesh, identical); the zz_all space and the phone half stay not run. |
+| 0.291 | 2026-10-16 | Claude (Code), engineer | **TC-U-278 extended: the school's question headers** (`fix/kinds-question-categories-and-handoff`; [03](03-design.md) §18.23): web `question.spec.ts` (the file's `categoryLabels` equal `SCHOOL_CATEGORY_LABELS`, `questionCategoryLabel` and its fallback) and `questions-page.spec.ts` (the school's page shows the school's headers and options, never the house's); `:shared` `DefaultQuestionsFileTest` (the labels equal the file, English fallback, none for the house); `:app` `QuestionsScreenTest` and the `school_questions` Roborazzi baselines (en, hi) re-recorded; the house's `questions` and `house_edit_questions` baselines unchanged. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [Design](03-design.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 

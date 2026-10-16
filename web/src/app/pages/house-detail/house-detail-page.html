@@ -548,7 +548,7 @@
           <div id="questions-picker" class="picker">
             <h3 class="picker-title">{{ 'questions.pick' | t }}</h3>
             @for (g of pickable(); track g.category) {
-              <p class="picker-group">{{ categoryKey(g.category) | t }}</p>
+              <p class="picker-group">{{ categoryText(g.category) }}</p>
               <ul class="picker-list">
                 @for (q of g.questions; track q.id) {
                   <li>

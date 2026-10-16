@@ -27,6 +27,7 @@ import app.doorprints.shared.model.HouseStatus
 import app.doorprints.shared.model.KindLabels
 import app.doorprints.shared.model.RoomType
 import app.doorprints.shared.model.AnswerStatus
+import app.doorprints.shared.model.DefaultQuestions
 import app.doorprints.shared.model.QuestionCategory
 import app.doorprints.shared.model.QuestionScope
 import app.doorprints.shared.model.ViewingGroup
@@ -132,6 +133,14 @@ val QuestionCategory.labelResource: StringResource
     }
 
 /** Rent, Buy or Both (`question_scope_*`, slice 3a): which houses a question is for. */
+/**
+ * The header of a question category in the space of [kind]: that kind's own word when its question file has one (the school's, kinds PR 29), else the
+ * house's `question_category_*` string, so a house is word for word what it was and a category the kind does not word falls back to it.
+ */
+@Composable
+fun QuestionCategory.label(kind: String): String =
+    DefaultQuestions.categoryLabel(kind, this, uiLanguage()) ?: stringResource(labelResource)
+
 val QuestionScope.labelResource: StringResource
     get() = when (this) {
         QuestionScope.RENT -> Res.string.question_scope_RENT
