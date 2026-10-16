@@ -455,13 +455,13 @@ fun MapScreen(
         notificationsReach = mapServices.notificationsReachUser()
     }
     // Notifications are asked for in context, when Hunt mode is turned on; Hunt mode starts whatever the answer.
-    val notifyAsk = rememberNotificationAsk(rationale = Res.string.map_hunt_notify_rationale)
-
+    val notifyAsk = rememberNotificationAsk(rationale = LocalSpace.current.hunt.notifyRationale)
+    val huntKind = LocalSpace.current.kind // the walk belongs to the space it is started in (docs/03 section 18.20)
     fun startHunt() {
         if (needsLocation(AfterGrant.HUNT)) return
         notifyAsk {
             // start() returns false when the permission was revoked since this screen last checked.
-            if (!mapServices.startHunt()) {
+            if (!mapServices.startHunt(huntKind)) {
                 permissionGranted = hasPreciseLocation(platform)
                 scope.launch { snackbar.showSnackbar(locationNeeded, withDismissAction = true) }
             }
@@ -640,7 +640,7 @@ fun MapScreen(
     val keptSnack = stringResource(Res.string.trace_kept_snack)
     val deletedSnack = stringResource(Res.string.trace_deleted_snack)
     val tooLongText = stringResource(Res.string.trace_save_too_long, TraceConstants.MAX_WALK_POINTS)
-    val houseFullText = stringResource(Res.string.trace_save_house_full, TraceConstants.MAX_WALKS_PER_HOUSE)
+    val houseFullText = stringResource(LocalSpace.current.words.traceSaveFull, TraceConstants.MAX_WALKS_PER_HOUSE)
     val allFullText = stringResource(Res.string.trace_save_all_full, TraceConstants.MAX_SAVED_WALKS)
     val failedWalkText = stringResource(Res.string.trace_save_failed_walk)
     val failedHouseText = stringResource(Res.string.trace_save_failed_house)
@@ -869,7 +869,7 @@ fun MapScreen(
                 afterGrant = null
                 requestLocation()
             }
-            if (platformFeatures.huntMode && LocalSpace.current.huntHere) { // Hunt mode is the house space's (kinds PR C)
+            if (platformFeatures.huntMode && LocalSpace.current.huntHere) { // a space whose kind has Hunt (docs/03 section 18.20)
                 HuntCard(
                     hunt = hunt,
                     onToggle = { on -> if (!on) mapServices.stopHunt() else startHunt() },
@@ -1210,7 +1210,7 @@ private fun MapNotOnThisPhone(onOpenHouses: () -> Unit) {
             modifier = Modifier.widthIn(max = ContentMaxWidth).fillMaxWidth(),
         ) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(stringResource(Res.string.map_not_on_this_phone), style = MaterialTheme.typography.bodyLarge)
+                Text(stringResource(LocalSpace.current.words.mapNotHere), style = MaterialTheme.typography.bodyLarge)
                 Button(onClick = onOpenHouses, modifier = Modifier.heightIn(min = 48.dp)) {
                     ButtonLabel(stringResource(Res.string.map_open_houses))
                 }
@@ -1266,7 +1266,7 @@ private fun HuntCard(
     val weak = !stale && accuracyM != null && accuracyM > HuntState.MAX_ACCURACY_M
     val streetText = hunt.street?.let { street ->
         if (hunt.streetHouses + hunt.streetVisits > 0) {
-            stringResource(Res.string.map_street_seen, street, hunt.streetHouses, hunt.streetVisits)
+            stringResource(LocalSpace.current.hunt.streetSeen, street, hunt.streetHouses, hunt.streetVisits)
         } else {
             stringResource(Res.string.map_street_new, street)
         }
@@ -1365,7 +1365,7 @@ private fun HuntCard(
                     if (notificationsOff) {
                         // bodyMedium, as the location note above it (round 7): both are blocking messages.
                         WarnNote(
-                            stringResource(Res.string.map_notifications_off),
+                            stringResource(LocalSpace.current.hunt.notificationsOff),
                             Modifier.padding(top = 8.dp),
                             action = stringResource(Res.string.notify_allow),
                             onAction = onAllowNotifications,

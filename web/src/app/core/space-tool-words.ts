@@ -17,8 +17,9 @@
  */
 
 import type { TKey } from '../i18n/en';
+import { kindWordKinds, kindWordPairs } from './kind-word-table';
 
-/**
+/*
  * The words of Compare, Ask, Plan, the copies and the share target in a space other than the house (kinds PR B,
  * S4b-BL-279; docs/03 §18.13), and since kinds PR 16 (S4b-BL-256, S4b-BL-259, S4b-BL-266, S4b-BL-277; §18.9) the house's
  * words left on a school's page: tab titles, the name's placeholder, the walk check, the Areas and Places pages, the
@@ -26,86 +27,12 @@ import type { TKey } from '../i18n/en';
  * house's words are exactly the keys they were: `toolWord('house', 'compare.title')` is `'compare.title'`. The space's
  * list and map words are `core/space-words.ts` (S4b-BL-277), the kind files' `words` (S4b-BL-278).
  *
- * S4b-BL-316: the words the phone also has (`TOOL_WORD_IDS`) carry the ids the kind files' `words` give them, so the three
- * places (the files, this table and the phone's resources) are held to one another by `kind-words.spec.ts`.
+ * S4b-BL-316 and kinds PR 31 (docs/03 section 18.25): a kind's table is not written by hand any more. Every word has an id in the kind
+ * files' `words` (`house.json`, `school.json`), and the table of a kind is the pairs "the house's key, the key this kind reads"
+ * of the generated `kind-words.generated.ts` (`tools/gen-kind-words.mjs`); `kind-words.spec.ts` holds the file, the generated
+ * rows and the vectors to one another. Only the table of the words of a thing that acts on every space (`*`) is a table here,
+ * because it belongs to no kind.
  */
-const SCHOOL: Readonly<Partial<Record<TKey, TKey>>> = {
-  'compare.title': 'school.compareTitle',
-  'compare.empty': 'school.compareEmpty',
-  'compare.addSome': 'school.compareAdd',
-  'compare.pickerLabel': 'school.comparePicker',
-  'compare.choose': 'school.compareChoose',
-  'compare.pickMore': 'school.comparePickMore',
-  'compare.caption': 'school.compareCaption',
-  'compare.search': 'school.compareSearch',
-  'compare.onlyOne': 'school.compareOnlyOne',
-  'compare.footnote': 'school.compareFootnote',
-  'ask.title': 'school.askTitle',
-  'ask.intro': 'school.askIntro',
-  'ask.placeholder': 'school.askPlaceholder',
-  'ask.notGrounded': 'school.askNotGrounded',
-  'ask.sources': 'school.askSources',
-  'plan.title': 'school.planTitle',
-  'plan.intro': 'school.planIntro',
-  'plan.placeholder': 'school.planPlaceholder',
-  'plan.noStops': 'school.planNoStops',
-  'data.scope': 'school.dataScope',
-  'data.scopeAll': 'school.dataScopeAll',
-  'data.includeRejected': 'school.dataIncludeRejected',
-  'data.photosShortlisted': 'school.dataPhotosShortlisted',
-  'data.empty': 'school.dataEmpty',
-  'data.emptyAction': 'school.dataEmptyAction',
-  'data.noShortlisted': 'school.dataNoShortlisted',
-  'data.noneMatch': 'school.dataNoneMatch',
-  'data.countHouses': 'data.countKind',
-  'data.preview': 'data.previewKind',
-  'share.create': 'school.shareCreate',
-  'share.hint': 'school.shareHint',
-  // S4b-BL-259 and S4b-BL-277: a school's page, tab titles and walk check (the house's words left on them).
-  'title.newHouse': 'school.titleNew',
-  'title.house': 'school.titleDetails',
-  'title.map': 'school.titleMap',
-  'house.namePlaceholder': 'school.namePlaceholder',
-  'house.notFound': 'school.notFound',
-  'house.nameRequired': 'school.nameRequired',
-  'house.locationRequired': 'school.locationRequired',
-  'house.locationUnset': 'school.locationUnset',
-  'house.placeFound': 'school.placeFound',
-  'house.mapLabel': 'school.mapLabel',
-  'house.saveFirstVisits': 'school.saveFirstVisits',
-  'house.saveFirstPhotos': 'school.saveFirstPhotos',
-  'listingFill.hint': 'school.listingHint',
-  'ai.disclosure': 'school.aiDisclosure',
-  'ai.disclosureOwnKeyHost': 'school.aiDisclosureOwnKeyHost',
-  'map.fitTitle': 'school.fitTitle',
-  'trace.house.empty': 'school.walksEmpty',
-  'trace.here.buttonHouse': 'school.walkTitle',
-  'trace.here.titleHouse': 'school.walkTitle',
-  'trace.here.placeHouse': 'school.walkPlace',
-  'trace.here.labelHouse': 'school.walkLabel',
-  'trace.here.approxHouse': 'school.walkApprox',
-  // S4b-BL-256: the Areas and Places pages and the area cards, read in the space on screen.
-  'areas.intro': 'school.areasIntro',
-  'areas.dataBody': 'school.areasDataBody',
-  'areas.confirmDelete': 'school.areasConfirmDelete',
-  'areaNotes.empty': 'school.areaNotesEmpty',
-  'places.dataBody': 'school.placesDataBody',
-  'places.intro': 'school.placesIntro',
-  'places.empty': 'school.placesEmpty',
-  'places.confirmDelete': 'school.placesConfirmDelete',
-  // S4b-BL-256 and S4b-BL-266: the words of a school's readable copy (cover, options, ranking, empty line).
-  'exp.title': 'school.expTitle',
-  'exp.counts': 'school.expCounts',
-  'exp.scopeAll': 'school.expScopeAll',
-  'exp.scopeShortlisted': 'school.expScopeShortlisted',
-  'exp.scopeSelected': 'school.expScopeSelected',
-  'exp.rejectedIncluded': 'school.expRejectedIncluded',
-  'exp.rejectedLeftOut': 'school.expRejectedLeftOut',
-  'exp.photosAll': 'school.expPhotosAll',
-  'exp.photosShortlisted': 'school.expPhotosShortlisted',
-  'exp.colHouse': 'school.expColSchool',
-  'exp.noHouses': 'school.expNone',
-};
 
 /**
  * The words of a thing that acts on every space (S4b-BL-291): the Full backup's options and gaps and the import preview, read
@@ -138,28 +65,28 @@ const ANY: Readonly<Partial<Record<TKey, TKey>>> = {
   'imp.done': 'imp.doneAny',
   'imp.doneRemoved': 'imp.doneRemovedAny',
   'imp.seeHouses': 'imp.seeAny',
+  // Kinds PR 31: the app-wide texts of Connect, Your data and the first download (SpaceService.appWord).
+  'connect.intro': 'connect.introAny',
+  'connect.success': 'connect.successAny',
+  'connect.aiHint': 'connect.aiHintAny',
+  'connect.aiSends': 'connect.aiSendsAny',
+  'connect.inviteBody': 'connect.inviteBodyAny',
+  'data.syncPaused': 'data.syncPausedAny',
+  'data.migrationTitle': 'data.migrationTitleAny',
+  'data.clearBody': 'data.clearBodyAny',
+  'confirm.clearBrowser': 'confirm.clearBrowserAny',
+  'data.migrationDone': 'data.migrationDoneAny',
+  'data.progressHouses': 'data.progressHousesAny',
 };
 
 /**
- * The ids the kind files' `words` give the words this table has in common with the phone (S4b-BL-316), each with the house's
- * key; the school's is `toolWord('school', key)`. `kind-words.spec.ts` holds the files and the vectors to it.
+ * One table per kind, from its kind file's `words` (the house's key of a word and the key the kind reads in its place), and the
+ * table of the words of a thing that acts on every space.
  */
-export const TOOL_WORD_IDS: Readonly<Record<string, TKey>> = {
-  askLabel: 'ask.title',
-  askHint: 'ask.placeholder',
-  askNotGrounded: 'ask.notGrounded',
-  askSources: 'ask.sources',
-  exportEmpty: 'data.empty',
-  exportScopeAll: 'data.scopeAll',
-  exportIncludeRejected: 'data.includeRejected',
-  walkButton: 'trace.here.buttonHouse',
-  walkPlace: 'trace.here.placeHouse',
-  walkLabel: 'trace.here.labelHouse',
-  walkApprox: 'trace.here.approxHouse',
-  walksEmpty: 'trace.house.empty',
-};
-
-const TABLES: Readonly<Record<string, Readonly<Partial<Record<TKey, TKey>>>>> = { school: SCHOOL, '*': ANY };
+const TABLES: Record<string, Readonly<Partial<Record<TKey, TKey>>>> = Object.fromEntries(
+  kindWordKinds().slice(1).map((kind) => [kind, Object.fromEntries(kindWordPairs(kind))]),
+);
+TABLES['*'] = ANY;
 
 /** The key to show for `key` in the space of `kind`: the kind's own where it has one, else `key` (the house's). */
 export function toolWord(kind: string | null | undefined, key: TKey): TKey {

@@ -69,14 +69,16 @@ class SpaceUiTest {
     }
 
     @Test
-    fun aSchoolHasNoBrokerChecklistQuestionsViewingsRoomsOrMoneyAndNoHuntMode() {
+    fun aSchoolHasNoBrokerRoomsMovingInOrMoneyButHasHuntModeVisitsAndAChecklistOfItsOwn() {
         val school = SpaceUi.resolve(both, "school")
-        for (ref in listOf("field.brokerId", "section.checklist", "section.questions", "section.viewings", "section.rooms", "field.money", "field.bedrooms", "field.agreedPrice")) {
+        for (ref in listOf("field.brokerId", "section.moveIn", "section.rooms", "field.money", "field.bedrooms", "field.agreedPrice")) {
             assertFalse(school.shows(ref), ref)
         }
+        // Kinds PR 29 (docs/03 section 18.23): the school has viewings (its visits and open days) and, with them, its questions.
+        for (ref in listOf("section.viewings", "section.questions")) assertTrue(school.shows(ref), ref)
         // What a school does have: the places the kind file lists.
-        for (ref in listOf("field.contactName", "field.street", "field.rating", "section.visits", "section.distances")) assertTrue(school.shows(ref), ref)
-        assertFalse(school.huntHere)
+        for (ref in listOf("field.contactName", "field.street", "field.rating", "section.visits", "section.distances", "section.checklist")) assertTrue(school.shows(ref), ref)
+        assertTrue(school.huntHere, "Hunt mode is the school's capability (docs/03 section 18.20)")
         assertFalse(school.sortsByScoreAndPrice)
     }
 
@@ -106,6 +108,26 @@ class SpaceUiTest {
     }
 
     @Test
+    fun theAppWideTextsAreNeutralOnceMoreThanTheHouseIsInUse() {
+        // Kinds PR 31 (docs/03 section 18.25): the house alone reads the house's Settings texts; two kinds, or another default kind, say entries.
+        assertFalse(SpaceUi.HOUSE.neutral)
+        assertFalse(SpaceUi(houseOnly, "house").neutral)
+        assertTrue(SpaceUi(both, "house").neutral)
+        assertTrue(SpaceUi(both, "school").neutral)
+        val schoolOnly = both.withDefault("school").withKindEnabled("house", false)
+        assertTrue(SpaceUi.resolve(schoolOnly, null).neutral)
+    }
+
+    @Test
+    fun theWordsOfAKindWithNoFileAreTheHousesAndEveryKindFileHasItsOwn() {
+        assertEquals(listOf("house", "school"), KindWordKeys.KINDS)
+        assertSame(PageWords.HOUSE, PageWords.of("zz_none"))
+        assertSame(HuntWords.HOUSE, HuntWords.of("zz_none"))
+        assertEquals(KindWordKeys.HOUSE, KindWordKeys.of("zz_none"))
+        assertEquals(KindWordKeys.SCHOOL, KindWordKeys.of("school"))
+    }
+
+    @Test
     fun aSpaceIsHiddenOnlyWhenTheKindIsOffButOpenedAnyway() {
         assertFalse(SpaceUi(both, "school").hidden)
         assertFalse(SpaceUi(houseOnly, "school").hidden) // one kind on: no spaces, so nothing is hidden
@@ -122,7 +144,7 @@ class SpaceUiTest {
         assertFalse(space.multi)
         assertTrue(space.view.holds(null) && space.view.holds("school"))
         assertEquals("school", space.creating.id)
-        assertFalse(space.huntHere)
+        assertTrue(space.huntHere, "the school alone has Hunt mode of its own")
     }
 
     @Test

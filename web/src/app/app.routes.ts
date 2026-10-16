@@ -16,6 +16,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+import { isBaselineKind } from './core/kind-capabilities';
 import { type CanActivateFn, type Route, Router, Routes } from '@angular/router';
 import { Injector, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
@@ -151,7 +152,7 @@ const toOwnSpace: CanActivateFn = async (route) => {
   try {
     const { LocalDataService } = await import('./core/local-data.service');
     const kind = (await firstValueFrom(injector.get(LocalDataService).house(id)))?.kind;
-    return kind && kind !== 'house' && availableKinds().includes(kind) ? router.createUrlTree(['/k', kind, id]) : true;
+    return kind && !isBaselineKind(kind) && availableKinds().includes(kind) ? router.createUrlTree(['/k', kind, id]) : true;
   } catch {
     return true;
   }
@@ -172,7 +173,7 @@ export function routesFor(spaces: boolean, kinds: readonly string[] = availableK
       { ...map, path: `k/${k}`, data: undefined, title: toolWord(k, 'title.map') },
       { ...detail, path: `k/${k}/new`, title: toolWord(k, 'title.newHouse') },
       // Compare, Ask and Plan of a space other than the house (S4b-BL-279); the house keeps its own three. Before `:id`.
-      ...(k === 'house' ? [] : TOOLS.map((t): Route => ({ ...routes.find((r) => r.path === t)!, path: `k/${k}/${t}` }))),
+      ...(isBaselineKind(k) ? [] : TOOLS.map((t): Route => ({ ...routes.find((r) => r.path === t)!, path: `k/${k}/${t}` }))),
       { ...detail, path: `k/${k}/:id`, title: toolWord(k, 'title.house') },
     ]),
     ...routes.slice(1).filter((r) => r !== map).map((r) => (r === detail ? { ...detail, canActivate: [toOwnSpace] } : r)),

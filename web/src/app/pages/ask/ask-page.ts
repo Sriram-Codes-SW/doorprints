@@ -42,6 +42,7 @@ import { TPipe } from '../../i18n/t.pipe';
 import { RunResult, runResult } from '../../shared/run-result';
 import { focusIfLost } from '../../shared/focus';
 import { VoiceButton } from '../../shared/voice-button';
+import { isBaselineKind } from '../../core/kind-capabilities';
 
 /**
  * "Ask about my houses": RAG answers over the user's own houses, with every cited house linked (docs/ai 5.2).
@@ -172,7 +173,7 @@ export class AskPage implements OnDestroy {
     // An earlier error stays in place while this run is busy (drawn as being updated); the run's end replaces it.
     this.busy.set(true);
     const f = Object.keys(filters).length ? filters : undefined;
-    this.request = (this.kind === 'house' ? this.ai.ask(q, f) : this.ai.ask(q, f, this.kind)).subscribe({
+    this.request = (isBaselineKind(this.kind) ? this.ai.ask(q, f) : this.ai.ask(q, f, this.kind)).subscribe({
       next: (r) => {
         this.request = null;
         this.error.set(null);

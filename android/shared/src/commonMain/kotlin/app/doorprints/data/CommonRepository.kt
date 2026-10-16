@@ -303,18 +303,16 @@ open class CommonRepository(
 
     override suspend fun seedQuestionsOnce(language: String) = questionStore.seedOnce(language)
 
-    override suspend fun resetQuestions(language: String) = questionStore.reset(language)
+    override suspend fun resetQuestions(language: String, kind: String) = questionStore.reset(language, kind)
+
+    override suspend fun seedKindQuestionsOnce(kind: String, language: String) = questionStore.seedKindOnce(kind, language)
 
     override suspend fun saveQuestion(question: Question) = questionStore.save(question)
 
     override suspend fun saveQuestions(questions: List<Question>) = questionStore.saveAll(questions)
 
-    override suspend fun addQuestion(
-        text: String,
-        category: QuestionCategory,
-        appliesTo: QuestionScope,
-        defaultOn: Boolean,
-    ): String = questionStore.add(text, category, appliesTo, defaultOn)
+    override suspend fun addQuestion(text: String, category: QuestionCategory, appliesTo: QuestionScope, defaultOn: Boolean, kind: String): String =
+        questionStore.add(text, category, appliesTo, defaultOn, kind)
 
     override suspend fun deleteQuestion(id: String) = questionStore.delete(id)
 

@@ -27,6 +27,8 @@ import app.doorprints.shared.api.IsoTime
 import app.doorprints.shared.location.Geo
 import app.doorprints.shared.location.StayDetector
 import app.doorprints.shared.location.StreetAlerts
+import app.doorprints.shared.model.KindCapabilities
+import app.doorprints.shared.model.KindSettingRules
 import app.doorprints.shared.model.LocationSource
 import app.doorprints.shared.model.VisitSource
 import app.doorprints.shared.trace.RepeatAlert
@@ -34,7 +36,11 @@ import app.doorprints.shared.trace.TraceConstants
 import app.doorprints.shared.trace.TracePoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -60,6 +66,11 @@ import kotlin.uuid.Uuid
  * Fixes worse than [HuntState.MAX_ACCURACY_M] are shown but never trigger alerts or visits. The wording of alerts and
  * the notifications themselves stay with the platform: the engine hands over the facts.
  *
+ * The walk belongs to a kind, the space it was started in (docs/03 section 18.20, kinds PR 26): [kind] says whose saved
+ * places it alerts about, and the kind's `capabilities.hunt` ([hunt]) says how near (the file's radius, or the person's own for
+ * the house, [radiusFor]), whether the street line is told ([KindCapabilities.Hunt.streetMemory]) and whether a stay at an
+ * unsaved place is offered ([KindCapabilities.Hunt.stayCreates]). Nothing in the engine names a kind.
+ *
  * Not thread-safe: the adapter calls it from one thread, and [scope] must run on that same thread (Android: the
  * service's `lifecycleScope` on the main looper; iOS: a `Dispatchers.Main` scope), because the collectors and the
  * street lookups write the engine's fields from [scope]. A `Default` scope would race. [scope] is the adapter's
@@ -71,6 +82,10 @@ class HuntEngine(
     private val battery: BatteryReader,
     private val effects: HuntEffects,
     private val scope: CoroutineScope,
+    /** The kind the walk belongs to: the space it was started in. */
+    val kind: String,
+    /** That kind's Hunt capability; the adapter has checked the kind has one. */
+    private val hunt: KindCapabilities.Hunt = checkNotNull(KindCapabilities.of(kind).hunt) { "kind '$kind' has no Hunt capability" },
     private val now: () -> Long = { IsoTime.nowMillis() },
     private val newId: () -> String = { randomId() },
 ) {
@@ -80,7 +95,7 @@ class HuntEngine(
 
     /** The last fix accurate enough to use: the houses are looked at again from it when the list changes. */
     private var lastFix: Pair<Double, Double>? = null
-    private var alertRadiusM = 30
+    private var alertRadiusM = hunt.alertRadiusM
     private var pathTrace = false
     private var repeatAlertOn = false
 
@@ -116,7 +131,7 @@ class HuntEngine(
             },
             scope.launch {
                 data.tracking.collect {
-                    alertRadiusM = it.alertRadiusM
+                    alertRadiusM = radiusFor(kind, hunt, it.alertRadiusM)
                     stays.minStayMs = it.minStayMinutes * 60_000L
                     pathTrace = it.pathTrace
                     repeatAlertOn = it.pathTrace && it.repeatAlert
@@ -132,7 +147,7 @@ class HuntEngine(
         dropAlert()
         stationaryMode = null
         requestUpdates(stationary = false)
-        HuntState.update { it.copy(active = true, startedAt = now(), stopReason = null, walkId = 0) }
+        HuntState.update { it.copy(active = true, kind = kind, startedAt = now(), stopReason = null, walkId = 0) }
     }
 
     /**
@@ -213,7 +228,7 @@ class HuntEngine(
         }
         lastFix = lat to lon
         checkNearbyHouses(lat, lon)
-        checkStreet(lat, lon)
+        if (hunt.streetMemory) checkStreet(lat, lon)
         checkStay(lat, lon, time)
         requestUpdates(stationary = stays.isStaying)
     }
@@ -305,7 +320,8 @@ class HuntEngine(
 
     /**
      * Saves an automatic visit at the spot (linked to a saved house within [HOUSE_AT_M]) and, when no house is
-     * there, asks the platform to offer saving the place.
+     * there and the kind's Hunt offers it ([KindCapabilities.Hunt.stayCreates]), asks the platform to offer saving the place
+     * as an entry of [kind]; the visit is saved either way.
      */
     private fun onStayStarted(e: StayDetector.Event.Started) {
         val visitId = newId()
@@ -320,7 +336,7 @@ class HuntEngine(
                 ),
             )
         }
-        if (house == null) effects.alertStay(visitId, e.lat, e.lon)
+        if (house == null && hunt.stayCreates) effects.alertStay(visitId, e.lat, e.lon)
     }
 
     /** Closes the visit that [onStayStarted] opened with the time left and the final position. */
@@ -344,6 +360,14 @@ class HuntEngine(
         const val GEOCODE_AGAIN_M = 80.0
         /** A stay this close to a saved house is a visit to it. */
         const val HOUSE_AT_M = 40.0
+
+        /**
+         * The radius a walk of [kind] alerts within: the person's Settings value for the kind that setting belongs to (the
+         * house, whose file value is its default), the kind's file value for every other kind (a per-kind override is not
+         * offered). The one place the house's own setting is named (docs/03 section 18.20).
+         */
+        fun radiusFor(kind: String, hunt: KindCapabilities.Hunt, settingsM: Int): Int =
+            if (KindCapabilities.of(kind).baseline) settingsM else hunt.alertRadiusM
 
         @OptIn(ExperimentalUuidApi::class)
         private fun randomId(): String = Uuid.random().toString()
@@ -412,11 +436,27 @@ interface HuntData {
     suspend fun sweepWalksOfDeletedHouses() {}
 
     companion object {
-        fun of(repo: Repository): HuntData = object : HuntData {
-            override val houses: Flow<List<HouseEntity>> get() = repo.houses
+        /**
+         * The engine's data for a walk of [kind] (docs/03 section 18.20): the saved places are the kind's space's own (with one
+         * kind on, every candidate, as it always was), and the street's saved-place count is the space's too. The space follows
+         * the *What you track* setting, so a change while the walk runs is read. The visits are the person's own, whatever
+         * the kind they were to.
+         */
+        @OptIn(ExperimentalCoroutinesApi::class)
+        fun of(repo: Repository, kind: String): HuntData = object : HuntData {
+            private val spaces = repo.settings.kindSetting().map { it.view(kind) }.distinctUntilChanged()
+            override val houses: Flow<List<HouseEntity>> =
+                spaces.flatMapLatest { space -> if (space.multi) repo.housesOf(space) else repo.houses }
             override val tracking: Flow<HuntTracking> =
                 repo.settings.settings.map { it.toHuntTracking() }
-            override suspend fun streetInfo(street: String) = repo.streetInfo(street)
+            override suspend fun streetInfo(street: String): Repository.StreetInfo {
+                val info = repo.streetInfo(street)
+                val space = spaces.first()
+                if (!space.multi) return info
+                // The store counts the street's candidates of every kind; a space counts its own (SQLite's LOWER is ASCII-only).
+                val key = street.asciiLower()
+                return info.copy(houses = repo.housesOf(space).first().count { it.street?.asciiLower() == key })
+            }
             override suspend fun saveVisit(visit: VisitEntity) = repo.saveVisit(visit)
             override suspend fun getVisit(id: String) = repo.getVisit(id)
             override suspend fun saveTrackPoint(point: TrackPointEntity) = repo.saveTrackPoint(point)
@@ -427,6 +467,8 @@ interface HuntData {
         }
     }
 }
+
+private fun String.asciiLower(): String = map { if (it in 'A'..'Z') it + 32 else it }.joinToString("")
 
 /**
  * What the engine reads of the settings. **Not** [AppSettings.repeatLook]: *How repeated paths look* is a display choice,

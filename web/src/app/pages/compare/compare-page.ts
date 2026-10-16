@@ -32,14 +32,13 @@ import { MAX_SELECTED, MIN_SELECTED, idsFromQuery } from './compare-selection';
 import { SpaceService } from '../../core/space.service';
 import { comparePick } from '../../core/space-scope';
 import { toolWord } from '../../core/space-tool-words';
-import type { KindExtra } from '../../core/kind-fields';
 import { kindValues, type KindValue } from '../../shared/kind-values';
 import type { TKey } from '../../i18n/en';
 import { GLYPHS } from '../../shared/glyphs';
 import { RunResult, nextRunResult } from '../../shared/run-result';
 import { costSummary } from '../../shared/house-cost';
 import { LocalStore } from '../../data/local-store.service';
-import { criterionName } from '../../shared/criterion-name';
+import { bestOf, bestOfExtra, compareCriteria, comparedRows, extraFigure, kindCriterionName, scoringForKind } from '../../shared/compare-criteria';
 import { DEFAULT_SCORING, compareRanked, evaluateScore } from '../../shared/scoring';
 import type { Scoring } from '../../shared/scoring';
 import { timeOf } from '../map/map-list';
@@ -124,8 +123,13 @@ export class ComparePage {
   protected readonly maxSelected = MAX_SELECTED;
   protected readonly minSelected = MIN_SELECTED;
 
-  /** The effective scoring (criteria and rating share); the defaults until it is read. */
-  private readonly scoring = signal<Scoring>(DEFAULT_SCORING);
+  /** The person's effective scoring (criteria and rating share); the defaults until it is read. */
+  private readonly personScoring = signal<Scoring>(DEFAULT_SCORING);
+  /**
+   * What the space's candidates are scored under (kinds PR 27, docs/03 §18.21): the person's own for the house, the kind's
+   * checklist and what its Compare capability names for another kind.
+   */
+  private readonly scoring = computed(() => scoringForKind(this.space.current(), this.personScoring()));
 
   /**
    * The houses in the running (not Rejected, not Not chosen, `inTheRunning`, S4b-BL-99 a), shortlisted first, then by
@@ -197,7 +201,7 @@ export class ComparePage {
       best: bestOf(scores),
     });
     // Slice 2: the must-haves the person set, house by house: "Missed: Water", "Not checked yet" or "All met".
-    const named = (keys: string[]) => keys.map((k) => criterionName(scoring.criteria.find((c) => c.key === k) ?? { key: k }, (key) => i18n.t(key))).join(', ');
+    const named = (keys: string[]) => keys.map((k) => kindCriterionName(kind, scoring.criteria.find((c) => c.key === k) ?? { key: k }, (key) => i18n.t(key))).join(', ');
     if (scored && scoring.criteria.some((c) => c.mustHave && c.archived !== true)) {
       rows.push({
         id: 'mustHaves',
@@ -271,13 +275,16 @@ export class ComparePage {
       }),
       best: new Set<number>(),
     });
-    // The kind's own extras (a school's board, medium, grades, commute, bus, fees), in the kind file's order.
+    // The kind's own extras (a school's board, medium, grades, commute, bus, fees), in the kind file's order. The best value is
+    // marked only for those the kind's Compare capability names, in the direction the kind file gives (kinds PR 27, §18.21).
+    const criteria = compareCriteria(kind);
     for (const f of kind.fields.others().filter((x) => shows(`field.${x.id}`))) {
+      const criterion = criteria.find((c) => c.source === 'extra' && c.id === f.id);
       rows.push({
         id: 'extra-' + f.id,
         label: i18n.t(kind.fields.label(f)),
         cells: houses.map((h) => extraCell(kindValues(kind.fields, h).find((v) => v.field.id === f.id), i18n, none)),
-        best: bestExtra(f, houses.map((h) => kindValues(kind.fields, h).find((v) => v.field.id === f.id))),
+        best: bestOfExtra(houses.map((h) => extraFigure(kind.fields, h, f.id)), criterion?.better ?? null),
       });
     }
     // Without a checklist the rating is what is scored: the best one is marked.
@@ -321,15 +328,15 @@ export class ComparePage {
         best: new Set<number>(),
       });
     }
-    // The criteria that are not archived, in the person's order (custom ones by their label).
-    for (const item of scored ? scoring.criteria.filter((c) => c.archived !== true) : []) {
+    // The criteria that are not archived, in the person's order (custom ones by their label); another kind's, the ones its Compare names.
+    for (const item of scored ? comparedRows(kind, scoring) : []) {
       const values = houses.map((h) => {
         const v = h.checklist[item.key];
         return typeof v === 'number' ? v : null;
       });
       rows.push({
         id: 'check-' + item.key,
-        label: criterionName(item, (key) => i18n.t(key)),
+        label: kindCriterionName(kind, item, (key) => i18n.t(key)),
         cells: values.map((v) => (v === null ? none : { text: i18n.number(v) })),
         best: bestOf(values),
       });
@@ -346,8 +353,8 @@ export class ComparePage {
     effect(() => {
       this.api.settled();
       this.api.scoring().subscribe({
-        next: (scoring) => this.scoring.set(scoring),
-        error: () => this.scoring.set(DEFAULT_SCORING),
+        next: (scoring) => this.personScoring.set(scoring),
+        error: () => this.personScoring.set(DEFAULT_SCORING),
       });
     });
     effect(() => {
@@ -467,32 +474,6 @@ export class ComparePage {
   protected onPickerSearch(event: Event): void {
     this.pickerQuery.set((event.target as HTMLInputElement).value);
   }
-}
-
-/** Indices holding the highest value, when at least one value exists and not every value ties. */
-function bestOf(values: (number | null)[]): Set<number> {
-  const present = values.filter((v): v is number => v !== null);
-  if (present.length === 0) return new Set<number>();
-  const max = Math.max(...present);
-  const best = new Set<number>();
-  values.forEach((v, i) => {
-    if (v === max) best.add(i);
-  });
-  return best.size === values.length && values.length > 1 ? new Set<number>() : best;
-}
-
-/**
- * The best of a kind's number or amount where the kind file says which way is better (`better`, S4b-BL-292): the lowest or the
- * highest. Marked only when at least two candidates have a value and they do not all tie (one value, or none, is a tie with
- * itself); an extra with no hint has none.
- */
-function bestExtra(field: KindExtra, values: (KindValue | undefined)[]): Set<number> {
-  if (!field.better) return new Set<number>();
-  const nums = values.map((v) => (v?.type === 'number' ? v.value : v?.type === 'money' ? v.amount : null));
-  const present = nums.filter((n): n is number => n !== null);
-  const target = field.better === 'lower' ? Math.min(...present) : Math.max(...present);
-  if (present.every((n) => n === target)) return new Set<number>();
-  return new Set(nums.flatMap((n, i) => (n === target ? [i] : [])));
 }
 
 /** One cell of a kind's extra: a dash, or the value in the app's words. */

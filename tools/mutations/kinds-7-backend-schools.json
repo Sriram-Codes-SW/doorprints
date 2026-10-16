@@ -21,8 +21,8 @@
     },
     {
       "file": "backend/src/main/java/app/doorprints/server/house/HouseDto.java",
-      "find": "        return money == null || money.cadence() == null || !House.HOUSE_KIND.equals(kind)",
-      "replace": "        return money == null || money.cadence() == null",
+      "find": "var allowed = KindFiles.moneyCadences(kind);",
+      "replace": "var allowed = KindFiles.moneyCadences(\"house\");",
       "expect": "aSchoolsMoneyMayHaveAnyCadenceOfTheVocabularyAndAHousesMayNot"
     }
   ]

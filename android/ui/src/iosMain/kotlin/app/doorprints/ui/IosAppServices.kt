@@ -331,7 +331,7 @@ private object NoPhotoSources : PhotoSources {
  */
 private object IosMapServices : MapServices {
     override val hunt: StateFlow<HuntState.State> get() = HuntState.state
-    override fun startHunt(): Boolean = IosHunt.start()
+    override fun startHunt(kind: String): Boolean = IosHunt.start(kind)
     override fun stopHunt() = IosHunt.stop()
 
     override fun finishWalk() = IosHunt.finishWalk()

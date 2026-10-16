@@ -59,9 +59,24 @@ export const HOUSE: BuiltInKind = { id: 'house', labels: HOUSE_LABELS, keys: HOU
 // The school's `ai.extract` is filled since kinds PR 7 (S4b-BL-211): its listing is read into its fields.
 const SCHOOL: BuiltInKind = { id: 'school', labels: SCHOOL_LABELS, keys: SCHOOL_KEYS, fields: SCHOOL_FIELDS, extracts: true };
 
-/** The built-in kinds: the house, and the school while `on` (the developer flag or Settings' switch). */
+/** Kinds a test registered (the conformance suite's synthetic kind, docs/03 §18.26). Empty in every build: no build lists one. */
+const TEST_KINDS = new Map<string, BuiltInKind>();
+
+/**
+ * Registers a kind for a test: the conformance suite runs the same flows for the house, the school and a synthetic kind that has every
+ * capability, so a feature that works only for the two built-in kinds fails there. Only a development build may: in a production build it throws,
+ * so a build can never offer a kind this file does not hold (`tools/check-kind-literals.mjs` also keeps the synthetic kind's id out of every source).
+ * Returns the call that takes it away again.
+ */
+export function registerTestKind(kind: BuiltInKind): () => void {
+  if (!isDevMode()) throw new Error('a test kind is registered only in a development build');
+  TEST_KINDS.set(kind.id, kind);
+  return () => void TEST_KINDS.delete(kind.id);
+}
+
+/** The built-in kinds: the house, and the school while `on` (the developer flag or Settings' switch), then any a test registered. */
 export function creatableKinds(on: boolean): readonly BuiltInKind[] {
-  return on ? [HOUSE, SCHOOL] : [HOUSE];
+  return on ? [HOUSE, SCHOOL, ...TEST_KINDS.values()] : [HOUSE];
 }
 
 /** The kind a candidate is drawn as: its own when this build has it and the flag allows it, else the house (as today). */

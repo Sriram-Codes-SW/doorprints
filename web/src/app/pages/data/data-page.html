@@ -308,7 +308,7 @@
     @if (sync.enabled()) {
       <!-- After "Not now" or "Stop" nothing is sent or fetched; say so, and offer the download here, which is the
            only way back (the banner does not return). -->
-      <p class="muted">{{ (sync.paused() ? 'data.syncPaused' : 'data.syncOn') | t }}</p>
+      <p class="muted">{{ (sync.paused() ? space.appWord('data.syncPaused') : 'data.syncOn') | t }}</p>
       <div role="status">
         @if (!sync.online()) {
           <!-- Offline is a normal state here, not a failure: a neutral line, never an alert. -->
@@ -423,8 +423,9 @@
     </div>
   </section>
 
-  <!-- Criteria, questions and viewings belong to the kinds that have a checklist, questions and viewings (S4b-BL-277): a school space is without them. -->
-  @if (space.current().labels.isVisible('section.checklist')) {
+  <!-- Criteria, questions and viewings belong to the kinds that have them (S4b-BL-277): a school space is without them. The school's
+       checklist (kinds PR 27, docs/03 §18.21) has fixed weights, so the Criteria page (the person's weights for houses) stays the house's. -->
+  @if (space.current().labels.isVisible('section.checklist') && isBaseline()) {
     <section class="card" aria-labelledby="criteria-heading">
       <h2 id="criteria-heading">{{ 'criteria.dataHeading' | t }}</h2>
       <p class="muted">{{ 'criteria.dataBody' | t }}</p>
@@ -437,7 +438,7 @@
   @if (space.current().labels.isVisible('section.questions')) {
     <section class="card" aria-labelledby="questions-heading">
       <h2 id="questions-heading">{{ 'questions.dataHeading' | t }}</h2>
-      <p class="muted">{{ 'questions.dataBody' | t }}</p>
+      <p class="muted">{{ space.kindWord('questions.dataBody') | t }}</p>
       <div class="actions">
         <a class="btn" routerLink="/questions">{{ 'questions.open' | t }}</a>
       </div>
@@ -447,7 +448,7 @@
   @if (space.current().labels.isVisible('section.viewings')) {
     <section class="card" aria-labelledby="viewings-heading">
       <h2 id="viewings-heading">{{ 'viewings.dataHeading' | t }}</h2>
-      <p class="muted">{{ 'viewings.dataBody' | t }}</p>
+      <p class="muted">{{ space.kindWord('viewings.dataBody') | t }}</p>
       <div class="actions">
         <a class="btn" routerLink="/viewings">{{ 'viewings.open' | t }}</a>
       </div>
@@ -495,7 +496,7 @@
 
   <section class="card danger" aria-labelledby="clear-heading">
     <h2 id="clear-heading">{{ 'data.clearHeading' | t }}</h2>
-    <p class="muted">{{ 'data.clearBody' | t }}</p>
+    <p class="muted">{{ space.appWord('data.clearBody') | t }}</p>
     @if (deviceSentence(); as list) {
       <p id="clear-counts" class="muted">{{ list }}</p>
     }

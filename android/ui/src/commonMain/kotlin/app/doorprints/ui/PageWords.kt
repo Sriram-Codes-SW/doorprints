@@ -64,6 +64,21 @@ class PageWords(
     val placesEmptyBody: StringResource,
     val areaNotesNone: StringResource,
     val areaHere: StringResource,
+    /**
+     * The viewing words (kinds PR 29, docs/03 §18.23): the card's *Plan a viewing*, its "No viewing planned" and "All viewings of this
+     * house" lines, the list's intro and empty line, and the Settings rows' hints for the viewings and for the questions.
+     */
+    val viewingPlan: StringResource,
+    val viewingNone: StringResource,
+    val viewingAll: StringResource,
+    val viewingsIntro: StringResource,
+    val viewingsEmpty: StringResource,
+    val viewingsDataBody: StringResource,
+    val questionsDataBody: StringResource,
+    /** The Questions screen's intro, and the candidate's Questions card's empty line and its picker's "all added" line. */
+    val questionsIntro: StringResource,
+    val questionsEmpty: StringResource,
+    val questionsNoneToPick: StringResource,
 ) {
     companion object {
         /** The page words of the kind whose file keys are [keys] (`KindWordKeys`): every word is the file's `android` key. */
@@ -79,14 +94,20 @@ class PageWords(
                 areasEmptyBody = w("areasEmptyBody"), notesEmpty = w("notesEmpty"), areaDeleteBody = w("areaDeleteBody"),
                 placeDeleteBody = w("placeDeleteBody"), placesEmptyBody = w("placesEmptyBody"),
                 areaNotesNone = w("areaNotesNone"), areaHere = w("areaInReach"),
+                viewingPlan = w("viewingPlan"), viewingNone = w("viewingNone"), viewingAll = w("viewingAll"),
+                viewingsIntro = w("viewingsIntro"), viewingsEmpty = w("viewingsEmpty"), viewingsDataBody = w("viewingsDataBody"),
+                questionsDataBody = w("questionsDataBody"), questionsIntro = w("questionsIntro"), questionsEmpty = w("questionsEmpty"),
+                questionsNoneToPick = w("questionsNoneToPick"),
             )
         }
 
-        val HOUSE = from(KindWordKeys.HOUSE)
-        val SCHOOL = from(KindWordKeys.SCHOOL)
+        private val BY_KIND: Map<String, PageWords> = KindWordKeys.KINDS.associateWith { from(KindWordKeys.of(it)) }
+
+        val HOUSE = BY_KIND.getValue(KindWordKeys.KINDS.first())
+        val SCHOOL = BY_KIND.getValue("school")
 
         /** The words of [kind]; a kind with no entry of its own reads the house's. */
-        fun of(kind: String): PageWords = if (kind == "school") SCHOOL else HOUSE
+        fun of(kind: String): PageWords = BY_KIND[kind] ?: HOUSE
     }
 }
 

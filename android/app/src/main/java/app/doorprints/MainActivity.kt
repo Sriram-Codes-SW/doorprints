@@ -40,6 +40,7 @@ import app.doorprints.shared.records.RecordRules
 import androidx.core.app.NotificationManagerCompat
 import app.doorprints.ui.DeepLink
 import app.doorprints.ui.DoorprintsRoot
+import app.doorprints.ui.HuntSpace
 import app.doorprints.ui.ProvideAppServices
 import kotlinx.coroutines.flow.MutableStateFlow
 import java.util.UUID
@@ -187,20 +188,21 @@ class MainActivity : ComponentActivity() {
         intent.getStringExtra(Notifications.EXTRA_START_HUNT)?.let {
             if (!RecordRules.isValidId(it)) return null
             NotificationManagerCompat.from(this).cancel(Notifications.huntTag(it), Notifications.HUNT_REMINDER_ID)
-            return DeepLink.StartHunt
+            return DeepLink.StartHunt(HuntSpace.Starter.REMINDER)
         }
         // An area wake-up's *Start Hunt mode* without location (slice 4b): the same Map question.
         intent.getStringExtra(Notifications.EXTRA_START_HUNT_AREA)?.let {
             if (!RecordRules.isValidId(it)) return null
             NotificationManagerCompat.from(this).cancel(Notifications.areaTag(it), Notifications.AREA_WAKEUP_ID)
-            return DeepLink.StartHunt
+            return DeepLink.StartHunt(HuntSpace.Starter.AREA)
         }
         if (intent.hasExtra(Notifications.EXTRA_NEW_LAT)) {
             val lat = intent.getDoubleExtra(Notifications.EXTRA_NEW_LAT, Double.NaN)
             val lon = intent.getDoubleExtra(Notifications.EXTRA_NEW_LON, Double.NaN)
             if (lat !in -90.0..90.0 || lon !in -180.0..180.0) return null
             val visitId = intent.getStringExtra(Notifications.EXTRA_VISIT_ID)?.takeIf(::isUuid)
-            return DeepLink.NewHouse(lat, lon, visitId)
+            // The kind of the walk that raised the alert: only one of the app's own kinds is accepted (docs/03 section 18.20).
+            return DeepLink.NewHouse(lat, lon, visitId, HuntSpace.knownKind(intent.getStringExtra(Notifications.EXTRA_NEW_KIND)))
         }
         return null
     }
@@ -217,6 +219,7 @@ class MainActivity : ComponentActivity() {
             Notifications.EXTRA_NEW_LAT,
             Notifications.EXTRA_NEW_LON,
             Notifications.EXTRA_VISIT_ID,
+            Notifications.EXTRA_NEW_KIND,
             Notifications.EXTRA_OPEN_VIEWING,
             Notifications.EXTRA_START_HUNT,
             Notifications.EXTRA_START_HUNT_AREA,

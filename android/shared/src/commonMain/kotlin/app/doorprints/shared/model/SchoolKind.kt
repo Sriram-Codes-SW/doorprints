@@ -51,7 +51,7 @@ object DevKinds {
  * Schools, the second built-in kind (`docs/schemas/kinds/school.json`, Android keys), compiled in and off in the release builds; [DevKinds] is the developer flag that shows it beyond the shipped list: a copy of
  * the file's labels and extras, as [KindLabels.HOUSE] and [KindFields.HOUSE] are of `house.json` (`SchoolKindVectorsTest`
  * reads the file, so it cannot drift). A place the school leaves out (its money, the broker, the rooms, questions,
- * viewings, moving in and the checklist) has no key, so the resolver says it is not shown.
+ * viewings and moving in) has no key, so the resolver says it is not shown.
  */
 internal object SchoolKind {
     private val FIELDS_KEYS = mapOf(
@@ -64,15 +64,22 @@ internal object SchoolKind {
     )
     private val LOCATION_KEYS = mapOf("location" to "house_location_heading", "locationSource" to "house_approx")
 
+    /** The school's checklist (`school.json`, `checklist`, kinds PR 27, docs/03 §18.21): eight items scored 0 to 5, in the file's order. */
+    private val CHECKS = listOf("dropoff", "grounds", "sanitation", "teachers", "classsize", "homework", "activities", "safety")
+
     val LABELS = KindLabels(
         kind = "school",
+        capabilities = KindCapabilities.of("school"),
         keys = mapOf("kind.new" to "school_new_title", "kind.many" to "schools_title", "kind.delete" to "school_delete") +
             HouseStatus.entries.associate { "status.${it.name}" to "status_${it.name}" } +
             mapOf(
-                "section.details" to null, "section.cost" to "school_fees_heading", "section.areaNotes" to "notes_heading",
+                "section.details" to null, "section.cost" to "school_fees_heading", "section.questions" to "school_questions_heading",
+                "section.viewings" to "school_viewings_heading", "section.areaNotes" to "notes_heading",
                 "section.distances" to "house_distances", "section.location" to "house_location_heading",
-                "section.walks" to "trace_house_title", "section.visits" to "house_visits", "section.photos" to "house_photos",
+                "section.walks" to "trace_house_title", "section.checklist" to "house_checklist",
+                "section.visits" to "house_visits", "section.photos" to "house_photos",
             ) +
+            CHECKS.associate { "check.$it" to "school_check_$it" } +
             (FIELDS_KEYS + LOCATION_KEYS).mapKeys { "field.${it.key}" },
         byCadence = emptyMap(),
         sections = FIELDS_KEYS.mapValues { "details" } +
@@ -94,7 +101,7 @@ internal object SchoolKind {
             KindExtra("admissionFee", "money", "cost", 20, max = HouseCost.MAX_RUPEES, cadences = listOf("once"), better = "lower"),
         ),
         // Every extra is searched (kinds PR 6, S4b-BL-210).
-        listOf("label", "address", "street", "locality", "notes", "contactName", "areaNotes") +
+        listOf("label", "address", "street", "locality", "notes", "contactName", "questions", "areaNotes") +
             listOf("board", "medium", "grades", "commuteMinutes", "busService", "fees", "admissionFee"),
     )
 }

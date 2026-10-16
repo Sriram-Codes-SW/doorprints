@@ -194,7 +194,10 @@ class SchoolPageWordsTest {
                 assertEquals(null, houseWord.getValue(language).find(text), "$language $name: $text")
             }
         }
-        assertFalse(phone("en").getValue(nameOf(SpaceWords.SCHOOL.locationOff)).contains("Hunt"), "a school space has no Hunt mode")
+        // The school has Hunt mode of its own (docs/03 section 18.20): the note under its Hunt card says so, the iPhone's no-Hunt pair does not.
+        assertTrue(phone("en").getValue(nameOf(SpaceWords.SCHOOL.locationOff)).contains("Hunt mode"), "the school's Hunt pair says Hunt mode")
+        assertTrue(phone("en").getValue(nameOf(SpaceWords.SCHOOL.needsPrecise)).contains("Hunt mode"), "the school's Hunt pair says Hunt mode")
+        assertFalse(phone("en").getValue(nameOf(SpaceWords.SCHOOL.locationOffNoHunt)).contains("Hunt"), "the no-Hunt pair names no Hunt mode")
         // The house's four are the strings the map always read.
         assertEquals(
             listOf("map_location_off", "map_needs_precise", "map_location_off_no_hunt", "map_needs_precise_no_hunt", "map_save_needs_location"),

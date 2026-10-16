@@ -215,7 +215,7 @@ private fun restoreDraft(v: List<*>): HouseEntity? = runCatching {
         // Absent before S4b-BL-87: no floor.
         floor = v.getOrNull(38) as Int?,
         // Absent before S4b-BL-209: a house, with no extras it does not know.
-        kind = v.getOrNull(39) as String? ?: Candidates.HOUSE_KIND,
+        kind = Candidates.kindOf(v.getOrNull(39) as String?),
         extrasOther = (v.getOrNull(40) as String?)?.let { Json.parseToJsonElement(it) as? JsonObject },
     )
 }.getOrNull()
@@ -372,7 +372,7 @@ fun HouseEditScreen(
                     else -> LocationSource.MAP
                 },
                 createdAt = now, updatedAt = now,
-            ).let { if (space.creating.id == "house") it else it.forKind(space.creating) }
+            ).let { if (it.kind == space.creating.id) it else it.forKind(space.creating) }
             draft = fresh
             baseline = fresh
         }
@@ -425,12 +425,11 @@ fun HouseEditScreen(
     val brokers: List<Pair<String, Broker>> by remember(repo) { repo.observeBrokers() }.collectAsStateWithLifecycle(emptyList())
     // Every live house, for the duplicate-flat warning (S4b-BL-85) under the floor.
     val allHouses: List<HouseEntity> by remember(repo) { repo.houses }.collectAsStateWithLifecycle(emptyList())
-    // The effective scoring (docs/11 5.4, slice 2): which criteria the checklist shows, the score and its coverage line.
-    val scoring: Scoring by remember(repo) { repo.observeScoring() }.collectAsStateWithLifecycle(Scoring.DEFAULT)
+    val scoring = remember(kind.id, repo) { repo.observeScoring().map { app.doorprints.shared.model.CompareCriteria.scoringFor(kind, it) } }.collectAsStateWithLifecycle(Scoring.DEFAULT).value
     // How the rooms' sizes are shown and typed (slice 1c, this phone's setting).
     val lengthUnit by remember(repo) { repo.settings.lengthUnit }.collectAsStateWithLifecycle(LengthUnit.FT)
-    // The question bank (slice 3a), for *Add the usual questions* and *Add a question*.
-    val questionBank: List<Question> by remember(repo) { repo.observeQuestions() }.collectAsStateWithLifecycle(emptyList())
+    // The question bank (slice 3a), for *Add the usual questions* and *Add a question*: the candidate's kind's own only (kinds PR 29).
+    val questionBank = rememberKindQuestionBank(repo, kind.id)
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
     var confirmLeave by rememberSaveable { mutableStateOf(false) }
     var confirmVisitDelete by rememberSaveable { mutableStateOf<String?>(null) }
@@ -843,7 +842,7 @@ fun HouseEditScreen(
                 if (L.isVisible("section.rooms")) RoomsSection(d.rooms, lengthUnit) { rooms -> update { it.copy(rooms = rooms) } }
 
                 // The questions to ask at the viewing (docs/11 5.5, slice 3a), after the rooms.
-                if (L.isVisible("section.questions")) QuestionsSection(d.answers, questionBank, d.priceType, d.cost, Modifier.bringIntoViewRequester(questionsView)) { answers ->
+                if (L.isVisible("section.questions")) QuestionsSection(d.answers, questionBank, d.priceType, d.cost, Modifier.bringIntoViewRequester(questionsView), L, pages) { answers ->
                     update { it.copy(answers = answers) }
                 }
 
@@ -971,7 +970,7 @@ fun HouseEditScreen(
                     if (L.isVisible("section.walks")) SavedWalksCard(id, pages.walksEmpty, onShowOnMap)
                 }
 
-                if (L.isVisible("section.checklist")) ChecklistSection(d.checklist, d.rating, scoring) { m -> update { it.copy(checklist = m) } }
+                if (L.isVisible("section.checklist")) ChecklistSection(d.checklist, d.rating, scoring, kind) { m -> update { it.copy(checklist = m) } }
 
                 // Multi-line: the Enter key starts a new line here, so no Next action; sentences start with a capital.
                 OutlinedTextField(d.notes ?: "", { v -> update { it.copy(notes = v) } },
@@ -1127,6 +1126,7 @@ fun HouseEditScreen(
                         houseId = id, visits = visits,
                         onPlan = { kind -> onPlanViewing(id, kind) },
                         onOpenAll = { onOpenViewings(id) },
+                        labels = L, words = pages,
                     )
                     // The area notes that reach the house and its distances to my places (docs/11 slice 4a), from the
                     // saved point and street.

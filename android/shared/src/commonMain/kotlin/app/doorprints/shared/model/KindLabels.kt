@@ -47,6 +47,11 @@ class KindLabels internal constructor(
     private val sections: Map<String, String>,
     /** The refs the kind keeps but hides (`visible: false` in the kind file). */
     private val hidden: Set<String> = emptySet(),
+    /**
+     * What the kind can do (its `capabilities`, docs/03 §18.23): a place a capability switches is shown only while the capability
+     * is on, whatever the sections say. `null`: no place is gated (a kind written by hand in a test).
+     */
+    private val capabilities: KindCapabilities? = null,
 ) {
     /** Every ref the kind labels (its copy of the kind file is checked against the file by this). */
     internal val refs: Set<String> get() = keys.keys
@@ -61,6 +66,7 @@ class KindLabels internal constructor(
     /** Whether the kind shows [ref]: a place it has and does not hide, and for a field, in a section it shows. */
     fun isVisible(ref: String): Boolean {
         if (ref !in keys || ref in hidden) return false
+        if (capabilities != null && !capabilities.allows(ref)) return false
         val section = if (ref.startsWith(FIELD)) sections[ref.removePrefix(FIELD)] else null
         return section == null || isVisible("section.$section")
     }
@@ -77,12 +83,16 @@ class KindLabels internal constructor(
     /** A built-in checklist criterion's label, `null` for a key the kind does not have. */
     fun check(key: String): String? = keys["check.$key"]
 
+    /** The kind's checklist keys, in the kind file's order (the house's ten; a kind with none has none). */
+    fun checklistKeys(): List<String> = keys.keys.filter { it.startsWith("check.") }.map { it.removePrefix("check.") }
+
     companion object {
         private const val FIELD = "field."
 
         /** Houses, the first and so far only kind (`docs/schemas/kinds/house.json`, Android keys). */
         val HOUSE: KindLabels = KindLabels(
             kind = "house",
+            capabilities = KindCapabilities.of("house"),
             keys = mapOf(
                 "kind.new" to "house_new_title", "kind.many" to "houses_title", "kind.delete" to "house_delete",
                 "status.NEW" to "status_NEW", "status.SHORTLISTED" to "status_SHORTLISTED",

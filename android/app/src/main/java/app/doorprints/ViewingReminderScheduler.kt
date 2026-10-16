@@ -18,6 +18,7 @@
 
 package app.doorprints
 
+import app.doorprints.shared.model.Candidates
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.AlarmManager
@@ -39,14 +40,20 @@ import app.doorprints.data.Repository
 import app.doorprints.i18n.AppLocale
 import app.doorprints.location.HuntState
 import app.doorprints.shared.model.HuntReminders
+import app.doorprints.shared.model.KindCapabilities
+import app.doorprints.shared.model.KindSettingRules
+import app.doorprints.shared.model.KindWordKeys
+import app.doorprints.ui.kindStringResource
 import app.doorprints.shared.model.ViewingReminders
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import org.jetbrains.compose.resources.getString as composeString
 import java.util.concurrent.TimeUnit
 
 /**
@@ -219,6 +226,23 @@ class ViewingReminderScheduler(
             }
         }
 
+        /**
+         * The reminder texts of a candidate's kind when it is not the house (kinds PR 29, docs/03 §18.23): the kind file's `viewing*`
+         * words, null for the house, whose texts are the app's strings (so a house reminder is what it always was).
+         */
+        internal fun viewingTexts(context: Context, kind: String?): Notifications.ViewingTexts? {
+            val id = Candidates.kindOf(kind).takeIf { !KindCapabilities.of(it).baseline && it in KindCapabilities.KINDS } ?: return null
+            val keys = KindWordKeys.of(id)
+            fun word(name: String, vararg args: Any): String = runBlocking {
+                composeString(kindStringResource(checkNotNull(keys[name]) { "no Android word for $name" }), *args)
+            }
+            return Notifications.ViewingTexts(
+                channelId = "viewings_$id", channelName = word("viewingChannel"), channelDescription = word("viewingChannelDesc"),
+                soon = { name, minutes -> word("viewingSoon", name, minutes) }, title = { name -> word("viewingTitle", name) },
+                open = word("viewingOpen"), gone = word("viewingGone"), directions = word("viewingDirections"),
+            )
+        }
+
         /** Precise location, as Hunt mode's house alerts need (5.18); approximate only asks again from the Map. */
         fun hasFineLocation(context: Context): Boolean =
             ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
@@ -238,7 +262,7 @@ class ViewingReminderScheduler(
             }
             if (!Notifications.canPost(context)) return false
             val house = repository.getHouse(viewing.houseId)
-            val n = Notifications.viewingReminder(AppLocale.wrap(context), viewing, house, nowMs)
+            val n = Notifications.viewingReminder(AppLocale.wrap(context), viewing, house, nowMs, viewingTexts(AppLocale.wrap(context), house?.kind))
             return try {
                 NotificationManagerCompat.from(context).notify(Notifications.viewingTag(id), Notifications.VIEWING_ID, n)
                 true

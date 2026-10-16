@@ -1,0 +1,442 @@
+{
+ "format": "doorprints-kind/1",
+ "id": "dojo",
+ "version": 1,
+ "note": "A synthetic kind for the server's tests only (kinds PR 28, docs/03 §18.22): a martial-arts dojo that exists in no app. It proves that a kind file alone, with no Java and no prompt pack, is enough for the server's documents, prompts, extract and planner. Not shipped: it lives in backend/src/test/resources/kinds.",
+ "labels": {
+  "new": {
+   "web": "dojo.newTitle",
+   "android": "dojo_new_title"
+  },
+  "many": {
+   "web": "dojo.many",
+   "android": "dojo_title"
+  },
+  "delete": {
+   "web": "dojo.delete",
+   "android": "dojo_delete"
+  }
+ },
+ "words": {},
+ "statuses": [
+  {
+   "id": "NEW",
+   "label": {
+    "web": "status.NEW",
+    "android": "status_NEW"
+   }
+  },
+  {
+   "id": "SHORTLISTED",
+   "label": {
+    "web": "status.SHORTLISTED",
+    "android": "status_SHORTLISTED"
+   }
+  },
+  {
+   "id": "REJECTED",
+   "label": {
+    "web": "status.REJECTED",
+    "android": "status_REJECTED"
+   }
+  },
+  {
+   "id": "TAKEN",
+   "label": {
+    "web": "status.TAKEN",
+    "android": "status_TAKEN"
+   }
+  },
+  {
+   "id": "NOT_CHOSEN",
+   "label": {
+    "web": "status.NOT_CHOSEN",
+    "android": "status_NOT_CHOSEN"
+   }
+  }
+ ],
+ "sections": [
+  {
+   "id": "details",
+   "label": {
+    "web": "house.details",
+    "android": null
+   }
+  },
+  {
+   "id": "cost",
+   "label": {
+    "web": "school.fees",
+    "android": "school_fees_heading"
+   }
+  },
+  {
+   "id": "areaNotes",
+   "label": {
+    "web": "areaNotes.heading",
+    "android": "notes_heading"
+   }
+  },
+  {
+   "id": "distances",
+   "label": {
+    "web": "distances.heading",
+    "android": "house_distances"
+   }
+  },
+  {
+   "id": "location",
+   "label": {
+    "web": "house.location",
+    "android": "house_location_heading"
+   }
+  },
+  {
+   "id": "walks",
+   "label": {
+    "web": "trace.house.title",
+    "android": "trace_house_title"
+   }
+  },
+  {
+   "id": "visits",
+   "label": {
+    "web": "house.visits",
+    "android": "house_visits"
+   }
+  },
+  {
+   "id": "photos",
+   "label": {
+    "web": "house.photos",
+    "android": "house_photos"
+   }
+  }
+ ],
+ "core": [
+  {
+   "id": "label",
+   "section": "details",
+   "order": 10,
+   "label": {
+    "web": "school.name",
+    "android": "school_name"
+   }
+  },
+  {
+   "id": "status",
+   "section": "details",
+   "order": 20,
+   "label": {
+    "web": "house.status",
+    "android": "house_status"
+   }
+  },
+  {
+   "id": "rating",
+   "section": "details",
+   "order": 30,
+   "label": {
+    "web": "house.rating",
+    "android": "house_rating"
+   }
+  },
+  {
+   "id": "address",
+   "section": "details",
+   "order": 80,
+   "label": {
+    "web": "house.address",
+    "android": "house_address"
+   }
+  },
+  {
+   "id": "street",
+   "section": "details",
+   "order": 90,
+   "label": {
+    "web": "house.street",
+    "android": "house_street"
+   }
+  },
+  {
+   "id": "locality",
+   "section": "details",
+   "order": 100,
+   "label": {
+    "web": "house.locality",
+    "android": "house_locality"
+   }
+  },
+  {
+   "id": "contactName",
+   "section": "details",
+   "order": 110,
+   "label": {
+    "web": "house.contactName",
+    "android": "school_contact_name"
+   }
+  },
+  {
+   "id": "contactPhone",
+   "section": "details",
+   "order": 120,
+   "label": {
+    "web": "house.contactPhone",
+    "android": "house_phone"
+   }
+  },
+  {
+   "id": "listingUrl",
+   "section": "details",
+   "order": 140,
+   "label": {
+    "web": "school.website",
+    "android": "school_website"
+   }
+  },
+  {
+   "id": "notes",
+   "section": "details",
+   "order": 150,
+   "label": {
+    "web": "house.notes",
+    "android": "house_notes"
+   }
+  },
+  {
+   "id": "location",
+   "section": "location",
+   "order": 10,
+   "label": {
+    "web": "house.location",
+    "android": "house_location_heading"
+   }
+  },
+  {
+   "id": "locationSource",
+   "section": "location",
+   "order": 20,
+   "label": {
+    "web": "house.approx",
+    "android": "house_approx"
+   }
+  }
+ ],
+ "extras": [
+  {
+   "id": "discipline",
+   "type": "enum",
+   "section": "details",
+   "order": 50,
+   "label": {
+    "web": "dojo.discipline",
+    "android": "dojo_discipline"
+   },
+   "options": [
+    {
+     "id": "KARATE",
+     "label": {
+      "web": "dojo.discipline.KARATE",
+      "android": "dojo_discipline_KARATE"
+     }
+    },
+    {
+     "id": "JUDO",
+     "label": {
+      "web": "dojo.discipline.JUDO",
+      "android": "dojo_discipline_JUDO"
+     }
+    },
+    {
+     "id": "YOGA",
+     "label": {
+      "web": "dojo.discipline.YOGA",
+      "android": "dojo_discipline_YOGA"
+     }
+    },
+    {
+     "id": "OTHER",
+     "label": {
+      "web": "dojo.discipline.OTHER",
+      "android": "dojo_discipline_OTHER"
+     }
+    }
+   ]
+  },
+  {
+   "id": "schedule",
+   "type": "text",
+   "maxLength": 60,
+   "section": "details",
+   "order": 60,
+   "label": {
+    "web": "dojo.schedule",
+    "android": "dojo_schedule"
+   }
+  },
+  {
+   "id": "classSize",
+   "type": "number",
+   "integer": true,
+   "min": 1,
+   "max": 200,
+   "unit": "count",
+   "section": "details",
+   "order": 70,
+   "label": {
+    "web": "dojo.classSize",
+    "android": "dojo_classSize"
+   }
+  },
+  {
+   "id": "trialClass",
+   "type": "bool",
+   "section": "details",
+   "order": 80,
+   "label": {
+    "web": "dojo.trialClass",
+    "android": "dojo_trialClass"
+   }
+  },
+  {
+   "id": "monthlyFee",
+   "type": "money",
+   "max": 100000,
+   "cadences": [
+    "month"
+   ],
+   "better": "lower",
+   "section": "cost",
+   "order": 10,
+   "label": {
+    "web": "dojo.monthlyFee",
+    "android": "dojo_monthlyFee"
+   }
+  },
+  {
+   "id": "openSince",
+   "type": "date",
+   "section": "details",
+   "order": 90,
+   "label": {
+    "web": "dojo.openSince",
+    "android": "dojo_openSince"
+   }
+  }
+ ],
+ "checklist": [],
+ "questions": {
+  "seed": "docs/schemas/default-questions.json",
+  "scopes": [
+   {
+    "id": "BOTH",
+    "cadences": [
+     "year",
+     "once"
+    ]
+   }
+  ]
+ },
+ "search": [
+  "label",
+  "address",
+  "street",
+  "locality",
+  "notes",
+  "areaNotes",
+  "discipline",
+  "schedule"
+ ],
+ "capabilities": {
+  "map": true,
+  "rooms": false,
+  "moveIn": false,
+  "contacts": {
+   "role": "office",
+   "autoCreateFromPhone": false
+  },
+  "paths": true,
+  "identity": {
+   "icon": "gym",
+   "colour": "forest"
+  }
+ },
+ "ai": {
+  "extract": [
+   "label",
+   "address",
+   "street",
+   "locality",
+   "contactName",
+   "contactPhone",
+   "listingUrl",
+   "notes",
+   "discipline",
+   "schedule",
+   "trialClass",
+   "monthlyFee"
+  ],
+  "ask": [
+   "label",
+   "address",
+   "street",
+   "locality",
+   "discipline",
+   "schedule",
+   "classSize",
+   "trialClass",
+   "monthlyFee",
+   "openSince",
+   "areaNotes",
+   "distances",
+   "status",
+   "rating",
+   "visits",
+   "notes"
+  ],
+  "plan": [
+   "label",
+   "status",
+   "rating",
+   "locality",
+   "street",
+   "discipline",
+   "monthlyFee"
+  ],
+  "never": [
+   "contactName",
+   "contactPhone"
+  ],
+  "words": {
+   "noun": "Dojo",
+   "records": "dojos",
+   "extras": {
+    "discipline": {
+     "words": "Discipline",
+     "options": {
+      "KARATE": "Karate",
+      "JUDO": "Judo",
+      "YOGA": "Yoga",
+      "OTHER": "Other"
+     }
+    },
+    "schedule": {
+     "words": "Class timings"
+    },
+    "classSize": {
+     "words": "Class size"
+    },
+    "trialClass": {
+     "words": "Free trial class"
+    },
+    "monthlyFee": {
+     "words": "Fee per month"
+    },
+    "openSince": {
+     "words": "Open since"
+    }
+   }
+  }
+ }
+}

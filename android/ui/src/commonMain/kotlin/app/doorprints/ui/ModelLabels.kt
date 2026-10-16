@@ -20,6 +20,7 @@ package app.doorprints.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.staticCompositionLocalOf
+import app.doorprints.shared.model.BuiltInKind
 import app.doorprints.shared.model.Checklist
 import app.doorprints.shared.model.Criterion
 import app.doorprints.shared.model.HouseStatus
@@ -32,6 +33,7 @@ import app.doorprints.shared.model.ViewingGroup
 import app.doorprints.shared.model.PhotoTags
 import app.doorprints.shared.model.ViewingKind
 import app.doorprints.shared.model.ViewingStatus
+import app.doorprints.shared.model.CompareCriteria
 import app.doorprints.ui.res.*
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
@@ -57,6 +59,9 @@ fun kindStringResource(key: String): StringResource =
 fun kindField(id: String, cadence: String? = null): StringResource = KindLabels.HOUSE.fieldText(id, cadence)
 
 fun kindSection(id: String): StringResource = KindLabels.HOUSE.sectionText(id)
+
+/** A section's heading in the given kind's labels (the viewings card and list are headed by the kind's own, kinds PR 29). */
+fun kindSection(labels: KindLabels, id: String): StringResource = labels.sectionText(id)
 
 fun kindRef(ref: String): StringResource = KindLabels.HOUSE.refText(ref)
 
@@ -202,6 +207,14 @@ val CriterionWeights: List<StringResource> = listOf(
 /** A criterion's name on screen: a built-in's translated name, a custom one's own label (else its key). */
 @Composable
 fun Criterion.displayName(): String = ChecklistResources.items[key]?.let { stringResource(it) } ?: label ?: key
+
+/**
+ * A criterion's name in a kind's words (kinds PR 27, docs/03 §18.21): the house's as [displayName] (its strings are not
+ * touched); another kind's through its own labels, the key when it has none.
+ */
+@Composable
+fun Criterion.displayName(kind: BuiltInKind): String =
+    if (CompareCriteria.usesPersonScoring(kind)) displayName() else kind.labels.check(key)?.let { stringResource(kindStringResource(it)) } ?: displayName()
 
 /** First viewing, Second viewing, Follow-up (`viewings_kind_*`, slice 3b-1). */
 val ViewingKind.labelResource: StringResource

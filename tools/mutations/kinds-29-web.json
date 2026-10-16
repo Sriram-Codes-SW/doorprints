@@ -1,0 +1,116 @@
+{
+  "spec": [
+    "web/src/app/core/kind-capabilities.spec.ts",
+    "web/src/app/core/kind-labels.spec.ts",
+    "web/src/app/data/broker-store.spec.ts",
+    "web/src/app/shared/question.spec.ts",
+    "web/src/app/data/question-store.spec.ts",
+    "web/src/app/pages/questions/questions-page.spec.ts",
+    "web/src/app/pages/viewings/viewings-page-spaces.spec.ts",
+    "web/src/app/pages/viewings/house-viewings-card.spec.ts"
+  ],
+  "mutations": [
+    {
+      "file": "web/src/app/data/broker-store.ts",
+      "find": "if (!makesBrokers(house.kind)) return house;",
+      "replace": "if (false as boolean) return house;",
+      "expect": "makes no broker from a school’s phone"
+    },
+    {
+      "file": "web/src/app/data/broker-store.ts",
+      "find": "!h.brokerId && makesBrokers(h.kind) && (h.contactPhone",
+      "replace": "!h.brokerId && (h.contactPhone",
+      "expect": "leaves a school out of the one-off migration"
+    },
+    {
+      "file": "web/src/app/data/broker-store.ts",
+      "find": "return capabilitiesOf(drawnKind(kind).id).contacts?.autoCreateFromPhone === true;",
+      "replace": "return capabilitiesOf(drawnKind(kind).id).contacts !== null;",
+      "expect": "makes no broker from a school’s phone"
+    },
+    {
+      "file": "web/src/app/core/kind-labels.ts",
+      "find": "case 'field.brokerId': return caps.contacts?.role === 'broker';",
+      "replace": "case 'field.brokerId': return true;",
+      "expect": "shows a place a capability switches only while the capability is on"
+    },
+    {
+      "file": "web/src/app/core/kind-labels.ts",
+      "find": "case 'section.moveIn': return caps.moveIn;",
+      "replace": "case 'section.moveIn': return true;",
+      "expect": "shows a place a capability switches only while the capability is on"
+    },
+    {
+      "file": "web/src/app/core/kind-labels.ts",
+      "find": "case 'section.questions': return caps.viewings !== null;",
+      "replace": "case 'section.questions': return true;",
+      "expect": "shows a place a capability switches only while the capability is on"
+    },
+    {
+      "file": "web/src/app/core/kind-capabilities.ts",
+      "find": "viewings: Object.freeze({ questionsSeed: 'school' as const }),",
+      "replace": "viewings: null,",
+      "expect": "every kind's switches follow the sections"
+    },
+    {
+      "file": "web/src/app/shared/question.ts",
+      "find": "if (id.startsWith(`qd_${kind}_`) || id.startsWith(`q_${kind}_`)) return kind;",
+      "replace": "if (id.startsWith(`qd_${kind}_`)) return kind;",
+      "expect": "the kind of a question is read from its id alone"
+    },
+    {
+      "file": "web/src/app/shared/question.ts",
+      "find": "const CUSTOM_ID_PATTERN = /^q_(?:[a-z]{2,12}_)?[0-9a-f]{8}$/;",
+      "replace": "const CUSTOM_ID_PATTERN = /^q_[0-9a-f]{8}$/;",
+      "expect": "a school’s own question is custom"
+    },
+    {
+      "file": "web/src/app/data/question-store.ts",
+      "find": "if (isBaselineKind(kind) || defaultQuestionsOf(kind).length === 0) return 0;",
+      "replace": "if (defaultQuestionsOf(kind).length === 0) return 0;",
+      "expect": "has no seed for the house here"
+    },
+    {
+      "file": "web/src/app/data/question-store.ts",
+      "find": "if (await db.get<SettingRecord>('settings', key)) return 0;",
+      "replace": "if (key === '') return 0;",
+      "expect": "writes nothing for a kind whose seeding is already marked done"
+    },
+    {
+      "file": "web/src/app/data/question-store.ts",
+      "find": "questionsOfKind(await this.all(), kind).reduce",
+      "replace": "(await this.all()).reduce",
+      "expect": "adds a school’s own question with its kind"
+    },
+    {
+      "file": "web/src/app/pages/questions/questions-page.ts",
+      "find": "questionsOfKind(this.allQuestions(), this.space.kind())",
+      "replace": "this.allQuestions()",
+      "expect": "lists the school’s six questions and none of the house’s"
+    },
+    {
+      "file": "web/src/app/pages/questions/questions-page.ts",
+      "find": "this.api.resetQuestions(this.i18n.lang(), this.space.kind())",
+      "replace": "this.api.resetQuestions(this.i18n.lang(), 'house')",
+      "expect": "resets the school’s defaults only"
+    },
+    {
+      "file": "web/src/app/pages/viewings/viewings-page.ts",
+      "find": "return house ? holds(house) : !this.space.multi() || this.space.kind() === this.space.dflt();",
+      "replace": "return true;",
+      "expect": "lists a school’s visits in the school space"
+    },
+    {
+      "file": "web/src/app/pages/viewings/house-viewings-card.ts",
+      "find": "protected readonly L = computed(() => drawnKind(this.kindId()).keys);",
+      "replace": "protected readonly L = computed(() => drawnKind('house').keys);",
+      "expect": "is headed by the school’s section"
+    },
+    {
+      "file": "web/src/app/core/kind-words.generated.ts",
+      "find": "['viewingPlan', 'viewings.plan', 'school.viewings.plan'],",
+      "replace": "['viewingPlan', 'viewings.plan', 'viewings.plan'],",
+      "expect": "is headed by the school’s section"
+    }
+  ]
+}

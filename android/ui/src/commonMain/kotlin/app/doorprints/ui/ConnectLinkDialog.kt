@@ -97,7 +97,7 @@ fun ConnectLinkDialog(link: ConnectLink, repo: Repository, deviceName: String, o
                 if (connected != null) {
                     Text(
                         if (connected.houses != null) {
-                            stringResource(Res.string.settings_connected, connected.houses)
+                            stringResource(appText(Res.string.settings_connected, Res.string.settings_connected_any), connected.houses)
                         } else {
                             stringResource(Res.string.connect_link_saved)
                         },

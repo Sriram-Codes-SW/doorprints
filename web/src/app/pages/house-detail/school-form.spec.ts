@@ -42,6 +42,7 @@ import { LocalDataService } from '../../core/local-data.service';
 import type { HouseDto } from '../../core/models';
 import { LocalStore } from '../../data/local-store.service';
 import type { Lang } from '../../i18n/languages';
+import { DICTIONARIES } from '../../i18n/all-dictionaries';
 import { TranslationService } from '../../i18n/translation.service';
 import { DEFAULT_SCORING } from '../../shared/scoring';
 import { controls, headings, split, structure, text } from '../../shared/testing/form-lines';
@@ -91,7 +92,7 @@ async function open(house: HouseDto | null, lang: Lang, flag: boolean): Promise<
       {
         provide: LocalDataService,
         useValue: {
-          houses: () => of([]), brokers: () => of([]), scoring: () => of(DEFAULT_SCORING), questions: () => of([]),
+          houses: () => of([]), brokers: () => of([]), scoring: () => of(DEFAULT_SCORING), questions: () => of([]), seedKindQuestions: () => of(undefined),
           house: () => of(house), visits: () => of([]), viewingsOf: () => of([]), areas: () => of([]),
           areaNotes: () => of([]), places: () => of([]), settled: signal(0), photos: () => of([]), conditionPhotos: () => of([]), saveHouse,
         },
@@ -147,6 +148,52 @@ describe('a school on the candidate page, with the developer flag on (school-for
     });
   }
 
+  // Kinds PR 27 (docs/03 §18.21): the school's own checklist, eight items from the kind file, scored 0 to 5, in four languages.
+  describe('the checklist (kinds PR 27, §18.21)', () => {
+    const KEYS = ['dropoff', 'grounds', 'sanitation', 'teachers', 'classsize', 'homework', 'activities', 'safety'];
+
+    it('asks the school’s eight items, not the house’s ten, with no link to the house’s criteria, and scores them 0 to 5', async () => {
+      const { fixture, host } = await open({ ...SCHOOL, checklist: { safety: 5 } }, 'en', true);
+      const card = host.querySelector('section[aria-labelledby="checklist-heading"]')!;
+      expect(text(card.querySelector('h2'))).toBe('Checklist');
+      const names = [...card.querySelectorAll('fieldset legend')].map((l) => text(l));
+      expect(names).toEqual(['Safe drop-off and pick-up', 'Classrooms and playground', 'Drinking water and toilets', 'Teachers are approachable', 'Class size', 'Homework and daily schedule', 'Sports and activities', 'Safety and CCTV']);
+      expect(card.querySelector('a')).toBeNull(); // the Criteria page is the house’s
+      expect(KEYS.every((k) => card.querySelector(`input[name="check-${k}"]`) !== null)).toBe(true);
+      expect(card.querySelectorAll('input[name="check-safety"]')).toHaveLength(7); // 0 to 5 and not scored
+      expect(card.querySelector<HTMLInputElement>('input[name="check-safety"][value="5"]')!.checked).toBe(true);
+      const pick = async (key: string, value: string) => {
+        const input = card.querySelector<HTMLInputElement>(`input[name="check-${key}"][value="${value}"]`)!;
+        input.click();
+        await settle(fixture);
+      };
+      await pick('teachers', '4');
+      await pick('safety', '');
+      expect(draft(fixture).checklist).toEqual({ teachers: 4 });
+      expect(text(host.querySelector('#coverage-line'))).toContain('1 of 8');
+      host.querySelector<HTMLButtonElement>('.toolbar .btn-primary')!.click();
+      await settle(fixture);
+      expect(saveHouse.mock.calls[0][0].checklist).toEqual({ teachers: 4 });
+    });
+
+    it('names the eight items in each language from the school’s keys', async () => {
+      for (const lang of ['hi', 'ta', 'te'] as const) {
+        TestBed.resetTestingModule();
+        const { host } = await open(SCHOOL, lang, true);
+        const names = [...host.querySelectorAll('section[aria-labelledby="checklist-heading"] fieldset legend')].map((l) => text(l));
+        expect(names, lang).toEqual(KEYS.map((k) => (DICTIONARIES[lang] as Record<string, string>)[`school.check.${k}`]));
+      }
+    });
+
+    it('a house’s checklist keeps its ten items and its link to the criteria', async () => {
+      const house: HouseDto = { ...SCHOOL, kind: 'house', priceType: 'RENT', extrasOther: null };
+      const { host } = await open(house, 'en', true);
+      const card = host.querySelector('section[aria-labelledby="checklist-heading"]')!;
+      expect(card.querySelectorAll('fieldset')).toHaveLength(10);
+      expect(card.querySelector('a')?.getAttribute('href')).toBe('/criteria');
+    });
+  });
+
   it('shows the stored values in their fields, and hides what the kind hides', async () => {
     const { host } = await open(SCHOOL, 'en', true);
     const value = (id: string) => host.querySelector<HTMLInputElement>(`#${id}`)!;
@@ -154,10 +201,12 @@ describe('a school on the candidate page, with the developer flag on (school-for
     expect([chosen('extra-board'), chosen('extra-medium')]).toEqual(['CBSE', 'English']);
     expect([value('extra-grades').value, value('extra-commuteMinutes').value, value('extra-fees').value]).toEqual(['Nursery to 12', '25', '96000']);
     expect((value('extra-busService') as HTMLInputElement).checked).toBe(true);
-    for (const gone of ['#house-price', '#house-price-type', '#house-broker', '#rooms-heading', '#questions-heading', '#checklist-heading', '.score']) {
+    for (const gone of ['#house-price', '#house-price-type', '#house-broker', '#rooms-heading']) {
       expect(host.querySelector(gone), gone).toBeNull();
     }
-    expect(host.querySelector('app-house-viewings-card')).toBeNull();
+    // Kinds PR 29 (docs/03 §18.23): the school has viewings (its visits) and, with them, its questions.
+    expect(host.querySelector('#questions-heading')).not.toBeNull();
+    expect(host.querySelector('app-house-viewings-card')).not.toBeNull();
     expect(host.querySelector('[name="dev-kind"]')).toBeNull();
     expect(text(host.querySelector('.danger-zone .btn-danger'))).toBe('Delete school');
   });
@@ -300,7 +349,7 @@ describe('with the developer flag and the switch off, a house hunter’s page is
 
   it('a stored school row (synced from a device with the switch on) is still drawn as a school, and its extras are kept through a save', async () => {
     const { fixture, host } = await open(SCHOOL, 'en', false);
-    for (const id of ['#house-price', '#house-broker', '#rooms-heading', '#checklist-heading']) expect(host.querySelector(id), id).toBeNull();
+    for (const id of ['#house-price', '#house-broker', '#rooms-heading']) expect(host.querySelector(id), id).toBeNull();
     expect(host.querySelector('#extra-board')).not.toBeNull();
     expect(text(host.querySelector('label[for="house-name"]'))).toContain('School name');
     expect(text(host.querySelector('#cost-heading'))).toBe('Fees');

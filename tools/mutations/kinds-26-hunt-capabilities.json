@@ -1,0 +1,36 @@
+{
+  "spec": [
+    "android/shared/src/androidHostTest/kotlin/app/doorprints/shared/model/KindCapabilitiesVectorsTest.kt"
+  ],
+  "gradle": [
+    ":shared:testAndroidHostTest",
+    "--tests",
+    "app.doorprints.shared.model.KindCapabilitiesVectorsTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/KindCapabilities.kt",
+      "find": "const val MAX_HUNT_RADIUS_M = 300",
+      "replace": "const val MAX_HUNT_RADIUS_M = 500",
+      "expect": "theListsAndLimitsAreTheSchemas"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/KindCapabilities.kt",
+      "find": "const val MIN_HUNT_RADIUS_M = 30",
+      "replace": "const val MIN_HUNT_RADIUS_M = 20",
+      "expect": "theSchoolHuntsAtOneHundredMetresAndAHuntBlockNeedsAllFourMembers"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/KindCapabilities.kt",
+      "find": "hunt = Hunt(alertRadiusM = 100, stayCreates = true, streetMemory = true, areas = true),",
+      "replace": "hunt = Hunt(alertRadiusM = 30, stayCreates = true, streetMemory = true, areas = true),",
+      "expect": "theSchoolHuntsAtOneHundredMetresAndAHuntBlockNeedsAllFourMembers"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/KindCapabilities.kt",
+      "find": "hunt = Hunt(alertRadiusM = 30, stayCreates = true, streetMemory = true, areas = true),\n                rooms = true,",
+      "replace": "hunt = Hunt(alertRadiusM = 30, stayCreates = true, streetMemory = false, areas = true),\n                rooms = true,",
+      "expect": "theHousesSetIsTodaysHardCodedBehaviour"
+    }
+  ]
+}

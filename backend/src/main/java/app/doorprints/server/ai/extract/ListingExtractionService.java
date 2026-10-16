@@ -22,6 +22,7 @@ import app.doorprints.server.ai.PromptSafety;
 import app.doorprints.server.ai.config.AiProperties;
 import app.doorprints.server.ai.web.AiUnavailableException;
 import app.doorprints.server.ai.web.AiUsageLogger;
+import app.doorprints.server.ai.kind.AiKind;
 import app.doorprints.server.ai.kind.AiKinds;
 import app.doorprints.server.common.BadRequestException;
 import app.doorprints.server.house.House;
@@ -72,52 +73,40 @@ public class ListingExtractionService {
     }
 
     /**
-     * As {@link #extract(String)}, for a candidate of {@code kind} (kinds PR 7, S4b-BL-211): none or {@code house} is
-     * the house's extract, unchanged; a built-in kind whose {@code ai.extract} slot is not empty, while the server's
-     * server lists it in {@code app.kinds.available} ({@link AiKinds}), gets its kind's prompt, schema and checks
-     * ({@link KindDraftSanitizer}); a kind outside the list, or any other kind, is a 400, never read as a house.
+     * As {@link #extract(String)}, for a candidate of {@code kind} (kinds PR 7, S4b-BL-211; kinds PR 28): none or {@code house}
+     * is the house's extract; another kind whose {@code ai.extract} slot is not empty, while this server lists it in
+     * {@code app.kinds.available} ({@link AiKinds}), gets its kind file's prompt, schema and checks; a kind outside the list,
+     * or one with no listing extract, is a 400, never read as a house. Every kind, the house too, is read through its kind
+     * file by the same code ({@link ExtractionPrompts#build(AiKind, String, String)}, {@link KindOutputConverter},
+     * {@link KindDraftSanitizer}).
      */
     public HouseDraft extract(String text, String kind) {
-        if (kind == null || House.HOUSE_KIND.equals(kind)) return extract(text);
+        if (kind == null || AiKinds.isBaseline(kind)) return extract(text);
         kinds.require(kind);
         var k = kinds.of(kind);
-        // The schools kind is the one built-in kind with an extract besides the house: its raw listing is RawSchoolListing.
-        if (k == null || k.extract().isEmpty() || k != AiKinds.SCHOOL) {
+        if (k == null || k.extract().isEmpty() || k.extractFields().isEmpty()) {
             throw new BadRequestException("kind " + kind + " has no listing extract");
         }
-        if (text == null || text.isBlank()) throw new BadRequestException("text must not be blank");
-        if (text.length() > props.maxInputChars()) {
-            throw new BadRequestException("text is longer than " + props.maxInputChars() + " characters");
-        }
-        var prompt = ExtractionPrompts.build(k, text, PromptSafety.nonce());
-        long started = System.nanoTime();
-        try {
-            var result = chat.prompt()
-                    .system(prompt.system())
-                    .user(prompt.user())
-                    .options(ChatOptions.builder().temperature(0.0).maxTokens(props.maxOutputTokens()))
-                    .call()
-                    .responseEntity(RawSchoolListing.class);
-            AiUsageLogger.log("extract-listing", result.response(), started);
-            return KindDraftSanitizer.sanitize(k, KindDraftSanitizer.fields(result.entity()), text);
-        } catch (RuntimeException e) {
-            throw new AiUnavailableException("Listing extraction failed", e);
-        }
+        return extract(k, text);
     }
 
     /**
      * Reads a pasted listing (a message, an ad, page text) into a draft house for the user to confirm.
      * The text goes to the model with temperature 0; this service does not store it. The structured answer is then
-     * validated by {@link DraftSanitizer} against the same text.
+     * validated by {@link KindDraftSanitizer} against the same text.
      * @throws IllegalArgumentException if the text is blank or longer than the configured limit
      * @throws AiUnavailableException if the model call fails
      */
     public HouseDraft extract(String text) {
+        return extract(AiKinds.HOUSE, text);
+    }
+
+    private HouseDraft extract(AiKind k, String text) {
         if (text == null || text.isBlank()) throw new BadRequestException("text must not be blank");
         if (text.length() > props.maxInputChars()) {
             throw new BadRequestException("text is longer than " + props.maxInputChars() + " characters");
         }
-        var prompt = builtPrompt(text, PromptSafety.nonce());
+        var prompt = builtPrompt(k, text, PromptSafety.nonce());
         long started = System.nanoTime();
         try {
             var result = chat.prompt()
@@ -125,18 +114,23 @@ public class ListingExtractionService {
                     .user(prompt.user())
                     .options(ChatOptions.builder().temperature(0.0).maxTokens(props.maxOutputTokens()))
                     .call()
-                    .responseEntity(RawListing.class);
+                    .responseEntity(new KindOutputConverter(k));
             AiUsageLogger.log("extract-listing", result.response(), started);
-            return finish(result.entity(), text);
+            return finish(k, result.entity(), text);
         } catch (RuntimeException e) {
             throw new AiUnavailableException("Listing extraction failed", e);
         }
     }
 
     /** The prompt as sent: {@link ExtractionPrompts#build} with the call's nonce, unless the no-wrapping canary builds it. */
-    static ExtractionPrompts.Built builtPrompt(String text, String nonce) {
+    static ExtractionPrompts.Built builtPrompt(AiKind k, String text, String nonce) {
         var canary = canaryPrompt;
-        return canary == null ? ExtractionPrompts.build(text, nonce) : canary.apply(text);
+        return canary == null ? ExtractionPrompts.build(k, text, nonce) : canary.apply(text);
+    }
+
+    /** As above, for a house. */
+    static ExtractionPrompts.Built builtPrompt(String text, String nonce) {
+        return builtPrompt(AiKinds.HOUSE, text, nonce);
     }
 
     /** The system text as sent: the built one, unless a canary rewrites it. */
@@ -146,20 +140,24 @@ public class ListingExtractionService {
     }
 
     /** The draft the caller gets: the sanitised one, unless the no-sanitizer canary is on. */
-    static HouseDraft finish(RawListing raw, String text) {
-        return canarySkipSanitizer ? unsanitized(raw) : DraftSanitizer.sanitize(raw, text);
+    static HouseDraft finish(AiKind k, KindOutputConverter.Raw raw, String text) {
+        if (canarySkipSanitizer) return unsanitized(raw);
+        return raw == null ? KindDraftSanitizer.sanitize(k, null, text)
+                : KindDraftSanitizer.sanitize(k, raw.fields(), raw.amenities(), text);
     }
 
     /**
      * The model's output as a draft with the numbers read but nothing confirmed against the text and nothing clamped:
-     * what Extract would be without {@link DraftSanitizer}. Canary only.
+     * what Extract would be without {@link KindDraftSanitizer}. Canary only; the house's fields.
      */
-    static HouseDraft unsanitized(RawListing raw) {
+    static HouseDraft unsanitized(KindOutputConverter.Raw raw) {
         var warnings = new ArrayList<String>(List.of("canary: sanitizer bypassed"));
         if (raw == null) return new HouseDraft(null, null, null, null, null, null, null, null, null, null, null, List.of(), warnings);
-        return new HouseDraft(raw.label(), raw.address(), raw.street(), raw.locality(), DraftSanitizer.price(raw.price(), warnings),
-                DraftSanitizer.priceType(raw.priceType(), warnings), DraftSanitizer.bedrooms(raw.bedrooms(), warnings),
-                raw.contactName(), raw.contactPhone(), raw.listingUrl(), raw.notes(),
-                raw.amenities() == null ? List.of() : List.copyOf(raw.amenities()), warnings);
+        var f = raw.fields();
+        return new HouseDraft(f.get("label"), f.get("address"), f.get("street"), f.get("locality"),
+                DraftSanitizer.price(f.get("price"), warnings), DraftSanitizer.priceType(f.get("priceType"), warnings),
+                DraftSanitizer.bedrooms(f.get("bedrooms"), warnings), f.get("contactName"), f.get("contactPhone"),
+                f.get("listingUrl"), f.get("notes"), raw.amenities() == null ? List.of() : List.copyOf(raw.amenities()),
+                warnings);
     }
 }

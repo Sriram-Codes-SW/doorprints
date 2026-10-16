@@ -1,0 +1,141 @@
+{
+  "spec": [
+    "backend/src/test/java/app/doorprints/server/ai/kind/KindFilesTest.java",
+    "backend/src/test/java/app/doorprints/server/ai/kind/KindFileResourcesTest.java",
+    "backend/src/test/java/app/doorprints/server/ai/rag/ServerKindDocumentsTest.java",
+    "backend/src/test/java/app/doorprints/server/ai/extract/ServerKindExtractTest.java",
+    "backend/src/test/java/app/doorprints/server/ai/agent/ServerKindPlanTest.java"
+  ],
+  "maven": [
+    "-Dtest=KindFilesTest,KindFileResourcesTest,ServerKindDocumentsTest,ServerKindExtractTest,ServerKindPlanTest,AiKindFileTest,HouseAskPinsTest,KindAskVectorsTest,HouseExtractPinsTest,DraftSanitizerTest,SchoolKindTest",
+    "-Dsurefire.failIfNoSpecifiedTests=false"
+  ],
+  "mutations": [
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/kind/KindFiles.java",
+      "find": "if (FORBIDDEN_MAP_KEYS.contains(key)) {",
+      "replace": "if (false) {",
+      "expect": "aMapKeyIsRefusedAnywhereInTheFile"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/kind/KindFiles.java",
+      "find": "if (PROTOTYPE_KEYS.contains(key)) throw",
+      "replace": "if (false) throw",
+      "expect": "aPrototypeKeyIsRefusedWhereverItIs"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/kind/KindFiles.java",
+      "find": "        only(root, \"$\", ROOT_KEYS);\n",
+      "replace": "",
+      "expect": "anUnknownKeyIsRefusedAtEveryLevel"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/kind/KindFiles.java",
+      "find": "if (slots.get(\"ask\").contains(id) || slots.get(\"plan\").contains(id)) {",
+      "replace": "if (false) {",
+      "expect": "whatTheNeverSlotNamesIsNeverInAskOrPlan"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/kind/KindFiles.java",
+      "find": "Pattern.compile(\"^[A-Za-z][A-Za-z0-9 .,'()/-]{0,59}$\")",
+      "replace": "Pattern.compile(\"^[A-Za-z][A-Za-z0-9 .,'()/:<>-]{0,59}$\")",
+      "expect": "aWordCarriesNoMarkupNoColonNoLineBreakAndNoInstruction"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/kind/KindFiles.java",
+      "find": ".enable(StreamReadFeature.STRICT_DUPLICATE_DETECTION).build();",
+      "replace": ".build();",
+      "expect": "notJsonOrNotAnObjectOrOverTheCapsIsRefused"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/kind/KindFiles.java",
+      "find": "if (known != null && !known.equals(type)) {",
+      "replace": "if (false) {",
+      "expect": "anExtraTheServerKnowsByIdKeepsItsType"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/kind/KindFiles.java",
+      "find": "if (hasCadences == hasFrom) throw",
+      "replace": "if (false) throw",
+      "expect": "aWrongTypeOrARangeIsRefused"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/kind/KindFiles.java",
+      "find": "new KindFile.Hunt((int) integer(h, \"alertRadiusM\", p + \".hunt.alertRadiusM\", 30, 300),",
+      "replace": "new KindFile.Hunt((int) integer(h, \"alertRadiusM\", p + \".hunt.alertRadiusM\", 1, 5000),",
+      "expect": "everyValidCapabilitiesCaseResolvesToTheVectorsAndEveryInvalidOneIsRefused"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/kind/AiKinds.java",
+      "find": "kind != null && !House.HOUSE_KIND.equals(kind) && available.contains(kind)",
+      "replace": "kind != null && available.contains(kind)",
+      "expect": "theHouseIsReadFromItsFileAndEveryCandidateIsReadAsSomething"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/kind/AiKinds.java",
+      "find": "return k != null ? k : HOUSE;",
+      "replace": "return k != null ? k : SCHOOL;",
+      "expect": "theHouseIsReadFromItsFileAndEveryCandidateIsReadAsSomething"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/rag/KindDocuments.java",
+      "find": "if (k.never().contains(id) || written.contains(id)) continue;",
+      "replace": "if (written.contains(id)) continue;",
+      "expect": "anIdThatNeverNamesIsNeverWrittenWhateverAskSays"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/rag/KindDocuments.java",
+      "find": "? \" per month (rent)\" : \" (sale)\"));",
+      "replace": "? \" per month\" : \" (sale)\"));",
+      "expect": "aHousesAskDocumentsPromptAndFiltersAreThoseOfMain"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/rag/KindDocuments.java",
+      "find": "if (!AiKinds.alwaysAvailable(k.id())) m.put(\"kind\", k.id());",
+      "replace": "m.put(\"kind\", k.id());",
+      "expect": "aHousesAskDocumentsPromptAndFiltersAreThoseOfMain"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/extract/KindOutputConverter.java",
+      "find": "var sorted = new TreeMap<String, KindPrompts.ExtractField>();",
+      "replace": "var sorted = new java.util.LinkedHashMap<String, KindPrompts.ExtractField>();",
+      "expect": "theSchemaHasTheSlotsFieldsInNameOrderAndOnlyThose"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/extract/KindOutputConverter.java",
+      "find": "if (v.isObject() || v.isArray()) throw",
+      "replace": "if (false) throw",
+      "expect": "theAnswerIsReadFieldByFieldAndNothingElse"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/kind/KindPrompts.java",
+      "find": "if (rest.indexOf('%') >= 0) throw",
+      "replace": "if (false) throw",
+      "expect": "aHostilePromptPackIsRefused"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/extract/KindDraftSanitizer.java",
+      "find": "if (slot.contains(\"bedrooms\")) {\n                // A kind that names",
+      "replace": "if (false) {\n                // A kind that names",
+      "expect": "generatesLabelAndHandlesNullOutput"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/house/HouseDto.java",
+      "find": "return allowed == null || allowed.contains(money.cadence());",
+      "replace": "return true;",
+      "expect": "aSchoolsMoneyMayHaveAnyCadenceOfTheVocabularyAndAHousesMayNo"
+    },
+    {
+      "file": "backend/src/main/resources/kinds/house.json",
+      "find": "\"noun\": \"House\"",
+      "replace": "\"noun\": \"Houses\"",
+      "expect": "theKindFilesInTheBuildAreTheSchemaFoldersFilesByteForByte"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/VisitPlannerService.java",
+      "find": "var text = kind == null || kind.planSystem() == null ? AiKinds.HOUSE.planSystem() : kind.planSystem();",
+      "replace": "var text = kind == null ? AiKinds.HOUSE.planSystem() : kind.planSystem();",
+      "expect": "thePlannerTextIsWrittenFromTheKindsWords"
+    }
+  ]
+}

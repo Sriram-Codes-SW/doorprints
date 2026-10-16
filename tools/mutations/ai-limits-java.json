@@ -11,15 +11,15 @@
       "expect": "aHouseDocumentCutsNotesAtThreeThousand"
     },
     {
-      "file": "backend/src/main/java/app/doorprints/server/ai/rag/HouseDocuments.java",
-      "find": "notes.length() > NOTES_MAX ?",
-      "replace": "notes.length() >= NOTES_MAX ?",
+      "file": "backend/src/main/java/app/doorprints/server/ai/rag/KindDocuments.java",
+      "find": "notes.length() > HouseDocuments.NOTES_MAX",
+      "replace": "notes.length() >= HouseDocuments.NOTES_MAX",
       "expect": "aHouseDocumentCutsNotesAtThreeThousand"
     },
     {
-      "file": "backend/src/main/java/app/doorprints/server/ai/rag/HouseDocuments.java",
-      "find": "+ \" …\" : notes",
-      "replace": "+ \"…\" : notes",
+      "file": "backend/src/main/java/app/doorprints/server/ai/rag/KindDocuments.java",
+      "find": "+ \" …\" : notes;",
+      "replace": "+ \"…\" : notes;",
       "expect": "aHouseDocumentCutsNotesAtThreeThousand"
     },
     {

@@ -50,8 +50,8 @@
     },
     {
       "file": "backend/src/main/java/app/doorprints/server/ai/rag/RagService.java",
-      "find": "        return k == null ? AskPrompts.I_DONT_KNOW : k.refusal();",
-      "replace": "        return AskPrompts.I_DONT_KNOW;",
+      "find": "return kinds.readAs(kind).refusal();",
+      "replace": "return AskPrompts.I_DONT_KNOW;",
       "expect": "nothingOfTheKindIsTheKindsOwnSentenceAndNoModelCall"
     },
     {
@@ -128,12 +128,12 @@
     },
     {
       "file": "backend/src/main/java/app/doorprints/server/ai/agent/VisitPlannerService.java",
-      "find": "if (kind == null || kind.planSystem() == null) return systemPrompt(lat, lon, maxStops);",
-      "replace": "if (kind == null) return systemPrompt(lat, lon, maxStops);",
+      "find": "var text = kind == null || kind.planSystem() == null ? AiKinds.HOUSE.planSystem() : kind.planSystem();",
+      "replace": "var text = kind == null ? AiKinds.HOUSE.planSystem() : kind.planSystem();",
       "expect": "theSchoolsTextOnlyChangesTheWordsNotTheRulesAHouseHas"
     },
     {
-      "file": "backend/src/main/java/app/doorprints/server/ai/kind/AiKinds.java",
+      "file": "backend/src/main/resources/kinds/school.prompts.json",
       "find": "You plan school visits for one person who is choosing a school.",
       "replace": "You plan house visits for one person who is choosing a school.",
       "expect": "aSchoolPlanReadsOnlySchoolsAndTheSchoolsPlannerTextOfTheVectors"
@@ -152,7 +152,7 @@
     },
     {
       "file": "backend/src/main/java/app/doorprints/server/ai/agent/HouseSearchService.java",
-      "find": "return kind == null || kind.equals(h.kind() == null ? House.HOUSE_KIND : h.kind());",
+      "find": "return kind == null || kind.equals(AiKinds.kindOf(h.kind()));",
       "replace": "return true;",
       "expect": "everyToolReadsTheKindsCandidatesOnly"
     },

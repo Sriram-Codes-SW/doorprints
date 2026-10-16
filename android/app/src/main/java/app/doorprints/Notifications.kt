@@ -18,6 +18,7 @@
 
 package app.doorprints
 
+import app.doorprints.shared.model.KindCapabilities
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -30,6 +31,7 @@ import androidx.core.net.toUri
 import app.doorprints.data.HouseEntity
 import app.doorprints.location.HuntService
 import app.doorprints.shared.model.Area
+import app.doorprints.shared.model.KindSettingRules
 import app.doorprints.shared.model.LocationSource
 import app.doorprints.shared.model.Viewing
 import app.doorprints.shared.model.ViewingReminders
@@ -157,6 +159,9 @@ object Notifications {
     const val EXTRA_NEW_LON = "newLon"
     const val EXTRA_VISIT_ID = "visitId"
 
+    /** The kind of the walk that raised a "stay here?" alert (docs/03 section 18.20); MainActivity accepts only a built-in kind id. */
+    const val EXTRA_NEW_KIND = "newKind"
+
     /** A viewing to open (a Hunt mode reminder's body, slice 3c); MainActivity accepts only a valid record id. */
     const val EXTRA_OPEN_VIEWING = "openViewing"
 
@@ -230,6 +235,24 @@ object Notifications {
                 lockscreenVisibility = android.app.Notification.VISIBILITY_PRIVATE
             }
         )
+    }
+
+    /**
+     * The alerts channel of a walk of [kind] (docs/03 section 18.20): the house's is [CHANNEL_ALERTS], created at start; any other
+     * kind's is `alerts_<kind>`, created here the first time its walk alerts, named and described in the kind's own words
+     * ([name], [description]: `huntChannelAlerts`, `huntChannelAlertsDesc`) and as private on a locked screen as the house's.
+     * Returns the channel id to post on.
+     */
+    fun alertsChannel(context: Context, kind: String, name: String, description: String): String {
+        if (KindCapabilities.of(kind).baseline) return CHANNEL_ALERTS
+        val id = "alerts_$kind"
+        context.getSystemService(NotificationManager::class.java)?.createNotificationChannel(
+            NotificationChannel(id, name, NotificationManager.IMPORTANCE_HIGH).apply {
+                this.description = description
+                lockscreenVisibility = android.app.Notification.VISIBILITY_PRIVATE
+            }
+        )
+        return id
     }
 
     /**
@@ -338,23 +361,26 @@ object Notifications {
      * house, scrolled to its questions; [EXTRA_OPEN_QUESTIONS]). Private on a locked screen. Every
      * PendingIntent is immutable (T-E8); the request codes come from the viewing id, one per action.
      */
-    fun viewingReminder(context: Context, viewing: Viewing, house: HouseEntity?, nowMs: Long): Notification {
-        val name = house?.label?.ifBlank { null } ?: context.getString(R.string.notif_viewing_house_gone)
+    fun viewingReminder(context: Context, viewing: Viewing, house: HouseEntity?, nowMs: Long, texts: ViewingTexts? = null): Notification {
+        // A kind other than the house words the reminder with its own texts and its own channel (kinds PR 29, docs/03 §18.23); the house's
+        // are the app's strings and the `viewings` channel, so a house reminder is what it always was.
+        val channel = texts?.let { viewingsChannel(context, it) } ?: CHANNEL_VIEWINGS
+        val name = house?.label?.ifBlank { null } ?: (texts?.gone ?: context.getString(R.string.notif_viewing_house_gone))
         val minutes = ViewingReminders.minutesUntil(viewing.startsAt, nowMs)
         val title = if (minutes <= SOON_MINUTES) {
-            context.getString(R.string.notif_viewing_soon, name, minutes)
+            texts?.soon?.invoke(name, minutes) ?: context.getString(R.string.notif_viewing_soon, name, minutes)
         } else {
-            context.getString(R.string.notif_viewing_title, name)
+            texts?.title?.invoke(name) ?: context.getString(R.string.notif_viewing_title, name)
         }
         val text = context.getString(R.string.notif_viewing_text, Formats.dateTime(viewing.startsAt))
-        val publicVersion = NotificationCompat.Builder(context, CHANNEL_VIEWINGS)
+        val publicVersion = NotificationCompat.Builder(context, channel)
             .setSmallIcon(SMALL_ICON)
             .setContentTitle(context.getString(R.string.notif_viewing_public))
             .build()
         val openHouse = house?.let { h ->
             openAppIntent(context, ("open:" + viewing.id).hashCode()) { putExtra(EXTRA_OPEN_HOUSE, h.id) }
         }
-        return NotificationCompat.Builder(context, CHANNEL_VIEWINGS)
+        return NotificationCompat.Builder(context, channel)
             .setSmallIcon(SMALL_ICON)
             .setContentTitle(title)
             .setContentText(text)
@@ -366,9 +392,9 @@ object Notifications {
             .setContentIntent(openHouse ?: openAppIntent(context, ("open:" + viewing.id).hashCode()))
             .apply {
                 if (house != null && openHouse != null) {
-                    addAction(0, context.getString(R.string.notif_viewing_open), openHouse)
+                    addAction(0, texts?.open ?: context.getString(R.string.notif_viewing_open), openHouse)
                     if (house.locationSource != LocationSource.APPROX) {
-                        addAction(0, context.getString(R.string.notif_viewing_directions), directionsIntent(context, viewing.id, house))
+                        addAction(0, texts?.directions ?: context.getString(R.string.notif_viewing_directions), directionsIntent(context, viewing.id, house))
                     }
                     addAction(
                         0, context.getString(R.string.notif_viewing_questions),
@@ -380,6 +406,33 @@ object Notifications {
                 }
             }
             .build()
+    }
+
+    /**
+     * The texts of a viewing reminder of a kind other than the house (kinds PR 29, docs/03 §18.23), read from the kind file's
+     * `viewingChannel`, `viewingChannelDesc`, `viewingSoon`, `viewingTitle`, `viewingOpen`, `viewingGone` and `viewingDirections`
+     * words by the scheduler. [channelId] is `viewings_<kind>`; the lock-screen public text stays "Doorprints reminder" for every kind.
+     */
+    class ViewingTexts(
+        val channelId: String,
+        val channelName: String,
+        val channelDescription: String,
+        val soon: (name: String, minutes: Int) -> String,
+        val title: (name: String) -> String,
+        val open: String,
+        val gone: String,
+        val directions: String,
+    )
+
+    /** Creates (idempotently) the viewings channel of a kind other than the house, private on a locked screen like the house's, and returns its id. */
+    fun viewingsChannel(context: Context, texts: ViewingTexts): String {
+        context.getSystemService(NotificationManager::class.java)?.createNotificationChannel(
+            NotificationChannel(texts.channelId, texts.channelName, NotificationManager.IMPORTANCE_DEFAULT).apply {
+                description = texts.channelDescription
+                lockscreenVisibility = Notification.VISIBILITY_PRIVATE
+            }
+        )
+        return texts.channelId
     }
 
     /**
@@ -513,14 +566,17 @@ object Notifications {
      * even where the phone is set to show all notification content, which would show a private one whole and name the
      * house; it still sounds and shows once the phone is unlocked.
      */
-    fun alert(context: Context, id: Int, title: String, text: String, tap: PendingIntent?, hideOnLockScreen: Boolean = false) {
+    fun alert(
+        context: Context, id: Int, title: String, text: String, tap: PendingIntent?, hideOnLockScreen: Boolean = false,
+        channel: String = CHANNEL_ALERTS,
+    ) {
         if (!canPost(context)) return
         // What a locked screen shows instead of the house details (threat model F-14, SEC-022).
         val publicVersion = NotificationCompat.Builder(context, CHANNEL_ALERTS)
             .setSmallIcon(SMALL_ICON)
             .setContentTitle(context.getString(R.string.notif_public))
             .build()
-        val n = NotificationCompat.Builder(context, CHANNEL_ALERTS)
+        val n = NotificationCompat.Builder(context, channel)
             .setSmallIcon(SMALL_ICON)
             .setContentTitle(title)
             .setContentText(text)

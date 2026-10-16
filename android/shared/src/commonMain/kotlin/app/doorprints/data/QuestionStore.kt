@@ -18,8 +18,11 @@
 
 package app.doorprints.data
 
+import app.doorprints.shared.model.KindCapabilities
+import app.doorprints.shared.model.Candidates
 import app.doorprints.shared.export.ExportQuestion
 import app.doorprints.shared.model.DefaultQuestions
+import app.doorprints.shared.model.KindSettingRules
 import app.doorprints.shared.model.Question
 import app.doorprints.shared.model.QuestionCategory
 import app.doorprints.shared.model.QuestionScope
@@ -52,11 +55,11 @@ internal class QuestionStore(
 
     suspend fun all(): List<Question> = sorted(db.records().listByType(QuestionType.name))
 
-    /** Writes the defaults that have no record yet and returns how many. A tombstone is a record: a deleted default stays deleted. */
-    suspend fun seed(language: String): Int {
+    /** Writes the defaults of [kind] that have no record yet and returns how many. A tombstone is a record: a deleted default stays deleted. */
+    suspend fun seed(language: String, kind: String = Candidates.BASELINE_KIND): Int {
         var written = 0
         db.withImmediateTransaction {
-            for (d in DefaultQuestions.ALL) {
+            for (d in DefaultQuestions.of(kind)) {
                 if (db.records().get(QuestionType.name, d.id) != null) continue
                 // Clean and stamped SEEDED_AT (S4b-BL-90a): an untouched default is never pushed, and whatever another
                 // device did to it wins when it is pulled. An edit here makes it dirty with a real time.
@@ -79,9 +82,23 @@ internal class QuestionStore(
         }
     }
 
-    suspend fun reset(language: String) {
+    /**
+     * Seeds a kind's own bank once (kinds PR 29, docs/03 section 18.23): the first time the school's questions are opened, never for
+     * a person who only keeps houses, so the house's bank, its backups and its sync are what they were. The mark is not synced.
+     */
+    suspend fun seedKindOnce(kind: String, language: String) {
+        if (KindCapabilities.of(kind).baseline || DefaultQuestions.of(kind).isEmpty()) return
+        seedGate.withLock {
+            if (settings.questionsSeededFor(kind)) return
+            seed(language, kind)
+            settings.markQuestionsSeededFor(kind)
+        }
+    }
+
+    /** *Reset to defaults* of [kind]'s bank (the house's unless a space says otherwise); another kind's questions are left alone. */
+    suspend fun reset(language: String, kind: String = Candidates.BASELINE_KIND) {
         db.withImmediateTransaction {
-            for (d in DefaultQuestions.ALL) {
+            for (d in DefaultQuestions.of(kind)) {
                 // A deleted default that would be the 101st question stays deleted (the web skips it too).
                 val live = db.records().get(QuestionType.name, d.id)?.deleted == false
                 if (!live && db.records().countLive(QuestionType.name) >= Question.MAX_QUESTIONS) continue
@@ -112,7 +129,9 @@ internal class QuestionStore(
     }
 
     /** A new custom question at the end of the bank; returns its id. */
-    suspend fun add(text: String, category: QuestionCategory, appliesTo: QuestionScope, defaultOn: Boolean): String {
+    suspend fun add(
+        text: String, category: QuestionCategory, appliesTo: QuestionScope, defaultOn: Boolean, kind: String = Candidates.BASELINE_KIND,
+    ): String {
         val words = text.trim()
         require(words.isNotEmpty() && words.length <= Question.MAX_TEXT) { "a question needs 1..${Question.MAX_TEXT} characters" }
         var id = ""
@@ -121,8 +140,8 @@ internal class QuestionStore(
             if (live.size >= Question.MAX_QUESTIONS) throw RecordLimitException(QuestionType.name, Question.MAX_QUESTIONS)
             // An id a tombstone holds is taken too: reusing it would bring the old question back on another device.
             val used = db.records().versions(QuestionType.name).mapTo(HashSet()) { it.id }
-            id = Question.newCustomId({ it in used })
-            val sort = (live.mapNotNull(::of).maxOfOrNull { it.sort } ?: -1) + 1
+            id = Question.newCustomId({ it in used }, kind = kind)
+            val sort = (live.mapNotNull(::of).filter { it.kind == kind }.maxOfOrNull { it.sort } ?: -1) + 1
             records.save(QuestionType, id, Question(id, words, category.name, appliesTo.name, defaultOn, sort))
         }
         return id

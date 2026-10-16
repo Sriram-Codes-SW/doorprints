@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Architecture overview: the one entry page for the high-level and low-level design |
-| Version | 0.4 |
+| Version | 0.6 |
 | Date | 2026-10-15 |
 | Owner | Lead (Claude, Code); product owner: Sriram |
 | Status | Draft |
@@ -21,6 +21,8 @@ stays in [03](03-design.md) and the satellites named below.
 | 0.2 | 2026-10-15 | Claude (Code), docs | Voice stated as built on the web (merged), Android (#355) and iPhone (#354); the PR numbers are to be dropped once both are on `main`. |
 | 0.3 | 2026-10-15 | Claude (Code), docs | Voice stated as built on the web, Android and the iPhone; the PR numbers dropped. |
 | 0.4 | 2026-10-15 | Claude (Code), docs | The `school` kind is described as compiled in but off, offered after the switch (`docs/school-compiled-in-wording`). |
+| 0.5 | 2026-10-15 | Claude (Code), docs | Kinds: capabilities, every word from the kind file and the generated word tables (kinds PR 25 to 31, [03](03-design.md) §18.19 to §18.25) in §6. |
+| 0.6 | 2026-10-16 | Claude (Code), docs | Kinds: the conformance kind `zz_all` and the kind tripwire (kinds PR 32, [03](03-design.md) §18.26, ADR-36b) in §6. |
 
 ## 1. Ten minutes
 
@@ -158,6 +160,7 @@ stacks implement it, a vector file both test against. A rule that exists on thre
 | Design | Decision | Detail |
 |---|---|---|
 | Kinds and spaces (chooser, What you track, per-space Compare, Ask, Plan and copies, phones, the server's list of kinds) | [03](03-design.md) ADR-36 | [03](03-design.md) §18.12 to §18.15 (§18.1 to §18.11 the kind file and its doors); `app.kinds.available` / `KINDS_AVAILABLE` on the server |
+| Kind capabilities (Hunt, Compare, contacts, rooms, viewings, filters) and a kind's words (`words` ids, generated from the files by `tools/gen-kind-words.mjs`) | [03](03-design.md) ADR-36 | [03](03-design.md) §18.19 to §18.25; [schemas/README.md](schemas/README.md) §8.4 |
 | Kind-aware AI | ADR-36, ADR-35 | [03](03-design.md) §18.11, §18.17; [ai/ai-design.md](ai/ai-design.md) §16.1 to §16.12 |
 | Own-key AI on the device, and the server's AI | ADR-26, ADR-35 | [03](03-design.md) §13, §13.1, §13.2; [ai/ai-design.md](ai/ai-design.md) |
 | Deletion safeguards (Undo, Recently deleted, Delete all in this space) | S4b-BL-283 to -285, -287 | [03](03-design.md) §20; [04](04-data-flow-diagrams.md) §5.2 |

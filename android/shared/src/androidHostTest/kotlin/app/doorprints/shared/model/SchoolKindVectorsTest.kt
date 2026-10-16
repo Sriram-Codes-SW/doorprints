@@ -73,6 +73,7 @@ class SchoolKindVectorsTest {
         school.getValue("labels").jsonObject.forEach { (id, l) -> out["kind.$id"] = l.android() }
         school.getValue("statuses").jsonArray.forEach { out["status.${it.jsonObject.str("id")}"] = it.jsonObject.getValue("label").android() }
         school.getValue("sections").jsonArray.forEach { out["section.${it.jsonObject.str("id")}"] = it.jsonObject.getValue("label").android() }
+        school.getValue("checklist").jsonArray.forEach { out["check.${it.jsonObject.str("key")}"] = it.jsonObject.getValue("label").android() }
         for (f in school.getValue("core").jsonArray + school.getValue("extras").jsonArray) {
             val field = f.jsonObject
             out["field.${field.str("id")}"] = field.getValue("label").android()
@@ -142,6 +143,16 @@ class SchoolKindVectorsTest {
                 assertEquals("$lang $ref", want.getValue(ref).let { if (it is JsonNull) null else it.jsonPrimitive.content }, text)
             }
         }
+    }
+
+    @Test
+    fun theChecklistIsTheVectorsEightItemsInTheFilesOrderAndShownAsASection() {
+        val want = kind.list("checklist")!!
+        assertEquals(want, school.getValue("checklist").jsonArray.map { it.jsonObject.str("key")!! })
+        assertEquals(want, SchoolKind.LABELS.checklistKeys())
+        assertTrue(SchoolKind.LABELS.isVisible("section.checklist"))
+        for (key in want) assertEquals(key, school.getValue("checklist").jsonArray.single { it.jsonObject.str("key") == key }.jsonObject.getValue("label").android(), SchoolKind.LABELS.check(key))
+        assertNull(SchoolKind.LABELS.check("water")) // the house's keys are not the school's
     }
 
     @Test

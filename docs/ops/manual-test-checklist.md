@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | The complete manual test list for Doorprints before real-system testing starts and before Android/iOS development continues: every check a person redoes on real devices, whether or not an automated suite or a review session already covered it |
-| Version | 0.23 |
+| Version | 0.29 |
 | Date | 2026-10-15 |
 | Author | Claude, senior reviewer |
 | Status | Draft |
@@ -35,6 +35,12 @@
 | 0.21 | 2026-10-15 | Claude (Code), engineer | **A recording cut short** (S4b-BL-317, S4b-BL-318, TC-M-82; #367): MT-105's expected result amended (the words so far are kept and written out with *The recording ended early*, nothing shown when nothing was said) and MT-114 (the iPhone, Android and the website; Cancel and leaving the screen still keep nothing; Stop answers at once). |
 | 0.22 | 2026-10-15 | Claude (Code), engineer | **MT-115** (TC-M-83; `fix/kinds-default-and-house-off`): the school as the default, and the house turned off, on the website and a phone, including *Start Hunt mode* refused with Houses off. |
 | 0.23 | 2026-10-15 | Claude (Code), docs | **Stale wording after "compiled in, off"** (`docs/school-compiled-in-wording`): §19 MT-96 says the iPhone lists the school too and the test phones are a release build and a debug build. |
+| 0.24 | 2026-10-15 | Claude (Code), engineer | **MT-116** (TC-M-84; kinds PR 26, [03](../03-design.md) §18.20): the school's Hunt mode on a real walk, the alert's words and channel, the lock screen, TalkBack; not run. |
+| 0.25 | 2026-10-15 | Claude (Code), engineer | MT-117: a school's Compare and checklist (kinds PR 27, [06](../06-test-plan.md) TC-M-85). |
+| 0.26 | 2026-10-15 | Claude (Code), engineer | **MT-118** (TC-M-86; kinds PR 29, [03](../03-design.md) §18.23): a school's visits and questions, a visit reminder on its own channel, the iPhone body, no broker from a school's phone. Not run. |
+| 0.27 | 2026-10-15 | Claude (Code), engineer | **MT-119** (TC-M-87; kinds PR 30, [03](../03-design.md) §18.24): a school's filters and copy. Not run. |
+| 0.28 | 2026-10-15 | Claude (Code), engineer | **MT-120** (TC-M-88; kinds PR 31, [03](../03-design.md) §18.25): a school's tour, walk check and Settings. Not run. |
+| 0.29 | 2026-10-16 | Claude (Code), engineer | **MT-121** (TC-M-89; kinds PR 32, [03](../03-design.md) §18.26): TC-M-25 in a school's and the synthetic kind's space. Not run. |
 
 ## 1. How to use this list
 
@@ -1021,6 +1027,41 @@ TC-M-72 and TC-M-81 of [06](../06-test-plan.md); the website's twin is §18.
 - **Automated or reviewed by:** TC-U-266 (fake sources and recorders, the website's specs, the source scan). The real call, headset and phone: reviewer ran it: no.
 - Pass / Fail / Date: ____  by: ____
 
+#### MT-117 A school's Compare and checklist
+- **Area:** website and Android. **Who:** anyone, with natives for Hindi, Tamil and Telugu for the last step. **Env:** E3 and E4; School shown (Settings > What you track); three schools saved, one with fees and a commute.
+- **Steps:** (1) Open a school: a **Checklist** card with eight items (safe drop-off and pick-up, classrooms and playground, drinking water and toilets, teachers are approachable, class size, homework and daily schedule, sports and activities, safety and CCTV), each 0 to 5 or not scored; no link to *Change criteria*; a score at the top once one is given. (2) Score two schools differently, give each fees per year and a commute. (3) In the school space open **Compare** and pick all three: a *Checklist* row with each school's score, one row per item, the board, medium, grades, commute, bus, fees and admission fee, your rating, visits and street; the higher score, the lower commute and the lower fees are marked with a check and "(best)"; the admission fee is not marked; nothing about water supply, power backup or the other house items. (4) Open a house's Compare: its ten items, weights and must-haves are as before. (5) Hindi, Tamil and Telugu: the eight items' names (under review) read naturally and nothing is cut off at the largest text; the same in the dark theme. (6) TalkBack or a screen reader: each row's best cell is read as best.
+- **Expected:** the school is compared on its own checklist, fees and commute; the house is untouched; every word in the app's language (hi, ta, te *under review*).
+- **Automated or reviewed by:** TC-U-271 (`compare-vectors.json`, `compare-space.spec.ts`, `school-form.spec.ts`). Reviewer ran it: no.
+- Pass / Fail / Date: ____  by: ____
+
+#### MT-118 A school's visits and questions, and a visit reminder
+- **Area:** Android, iPhone and website. **Who:** the owner, with natives for Hindi, Tamil and Telugu for the last step. **Env:** E3, E4 and E5; School shown (Settings > What you track); a school saved, notifications allowed.
+- **Steps:** (1) In the **Schools** space open **Settings > Questions**: six questions (fees, admission, class size, safety, water and toilets, hours and holidays), no *Applies to* rent or buy control, the school's intro; edit one, add one, **Reset to defaults** and see the house's questions untouched in the **Houses** space. (2) Open a school: **Questions for a visit** with *Add the usual questions*; **School visits** with *Plan a visit*; plan one 2 minutes ahead with a reminder. (3) The reminder (Android): *Visit to <school> in 2 min* on the channel *School visit reminders* (**Settings > Notifications**), the lock screen says *Doorprints reminder* and no name; the actions say *Open school* and *Directions to the school*. (4) The iPhone: the reminder says *Visit to <school> at <time>*. (5) **Settings > Viewings** in the Schools space lists the visit and not a house's viewing; in the Houses space the reverse. (6) Save a school with a contact phone: **Settings > Brokers** (Houses space) has no new broker. (7) The same in hi, ta and te (*under review*).
+- **Expected:** the school has visits and questions in its own words; the house's viewings, questions and reminder are exactly as before; no broker is made from a school's phone.
+- **Automated or reviewed by:** TC-U-278 (the specs and baselines of [03](../03-design.md) §18.23). Reviewer ran it: no.
+- Pass / Fail / Date: ____  by: ____
+
+#### MT-119 A school's filters and copy
+- **Area:** website and Android. **Who:** anyone. **Env:** E3 and E4; School shown; two schools saved with different boards and one with the bus.
+- **Steps:** (1) In the Schools space press **CBSE** in *Board*, then *Yes* in *School bus*: the list narrows as before; **Any** clears. (2) The Houses list has no such rows. (3) **Your data > Save a copy** in the Schools space: the file is named *Doorprints-schools-<date>...* and a school with a visit and an answer has the headings *School visits* and *Questions for a visit*. (4) The same in the Houses space: *Doorprints-<date>...*, headed *Viewings* and *Questions*.
+- **Expected:** the rows and names are the kind's; the house's are as before.
+- **Automated or reviewed by:** TC-U-279. Reviewer ran it: no.
+- Pass / Fail / Date: ____  by: ____
+
+#### MT-120 A school's tour, walk check and Settings
+- **Area:** website and Android. **Who:** anyone. **Env:** E3 and E4; the experimental kinds on, the school the default and Houses off, then the house alone.
+- **Steps:** (1) Start the tour from Settings or *Your data*: step 2 reads *Add a school on the map* (the school's own words); the Find, Details, Compare and Viewings steps use the school's words and the generic sentences name *schools*; the last step says *add your first one*. (2) Walk 100 m and end the walk: *Link it to a school to keep it* and *Save with a school*; the picker says *Which school was this walk to?*. (3) Open Connect and Your data (website) and Settings (phone): the texts say *entries*, never *houses*. (4) Plan a visit with a reminder: the notification reads *A visit at ...*. (5) Turn the experimental switch off: every text is the house's again. Repeat in Hindi.
+- **Expected:** as described; hi, ta and te are marked under review.
+- **Automated or reviewed by:** TC-U-280. Reviewer ran it: no.
+- Pass / Fail / Date: ____  by: ____
+
+#### MT-121 India's boundaries in every kind's space
+- **Area:** website and Android, a development build. **Who:** owner. **Env:** E3 and E4; the experimental kinds on and the developer flag on (the synthetic kind `zz_all` is in no release build).
+- **Steps:** (1) Open the Map in the house's space, the school's space and the synthetic kind's space. (2) In each, zoom 5, 6, 7 and 8 over Kashmir and Ladakh, then over Arunachal Pradesh (TC-M-25 steps 1 to 3). (3) Compare the three: the lines are identical.
+- **Expected:** the same outline and lines in every space; nothing kind-specific near the boundaries.
+- **Automated or reviewed by:** TC-U-281 (style byte-identical, tripwire). Reviewer ran it: no.
+- Pass / Fail / Date: ____  by: ____
+
 ### 19.1 Summary rows (add to §13 when the owner starts the run)
 
 | Id | Title | Who | Env | Reviewer ran it | Result |
@@ -1030,6 +1071,11 @@ TC-M-72 and TC-M-81 of [06](../06-test-plan.md); the website's twin is §18.
 | MT-112 | The Android app, school compiled in and off: a fresh install, the switch, TalkBack, 200 % text | anyone | E4 | no | |
 | MT-113 | The iPhone, school compiled in and off: the switch, VoiceOver, 200 % text | owner, natives | E5 | no (built; not run on an iPhone) | |
 | MT-114 | A recording cut short keeps what was said: iPhone, Android, website | owner | E4, E5 | no | |
+| MT-117 | A school's Compare and checklist: website and Android | anyone, natives | E3, E4 | no | |
+| MT-118 | A school's visits and questions, and a visit reminder: Android, iPhone, website | owner, natives | E3, E4, E5 | no | |
+| MT-119 | A school's filters and copy: website and Android | anyone | E3, E4 | no | |
+| MT-120 | A school's tour, walk check and Settings: website and Android | anyone | E3, E4 | no | |
+| MT-121 | India's boundaries in every kind's space: website and Android | owner | E3, E4 | no | |
 
 ## 20. A school's pages and copies (S4b-BL-256, S4b-BL-259, S4b-BL-266, S4b-BL-277)
 
@@ -1117,6 +1163,19 @@ Needs a build that ships the school (the website, or the Android or iPhone app),
 
 Expected: nothing is lost or hidden in 2 and 4; no entry is made as a house while Houses is off; step 3 starts no walk. Record any line that does not follow, with the platform, the language and the screen.
 
+#### MT-116 TC-M-84: the school's Hunt mode on a real walk
+
+Needs an Android phone (and, for step 5, an iPhone) with the school compiled in, *Experimental: more than houses* on, a school saved at a place you can walk to, location allowed and notifications allowed. Do it outside, with the phone in a pocket for part of the walk.
+
+1. Open **Schools**: the Map has the **Hunt mode** card. Turn it on: the card says it is on, and the notification that shows while it runs says *Watching for schools and streets you have visited*.
+2. Walk towards the saved school. About 100 m away an alert arrives, *You have seen this school: <name>*, with the distance, on its own channel (Android's notification settings list **School and street alerts** next to **House and street alerts**). Tap it: the school opens.
+3. Lock the phone and walk past another saved school: the lock screen shows *Doorprints alert* and no name. With the app lock on, it shows nothing.
+4. Stand still for the minimum stay at a place with nothing saved: *Are you at a school?* arrives; tap it: **Save school** opens at that spot and saving makes a school. Do the same in **Houses**: *Are you at a house?*, and a house is made.
+5. Switch from **Schools** to **Houses** with the walk running: it stops with *Hunt mode stopped. It runs in the Schools space only.* Start it in **Houses** and walk past a saved house: the alert is as before (*You have seen this one*), from the distance set in Settings.
+6. With TalkBack (VoiceOver on the iPhone) on, the Hunt card reads as one switch in both spaces, and the alerts read their title and text.
+
+Expected: every alert and the notification speak the language of the space the walk was started in; the house's words and channel are unchanged; no place is named on a lock screen. Record any line that does not follow, with the platform, the language and the screen.
+
 ### 20.1 Summary rows (add to §13 when the owner starts the run)
 
 | ID | Name | Who | Env | Pass | Notes |
@@ -1126,3 +1185,4 @@ Expected: nothing is lost or hidden in 2 and 4; no entry is made as a house whil
 | MT-102 | The website's leftovers of the kinds by eye | anyone | E4 | no | |
 | MT-103 | The phones' leftovers of the kinds by eye | anyone | E4 | no | |
 | MT-115 | The school as the default, and the house turned off | anyone | E4 | no | |
+| MT-116 | The school's Hunt mode on a real walk: the alert, its channel, the lock screen, TalkBack | owner | E4, E5 | no | |

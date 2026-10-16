@@ -18,6 +18,7 @@
 
 package app.doorprints.ui
 
+import app.doorprints.shared.model.Candidates
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.State
@@ -31,6 +32,7 @@ import app.doorprints.data.Repository
 import app.doorprints.shared.export.ExportOptions
 import app.doorprints.shared.model.BuiltInKind
 import app.doorprints.shared.model.DevKinds
+import app.doorprints.shared.model.KindCapabilities
 import app.doorprints.shared.model.KindSetting
 import app.doorprints.shared.model.KindWordKeys
 import app.doorprints.shared.model.KindSettingRules
@@ -81,14 +83,27 @@ class SpaceWords(
     val exportPhotosShortlisted: StringResource,
     /**
      * The map's location notes (S4b-BL-301): *Save here* needs location (`saveNeedsLocation`), and the note under the Hunt card
-     * (`locationOff`, `needsPrecise`) or, where there is none, over the map (`locationOffNoHunt`, `needsPreciseNoHunt`). Hunt mode
-     * is the house space's, so a school space draws the no-Hunt pair; its Hunt pair is that pair, so no path of it can say Hunt mode.
+     * (`locationOff`, `needsPrecise`) or, where there is none (the iPhone), over the map (`locationOffNoHunt`, `needsPreciseNoHunt`). Hunt mode
+     * is a capability of the kind (docs/03 section 18.20), so every space whose kind has it, the school's too, says *Hunt mode* in its Hunt pair.
      */
     val locationOff: StringResource,
     val needsPrecise: StringResource,
     val locationOffNoHunt: StringResource,
     val needsPreciseNoHunt: StringResource,
     val saveNeedsLocation: StringResource,
+    /**
+     * The walk check's *Save this walk?* sheet (kinds PR 31, docs/03 section 18.25): *Link it to a school to keep it*, its button, the picker's title,
+     * search and empty line, and the line for a candidate that has the most saved walks.
+     */
+    val traceEndBody: StringResource,
+    val traceEndSave: StringResource,
+    val tracePickTitle: StringResource,
+    val tracePickSearch: StringResource,
+    val tracePickNone: StringResource,
+    val traceSaveFull: StringResource,
+    /** The iPhone's empty list and its note that the map is not there yet (docs/03 section 18.25). */
+    val listEmptyIos: StringResource,
+    val mapNotHere: StringResource,
 ) {
     companion object {
         /** The words of the kind whose file keys are [keys] (`KindWordKeys`): every word is the file's `android` key, none is this class's. */
@@ -106,14 +121,71 @@ class SpaceWords(
                 exportIncludeRejected = w("exportIncludeRejected"), exportPhotosShortlisted = w("exportPhotosShortlisted"),
                 locationOff = w("locationOff"), needsPrecise = w("needsPrecise"), locationOffNoHunt = w("locationOffNoHunt"),
                 needsPreciseNoHunt = w("needsPreciseNoHunt"), saveNeedsLocation = w("saveNeedsLocation"),
+                traceEndBody = w("traceEndBody"), traceEndSave = w("traceEndSave"), tracePickTitle = w("tracePickTitle"),
+                tracePickSearch = w("tracePickSearch"), tracePickNone = w("tracePickNone"), traceSaveFull = w("traceSaveFull"),
+                listEmptyIos = w("listEmptyIos"), mapNotHere = w("mapNotHere"),
             )
         }
 
-        val HOUSE = from(KindWordKeys.HOUSE)
-        val SCHOOL = from(KindWordKeys.SCHOOL)
+        private val BY_KIND: Map<String, SpaceWords> = KindWordKeys.KINDS.associateWith { from(KindWordKeys.of(it)) }
+
+        val HOUSE = BY_KIND.getValue(KindWordKeys.KINDS.first())
+        val SCHOOL = BY_KIND.getValue("school")
 
         /** The words of [kind]; a kind with no entry of its own reads the house's. */
-        fun of(kind: String): SpaceWords = if (kind == "school") SCHOOL else HOUSE
+        fun of(kind: String): SpaceWords = BY_KIND[kind] ?: HOUSE
+    }
+}
+
+/**
+ * The words of Hunt mode that name the kind (docs/03 section 18.20, kinds PR 26): the alerts, the street line, the walk's
+ * notification and its channel, the rationale, and the two lines that say why a walk ended or could not start. Every word is
+ * the kind file's `android` key ([KindWordKeys]); the house's are the strings Hunt mode always had, so a house walk is word for
+ * word what it was. The lock-screen public text ("Doorprints alert") is not a kind's and stays the app's.
+ */
+@Immutable
+class HuntWords(
+    /** A saved place passed: "You have seen this one: %1$s". */
+    val seen: StringResource,
+    /** The street's counts: "Saved houses: %1$d, visits: %2$d", and with the first visit's date. */
+    val streetText: StringResource,
+    val streetTextSince: StringResource,
+    /** The Hunt card's street line: "%1$s · Been here: houses %2$d, visits %3$d". */
+    val streetSeen: StringResource,
+    /** A stay at an unsaved place: "Are you at a house?". */
+    val stayTitle: StringResource,
+    /** Why notifications are asked for when Hunt mode is turned on. */
+    val notifyRationale: StringResource,
+    /** One line when the walk ended because the person left its space. */
+    val leftSpace: StringResource,
+    /** One line when a reminder's or an area's *Start Hunt mode* cannot start because the kind is off. */
+    val needsKind: StringResource,
+    /** The ongoing notification's text while the walk runs. */
+    val ongoingText: StringResource,
+    /** The name and description of the kind's alerts channel. */
+    val channelAlerts: StringResource,
+    val channelAlertsDesc: StringResource,
+    /** The Hunt card's note when notifications are off: Hunt mode cannot tell you when you pass a saved place. */
+    val notificationsOff: StringResource,
+) {
+    companion object {
+        private fun from(keys: Map<String, String?>): HuntWords {
+            fun w(id: String): StringResource = kindStringResource(checkNotNull(keys[id]) { "no Android word for $id" })
+            return HuntWords(
+                seen = w("huntSeen"), streetText = w("huntStreetText"), streetTextSince = w("huntStreetTextSince"),
+                streetSeen = w("huntStreetSeen"), stayTitle = w("huntStayTitle"), notifyRationale = w("huntNotifyRationale"),
+                leftSpace = w("huntLeftSpace"), needsKind = w("huntNeedsKind"), ongoingText = w("huntOngoingText"),
+                channelAlerts = w("huntChannelAlerts"), channelAlertsDesc = w("huntChannelAlertsDesc"), notificationsOff = w("huntNotificationsOff"),
+            )
+        }
+
+        private val BY_KIND: Map<String, HuntWords> = KindWordKeys.KINDS.associateWith { from(KindWordKeys.of(it)) }
+
+        val HOUSE = BY_KIND.getValue(KindWordKeys.KINDS.first())
+        val SCHOOL = BY_KIND.getValue("school")
+
+        /** The Hunt words of [kind]; a kind with no entry of its own reads the house's. */
+        fun of(kind: String): HuntWords = BY_KIND[kind] ?: HOUSE
     }
 }
 
@@ -139,8 +211,18 @@ class SpaceUi(val setting: KindSetting, val kind: String) {
     /** The house words left on this kind's pages (kinds PR 16, phone half): titles, questions, the walk check, Areas and Places. */
     val pages: PageWords = PageWords.of(built.id)
 
-    /** Hunt mode is the house space's (docs/03 §18.12): its card and its switch are not offered elsewhere. */
-    val huntHere: Boolean get() = built.id == KindSettingRules.HOUSE
+    /** The Hunt mode words of this space's kind (docs/03 section 18.20). */
+    val hunt: HuntWords = HuntWords.of(built.id)
+
+    /** This space's kind has Hunt mode (its `capabilities.hunt`, docs/03 section 18.20): its card and its switch are offered here and in no space without it. */
+    val huntHere: Boolean get() = HuntSpace.has(built.id)
+
+    /**
+     * The app-wide Settings texts (the alert distance, the GPS note, the server's counts, the AI notes, the privacy note) say "houses" in the
+     * house app. Once more than the house is in use (two or more kinds on, or the default is another kind) they say "entries"
+     * (kinds PR 31; docs/03 section 18.25), the way the backup's and the import's words do.
+     */
+    val neutral: Boolean get() = multi || !KindCapabilities.of(setting.default).baseline
 
     /** The space is one the person turned off: it still opens, with a note, and nothing in it is hidden or deleted. */
     val hidden: Boolean get() = multi && kind !in setting.enabled
@@ -160,13 +242,23 @@ class SpaceUi(val setting: KindSetting, val kind: String) {
 
     companion object {
         /** The house alone: what the app is with one kind on, and the default of every screen shown outside the app (tests, previews). */
-        val HOUSE = SpaceUi(KindSetting(), KindSettingRules.HOUSE)
+        val HOUSE = SpaceUi(KindSetting(), Candidates.BASELINE_KIND)
 
         /** The space for [chosen] (the card the person tapped, if any): with one kind on it is the default; else the chosen kind when the build has it, else the default. */
         fun resolve(setting: KindSetting, chosen: String?): SpaceUi =
             SpaceUi(setting, if (!setting.spaces) setting.default else chosen?.takeIf { it in setting.available } ?: setting.default)
     }
 }
+
+/** An app-wide Settings text: [base] (the house app's) or its [neutral] reading once more than the house is in use ([SpaceUi.neutral]). */
+@Composable
+fun appText(base: StringResource, neutral: StringResource): StringResource = if (LocalSpace.current.neutral) neutral else base
+
+/** Settings' privacy note: the phone's or, where there are no photos taken yet (the iPhone), the iPhone's, each in its neutral reading once more than the house is in use. */
+@Composable
+fun privacyNote(addPhotos: Boolean): StringResource =
+    if (addPhotos) appText(Res.string.settings_privacy_note, Res.string.settings_privacy_note_any)
+    else appText(Res.string.settings_privacy_note_ios, Res.string.settings_privacy_note_ios_any)
 
 /** The space on screen; the house alone unless [DoorprintsRoot] provides another. */
 val LocalSpace = staticCompositionLocalOf { SpaceUi.HOUSE }

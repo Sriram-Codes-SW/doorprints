@@ -57,7 +57,7 @@ import org.robolectric.annotation.Config
 /**
  * The hidden schools kind on the phone's form (kinds PR 5, S4b-BL-209; docs/06 TC-U-211), English. With the developer
  * flag on, a saved school is drawn from its kind file (its name, board, medium, grades, commute, bus and fees; no price,
- * broker, rooms, questions or checklist) and its typed values are saved as the school's extras; a new candidate offers
+ * broker, rooms or questions, but a checklist of its own since kinds PR 27) and its typed values are saved as the school's extras; a new candidate offers
  * *Save a house* and *Save a school*. With the flag off (every build but a debug build made with
  * `-Pdoorprints.devKinds=true`) nothing changes: no picker, and a school row is drawn as a house, its kind and extras
  * kept through a save. The pixels are `ScreensScreenshotTest.schoolEdit`'s.
@@ -103,8 +103,14 @@ class SchoolFormTest {
         runBlocking { repo.saveHouse(SchoolSample.entity()) }
         open(SchoolSample.ID, flag = true, ready = "Pine Hill School")
         for (t in listOf("School name", "Board", "Medium of instruction", "Grades offered", "Commute (minutes)", "School bus",
-            "Fees", "Fees per year (₹)", "Admission fee (₹)", "Website")) assertTrue(t, shows(t))
-        for (t in listOf("Price ₹", "Rent ₹/month", "Broker", "Rooms", "Questions to ask", "Checklist (0 = bad, 5 = great)", "BHK")) {
+            "Fees", "Fees per year (₹)", "Admission fee (₹)", "Website",
+            "Checklist (0 = bad, 5 = great)")) assertTrue(t, shows(t))
+        // The school's own checklist, from kinds PR 27 (docs/03 §18.21): the eight items, by the school's words (each row reads "name · state").
+        for (t in listOf("Safe drop-off and pick-up", "Classrooms and playground", "Drinking water and toilets", "Teachers are approachable",
+            "Class size", "Homework and daily schedule", "Sports and activities", "Safety and CCTV")) {
+            assertTrue(t, compose.onAllNodesWithText("$t · ", substring = true).fetchSemanticsNodes().isNotEmpty())
+        }
+        for (t in listOf("Price ₹", "Rent ₹/month", "Broker", "Rooms", "Questions to ask", "Water supply", "Power backup", "BHK")) {
             assertFalse(t, shows(t))
         }
         compose.onNodeWithText("CBSE").performScrollTo().performClick()

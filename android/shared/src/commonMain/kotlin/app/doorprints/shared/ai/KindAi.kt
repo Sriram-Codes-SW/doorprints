@@ -79,6 +79,10 @@ data class AiKindSlots(
 object KindAi {
     private const val MAX_RUPEES = 1_000_000_000_000L
 
+    /** The bound of a number or an amount no range names, as the server's `AiKind.BOUND` (a file may leave `min` and `max` out). */
+    private const val BOUND = 1_000_000_000_000_000L
+    private val DATE = Regex("\\d{4}-\\d{2}-\\d{2}")
+
     /** The schools kind (`docs/schemas/kinds/school.json`'s `ai` slots; the words of kind-ai-vectors.json). */
     val SCHOOL = AiKindSlots(
         id = "school",
@@ -188,13 +192,14 @@ object KindAi {
                 if (s.length > (e.maxLength ?: 0)) return null
                 r.freeText(s.trim())?.split(WHITE_SPACE)?.filter { it.isNotEmpty() }?.joinToString(" ")?.ifEmpty { null }
             }
-            "number" -> whole(v)?.takeIf { it in (e.min ?: 0)..(e.max ?: 0) }?.toString()
+            "number" -> whole(v)?.takeIf { it in (e.min ?: -BOUND)..(e.max ?: BOUND) }?.toString()
             "bool" -> p?.takeUnless { it.isString }?.booleanOrNull?.let { if (it) "yes" else "no" }
+            "date" -> p?.takeIf { it.isString }?.content?.takeIf { DATE.matches(it) }
             "money" -> {
                 val m = v as? JsonObject ?: return null
                 val cadence = (m["cadence"] as? JsonPrimitive)?.takeIf { it.isString }?.content
                 if (cadence != e.cadence) return null
-                whole(m["amount"])?.takeIf { it in (e.min ?: 0)..(e.max ?: 0) }?.let { "Rs $it" }
+                whole(m["amount"])?.takeIf { it in (e.min ?: 0)..(e.max ?: BOUND) }?.let { "Rs $it" }
             }
             else -> null
         }
@@ -212,6 +217,12 @@ object KindAi {
                 "street" -> line(sb, "Street", r.place(h.street))
                 "locality" -> line(sb, "Locality", r.place(h.locality))
                 "status" -> line(sb, "Status", h.status)
+                "money" -> h.price?.let { p ->
+                    line(sb, "Price", "Rs $p" + when (h.priceType) { null -> ""; "RENT" -> " per month (rent)"; else -> " (sale)" })
+                }
+                "checklist" -> if (h.checklist.isNotEmpty()) {
+                    line(sb, "Checklist", h.checklist.entries.sortedBy { it.key }.joinToString(", ") { "${r.freeText(it.key)} ${it.value}/5" })
+                }
                 "rating" -> line(sb, "My rating", h.rating?.let { "$it/5" })
                 "areaNotes" -> HouseDocuments.areaNoteLines(sb, h.areaNotes, r)
                 "distances" -> HouseDocuments.distanceLines(sb, h.distances, r)
@@ -308,6 +319,7 @@ object KindAi {
             locality = h.locality.takeIf { has("locality") }, status = h.status.takeIf { has("status") },
             price = h.price.takeIf { has("money") }, priceType = h.priceType.takeIf { has("money") },
             rating = h.rating.takeIf { has("rating") }, notes = h.notes.takeIf { has("notes") },
+            checklist = if (has("checklist")) h.checklist else emptyMap(),
             areaNotes = if (has("areaNotes")) h.areaNotes else emptyList(), distances = if (has("distances")) h.distances else emptyList(),
             visits = if (has("visits")) h.visits else emptyList(),
         )

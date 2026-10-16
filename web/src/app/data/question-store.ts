@@ -28,20 +28,23 @@ import { SETTING_KEYS, isoNow, recordFromDto } from './records';
 import type { RecordRecord, SettingRecord } from './records';
 import type { RecordStore } from './record-store';
 import {
-  DEFAULT_QUESTIONS,
   DEFAULT_QUESTIONS_SEEDED_AT,
   MAX_QUESTIONS,
   MAX_QUESTION_TEXT,
   QUESTION_TYPE,
   defaultQuestion,
+  defaultQuestionsOf,
   isCustomQuestionId,
   isDefaultQuestionId,
   newQuestionId,
   questionFromPayload,
+  questionsOfKind,
   questionToPayload,
   sortQuestions,
 } from '../shared/question';
 import type { Question, QuestionCategory, QuestionRow, QuestionScope } from '../shared/question';
+import { baselineKindId } from '../core/candidate';
+import { isBaselineKind } from '../core/kind-capabilities';
 
 export class QuestionStore {
   /** The language the bank is seeded in, once {@link seedOnce} has been called (also after *Remove all data*). */
@@ -96,6 +99,22 @@ export class QuestionStore {
     await db.put<SettingRecord>('settings', { key: SETTING_KEYS.questionsSeeded, value: '1' });
   }
 
+  /**
+   * Seeds a kind's own bank once (kinds PR 29, docs/03 §18.23): the first time the school's questions are opened, never for a
+   * person who only keeps houses, so the house's bank, its backups and its sync are exactly what they were. The local
+   * setting `questions.seeded.<kind>` (not synced) says it was done; a bank the person emptied stays empty until
+   * {@link reset}. Returns how many were written (0 for the house, whose seed is {@link seedOnce}'s).
+   */
+  async seedKindOnce(kind: string, language: string, now: number = Date.now()): Promise<number> {
+    if (isBaselineKind(kind) || defaultQuestionsOf(kind).length === 0) return 0;
+    const db = await this.database();
+    const key = `${SETTING_KEYS.questionsSeeded}.${kind}`;
+    if (await db.get<SettingRecord>('settings', key)) return 0;
+    const written = await this.writeDefaults(db, language, now, false, kind);
+    await db.put<SettingRecord>('settings', { key, value: '1' });
+    return written;
+  }
+
   /** After *Remove all data*: an empty browser still starts with the standard questions, if seeding was asked for. */
   async seedAgainIfAsked(): Promise<void> {
     if (this.seedLanguage) await this.seedOnce(this.seedLanguage);
@@ -104,18 +123,19 @@ export class QuestionStore {
   /**
    * *Reset to defaults*: every default id gets its record again, whatever state it was in (deleted, edited, archived),
    * with the text in [language]; the person's own questions stay. A default that would take the bank past
-   * {@link MAX_QUESTIONS} is not brought back.
+   * {@link MAX_QUESTIONS} is not brought back. `kind` is the bank being reset (the house's unless a space says otherwise);
+   * another kind's questions are left as they are.
    */
-  async reset(language: string, now: number = Date.now()): Promise<number> {
-    return this.writeDefaults(await this.database(), language, now, true);
+  async reset(language: string, now: number = Date.now(), kind = baselineKindId()): Promise<number> {
+    return this.writeDefaults(await this.database(), language, now, true, kind);
   }
 
-  private async writeDefaults(db: LocalDb, language: string, now: number, overwrite: boolean): Promise<number> {
+  private async writeDefaults(db: LocalDb, language: string, now: number, overwrite: boolean, kind = baselineKindId()): Promise<number> {
     const rows = await db.getAllByIndex<RecordRecord>('records', 'type', QUESTION_TYPE);
     const byId = new Map(rows.map((r) => [r.id, r]));
     let live = rows.filter((r) => !r.deleted).length;
     let written = 0;
-    for (const def of DEFAULT_QUESTIONS) {
+    for (const def of defaultQuestionsOf(kind)) {
       const existing = byId.get(def.id);
       if (existing && !overwrite) continue;
       if ((!existing || existing.deleted) && live >= MAX_QUESTIONS) continue;
@@ -172,13 +192,14 @@ export class QuestionStore {
     category: QuestionCategory = 'OTHER',
     appliesTo: QuestionScope = 'BOTH',
     now: number = Date.now(),
-    newId: () => string = newQuestionId,
+    newId?: () => string,
+    kind = baselineKindId(),
   ): Promise<Question> {
     const asked = text.trim();
     if (asked === '' || asked.length > MAX_QUESTION_TEXT) throw new LocalDataError('error.badRecord');
     if ((await this.records.ofType(QUESTION_TYPE)).length >= MAX_QUESTIONS) throw new LocalDataError('questions.max');
-    const id = await this.records.freshId(QUESTION_TYPE, newId);
-    const sort = (await this.all()).reduce((max, q) => Math.max(max, q.sort), -1) + 1;
+    const id = await this.records.freshId(QUESTION_TYPE, newId ?? (() => newQuestionId(kind)));
+    const sort = questionsOfKind(await this.all(), kind).reduce((max, q) => Math.max(max, q.sort), -1) + 1;
     const question: Question = { id, text: asked, category, appliesTo, defaultOn: false, sort };
     await this.save(question, now);
     return question;

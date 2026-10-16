@@ -272,7 +272,7 @@ private class AndroidHouseFormServices(
 private class AndroidMapServices(private val app: DoorprintsApp) : MapServices {
     override val hunt: StateFlow<HuntState.State> get() = HuntState.state
 
-    override fun startHunt(): Boolean = HuntService.start(app)
+    override fun startHunt(kind: String): Boolean = HuntService.start(app, kind)
 
     override fun stopHunt() {
         HuntService.stop(app)

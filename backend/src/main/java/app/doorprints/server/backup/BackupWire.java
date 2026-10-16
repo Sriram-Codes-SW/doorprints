@@ -18,6 +18,7 @@
 
 package app.doorprints.server.backup;
 
+import app.doorprints.server.ai.kind.KindFiles;
 import app.doorprints.server.common.BadRequestException;
 import app.doorprints.server.house.CandidateExtras;
 import app.doorprints.server.house.House;
@@ -276,7 +277,8 @@ public final class BackupWire {
         if (value.isNull()) return;
         var amount = amount(value, false, false);
         var cadence = text(value, "cadence");
-        if (House.HOUSE_KIND.equals(kind) && cadence != null && !Money.HOUSE_CADENCES.contains(cadence)) throw new Newer();
+        var allowed = KindFiles.moneyCadences(kind);
+        if (allowed != null && cadence != null && !allowed.contains(cadence)) throw new Newer();
         if (amount != null) row.put("price", amount);
         if ("month".equals(cadence)) row.put("priceType", "RENT");
         else if ("once".equals(cadence)) row.put("priceType", "SALE");

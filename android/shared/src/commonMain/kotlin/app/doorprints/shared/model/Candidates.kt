@@ -65,6 +65,12 @@ object Candidates {
     /** The only kind there is today (`docs/schemas/kinds/house.json`); one kind per data set (§18.1). */
     const val HOUSE_KIND = "house"
 
+    /** The kind of a record that says none (door 3) and the default of a parameter that is given none: the baseline kind (`capabilities.baseline`; the one place that names it). */
+    const val BASELINE_KIND = HOUSE_KIND
+
+    /** The kind a record is of: its own, else the baseline kind's (a record from before kinds says none). */
+    fun kindOf(kind: String?): String = kind ?: BASELINE_KIND
+
     /** At most this many extras this app does not know, on one candidate (the server's `MAX_OTHER`). */
     const val MAX_OTHER_EXTRAS = 30
 

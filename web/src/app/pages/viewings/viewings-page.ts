@@ -23,6 +23,8 @@ import { firstValueFrom, forkJoin } from 'rxjs';
 import { Announcer } from '../../core/announcer.service';
 import { errorMsg } from '../../core/format';
 import { LocalDataService } from '../../core/local-data.service';
+import { SpaceService } from '../../core/space.service';
+import { holdsFor } from '../../core/space-scope';
 import { ViewingReminderService } from '../../core/viewing-reminder.service';
 import type { NotificationState } from '../../core/viewing-reminder.service';
 import type { HouseDto } from '../../core/models';
@@ -66,6 +68,8 @@ export class ViewingsPage {
   private readonly route = inject(ActivatedRoute);
   private readonly reminders = inject(ViewingReminderService);
   protected readonly i18n = inject(TranslationService);
+  /** The space on screen: its kind's viewings are listed and worded (kinds PR 29, docs/03 §18.23). */
+  protected readonly space = inject(SpaceService);
 
   /** *Notify me while Doorprints is open* (local setting \`viewings.remind\`, on unless turned off). */
   protected readonly remind = signal(true);
@@ -105,7 +109,13 @@ export class ViewingsPage {
       kind: this.kind,
       status: this.status,
     });
-    return f.filter((v) => this.houseId === '' || v.houseId === this.houseId).filter((v) => viewingMatches(v, this.houses().get(v.houseId), this.query));
+    const holds = holdsFor(this.space.kind(), this.space.multi(), this.space.dflt(), this.space.available);
+    // A viewing is listed in the space of its candidate's kind; one whose candidate is gone stays in the default space.
+    const inSpace = (v: Viewing): boolean => {
+      const house = this.houses().get(v.houseId);
+      return house ? holds(house) : !this.space.multi() || this.space.kind() === this.space.dflt();
+    };
+    return f.filter((v) => this.houseId === '' || v.houseId === this.houseId).filter(inSpace).filter((v) => viewingMatches(v, this.houses().get(v.houseId), this.query));
   });
 
   protected readonly sections = computed<Section[]>(() => {

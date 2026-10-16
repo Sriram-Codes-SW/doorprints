@@ -13,39 +13,39 @@
       "expect": "theRuleIsTheSharedVectorsSentence"
     },
     {
-      "file": "backend/src/main/java/app/doorprints/server/ai/extract/ExtractionPrompts.java",
-      "find": "                - %2$s\n                - price:",
-      "replace": "                - price:",
+      "file": "backend/src/main/resources/kinds/house.prompts.json",
+      "find": "- %2$s\\n- price:",
+      "replace": "- price:",
       "expect": "everyExtractAskAndPlanTextHasTheRuleOnceAfterItsDataRule"
     },
     {
-      "file": "backend/src/main/java/app/doorprints/server/ai/rag/AskPrompts.java",
-      "find": "                - %3$s\n                - Records exist",
-      "replace": "                - Records exist",
+      "file": "backend/src/main/resources/kinds/house.prompts.json",
+      "find": "- %2$s\\n- Records exist",
+      "replace": "- Records exist",
       "expect": "everyExtractAskAndPlanTextHasTheRuleOnceAfterItsDataRule"
     },
     {
-      "file": "backend/src/main/java/app/doorprints/server/ai/agent/VisitPlannerService.java",
-      "find": "                - %4$s\n                - The request may",
-      "replace": "                - The request may",
+      "file": "backend/src/main/resources/kinds/house.prompts.json",
+      "find": "- %4$s\\n- The request may",
+      "replace": "- The request may",
       "expect": "everyExtractAskAndPlanTextHasTheRuleOnceAfterItsDataRule"
     },
     {
-      "file": "backend/src/main/java/app/doorprints/server/ai/kind/AiKinds.java",
-      "find": "                    - %2$s\n                    - label:",
-      "replace": "                    - label:",
+      "file": "backend/src/main/resources/kinds/school.prompts.json",
+      "find": "- %2$s\\n- label:",
+      "replace": "- label:",
       "expect": "everyExtractAskAndPlanTextHasTheRuleOnceAfterItsDataRule"
     },
     {
-      "file": "backend/src/main/java/app/doorprints/server/ai/kind/AiKinds.java",
-      "find": "                    - %2$s\n                    - Records exist",
-      "replace": "                    - Records exist",
+      "file": "backend/src/main/resources/kinds/school.prompts.json",
+      "find": "- %2$s\\n- Records exist",
+      "replace": "- Records exist",
       "expect": "everyExtractAskAndPlanTextHasTheRuleOnceAfterItsDataRule"
     },
     {
-      "file": "backend/src/main/java/app/doorprints/server/ai/extract/ExtractionPrompts.java",
-      "find": "Never guess phone \\\n                numbers, URLs, prices or addresses.\n                - %2$s",
-      "replace": "Never guess phone \\\n                numbers, URLs, prices or addresses.\n                - %2$s\n                - %2$s",
+      "file": "backend/src/main/resources/kinds/house.prompts.json",
+      "find": "Never guess phone numbers, URLs, prices or addresses.\\n- %2$s",
+      "replace": "Never guess phone numbers, URLs, prices or addresses.\\n- %2$s\\n- %2$s",
       "expect": "everyExtractAskAndPlanTextHasTheRuleOnceAfterItsDataRule"
     }
   ]

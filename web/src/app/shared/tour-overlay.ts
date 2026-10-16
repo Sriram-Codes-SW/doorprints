@@ -66,6 +66,7 @@ const MIN_CARD = 160;
       </section>
     }
     @if (tour.step(); as s) {
+      @let tx = tour.text()!;
       @if (spot(); as r) {
         <div class="spot" aria-hidden="true" [style.top.px]="r.top" [style.left.px]="r.left" [style.width.px]="r.width" [style.height.px]="r.height"></div>
       } @else {
@@ -83,10 +84,10 @@ const MIN_CARD = 160;
         (keydown.escape)="tour.skip()"
       >
         <p class="count">{{ 'tour.count' | t: { n: i18n.number(tour.position() + 1), total: i18n.number(tour.steps.length) } }}</p>
-        <h2 id="tour-title" #title tabindex="-1">{{ s.title | t }}</h2>
+        <h2 id="tour-title" #title tabindex="-1">{{ tx.title | t: params() }}</h2>
         <div id="tour-body">
-          <p>{{ s.body | t }}</p>
-          <p class="do"><strong>{{ 'tour.tryIt' | t }}</strong> {{ s.action | t }}</p>
+          <p>{{ tx.body | t: params() }}</p>
+          <p class="do"><strong>{{ 'tour.tryIt' | t }}</strong> {{ tx.action | t: params() }}</p>
         </div>
         <div class="actions">
           <button type="button" class="btn" id="tour-skip" (click)="tour.skip()">{{ 'tour.skip' | t }}</button>
@@ -202,6 +203,12 @@ export class TourOverlay {
   private timer: ReturnType<typeof setTimeout> | undefined;
   private target: Element | null = null;
 
+  /** The parameters of the generic sentences: the kind's plural in the language on screen, in lower case (a Latin plural reads mid-sentence). */
+  protected params(): { many: string } {
+    const many = this.tour.text()?.many;
+    return { many: many ? this.i18n.t(many).toLocaleLowerCase(this.i18n.locale()) : '' };
+  }
+
   constructor() {
     this.router.events.pipe(filter((e) => e instanceof NavigationEnd), takeUntilDestroyed()).subscribe(() => this.url.set(this.router.url));
     const measure = () => this.measure();
@@ -220,7 +227,7 @@ export class TourOverlay {
         clearTimeout(this.timer);
         this.target = null;
         this.spot.set(null);
-        if (step) this.find(step.route, step.target, url, 0);
+        if (step) this.find(this.tour.routeOf(step), step.target, url, 0);
       });
     });
     effect(() => {

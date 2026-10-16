@@ -63,6 +63,33 @@ class AiKindFileTest {
         assertThat(k.never()).isEqualTo(list(ai.get("never")));
     }
 
+    /** Kinds PR 28: the house is read from its file like the school, and what a candidate is read as is never null. */
+    @Test
+    void theHouseIsReadFromItsFileAndEveryCandidateIsReadAsSomething() throws Exception {
+        var ai = JSON.readTree(Files.readString(HouseAiPins.repoFile("docs/schemas/kinds/house.json"))).get("ai");
+        var k = AiKinds.HOUSE;
+        assertThat(k.extract()).isEqualTo(list(ai.get("extract")));
+        assertThat(k.ask()).isEqualTo(list(ai.get("ask")));
+        assertThat(k.plan()).isEqualTo(list(ai.get("plan")));
+        assertThat(k.never()).isEqualTo(list(ai.get("never")));
+        assertThat(k.noun()).isEqualTo(ai.get("words").get("noun").asString());
+        assertThat(k.records()).isEqualTo(ai.get("words").get("records").asString());
+        // `of` keeps its contract (null: read as a house); `readAs` names what that is.
+        var both = AiKinds.schools(true);
+        assertThat(both.of("house")).isNull();
+        assertThat(both.readAs("house")).isSameAs(AiKinds.HOUSE);
+        assertThat(both.readAs(null)).isSameAs(AiKinds.HOUSE);
+        assertThat(both.readAs("clinic")).isSameAs(AiKinds.HOUSE);
+        assertThat(AiKinds.OFF.readAs("school")).isSameAs(AiKinds.HOUSE);
+        assertThat(both.readAs("school")).isSameAs(AiKinds.SCHOOL);
+        assertThat(AiKinds.alwaysAvailable("house")).isTrue();
+        assertThat(AiKinds.alwaysAvailable("school")).isFalse();
+        // The house's own lines are the ones the server's AI knows by id: each extra it names is typed in the file.
+        assertThat(k.extra("bedrooms").type()).isEqualTo("number");
+        assertThat(k.extra("deposit").cadence()).isEqualTo("once");
+        assertThat(k.extra("myOffer")).isNull();
+    }
+
     @Test
     void everyExtraASlotNamesHasTheFilesTypeRangeAndCadence() throws Exception {
         var k = AiKinds.SCHOOL;

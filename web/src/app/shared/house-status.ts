@@ -17,6 +17,7 @@
  */
 
 import type { HouseStatus } from '../core/models';
+import { kindOfCandidate } from '../core/candidate';
 
 /**
  * The status rules of slice 5 (docs/11 5.24): at most one house is TAKEN, and *Close this hunt* marks the rest
@@ -32,7 +33,7 @@ export interface StatusHouse {
 }
 
 /** The kind a rule compares: none is the house. */
-const kindOf = (h: Pick<StatusHouse, 'kind'>): string => h.kind ?? 'house';
+const kindOf = (h: Pick<StatusHouse, 'kind'>): string => kindOfCandidate(h);
 
 /**
  * `houses` after house `id` is given `status`. Choosing TAKEN returns the house that was TAKEN to SHORTLISTED, so at most

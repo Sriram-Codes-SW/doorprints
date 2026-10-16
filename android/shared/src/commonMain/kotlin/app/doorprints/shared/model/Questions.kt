@@ -53,7 +53,10 @@ data class Question(
     val questionCategory: QuestionCategory get() = QuestionCategory.fromWire(category)
     val scope: QuestionScope get() = QuestionScope.fromWire(appliesTo)
 
-    /** True for one of the fourteen seeded defaults (a fixed id), which Reset to defaults brings back. */
+    /** The kind whose bank this question is in, read from its id alone (kinds PR 29): `qd_school_` and `q_school_` are the school's, every other id is the house's. */
+    val kind: String get() = kindOf(id)
+
+    /** True for one of the seeded defaults (a fixed id, of any kind), which Reset to defaults brings back. */
     val isDefault: Boolean get() = DefaultQuestions.byId(id) != null
 
     /**
@@ -86,17 +89,26 @@ data class Question(
         /** At most this many questions in all, seeded and custom, archived ones included. */
         const val MAX_QUESTIONS = 100
         const val CUSTOM_PREFIX = "q_"
-        private val CUSTOM_ID = Regex("q_[0-9a-f]{8}")
+        private val CUSTOM_ID = Regex("q_(?:[a-z]{2,12}_)?[0-9a-f]{8}")
+
+        /** The kinds besides the house that have a question bank of their own; their ids carry the kind (docs/03 section 18.23). */
+        val KINDS: List<String> = listOf("school")
+
+        /** The kind a question id belongs to: a kind's own ids start `qd_<kind>_` or `q_<kind>_`, every other id is the house's. */
+        fun kindOf(id: String): String = KINDS.firstOrNull { id.startsWith("qd_${it}_") || id.startsWith("q_${it}_") } ?: Candidates.BASELINE_KIND
 
         /** The bank's order: [sort], then the id. */
         val ORDER: Comparator<Question> = compareBy<Question> { it.sort }.thenBy { it.id }
 
         fun isCustomId(id: String): Boolean = CUSTOM_ID.matches(id)
 
-        /** A fresh custom id, `q_` + 8 random lowercase hex digits, drawn again while [taken] says it is used. */
-        fun newCustomId(taken: (String) -> Boolean, random: Random = Random.Default): String {
+        /**
+         * A fresh custom id, `q_` + 8 random lowercase hex digits (`q_<kind>_` first for a kind's own bank), drawn again while
+         * [taken] says it is used.
+         */
+        fun newCustomId(taken: (String) -> Boolean, random: Random = Random.Default, kind: String = Candidates.BASELINE_KIND): String {
             while (true) {
-                val id = CUSTOM_PREFIX + (1..8).joinToString("") { random.nextInt(16).toString(16) }
+                val id = (if (KindCapabilities.of(kind).baseline) CUSTOM_PREFIX else "${CUSTOM_PREFIX}${kind}_") + (1..8).joinToString("") { random.nextInt(16).toString(16) }
                 if (!taken(id)) return id
             }
         }
@@ -120,6 +132,15 @@ enum class QuestionScope {
     RENT, SALE, BOTH;
 
     companion object {
+        /**
+         * The scopes a kind's questions can have (its kind file's `questions.scopes`, docs/03 section 18.23): the house's are all
+         * three; a school has neither rent nor sale, so its questions are all [BOTH] and the scope control is not offered. A kind
+         * with no entry has them all. The website's twin is `questionScopesOf`.
+         */
+        private val BY_KIND: Map<String, List<QuestionScope>> = mapOf("school" to listOf(BOTH))
+
+        fun of(kind: String): List<QuestionScope> = BY_KIND[kind] ?: entries
+
         fun fromWire(value: String?): QuestionScope = entries.firstOrNull { it.name == value } ?: BOTH
     }
 }
@@ -263,12 +284,66 @@ object DefaultQuestions {
         ),
     )
 
+
+    /**
+     * The school's seed (kinds PR 29, docs/03 section 18.23): the six questions of `docs/schemas/kinds/school-questions.json`, a
+     * DRAFT for the owner's review, copied here by hand and compared with the file by `DefaultQuestionsFileTest`. The ids carry
+     * the kind (`qd_school_<name>`), so the house's bank and the school's never meet. The web's twin is `SCHOOL_QUESTIONS`.
+     */
+    val SCHOOL: List<Default> = listOf(
+        d(
+            "qd_school_fees", QuestionCategory.MONEY, QuestionScope.BOTH, true, 0,
+            "What are the fees for the year, and what do they cover (books, uniform, transport, activities)?",
+            "साल की फ़ीस कितनी है, और उसमें क्या-क्या शामिल है (किताबें, यूनिफ़ॉर्म, परिवहन, गतिविधियाँ)?",
+            "ஆண்டுக் கட்டணம் எவ்வளவு, அதில் என்னென்ன அடங்கும் (புத்தகங்கள், சீருடை, போக்குவரத்து, செயல்பாடுகள்)?",
+            "సంవత్సర ఫీజు ఎంత, అందులో ఏమేం ఉంటాయి (పుస్తకాలు, యూనిఫారం, రవాణా, కార్యకలాపాలు)?",
+        ),
+        d(
+            "qd_school_admission", QuestionCategory.MONEY, QuestionScope.BOTH, true, 1,
+            "How does admission work, what is the admission fee, and what is the last date to apply?",
+            "दाख़िला कैसे होता है, दाख़िला फ़ीस कितनी है और आवेदन की आख़िरी तारीख़ क्या है?",
+            "சேர்க்கை எப்படி நடக்கிறது, சேர்க்கைக் கட்டணம் எவ்வளவு, விண்ணப்பிக்க கடைசி தேதி என்ன?",
+            "అడ్మిషన్ ఎలా జరుగుతుంది, అడ్మిషన్ ఫీజు ఎంత, దరఖాస్తుకు చివరి తేదీ ఏది?",
+        ),
+        d(
+            "qd_school_classsize", QuestionCategory.RULES, QuestionScope.BOTH, true, 2,
+            "How many children are in a class, and how many teachers and helpers are there?",
+            "एक कक्षा में कितने बच्चे हैं, और कितने शिक्षक और सहायक हैं?",
+            "ஒரு வகுப்பில் எத்தனை குழந்தைகள், எத்தனை ஆசிரியர்கள் மற்றும் உதவியாளர்கள் உள்ளனர்?",
+            "ఒక తరగతిలో ఎంతమంది పిల్లలు ఉంటారు, ఎంతమంది ఉపాధ్యాయులు, సహాయకులు ఉన్నారు?",
+        ),
+        d(
+            "qd_school_safety", QuestionCategory.BUILDING, QuestionScope.BOTH, true, 3,
+            "How is safety looked after: gate and visitor checks, CCTV, first aid, and the school bus?",
+            "सुरक्षा कैसे सँभाली जाती है: गेट और आगंतुकों की जाँच, सीसीटीवी, प्राथमिक उपचार और स्कूल बस?",
+            "பாதுகாப்பு எப்படிப் பார்த்துக்கொள்ளப்படுகிறது: வாயில் மற்றும் வருகையாளர் சோதனை, சிசிடிவி, முதலுதவி, பள்ளிப் பேருந்து?",
+            "భద్రతను ఎలా చూసుకుంటారు: గేటు, సందర్శకుల తనిఖీ, సీసీటీవీ, ప్రథమ చికిత్స, స్కూల్ బస్సు?",
+        ),
+        d(
+            "qd_school_water", QuestionCategory.WATER_POWER, QuestionScope.BOTH, true, 4,
+            "Is the drinking water clean, and are the toilets clean and separate for girls and boys?",
+            "क्या पीने का पानी साफ़ है, और क्या शौचालय साफ़ हैं और लड़कियों-लड़कों के लिए अलग हैं?",
+            "குடிநீர் சுத்தமாக உள்ளதா, கழிப்பறைகள் சுத்தமாகவும் பெண்கள், ஆண்களுக்குத் தனித்தனியாகவும் உள்ளனவா?",
+            "తాగునీరు శుభ్రంగా ఉందా, మరుగుదొడ్లు శుభ్రంగా, అమ్మాయిలకు అబ్బాయిలకు వేర్వేరుగా ఉన్నాయా?",
+        ),
+        d(
+            "qd_school_schedule", QuestionCategory.OTHER, QuestionScope.BOTH, true, 5,
+            "How much homework is there, what are the school hours, and when are the holidays and exams?",
+            "कितना होमवर्क मिलता है, स्कूल का समय क्या है, और छुट्टियाँ और परीक्षाएँ कब होती हैं?",
+            "எவ்வளவு வீட்டுப்பாடம் உண்டு, பள்ளி நேரம் என்ன, விடுமுறைகளும் தேர்வுகளும் எப்போது?",
+            "హోంవర్క్ ఎంత ఉంటుంది, స్కూలు సమయాలు ఏమిటి, సెలవులు, పరీక్షలు ఎప్పుడు?",
+        ),
+    )
+
     /** The languages a default has a text in. */
     val LANGUAGES: List<String> = listOf("en", "hi", "ta", "te")
 
-    private val byId: Map<String, Default> = ALL.associateBy { it.id }
+    private val byId: Map<String, Default> = (ALL + SCHOOL).associateBy { it.id }
 
-    /** The seeded question with this id, or null for an id that is not one. */
+    /** The seed of a kind's bank: the house's `default-questions.json`, the school's `school-questions.json`; none for another kind. */
+    fun of(kind: String): List<Default> = if (KindCapabilities.of(kind).baseline) ALL else if (kind == "school") SCHOOL else emptyList()
+
+    /** The seeded question with this id (of any kind), or null for an id that is not one. */
     fun byId(id: String): Default? = byId[id]
 
     /** The whole seeded bank in [language] (what a fresh install holds after seeding). */

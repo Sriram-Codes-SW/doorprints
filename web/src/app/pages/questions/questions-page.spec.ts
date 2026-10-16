@@ -23,8 +23,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ConfirmService } from '../../core/confirm.service';
 import { LocalDataService } from '../../core/local-data.service';
 import { LocalDataError } from '../../core/local-error';
+import { SpaceService } from '../../core/space.service';
+import { toolWord } from '../../core/space-tool-words';
+import type { TKey } from '../../i18n/en';
 import { TranslationService } from '../../i18n/translation.service';
 import { DEFAULT_QUESTIONS, MAX_QUESTIONS, defaultQuestion, sortQuestions } from '../../shared/question';
+import { SCHOOL_QUESTIONS } from '../../shared/school-questions';
 import type { Question } from '../../shared/question';
 import { QuestionsPage } from './questions-page';
 
@@ -243,7 +247,7 @@ describe('QuestionsPage', () => {
     category.dispatchEvent(new Event('change'));
     host.querySelector('form.add')!.dispatchEvent(new Event('submit'));
     await flush();
-    expect(f.addQuestion).toHaveBeenCalledWith('Is there a lift?', 'BUILDING');
+    expect(f.addQuestion).toHaveBeenCalledWith('Is there a lift?', 'BUILDING', 'BOTH', 'house');
   });
 
   it('disables Add question at 100 questions and says "At most 100 questions"', async () => {
@@ -280,7 +284,7 @@ describe('QuestionsPage', () => {
     yes.host.querySelector<HTMLButtonElement>('.card.danger button')!.click();
     await flush();
     expect(yes.ask).toHaveBeenCalledWith({ key: 'questions.confirmReset' }, expect.objectContaining({ danger: true }));
-    expect(yes.f.resetQuestions).toHaveBeenCalledWith('en');
+    expect(yes.f.resetQuestions).toHaveBeenCalledWith('en', 'house');
     const no = await render(fakes([MINE]), false);
     no.host.querySelector<HTMLButtonElement>('.card.danger button')!.click();
     await flush();
@@ -297,5 +301,58 @@ describe('QuestionsPage', () => {
       'Archive Is there a lift?',
       'Delete Is there a lift?',
     ]);
+  });
+});
+
+// Kinds PR 29 (docs/03 §18.23): the Questions page of a space is that kind's bank.
+describe('QuestionsPage in the school space', () => {
+  async function renderSchool(bank: Question[]) {
+    const seedKindQuestions = vi.fn(() => of(undefined));
+    const addQuestion = vi.fn(() => of(MINE));
+    const resetQuestions = vi.fn(() => of(undefined));
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      imports: [QuestionsPage],
+      providers: [
+        provideRouter([]),
+        { provide: ConfirmService, useValue: { ask: vi.fn(() => Promise.resolve(true)) } },
+        { provide: SpaceService, useValue: { kind: signal('school'), kindWord: (k: TKey) => toolWord('school', k) } },
+        {
+          provide: LocalDataService,
+          useValue: {
+            settled: signal(0), questions: () => of(sortQuestions(bank)), saveQuestions: vi.fn(() => of(undefined)), addQuestion,
+            deleteQuestion: vi.fn(() => of(undefined)), resetQuestions, seedKindQuestions,
+          },
+        },
+      ],
+    });
+    await TestBed.inject(TranslationService).setLang('en');
+    const fixture = TestBed.createComponent(QuestionsPage);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    return { host: fixture.nativeElement as HTMLElement, seedKindQuestions, addQuestion, resetQuestions };
+  }
+
+  const both = (): Question[] => [...seeded(), ...SCHOOL_QUESTIONS.map((d) => defaultQuestion(d, 'en'))];
+
+  it('lists the school’s six questions and none of the house’s, under the school’s intro', async () => {
+    const { host, seedKindQuestions } = await renderSchool(both());
+    expect([...texts(host)].sort()).toEqual(SCHOOL_QUESTIONS.map((d) => d.text.en).sort());
+    expect(host.querySelector('.muted')?.textContent).toContain('on a school visit');
+    expect(seedKindQuestions).toHaveBeenCalledWith('school', 'en');
+  });
+
+  it('adds a question to the school’s bank, and resets the school’s defaults only', async () => {
+    const { host, addQuestion, resetQuestions } = await renderSchool(both());
+    const input = host.querySelector<HTMLInputElement>('form.add input[type="text"]')!;
+    input.value = 'Is there a bus stop at the gate?';
+    input.dispatchEvent(new Event('input'));
+    host.querySelector('form.add')!.dispatchEvent(new Event('submit'));
+    await flush();
+    expect(addQuestion).toHaveBeenCalledWith('Is there a bus stop at the gate?', 'OTHER', 'BOTH', 'school');
+    host.querySelector<HTMLButtonElement>('.card.danger button')!.click();
+    await flush();
+    expect(resetQuestions).toHaveBeenCalledWith('en', 'school');
   });
 });

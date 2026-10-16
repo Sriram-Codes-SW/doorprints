@@ -23,7 +23,9 @@ import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import java.util.List;
 
 /**
- * What the model is asked to fill (structured output target). Loosely typed on purpose: price and bedrooms come
+ * TEST ORACLE (kinds PR 28): the record that was the house's structured-output target before the server read the kind files. The server
+ * no longer has it; the tests keep it to prove that {@link KindOutputConverter} writes byte for byte its JSON schema and that
+ * the sanitizer reads the same fields. What the model is asked to fill (structured output target). Loosely typed on purpose: price and bedrooms come
  * back as the model read them ("25k", "2 BHK") and {@link DraftSanitizer} does the strict parsing server side.
  */
 public record RawListing(

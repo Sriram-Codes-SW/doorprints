@@ -26,6 +26,8 @@
 
 import { Component, ElementRef, afterRenderEffect, computed, effect, inject, input, signal, untracked, viewChild } from '@angular/core';
 import { ConfirmService } from '../../core/confirm.service';
+import { SpaceService } from '../../core/space.service';
+import { toolWord } from '../../core/space-tool-words';
 import { HouseDto } from '../../core/models';
 import { TraceStore } from '../../data/trace-store';
 import type { SaveWalkResult } from '../../data/trace-store';
@@ -42,12 +44,12 @@ import { houseChoices } from './walk-end-sheet-houses';
 type Phase = 'choose' | 'pick';
 
 /** The sentence for a save that was refused (nothing changed, the walk stays in the 30-day trace). */
-export function refusalMessage(reason: Extract<SaveWalkResult, { ok: false }>['reason']): Msg {
+export function refusalMessage(reason: Extract<SaveWalkResult, { ok: false }>['reason'], kind?: string | null): Msg {
   switch (reason) {
     case 'tooLong':
       return { key: 'trace.save.tooLong', params: { max: TRACE.maxWalkPoints } };
     case 'houseFull':
-      return { key: 'trace.save.houseFull', params: { max: MAX_SAVED_WALKS_PER_HOUSE } };
+      return { key: toolWord(kind, 'trace.save.houseFull'), params: { max: MAX_SAVED_WALKS_PER_HOUSE } };
     case 'deviceFull':
       return { key: 'trace.save.allFull', params: { max: MAX_SAVED_WALKS_PER_DEVICE } };
     default:
@@ -70,23 +72,23 @@ export function refusalMessage(reason: Extract<SaveWalkResult, { ok: false }>['r
           <p id="walk-end-summary">
             {{ 'trace.end.summary' | t: { distance: i18n.metres(Math.round(w.lengthM)), minutes: i18n.number(minutes()) } }}
           </p>
-          <p class="muted small">{{ 'trace.end.bodyWeb' | t }}</p>
+          <p class="muted small">{{ space.kindWord('trace.end.bodyWeb') | t }}</p>
           <div class="actions">
-            <button type="button" id="walk-end-save" class="btn" (click)="startPick()">{{ 'trace.end.save' | t }}</button>
+            <button type="button" id="walk-end-save" class="btn" (click)="startPick()">{{ space.kindWord('trace.end.save') | t }}</button>
             <button type="button" id="walk-end-delete" class="btn btn-danger" (click)="remove()">{{ 'trace.end.delete' | t }}</button>
             <button type="button" id="walk-end-keep" class="btn btn-primary" (click)="keep()">{{ 'trace.end.keep' | t }}</button>
           </div>
         } @else {
-          <h2 id="walk-end-title" tabindex="-1">{{ 'trace.pick.title' | t }}</h2>
+          <h2 id="walk-end-title" tabindex="-1">{{ space.kindWord('trace.pick.title') | t }}</h2>
           @if (houses().length === 0) {
-            <p id="walk-end-none">{{ 'trace.pick.none' | t }}</p>
+            <p id="walk-end-none">{{ space.kindWord('trace.pick.none') | t }}</p>
           } @else {
             <div class="field">
-              <label for="walk-end-search">{{ 'trace.pick.search' | t }}</label>
+              <label for="walk-end-search">{{ space.kindWord('trace.pick.search') | t }}</label>
               <input id="walk-end-search" type="search" autocomplete="off" [value]="query()" (input)="onQuery($event)" />
             </div>
             <fieldset class="houses">
-              <legend class="sr-only">{{ 'trace.pick.listLabel' | t }}</legend>
+              <legend class="sr-only">{{ space.kindWord('trace.pick.listLabel') | t }}</legend>
               @for (row of rows(); track row.house.id) {
                 <label class="row">
                   <input type="radio" name="walk-house" [value]="row.house.id" [checked]="selected() === row.house.id" (change)="select(row.house.id)" />
@@ -98,7 +100,7 @@ export function refusalMessage(reason: Extract<SaveWalkResult, { ok: false }>['r
                   </span>
                 </label>
               } @empty {
-                <p>{{ 'trace.pick.noMatch' | t }}</p>
+                <p>{{ space.kindWord('trace.pick.noMatch') | t }}</p>
               }
             </fieldset>
           }
@@ -196,6 +198,7 @@ export class WalkEndSheet {
   protected readonly i18n = inject(TranslationService);
   private readonly store = inject(TraceStore);
   private readonly confirm = inject(ConfirmService);
+  protected readonly space = inject(SpaceService);
   protected readonly Math = Math;
 
   /** The person's houses (the Map's list): the picker chooses among them. */
@@ -300,7 +303,7 @@ export class WalkEndSheet {
     if (id === null) return;
     const house = this.houses().find((h) => h.id === id);
     const result = await this.view.answerSave(id, house?.label ?? '');
-    if (!result.ok) this.refusal.set(refusalMessage(result.reason));
+    if (!result.ok) this.refusal.set(refusalMessage(result.reason, this.space.kind()));
   }
 
   /** Esc is *Keep for 30 days*. */

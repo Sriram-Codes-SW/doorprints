@@ -136,7 +136,7 @@
   },
   {
    "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/VoiceInputSetting.kt",
-   "find": "if (VoiceInput.providerOk(ownActive, choice.config)) {",
+   "find": "if (VoiceInput.usable(choice, ownActive)) {",
    "replace": "if (true) {",
    "expect": "anAnthropicOrLocalOrCustomServiceGetsTheReason"
   },
@@ -160,7 +160,7 @@
   },
   {
    "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/PasteListing.kt",
-   "find": "                VoiceMicButton(text, { text = it }, kind ?: \"house\")\n",
+   "find": "                VoiceMicButton(text, { text = it }, Candidates.kindOf(kind))\n",
    "replace": "",
    "expect": "fillInFromListingText"
   }

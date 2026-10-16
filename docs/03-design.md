@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.160 |
+| Version | 0.169 |
 | Date | 2026-10-15 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -171,6 +171,15 @@
 | 0.158 | 2026-10-15 | Claude (Code), engineer | **ADR-37, §19: Stop never blocks the main thread, and an early end keeps the clip** (S4b-BL-317, S4b-BL-318; #367). `VoiceRecorder.stop()` is `suspend`: the drain wait for the last words (300 ms at most) suspends in `PcmVoiceRecorder` and `VoiceSession` runs it from the tap, so the screen stays responsive; the 2 MB cap, the memory-only audio and every release path are unchanged. A new `VoiceFailure.ENDED_EARLY` (reported through `PcmSource.endedEarly()`) is for a recording cut short from outside (a call, a changed microphone, the app leaving the front on the iPhone; a dead input on Android; the browser stopping its recorder or a track on the website): the audio so far is kept **in memory**, written out and shown in the box with the status *the recording ended early*, instead of the untrue *could not be made*; a clip of zero length ends quietly; a release (pause, leaving, the setting off, Cancel) still discards. The microphone is let go at once in every case. |
 | 0.159 | 2026-10-15 | Claude (Code), engineer | **New §18.18, the school as the default kind and the house turned off** (owner question of 2026-10-15; `fix/kinds-default-and-house-off`): the four rules and the trace of every place that uses the default or the house kind without the person choosing (new entries, shared listings, Hunt, reminders, deep links, import, copies, AI, the server's `kind`, the chooser). Fixed: *Start Hunt mode* with Houses off, a new entry in a space that is off, a Hunt alert's kind. The guide's *More than houses* page (four languages) and [06](06-test-plan.md) TC-U-268, TC-M-83 follow. |
 | 0.160 | 2026-10-15 | Claude (Code), docs | **Stale "developer flag" wording** (owner, 2026-10-15; `docs/school-compiled-in-wording`): §18.9's developer-flag paragraph says that since §18.14 the school is compiled in and shown by Settings' switch, and the flag only shows more than the shipped list in tests. |
+| 0.161 | 2026-10-15 | Claude (Code), engineer | **§18.19 Capabilities** (kinds PR 25; `feat/kinds-25-capabilities-schema`): the kind file's optional `capabilities` block (map, Hunt, rooms, moving in, contacts, viewings, Compare, paths, identity), `house.json` and `school.json` declare what they do today, a resolver on the website and in `:shared`, shared vectors; schema and resolver only, nothing reads them yet. |
+| 0.162 | 2026-10-15 | Claude (Code), engineer | **§11.1 and §18.19: no map configuration in a kind file** (owner constraint, `feat/kinds-25-capabilities-schema`): the certification covers every space and every kind; `capabilities.map` is a boolean only; map keys are refused by the schema and tested on three stacks. |
+| 0.163 | 2026-10-15 | Claude (Code), engineer | **New §18.20, Hunt as a capability** (kinds PR 26; `feat/kinds-26-hunt-capability`; TC-U-269, TC-M-84): `capabilities.hunt {alertRadiusM 30..300, stayCreates, streetMemory, areas}`; the school has Hunt (100 m, all on), the house keeps today's (30 m, all on); the Hunt card and switch, the walk, the alerts, the notification, the channel and the deep links read the kind, not the house; the walk belongs to the space it was started in; twelve Hunt words in the kind files; the website has no Hunt UI and reads nothing; §18.19's table row and the S4b-BL-304 lines point here. |
+| 0.164 | 2026-10-15 | Claude (Code), engineer | **§18.21 Compare for any kind, and the school's checklist** (kinds PR 27; `feat/kinds-27-compare-capability`): Compare reads `capabilities.compare` of the kind (`compareCriteria`, `scoringForKind`): checklist items (higher is better) and typed extras (the extra's own `better`), the house's ten keys exactly as before; the school gains a draft checklist of eight items and `compare` over them, the fees and the commute. §18.19 and §18.9 corrected where they said nothing reads the resolver or the school hides the checklist. |
+| 0.165 | 2026-10-15 | Claude (Code), engineer | **§18.22 The server reads every kind from its kind file** (kinds PR 28; `feat/kinds-28-server-kind-reader`; [06](06-test-plan.md) TC-U-272..277, [ai-design](ai/ai-design.md) 16.13, [schemas README](schemas/README.md) 1.63): one loader and validator in Java (`KindFiles`), the kind files packaged with the server, `ai.words` in the kind file, and the house, the school and any further kind served by the same document, prompt, extract and planner code; the house's AI output byte for byte as before (the house pins). §18.15 and §18.19 say where the server now stands. |
+| 0.166 | 2026-10-15 | Claude (Code), engineer | **New §18.23, contacts, rooms, moving in, viewings and questions as capabilities** (kinds PR 29; `feat/kinds-29-contacts-rooms-viewings`): `KindLabels.isVisible` follows `contacts`, `rooms`, `moveIn` and `viewings`; the school has viewings (visits and open days, a DRAFT) with its own question bank (`school-questions.json`, ids `qd_school_...`, seeded when first opened, no format change), its words (eighteen more `words` ids) and its own reminder channel; the website no longer makes a broker from a school's phone (S4b-BL-260's website half); house literals closed on these paths; §18.18, §18.19 and §18.9's statements that a school has no questions or viewings corrected. |
+| 0.167 | 2026-10-15 | Claude (Code), engineer | **New §18.24, filters, the baseline kind and a school's copy words as capabilities** (kinds PR 30; `feat/kinds-30-copies-filters`): `capabilities.filters` names the extras the list and the map filter by; `capabilities.baseline` (the house) replaces the comparisons with the id `house` in the paths, the AI calls, the copies' file names and the copy voice; a school's copy names its visits and questions in the school's words. |
+| 0.168 | 2026-10-15 | Claude (Code), engineer | **New §18.25, every word comes from the kind file** (kinds PR 31; `feat/kinds-31-words-from-files`; [06](06-test-plan.md) TC-U-280, TC-M-88): `words` names 159 ids; the website's hand-written word tables and the phones' key map are generated from the kind files (`tools/gen-kind-words.mjs`, `--check` in `tools/check.sh` and `security.yml`); the app-wide texts say *entries* once more than the house is in use; the tour gives another kind its own words and one generic sentence; the walk check, the viewing reminder and the calendar file follow the kind. |
+| 0.169 | 2026-10-16 | Claude (Code), engineer | **New §18.26, the conformance suite and the kind tripwire, and ADR-36b** (kinds PR 32; `feat/kinds-32-conformance-suite`; [06](06-test-plan.md) TC-U-281, TC-M-89): the synthetic kind `zz_all`, the same website flows for house, school and `zz_all`, the boundary rules checked for every kind, `tools/check-kind-literals.mjs`; the backup keeps a candidate's kind; the generic AI document reads money, checklist and date. User-authored kinds stay Planned. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -1365,6 +1374,8 @@ records the owner's and the team's reading of the guidelines, not legal advice.
 Section 2(2) of the Criminal Law (Amendment) Act, 1961 (a map of India not in conformity with the Survey of India's
 maps; ADR-22's reason) still applies alongside these guidelines.
 
+**The certification covers every space and every kind, built-in or user-authored, because all of them render the one map component with the one style and boundary data; a kind file has no map configuration by schema** (`kind.schema.json`: `additionalProperties: false` at the root, in a section, in `capabilities` and in `identity`; `capabilities.map` is a boolean; a tile URL, style, sprite, glyphs, boundary, GeoJSON, attribution, zoom, bounds, centre or `geo` key is refused; `capabilities-vectors.json` `forbiddenMapKeys`, [06](06-test-plan.md) TC-U-269). The map-rules files (`map-style-url.ts`, `india-boundaries.ts`, `IndiaViewRules.kt`, `MapStyleJson.kt`, `IndiaViewOps.kt`) name no kind symbol, and a test fails if one appears.
+
 **The Survey of India's reply (2026-10-01).** The Online Maps Portal team (NGDR & UGI Directorate) answered the letter of
 2026-09-28: no prior permission is required for its Administrative Boundary Database (that database only); no alteration
 or modification of the dataset is permitted; due acknowledgement is to be given in the publication; the use is subject to
@@ -1920,6 +1931,7 @@ structured call and the local limit of 10 requests a minute; the prompts; every 
 | ADR-34 | **The path trace, version 2: one shared repeat algorithm held by a vector file, saved walks as local-only rows, the website records only while visible** (owner, 2026-10-06: repeats thicker, second colour, dashed; an optional sound; save a walk to a house; "Phone only"; the website too; the person chooses how repeats look; [11](11-feature-parity-and-export-spec.md) 5.27.0..5.27.11) | Detection on a server (ruled out: location history must not leave the device); a fixed grid of 20 m cells (two readings 21 m apart in different cells are "different", 39 m apart in one cell are "the same"); matching points only, without densified samples (misses a street walked with points in other places); a SQL foreign key with `ON DELETE CASCADE` (houses are tombstoned, never hard-deleted, so it would never fire); saved walks in the backup (the owner chose phone only); a hosted web push or a background tab for the website's alert (a hidden page gets no fixes); Doorprints playing its own sound on Android (the system channel lets the person mute it); one colour and width for all (the owner wants emphasis, and the person must be able to turn it down) | **Distances on a local flat plane (`cos(latitude)`), 10 m samples, a 25 m corridor, an 80 m minimum run, a 30 m bridge, two different walks**: reasoned from the 50 m accuracy gate and the 20 m / 5 min thinning (11 5.27.2). **Written twice, from the text, and held to `trace-repeat-vectors.json`** (*proposed* until both stacks pass). **Saved walks are in their own table with no `dirty`, `updatedAt` or `deleted` column**, so no sync can pick them up; **no SQL FK**, a sweeper removes the walks of a deleted house when the delete is final. **The overlay is a second layer over the solid base line**, drawn by the newest of the walks over a stretch, so the dash is one line; *Clear* is 1.8 x the base width, *Subtle* 1.0 x, *Off* hides the layer, and the look is applied live to the running style through a `PlatformMap` `repeatLook` parameter (Android `LineLayer.setProperties`, iPhone `setRepeatLook`, website `setPaintProperty`; not through `JsonStyleOps`, which edits style JSON before load), not by rebuilding data. **The question after a walk is a watermark** (`walkAskedUpTo`), computed from `track_points`, so a walk cut by a process kill is still asked about once. **The Android phone-to-phone transfer copies the database, saved walks included** (`data_extraction_rules.xml`), and the documents say so. **The alert is a notification on its own channel** (phones) so the system mutes it; on the website a beep started by the person's tap and a banner. **Cost:** a second colour (`#E65100`) to keep apart from the markers and the base map (TC-M-25, TC-M-57), a detection pass off the main thread, and a migration (Room 11, IndexedDB 3). |
 | ADR-35 | **On the person's own device, the AI provider is the person's choice: Gemini, any OpenAI-compatible endpoint, or Anthropic; device-only** (owner, 2026-10-07; §13.2) | **A server passthrough** (the server calls the person's endpoint: ruled out, it makes the server an open proxy and an SSRF target, T-I44, and a server with no AI of its own would carry the person's key); **Gemini through its own OpenAI-compatible endpoint** (one adapter, but it hides the native one that works today and leaves out every other AI); **on-device models** (too large and weaker, as in ADR-26) | One interface, `JsonChatModel`, so the screens, the prompts and the safety code stay as they are; the person's choice never leaves the device (D-31). A de-facto standard, `/chat/completions`, covers OpenAI, OpenRouter, Groq, Ollama and LM Studio with one adapter; a three-tier ladder (`json_schema`, `json_object`, plain) keeps servers that lack structured output working. Anthropic (S4b-BL-152) takes the same interface with a forced tool instead of a ladder and the same strict converter. Costs: three adapters (Gemini, OpenAI-compatible, Anthropic) in TypeScript and in Kotlin, held together by parity vectors; the strings in four languages (hi, ta, te under review); the privacy text, which now names the host; a new error (*model not found*); a local `http` endpoint is a new exposure (T-I43), limited to this device. Tested without keys by a fake provider server and a keyless local-model suite (S4b-BL-175, §13.2). |
 | ADR-36 | **Kinds: one candidate concept, described per kind by a built-in kind file; houses are the first kind** (owner, 2026-10-10, [14](14-lead-backlog-and-handoff.md) N21; S4b-BL-205; §18). The container is called *Search* (owner-approved 2026-10-10) | Separate apps over a shared core; a preset pack in the records layer first (the superseded plan of N21: extras in `records`, kept for compatibility that no user needs); per-kind stores and screens; user-defined fields first | A kind file per kind (`docs/schemas/kinds/<kind>.json`, format `doorprints-kind/1`, its own `version`): labels as keys into the existing dictionaries, the fixed core fields and sections it shows, typed extras (number, money, text, enum, date, bool) with unit codes and placements, the five fixed status names with the kind's labels, the checklist, the question scopes, the search fields and the AI slots. Built in and embedded on three stacks; one kind per data set; a one-time format reset puts `kind`, `money` (amount and cadence) and `extras` on the candidate (S4b-BL-206). The deletion test passes for the resolver, the renderer and money, and fails for a container store, per-kind screens and the records layer (§18.2). Eleven one-way doors are chosen with their alternatives and reversal costs (§18.4) and were reviewed against the vectors before any UI work (§18.5). Costs: about 750 house-worded strings in four languages to budget, 14 guide pages, kind-aware AI with a golden-set section per kind; location stays required. A file-size budget lands first (§18.6). Stop criteria after PRs 4 and 5 (N21). |
+| ADR-36b | **Capabilities and user kinds: a kind's behaviour is data (its capabilities), a user-authored kind is the same file, and no code names a kind** (owner, 2026-10-16; kinds PR 32; §18.19 to §18.26). **Built:** capabilities in the kind file (`map`, `hunt`, `rooms`, `moveIn`, `contacts`, `viewings`, `compare`, `paths`, `identity`, `baseline`, `filters`), words from the file, the conformance kind `zz_all`, the tripwire. **Planned, not built:** a person writes a kind (the editor, the sharing of a kind file, its review) | A switch per kind in code (what the tripwire now forbids); capabilities in a second file; user-authored kinds first | A new kind is a file plus, where it has prompts, a pack; the code asks `capabilitiesOf(kind)`, never the id. The map rules read no kind, so no kind can change India's boundaries (§11.1, ADR-22). A kind the build does not list is not offered; `zz_all` is in no list. A user-authored kind would pass the same validators as a built-in one (map keys, sizes, depth, ids) and could never turn on a capability the schema does not name. Reversal: a capability is added by an additive schema change (door 4); removing one is a format change |
 | ADR-37 | **Voice input is an opt-in extra: off by default, transcribed by the person's own configured AI provider where that provider accepts audio, behind one `Transcriber` interface; the audio is never stored, the transcript is always shown and editable before anything is sent, and there is never a key-holding proxy** (owner, 2026-10-10: start toward the kinds refactor while including voice input; consult and plan in [ai/voice-input](ai/voice-input.md); **the website's side is built in S4b-BL-221 (voice pull request 4, 2026-10-15): the *Voice input* switch on the Connect page, the microphone in the three boxes, `microphone=(self)`; Android's side is built in S4b-BL-222 (voice pull request 5, 2026-10-15: the *Voice input* setting, the microphone in the three boxes, `RECORD_AUDIO` asked at the tap, the audio kept in memory by `AudioRecord`); the iPhone's side is in review in S4b-BL-223 (voice pull request 6: the audio kept in memory by an `AVAudioEngine` tap, never `AVAudioRecorder`, which needs a file; written without Xcode or a phone); Sarvam stays Planned**; kinds is ADR-36, the two never share a number) | **Do nothing** (the keyboards of Android and iPhone already dictate into every field, on-device for Hindi and several other languages, free; this is the honest baseline and the reason the value is modest); **the Web Speech API on the website** (its default path sends audio to Google; acceptable only with `processLocally` and no cloud fallback, and Hindi, Tamil and Telugu packs are unconfirmed: skipped); **the platform recogniser on phones as the default** (Android `SpeechRecognizer`, iOS `SFSpeechRecognizer`: allowed only when forced on-device, `createOnDeviceSpeechRecognizer` / `EXTRA_PREFER_OFFLINE` and the iOS on-device flag, never the cloud recogniser; offered as *this device* only when that check passes); **on-device open models** (Whisper tiny or base, IndicConformer, sherpa-onnx, Vosk: 75 to 240 MB, breaks "no new library" and "few small binaries", [14](14-lead-backlog-and-handoff.md) §7); **a server route** (`/api/ai/transcribe` through Vertex: the biggest surface, audio through a server that has no AI of its own, the least demand); **a key-holding proxy of any kind** (ruled out for ever: it would make the owner's server an open relay for the person's key, as ADR-35 ruled out for chat, T-I44, and Sarvam's terms 10.5(d) forbid giving API access to third parties); **Bhashini** (no self-serve per-person key); **one mandatory vendor** (Groq Whisper is the cheapest and measurably the weakest on Indic; Sarvam has the strongest Indic claims but is one more key slot; the person's existing provider is the zero-new-account path). The dated options table, with prices read on 2026-10-10 from the vendors' own pages (INR at 88 per USD; Gemini about 0.05 to 0.17 INR a minute, OpenAI about 0.26 to 0.53, Groq about 0.06, Sarvam 0.50) and the list of what was not verified, is [ai/voice-input](ai/voice-input.md) §2 and §7; prices and model names change, so they are re-read before voice pull request 4 (voice pull request 1 is dated the same day as the table and did not re-fetch them). | **What it is.** A *Voice input* switch under *AI features*, **off by default**; *Transcribe with*: *this device* (phones, only when on-device recognition is available) or *my AI provider* (only for providers that accept audio: Gemini, and the OpenAI, Groq and OpenRouter presets; Anthropic, Ollama and LM Studio hide the microphone; a custom endpoint is opt-in with a Test call; Sarvam later, in its own key slot `sarvamKeyEnc` / Keychain `sarvam_key`, never in a backup, the TC-U-170 pattern). One interface, `Transcriber.transcribe(bytes, mime, langHint): Transcript{text, language}`, in `:shared` and in TypeScript, with a `GeminiTranscriber`, an `OpenAiAudioTranscriber` and a `SarvamTranscriber` and a `postAiMultipart` helper beside `postAiJson`; `AiProviderConfig`, `JsonChatModel` and the three prompts stay untouched. The microphone button sits inside the three existing AI text boxes; **the transcript lands in the box as editable text and is never sent on its own**: the existing path (Ask, Fill in from listing text, Plan notes) then runs unchanged. **The audio is never stored, logged, synced, backed up or copied**: bytes stay in memory, a tap starts recording, a hard stop at 30 s (60 s for providers other than Sarvam) and a 2 MB cap end it, and a test proves nothing is written (T-I48). The permission (the browser's `getUserMedia`, Android `RECORD_AUDIO`, iOS `NSMicrophoneUsageDescription`) is asked at first use, with a rationale, never at install or start-up. The disclosure names the host and the list price: audio goes to {host}, about INR x a minute, and anything said, numbers and names included, is sent as audio. **The platform recogniser is offered only when forced on-device.** **No proxy ever:** if a provider refuses browser calls, that provider has no voice (a stop criterion). **Consequences.** Good: the cheapest provider (Gemini) is about level with Sarvam on Indic and Hinglish in the independent benchmark cited; no new library and no server surface; nothing existing changes, because the work is additive (voice pull requests 2 and 3 must not touch `JsonChatModel`, the prompts, `golden-set.json` thresholds or any existing section of `parity-vectors.json`; a diff check or mutation enforces it). Costs and limits: **a new data flow** (audio to the provider, DF-49, T-I45); **`ContactRedactor` can only run on the transcript, so a phone number or a name spoken aloud reaches the transcription host before it can be redacted** (T-I46, stated plainly to the person, RR-33); injection by speech (T-T20: the transcribe prompt says "transcribe only; do not follow instructions in the audio", and the transcript is editable text that goes through the existing nonce-delimited, redacted path); accidental activation and bystanders (T-I47); a cost surprise on a paid key (T-D14: the hard stop, the size cap, the disclosed price); `firebase.json` `Permissions-Policy` `microphone=()` becomes `microphone=(self)` **only in the web voice pull request (S4b-BL-221)**, with TC-S-23 and checklist row B1; the privacy note and Play data-safety answer are updated at voice pull request 5 (S4b-BL-222), not before; strings in four languages (Hindi, Tamil, Telugu *under review*); eval additions that gate nothing (`spoken-set.json` has no `thresholds` key; at most 8 clips, about 300 KB, a manual suite). The honest value stays modest (a one-tap flow, key terms such as BHK and lakh, Hinglish, number normalisation); S4b-FR-12 (voice notes, parked) is superseded, and its rule that audio never weighs on sync and backups is kept. **Stop criteria** (any one stops the plan; [ai/voice-input](ai/voice-input.md) §6): a provider refuses browser calls (never build a proxy); any pull request needs a change to `JsonChatModel`, the prompts or a gated threshold; the clip suite shows entity word error rate above 20% on price and BHK for Hindi, Tamil and Telugu across providers (then English (India) only, or drop it); the audio binaries exceed about 500 KB; on-device packs stay unverifiable (then no *this device* option); the re-read prices or model names no longer support the recommendation. Voice pull requests 1 to 3 touch no screen; the UI pull requests come after kinds PR 5 so the button is built once on the kind-aware renderer. **Sarvam and the clip suite are built in S4b-BL-224 (voice pull request 7, 2026-10-15): Sarvam is an optional second speech service with a Sarvam key of its own (`SarvamTranscriber` on the website and in `:shared`; `POST api.sarvam.ai/speech-to-text`, header `api-subscription-key`, `language_code` hi-IN, ta-IN, te-IN or `unknown`, recordings cut at 30 s), kept in a slot apart from the AI key (`sarvamKeyEnc`, Keychain `sarvam_key`, `doorprints.sarvam-key`) and in no backup, copy, sync or Drive file (T-I52, TC-U-265); the Sarvam chat API is one more preset of the openai-compatible kind (`https://api.sarvam.ai/v1`, Bearer, the model typed by the person) that takes no OpenAI-style audio; the manual `voice` suite of `ai-evals.yml` sends eight CC0 synthetic clips (`docs/ai/evals/voice/`, about 115 KB) to a chosen provider (TC-AI-53). Still true: off by default, own key only, audio in memory only, no proxy.** |
 
 ## 15. Design risks and open items
@@ -2382,8 +2394,8 @@ renderer yet; that is the work of the hidden `schools` kind (PR 5, S4b-BL-209). 
 reads kinds more widely (search and copies are PR 6, the AI PR 7, Settings PR 8). It needs nothing but labels, hidden
 sections and core fields, and typed extras, so the stop criterion of the row (no new screens) holds: one candidate page
 draws both kinds. A school shows the details, *Fees* (the house's `cost` section with the school's heading), area notes,
-distances, location, saved walks, visits and photos; it hides the rooms, the questions, the viewings, moving in and the
-checklist (and so the score), and its core `money` and `brokerId`. Its extras: `board` and `medium` (enums: CBSE, ICSE,
+distances, location, saved walks, visits and photos; it hides the rooms, the questions, the viewings and moving in (since kinds PR 27, §18.21, it has
+a checklist of its own and so a score), and its core `money` and `brokerId`. Its extras: `board` and `medium` (enums: CBSE, ICSE,
 State board, IB, Cambridge (IGCSE), Other; English, Hindi, State language, Other), `grades` (text, at most 40
 characters), `commuteMinutes` (a number, 0 to 300, unit `minute`), `busService` (a switch), `fees` (money, fixed cadence
 `year`) and `admissionFee` (money, `once`). The labels are keys, as for the house (door 11): 23 new web keys and 24
@@ -2439,7 +2451,7 @@ school's copy (`SchoolKind`, Android keys) and `DevKinds` (the kinds the flag al
 true only in a debug build made with `-Pdoorprints.devKinds=true`, handed to the screens as `LocalDevKinds` (`:ui`,
 default false, so the iPhone app never has it). The form (`HouseEditScreen`) reads the candidate's kind: its labels
 (`KindLabels.fieldText`, `sectionText`, `refText`), its extras, the title and delete label, and it leaves out what the
-kind hides (the price and its type, the broker, the rooms, questions, viewings, moving in, checklist, the area notes,
+kind hides (the price and its type, the broker, the rooms, moving in, checklist and, until kinds PR 29 (§18.23), the questions and viewings; the area notes,
 distances and walks cards when a kind hides them); `KindExtrasFields` gained a text field and an option menu (*Not set*
 first, as the broker menu), and pairs them two per row like numbers. A new candidate's form offers a kind picker
 (`DevKindPicker`) while the flag is on. The form's rotation saver now keeps the kind and the extras the house model does
@@ -2473,9 +2485,8 @@ S4b-BL-266, S4b-BL-277).** With a school space on screen, nothing a school page 
   `/k/school/new` and `/k/school/<id>` (`routesFor`), *Save the school first …*, *Please give the school a name*, the
   location lines, *School not found* (the space's kind while no candidate is loaded), the map's zoom title, the listing
   hint and the AI disclosure on it, Ask and Plan, the Areas and Places pages and their cards and the area-note
-  composer (`SpaceWords.areaInReach`), and the list row without its price and score. Your data has no Criteria, Questions
-  or Viewings card while a school space is the last one (`isVisible('section.checklist' | 'section.questions' |
-  'section.viewings')`); the Brokers card stays (S4b-BL-260). `house-detail-page.ts` shrank to 1,185 lines (the draft's
+  composer (`SpaceWords.areaInReach`), and the list row without its price and score. Your data has no Criteria card while a school space is the last one (the Criteria card is the house's, §18.21; its Questions
+  and Viewings cards follow the kind, and the school has them since kinds PR 29, §18.23); the Brokers card stays (S4b-BL-260). `house-detail-page.ts` shrank to 1,185 lines (the draft's
   small helpers moved to `house-page-input.ts`) and its budget entry was lowered.
 - *The copies speak in a voice.* `collect` gives a bundle a `voice` (the kind) when its copy is of one space, or when every
   candidate in it is of one kind that is not the house (`copyVoice`), and each school entry its own `kind`; a copy of
@@ -2696,7 +2707,7 @@ candidate's kind and extras with the kinds available (the server's `KINDS_AVAILA
 phone's `devKinds`); the golden set and its thresholds are untouched. *`house.json`'s slots* ([ai-design](ai/ai-design.md)
 16.8): `ask` names the viewings, the area notes, the distances and the visits, `plan` the street, `extract` the area and the
 amenities, so the slots say what the house's hand-written code reads; the code is not read through them and a house's
-documents, prompts, Plan lines and pins are byte for byte as before. The shared `kinds/house-ai-slot-vectors.json` and a
+documents, prompts, Plan lines and pins are byte for byte as before (since kinds PR 28, §18.22, the server's house is read through them, and the pins prove it). The shared `kinds/house-ai-slot-vectors.json` and a
 `HouseAiSlotsTest` on each stack hold the two together. S4b-BL-269 (the prompts' house words) and S4b-BL-270 (a kind's extras
 in the Plan tools) are still open, and so is the release gate (§18.12).
 
@@ -2763,7 +2774,7 @@ S4b-BL-256 for those places: done in §18.9, kinds PR 16). The counters *Houses*
 only. The kind file has no place for these words yet (its `labels` are `new`, `many`, `delete`), so `SPACE_WORDS` is the
 website's own table, as the renderer's element ids are (§18.8); moving it into the kind files with the phone's is
 S4b-BL-278. In a space other than the house, **Compare, Ask and Plan read that space** (§18.13; PR A hid them there). Walks, brokers, Settings, backups and Drive stay
-global; Hunt mode is the phone's and stays the house space's.
+global; Hunt mode is the phone's and is the capability of a kind (the house's and the school's, §18.20).
 
 **The AI reads one space at a time** (§18.13); before PR B the on-device AI and the listing fill read a
 candidate through its kind while `kindsOn()` (the developer flag, or a second kind offered). The server's switch
@@ -2930,7 +2941,7 @@ saved stacks and opens the space's Map (a form of another space must not stay un
 row per kind the switch offers with *Show* (a checkbox, disabled for the last one on), *Default* (a radio, enabled for a kind
 that is shown) and *Saved: N*. Choices are one atomic edit (`SettingsStore.editKindSetting`). The rows that belong to what a
 kind has (`KindSettingRows`: Brokers, Criteria, Questions, Viewings with their reminders) follow the kind's file: a school has
-none of those places, so its Settings has none of those rows. Hunt mode (the Map's card and its switch) is the house space's.
+so a school's Settings has the Questions and Viewings rows since kinds PR 29 (§18.23) and no Brokers or Criteria rows. Hunt mode (the Map's card and its switch) is a capability of the kind (§18.20): the house's and, since kinds PR 26, the school's.
 
 **A space's words** (`SpaceWords`): the list's tab and heading, search, count, empty and no-match lines, the Map's *Save here*
 button and tips, the new entry's save button (the kind's `kind.new`), Compare, the Assistant and the copies' scope words. The
@@ -2954,7 +2965,7 @@ The AI card's first sentence is the kind-neutral *one list at a time* for everyo
 (owner, 2026-10-15; S4b-BL-302 replaced the second phone string `settings_ai_worth_spaces` and re-recorded the settings baselines, §18.16).
 
 **Links and alerts** resolve the space from the candidate's kind: a link to a candidate of another kind opens its space; a
-Hunt alert makes a **house** (a walk is the house space's, S4b-BL-304; it was the default kind before); *Start Hunt mode* from a reminder opens the house space; a new entry is of
+Hunt alert makes a **house** (a walk is its space's, S4b-BL-304; since kinds PR 26 the alert makes an entry of the kind the walk was started in, §18.20); *Start Hunt mode* from a reminder opens the house space; a new entry is of
 the space's kind (the developer's kind picker is only shown with one kind on).
 
 **The backup's `search` object** (door 10, §18.12). The Kotlin writer writes `{"kind":"house"}` for a house alone and
@@ -2987,8 +2998,7 @@ baselines (S4b-BL-302); the list reads the space from Room (S4b-BL-303); a Hunt 
 comma-separated list of kind ids, default `house`, the house always in it (an id outside door 3's pattern, a blank and a
 repeat are dropped). It replaces `app.ai.dev-kinds` (`AI_DEV_KINDS`, a boolean) and is the server's twin of the apps'
 `AVAILABLE_KINDS`. `AiKinds` holds it: the AI reads a candidate of a built-in kind other than the house (the schools kind)
-through its kind file's `ai` slots only when the kind is in the list (§18.11). **Compiled in, off (owner, 2026-10-15):** the releases list the school on the website and the phones, but the server's default stays the house alone; `KINDS_AVAILABLE=house,school` is the operator's choice, never part of a release, and a school that reaches a house-only server (a backup, a device with the switch on) is stored and exported unchanged and read by the AI as a house, its extras unread, never dropped (`SchoolCandidateApiTest`, TC-U-263); a kind that is listed but has no built-in
-file is read as a house. **A request that names a kind outside the list is a 400** (`kind <id> is not available`): today
+through its kind file's `ai` slots only when the kind is in the list (§18.11); since kinds PR 28 every kind file in the build is read by one loader (§18.22), the house's too. **Compiled in, off (owner, 2026-10-15):** the releases list the school on the website and the phones, but the server's default stays the house alone; `KINDS_AVAILABLE=house,school` is the operator's choice, never part of a release, and a school that reaches a house-only server (a backup, a device with the switch on) is stored and exported unchanged and read by the AI as a house, its extras unread, never dropped (`SchoolCandidateApiTest`, TC-U-263); a kind that is listed but has no kind file in the build (`kinds/<id>.json` on the class path, §18.22) is read as a house. **A request that names a kind outside the list is a 400** (`kind <id> is not available`): today
 that is `POST /api/ai/extract-listing`'s optional `kind` (the house is always available; a listed kind with no extract is
 still a 400, `kind <id> has no listing extract`). The candidate calls keep accepting any kind of door 3's pattern, so a
 sync from a device that tracks more kinds than this server lists never fails and a backup keeps every row's kind. Ask and
@@ -3059,7 +3069,7 @@ list search values (`house-pins.golden.ts`), the list's address keys (`listQuery
 - **A number extra's range (S4b-BL-261 item 2).** `HouseEntity.withInRangeExtras` (`KindExtrasFields.kt`) on save.
 - **The map's location notes (S4b-BL-301).** Five `SpaceWords` entries; three school strings; the place-check's *Save here* reads `saveHere`.
 - **The iPhone (S4b-BL-300; changed 2026-10-15).** The iPhone lists `house,school` like the Android release (`IOS_AVAILABLE_KINDS`, one constant, passed only by `iosSettingsStore()`; the simulator tests' store lists the house), compiled in and off, so nothing of a second kind is seen until the person turns the switch on; `ReleaseKindsTest` holds the list equal to the release's and `IosKindsGateTest` (source-reading, as `IosVoiceSafetyTest`) holds that nothing else on the iPhone names a kind or the chooser, that the chooser route is reached only through `setting.spaces`, and that Info.plist and the Swift shell do not mention the list. The macOS-runner screenshots and VoiceOver of the chooser with the switch on stay S4b-BL-276 (manual MT-113). Info.plist is unchanged; the simulator launch job is unchanged.
-- **A Hunt walk ends when the person leaves the house space (S4b-BL-304; owner, 2026-10-15).** Hunt mode is the house space's card and switch, so `DoorprintsRoot` (common, Android and the iPhone) stops the walk through `MapServices.stopHunt` when the space on screen changes from the house's to another (`HuntSpace.stopsOnLeaving`: was in the house space, is not, Hunt mode running) and says *Hunt mode stopped. It runs in the Houses space only.* (`hunt_stopped_left_space`, hi/ta/te under review) in the root snackbar. The service and its notification end as with the person's own stop; the walk is then asked about as any ended walk. A walk that starts while another space is on screen (a reminder's *Start Hunt mode*) is left alone; the chooser is not a space. A Hunt alert (*stay here?*) is the house space's, so tapping one makes a **house**, not a candidate of the default kind (this replaces the line of §18.14 that said the default kind). With one kind on the house is the only space and nothing changes (`withOneKindOnNoWalkIsEverStoppedByASpaceChange`; no baseline changes). Tests: TC-U-259, `tools/mutations/kinds-22-hunt-walk.json`.
+- **A Hunt walk ends when the person leaves the space it was started in (S4b-BL-304; owner, 2026-10-15; generalised from the house space by §18.20).** Hunt mode is the house space's card and switch, so `DoorprintsRoot` (common, Android and the iPhone) stops the walk through `MapServices.stopHunt` when the space on screen changes from the house's to another (`HuntSpace.stopsOnLeaving`: was in the house space, is not, Hunt mode running) and says *Hunt mode stopped. It runs in the Houses space only.* (`hunt_stopped_left_space`, hi/ta/te under review) in the root snackbar. The service and its notification end as with the person's own stop; the walk is then asked about as any ended walk. A walk that starts while another space is on screen (a reminder's *Start Hunt mode*) is left alone; the chooser is not a space. A Hunt alert (*stay here?*) is the house space's, so tapping one makes a **house**, not a candidate of the default kind (this replaces the line of §18.14 that said the default kind). With one kind on the house is the only space and nothing changes (`withOneKindOnNoWalkIsEverStoppedByASpaceChange`; no baseline changes). Tests: TC-U-259, `tools/mutations/kinds-22-hunt-walk.json`.
 - **Not built.** S4b-BL-302 (one string for the AI card changes the house app's words and baselines: the owner decides), S4b-BL-303 (a `kind` index and a query per space: a Room migration, its own pull request).
 - **Budget.** Three files over their budget got room by moving code out, not by growing: `HouseEditScreen.kt` 1,509 to 1,422 (`PasteListing.kt`), `HouseListScreen.kt` 1,018 to 919 (`HouseListUndo.kt`), `ImportScreen.kt` 1,014 to 923 (`ImportPreviewCard.kt`); `MapScreen.kt` is unchanged at 1,515.
 
@@ -3129,7 +3139,7 @@ or the house kind without the person choosing was traced on the website, Android
 | Add from the map (long press / Add) | web `HouseDetailPage` `ofKind(newHouse, space.newKind())` (`house-detail-page.ts:534`); phones `HouseEditScreen` new entry of `space.creating`. The space's kind while it is on, else the default; with one kind on, the default | **Fixed** for a space that is off (rule 3); otherwise OK |
 | *Add a shared listing*, share intent, paste | web `share-page.ts:147,151` and phones `ShareKindDialog` / `Root.startListing`: two or more kinds on asks *Save it in* (the default first); one kind on goes straight in as the default | OK (`shareKind` vectors: a kind that is off is never chosen) |
 | `/houses/new`, the PWA share target, notifications (web) | the default kind (`SpaceService.newKind`) | OK; a space that is off now goes to the default (**fixed**) |
-| Hunt: *Start Hunt mode* from a viewing reminder or an area wake-up | `DeepLink.StartHunt` / `OfferHunt` forced the House space and requested a walk even with Houses off (`Root.kt`, then `MapScreen` started it, with no Hunt card to stop it) | **Fixed**: refused with one line (rule 4); with Houses on it opens the House space as before |
+| Hunt: *Start Hunt mode* from a viewing reminder or an area wake-up | `DeepLink.StartHunt` / `OfferHunt` forced the House space and requested a walk even with Houses off (`Root.kt`, then `MapScreen` started it, with no Hunt card to stop it) | **Fixed**: refused with one line (rule 4); with Houses on it opens the House space as before. Since kinds PR 29 (§18.23) the school has viewings too, so a reminder starts the default kind's walk and is refused only when no kind that is on has viewings |
 | Hunt: *stay here?* alert | `DeepLink.NewHouse` opens the new-entry form (nothing is saved on its own). Two or more on: the House space (S4b-BL-304); the old code named the house even if it were off | **Fixed**: `HuntSpace.alertKind`; one kind on: the form of that kind |
 | A walk running when Houses is turned off | stopped by `HuntSpace.stopsOnLeaving` with one line | OK, test added |
 | A walk started while a school space is shown | the school space has no Hunt card; only a reminder can start one, and it moves to the House space first | OK |
@@ -3140,7 +3150,7 @@ or the house kind without the person choosing was traced on the website, Android
 | AI Ask / Plan words | the kind's words when every record sent is of one built-in kind, the house's for a house, a mix or none (§18.11). With the school alone: school words when the records are schools, house words if only kept houses are read, the space's refusal when nothing is found | OK |
 | The server's `kind` parameter | sent for the space's kind when the server names it (§18.17); the school alone asks about schools only (less than the device reads, never more) | OK, documented |
 | Empty state, tour, first-run copy | the space's words (*No schools yet*); the tour runs in the house words and is offered once, before the switch can be on | OK |
-| Settings texts that say *houses* | the house-space rows (Brokers, Criteria, Questions, Viewings) follow the kind; with Houses off they are not in Settings, the kept data is | OK |
+| Settings texts that say *houses* | the rows Brokers and Criteria follow the kind (Questions and Viewings follow its `viewings` capability since kinds PR 29); with Houses off the house's are not in Settings, the kept data is | OK |
 | Widgets | none | n/a |
 | *Remove all data* counts | every kind's count (§20) | OK |
 | The chooser with one kind on | not shown (one space); a kind that is off is a row in *What you track* with its count | OK |
@@ -3153,6 +3163,420 @@ the default kind*), `kind-setting.spec.ts` (the sequence school default, house o
 `SpacesRootTest` (the school alone lists the kept house and *What you track* counts it; a Hunt alert and *Start Hunt mode* with Houses off;
 a walk running when Houses is turned off stops). The house-only path is unchanged byte for byte (the existing pins: `routesFor(false)`,
 `SpacesRootTest.aBuildThatShipsTheHouseAloneIsTheAppItAlwaysWas`, the house golden files).
+### 18.19 Capabilities: what a kind can do beyond its fields (kinds PR 25, schema and resolver only)
+
+A kind file could only *hide* the house's features (the closed `sectionId` list) while Hunt, Compare, the broker and the rest were
+hard-coded to the house (`huntHere = built.id == HOUSE`, `Space.kt`). The owner's direction is that a kind acts like a product of
+its own under Doorprints, so the kind file gains one optional block, `capabilities`, that says what the kind can do. **PR 25 was the schema and the resolver only; PR 26 (§18.20) is the first
+feature that reads it, Hunt mode, and PR 27 (§18.21) the second, Compare.** The
+screens move onto it one feature at a time in later changes, each with the house's behaviour proved equal first.
+
+| Key | Meaning | Limits |
+|---|---|---|
+| `map` | the kind's candidates are drawn on the map | boolean |
+| `hunt` | Hunt mode: `alertRadiusM`, `stayCreates` (a stay at an unsaved place offers to save it), `streetMemory`, `areas` (kinds PR 26, [§18.20](#1820-hunt-as-a-capability-kinds-pr-26)) | radius an integer 30..300 (20..500 in PR 25); all four keys required; absent = no Hunt |
+| `rooms`, `moveIn` | the rooms list; the moving-in checklist | boolean |
+| `contacts` | `role` (`broker`, `office`, `agent`) and `autoCreateFromPhone` (a saved phone makes or links a broker entry) | both keys required; absent = no contact capability |
+| `viewings` | `questionsSeed`: the built-in bank that seeds a viewing's questions | only `house` |
+| `compare` | `criteria`: the checklist keys or extra ids Compare scores, in order | 1 to 10, unique, `^[a-z][A-Za-z0-9_]{0,39}$` |
+| `paths` | walks and paths | boolean |
+| `identity` | `icon` (one of 24 bundled ids) and `colour` (one of 8 palette ids) | both required; not drawn yet |
+
+The block holds booleans, small numbers and ids from fixed lists, never text, a link or markup, so a kind file cannot carry a prompt or a
+URL, and every object in it refuses an unknown key (`additionalProperties: false`, so `__proto__` and `constructor` are refused as
+keys). It is optional: a kind file without it, and a kind the build does not know, has the defaults, **the map and the paths on and
+everything else off** (`DEFAULT_CAPABILITIES`, `KindCapabilities.DEFAULT`). An unknown stored kind is still *drawn* as a house (§18.9);
+that rule is the caller's and is unchanged: it resolves the drawn kind, then asks for its capabilities.
+
+`house.json` declares today's behaviour, no more: the map, Hunt at 30 m (the settings default of `AppSettings.alertRadiusM`; the
+person's own radius, 15 to 100 m, stays a setting) with `stayCreates`, the rooms, moving in, `contacts` broker with `autoCreateFromPhone`,
+`viewings` seeded by the house bank, `compare` over the ten checklist keys and the paths. `school.json` declares what the school has: the
+map, the paths, an admissions-office contact that never makes a broker (S4b-BL-260), since kinds PR 26 (§18.20) Hunt at 100 m and since kinds PR 27 (§18.21) Compare over its checklist, fees and commute, and since kinds PR 29 (§18.23) viewings with its own questions; no rooms or moving in.
+
+**The resolver** is `capabilitiesOf(kindId)` (website `core/kind-capabilities.ts`) and `KindCapabilities.of(kindId)` (`:shared`
+commonMain): the built-in sets are copies of the two files, in the way of `HOUSE_LABELS` and `SchoolKind`, and the tests read the files so
+a copy cannot drift. `parseCapabilities` / `KindCapabilities.parse` are the schema's twin in code, strict and never throwing, for the day a
+kind file is read at run time. **The vectors** (`docs/schemas/kinds/capabilities-vectors.json`, [schemas README](schemas/README.md) §8.4) pin
+the defaults, each built-in kind's resolved set, the code constants the house's set must equal (so a later change must update the vector
+knowingly), the switches that must follow the sections each file shows (rooms, moving in, viewings, walks) and the broker field,
+valid objects, and 60 invalid ones (radius out of range, an unknown key, eleven criteria, markup and links, prototype keys). The server
+reads the file itself since kinds PR 28 (§18.22): `KindFiles.capabilities` is its strict reader, tested against the same vectors; nothing on the server acts on a capability yet.
+
+**No map configuration.** `capabilities.map` is a boolean only and the schema refuses any map key (list in [§11.1](#111-the-government-of-indias-geospatial-guidelines-self-certification)) at the root, in a section, in `capabilities` and in `identity`; the three stacks test it (the website against the schema, `:shared` and the server against the schema's shape and the vectors' `invalid` cases), and a tripwire test fails when a map-rules file names a kind symbol.
+
+**Tests** ([06](06-test-plan.md) TC-U-269): the website's `kind-capabilities.spec.ts` (with Ajv against `kind.schema.json`) and the phones'
+`KindCapabilitiesVectorsTest` and the server's `KindCapabilitiesFileTest`; `house-kind-file.spec.ts` and the pins of the house are untouched and green.
+
+### 18.20 Hunt as a capability (kinds PR 26)
+
+**Decision (owner, 2026-10-15).** Nothing about Hunt mode is hard-coded to the house: the Hunt card and switch, the walk, the alerts, the
+notification and its channel, the deep links and the walk's rules read `capabilities.hunt` of the kind ([§18.19](#1819-capabilities-what-a-kind-can-do-beyond-its-fields-kinds-pr-25-schema-and-resolver-only)).
+The school gets Hunt, at 100 m. The house keeps today's behaviour byte for byte (30 m, every switch on; the house baselines are unchanged).
+
+**The block.** `hunt` is `{alertRadiusM, stayCreates, streetMemory, areas}`, all four required:
+
+| Key | Meaning | house | school |
+|---|---|---|---|
+| `alertRadiusM` | how near, in metres, a saved place of the kind raises an alert; an integer 30 to 300 (PR 25 allowed 20 to 500; tightened here, vectors updated) | 30 | 100 |
+| `stayCreates` | a stay at an unsaved place offers to save it, **as an entry of the kind the walk was started in**; false: the visit is kept and nothing is offered | true | true |
+| `streetMemory` | the walk tells the person about streets the kind has saved places or visits on (the notification and the card's street line, with counts) | true | true |
+| `areas` | an area wake-up may start a walk of this kind | true | true |
+
+**One walk, one space.** The walk belongs to the space it was started in ([S4b-BL-304](10-sprint-log.md), generalised): `HuntState.State.kind` is
+that kind, and `HuntSpace.stopsOnLeaving(walkKind, was, now, active)` stops the walk when the space on screen leaves it, to any other space (both built-in
+kinds have Hunt, so the school-to-house move stops a school walk as the house-to-school move stops a house walk; a space whose kind has none stops it too), with
+the line in the walk's kind's words (*Hunt mode stopped. It runs in the Houses space only.*, or *…Schools space only.*). A walk that is started while another
+space is on screen (a reminder's or an area's *Start Hunt mode*) is left alone, as before. The Hunt card and switch appear in a space whose kind has Hunt
+(`SpaceUi.huntHere` is `HuntSpace.has(kind)`), and starting asks the platform for a walk **of that kind** (`MapServices.startHunt(kind)`; the service and the
+iPhone's `IosHunt` refuse a kind without Hunt).
+
+**What the walk reads.** `HuntEngine(kind, hunt)`: the saved places are the kind's space's own (`HuntData.of(repo, kind)` over `housesOf(SpaceView)`; with one kind
+on it is every candidate, as it always was, and a street's saved-place count is the space's too; the *visits* are the person's own, whatever kind they were to);
+the alert radius is **the kind's file value, except that the existing Settings radius (15 to 100 m) is the house's own override** (`HuntEngine.radiusFor`; a
+per-kind override is not offered); the street line only when `streetMemory`; the "stay here?" alert only when `stayCreates`.
+
+**Starting from outside the card.** A reminder's *Start Hunt mode* starts the walk of the kind that has **viewings** (`HuntSpace.startKind(setting, REMINDER)`:
+enabled kinds only, the default kind first, then the others; both kinds have viewings since kinds PR 29, §18.23, so with the school the default and on, a reminder's walk is the school's); an area wake-up starts the walk of the first enabled kind whose Hunt has **`areas`**, the
+default kind first (so with the school the default and on, an area wake-up opens the Schools space; with the house the default, as before). With none on, nothing
+starts and the Map says why, in the words of the kind that would have (`huntNeedsKind`; the rule of §18.18). `DeepLink.StartHunt` and `OfferHunt` carry which of
+the two started it; the Android intent and the iPhone `userInfo` say it by the key they already had (`EXTRA_START_HUNT` is a reminder's, `EXTRA_START_HUNT_AREA` an area's).
+
+**The "stay here?" alert** carries the walk's kind (`EXTRA_NEW_KIND`, `KEY_NEW_KIND`, accepted only when it is one of the app's own kinds, as the other extras are
+checked, threat model F-25): the new entry is of that kind while it is on (`HuntSpace.alertKind`, `SpaceScope.createKind`: never in a space that is off, §18.18), and
+the default kind's for an alert of an older build. After the system restarts the Android service the walk's kind is the default kind's (when it has Hunt), the walk's own kind being a value of the process that died.
+
+**Words.** The Hunt words that name the kind are twelve more ids of the kind file's `words` (additive, `format` stays `doorprints-kind/1`; phone keys only,
+`web` null: the website has no Hunt): `huntSeen`, `huntStreetText`, `huntStreetTextSince`, `huntStreetSeen`, `huntStayTitle`, `huntNotifyRationale`,
+`huntLeftSpace`, `huntNeedsKind`, `huntOngoingText`, `huntChannelAlerts`, `huntChannelAlertsDesc`, `huntNotificationsOff`. The house's keys are today's
+strings (three of them, the ongoing text and the alerts channel's name and description, existed only in the Android resources and now also in the Compose
+resources, kept equal by `StringParityTest`), the school's are new (hi, ta, te *under review*). The school's two location notes under the Hunt card (`locationOff`, `needsPrecise`, existing ids) now say *Hunt mode* as the house's do (`school_map_location_off`, `school_map_needs_precise`; they were the no-Hunt pair); the iPhone's `…NoHunt` pair is unchanged. `HuntWords` (`:ui`) reads them as `SpaceWords` does; Android's
+notifications and the iPhone's alerts word themselves with it. A kind other than the house gets its own alerts channel, `alerts_<kind>`, created the first time its
+walk alerts, named and described in the kind's words and as private on a lock screen as the house's `alerts`; **the lock-screen public text stays "Doorprints
+alert" for every kind** and names none. The permissions and the foreground service type are unchanged ([13](13-android-release.md) needs no change).
+
+**The website** has no Hunt mode (the house tool is phone-only, README): nothing there decides to show Hunt UI, so the website reads the capability nowhere; its
+resolver (`capabilitiesOf`) and the shared vectors carry the new block, and `kind-capabilities.spec.ts` holds the school's and the limits.
+
+**Files cleared of house literals** (kinds PR 26; the list the later kind-literals check starts from): `HuntSpace.kt`, `Space.kt` (`huntHere`, `HuntWords`), the Hunt
+part of `MapScreen.kt` (the card, the switch, the street line, the notifications note, the rationale), the Hunt part of `Root.kt` (the walk's end, the deep links,
+the alert's kind, the list tab's label), `HuntService.kt`, `HuntEngine.kt`, `IosHunt.kt`, the alert path of `Notifications.kt`, the Hunt intents of `MainActivity.kt`,
+the alert links of `MainViewController.kt`. **What still names the house, on purpose**: `HuntEngine.radiusFor` (the Settings radius is the house's override),
+`Notifications.alertsChannel` (the house's `alerts` channel is the one that existed), and the place check's `PlaceKind.HOUSE` and `*_house` words, which are the
+walk-to-a-candidate words read through `PageWords` already (not Hunt mode). The map-rules files do not read a kind: the tripwire of §18.19 still passes and no map
+file was touched (ADR-22).
+
+**Out of scope:** a per-kind radius setting, a stay length per kind, and the Hunt reminders before viewings (a viewing is the house's).
+
+**Tests** ([06](06-test-plan.md) TC-U-270, TC-M-84): `KindCapabilitiesVectorsTest`, `kind-capabilities.spec.ts` and `KindCapabilitiesFileTest` (the block, the 30 to
+300 limit, the school's 100 m), `KindWordVectorsTest` and `kind-words.spec.ts` (the words), `HuntSpaceTest`, `HuntEngineTest` (the school's radius, no street memory,
+no stay offer), `SpacesRootTest` (the school space has the card, its switch starts a school walk, a school walk stops on leaving, an area wake-up starts the default
+kind's walk, the stay alert makes a school), `HuntKindAlertsTest` (the notification wording and channel), `IosHuntTest`; mutation list
+`tools/mutations/kinds-26-hunt.json`, all killed; the baseline `school_map_hunt_{en,hi}_light.png` and **zero diff** in every house baseline.
+
+### 18.21 Compare for any kind, and the school's checklist (kinds PR 27, DRAFT for the owner's review)
+
+Compare was the house's: its scoring was the person's ten house criteria and its rows were fixed code. It now reads the kind. **The
+rule.** What Compare scores and marks is `capabilities.compare.criteria` of the kind file (§18.19), resolved by the pure function
+`compareCriteria(kind)` (website `shared/compare-criteria.ts`; the phones' `CompareCriteria` in `:shared`): each id is a **checklist
+item** of the kind (scored 0 to 5, a higher score is better) or a **typed extra** of the kind that its section shows (a number or an
+amount, and any other type, which is shown); an id the kind has neither of is dropped, and the order is the kind file's. **The
+direction is the extra's own `better`** (`lower` or `higher`, S4b-BL-292), declared once per field in the kind file, so the schema
+needed no new key: a number or an amount with no `better`, and a text, an option or a switch, is shown and never marked. A checklist
+item is always higher-is-better. A kind with no `compare` has no criteria and ranks by its rating (§18.13). Compare stays per space
+(§18.13): a mixed selection is not offered, and a pick of another space is refused with the same sentence as before.
+
+**What it changes.** `scoringForKind(kind, personScoring)` is what the candidates of a kind are ranked under: for the house it returns
+the person's own scoring, the same object, so the house's weights, must-haves, custom criteria, rows and ranking are exactly what they
+were (`compare-house-pins.spec.ts` and every house golden are untouched); for another kind it is the kind file's checklist in order,
+each item Medium (weight 2) and counted when `compare` names it (weight 0, shown "ignored" on the page, when it does not), no
+must-haves, under the person's rating share. The person's criteria records are the house's (Your data > Criteria stays the house's;
+a school's items count equally, and per-kind weights are not built). Three screens read it: the **Compare** table (a *Checklist* score
+row, one row per counted item with the best marked, the kind's extras with the best marked only for the ones `compare` names, in the
+direction the file gives), the **candidate page** (its checklist card asks the kind's items by the kind's words, with no link to the
+house's criteria) and the **list row** (the score). The best checklist cell is the highest score even when only some candidates have
+one; the best of an extra needs two values that do not tie.
+
+**The school (a draft: the items and the choice of criteria are for the owner to review; hi, ta and te under review).** `school.json`
+gains the `checklist` section and eight items, keys that do not clash with the house's (the criteria records are global by key):
+`dropoff` (Safe drop-off and pick-up), `grounds` (Classrooms and playground), `sanitation` (Drinking water and toilets), `teachers`
+(Teachers are approachable), `classsize` (Class size), `homework` (Homework and daily schedule), `activities` (Sports and activities)
+and `safety` (Safety and CCTV); their labels are web keys `school.check.<key>` and Android keys `school_check_<key>` in four languages.
+Its `compare.criteria` are the eight items, then `fees` (per year, lower is better) and `commuteMinutes` (lower is better); the
+admission fee is shown and not marked, because it is paid once and rarely decides between schools. Ten is the schema's limit.
+
+**The phones.** `:shared` `CompareCriteria` is the twin of `compare-criteria.ts` (`CompareCriteriaVectorsTest` reads the same
+`compare-vectors.json`); `SchoolKind` and `KindCapabilities` carry the school's checklist labels (`school_check_<key>`, four languages in the
+Compose resources) and its `compare`; `CompareScreen` ranks and lays out the table under `CompareCriteria.scoringFor` and marks the best of an
+extra only for the extras `compare` names; `HouseEditScreen`'s checklist asks the school's eight items by the school's words; `HouseListScreen`
+scores a school; Settings keeps *Criteria* the house's; `ExportModel.shows` keeps a school's copy as it was. The phone marks the best cell of an
+extra and, as for a house, the best candidate by its header (no per-item mark on the checklist rows). The Roborazzi baselines
+`school_edit_en_light`, `school_edit_ta_dark` and `school_list_en_light` change (the checklist and the score) and `school_compare_en_light` is
+new; every house baseline is unchanged. *Verification state of the phone half is in [06](06-test-plan.md) TC-U-271.*
+
+**Not here (stated, not hidden).** The readable copies and the backup's tables write a school's score and checklist as they did (a
+school's copy has no score or checklist section: `copyShows` keeps `section.checklist` the house's) and the AI's school slots do not
+name the checklist, so what a provider sees is unchanged; per-kind weights and a Criteria page for another kind are not built; a
+user-authored kind file is not read at run time yet. A checklist score of a school travels in the candidate's existing `checklist`
+map (any key, 0 to 5), so the backup, sync and the server need no change. The map's rules and India's boundaries are not touched
+(no map-rules file takes a kind).
+
+**Tests** ([06](06-test-plan.md) TC-U-271): `docs/schemas/kinds/compare-vectors.json` (format `doorprints-compare-vectors/1`: each kind's
+resolved criteria with direction, label keys and words, lists of ids the resolver must read alike, the scoring, and three sample
+entries to sorted, scored and marked outcomes worked by hand), read by the website's `compare-criteria.spec.ts` and the phones' `CompareCriteriaVectorsTest`; `compare-space.spec.ts` (the
+school's table, checklist rows, best marks, four languages), `school-form.spec.ts` (the checklist card), `school-words.spec.ts`,
+`school-kind.spec.ts`, the layout gate with `GATE_DEV_KINDS=1` (384 of 388 here, the same four map-page layout shifts as the base),
+the accessibility sweep, and the mutation lists `tools/mutations/kinds-27-compare.json` (website) and `kinds-27-compare-android.json` (`:shared`).
+After a merge of the website's part, the live UI check is `ONLY=pages,flows` (strings and Compare), not the full run.
+
+### 18.22 The server reads every kind from its kind file (kinds PR 28)
+
+**Why.** The server knew the school as a Java constant (`AiKinds.SCHOOL`, pinned to the JSON by `AiKindFileTest`), and the house as hand-written
+prompts and documents (`HouseDocuments`, `ListingExtractionService`, the Ask and Plan texts), so a new kind meant new Java. Now a kind file in
+`docs/schemas/kinds` is the one thing a kind needs on the server, and the house is read like any other. Nothing on the wire, in the backup or in
+Flyway changes (JSON field names and V1 are as they were; there is no migration).
+
+**The files in the build.** The Docker build sees only `backend/`, so the server carries a copy of each file: `backend/src/main/resources/kinds/<id>.json`,
+byte for byte the file in `docs/schemas/kinds` (`KindFileResourcesTest` fails until the copy is made, the way the India boundary data's copy is held).
+`KindFiles.builtIn()` reads every `kinds/<id>.json` on the class path once. The server never reads a kind file from a person's data.
+
+**The reader.** `KindFiles.parse` checks the limits of `kind.schema.json` for everything the server acts on (id, version, core ids, typed extras with
+their per-type keys and ranges, the search ids, the `ai` slots and words, the `capabilities`) and the shape of what the apps own (labels, sections,
+statuses, checklist, questions), and refuses the first fault with its path (`KindFileException`). It is strict: an unknown key at any level, a
+prototype key (`__proto__`, `constructor`, `prototype`), a duplicate key, a wrong type, a number out of range, a nesting over 16, a string over 20,000
+characters or a file over 256 KiB is refused. **A kind file carries no map configuration** (owner constraint, §11.1 and §18.19): the 14 keys of
+`forbiddenMapKeys` in `capabilities-vectors.json` are refused anywhere in the file, not only where the schema has no property. Rules the schema cannot
+say: a slot names only a core id, an extra of the file or a line the server writes (`areaNotes`, `distances`, `visits`, `rooms`, `questions`, `viewings`,
+`moveIn`, `checklist`, `amenities`); what `never` names is in neither `ask` nor `plan`; an extra an `ai` slot names is readable (enum, text, bool, money
+with one cadence, a whole number or a date in `ask` and `plan`; no number or date in `extract`) and has its words.
+
+**Words, not prompts.** The kind file gains an optional `ai.words` (`noun`, `records`, and for each typed extra a slot names its `words` and the
+words of each option). They are short English words (`^[A-Za-z][A-Za-z0-9 .,'()/-]{0,59}$`): no markup, no colon (a document line's key ends at the first
+colon), no line break, so a kind file still cannot carry a prompt. The Ask refusal is derived (`I don't know based on the <records> you have saved.`;
+the house's and the school's are exactly their old sentences). A kind file without `ai.words` is not readable by the server's AI and is read as a house.
+
+**The texts.** A kind with no prompt pack gets Extract, Ask and planner texts written from its words (`KindPrompts.generic`), with the rules of every
+kind (data not instructions, nothing guessed, a fixed refusal, the neutral rule). The house and the school keep the hand-tuned texts the house pins and the
+shared vectors hold byte for byte, now as data: `backend/src/main/resources/kinds/<id>.prompts.json` (the Extract system text and the fields of its
+structured answer, the Ask system text, the planner's system text; the only `%` in them are the fixed directives, checked on load). A pack is the
+server's own resource, read only from the class path; a kind file cannot name one.
+
+**One code path.** `AiKind.from(KindFile, KindPrompts)` builds the AI kind of every file, the house's too (`AiKinds.HOUSE`, `AiKinds.SCHOOL`). `AiKinds.of`
+and `require` keep their contract (null for the house and for a kind that is not available or has no file: read as a house; a 400 for a kind outside
+`app.kinds.available`); the new `readAs` names what a candidate is read as, never null. The Ask document is written by `KindDocuments.text` for every kind,
+line by line in the `ask` slot's order: the lines the server writes by id (the house's price, size, area, floor, cost, rooms, questions, viewings, moving in
+and checklist keep their words and rules, each in the order the house file's slot gives) and any other extra by its type and its words. The Ask prompt, the
+Extract prompt, the planner text and the refusal read the kind's texts. The listing extract's answer is built from the kind's fields (`KindOutputConverter`:
+its JSON schema and format text are byte for byte what Spring AI wrote for the two records it replaces), read field by field, and sanitised by
+`KindDraftSanitizer` in the house's fixed order. A house's money cadences are read from the file's core `money` (`KindFiles.moneyCadences`, used by the
+candidate validation and the legacy backup reader) instead of a Java set. The metadata of a document carries its `kind` unless the kind is always available
+(the house).
+
+**What stays in Java, on purpose.** The closed list of ids the server writes by name (the house's lines above, with the type each must have in a file that
+defines it); the two hand-tuned prompt packs; the Plan tools' view of a house (`HouseSearchService`: its text filter reads the address and notes, so the house
+is not cut to the `plan` slot there, §18.11); and the store filter by the metadata `kind` in `RagService`. A kind file written by a person, a place to keep
+one and a review of free words before they reach a prompt are future work; the loader already refuses what such a file must not carry.
+
+**Tests** ([06](06-test-plan.md) TC-U-272..277): `KindFilesTest` (the built-in files, the 60 invalid `capabilities` cases and the valid ones of the shared
+vectors, hostile files), `KindFileResourcesTest` (the copies, the packs, hostile packs), `ServerKindDocumentsTest`, `ServerKindExtractTest` and `ServerKindPlanTest`
+(a synthetic kind, `backend/src/test/resources/kinds/dojo.json`, served with no Java and no pack), `ServerKindsVectorsTest` (`space-scope-vectors.json`'s server kinds);
+the house pins (`HouseAskPinsTest`, `HouseExtractPinsTest`, the plan pins), `HouseAiSlotsTest`, `AiKindFileTest` and the school's vector tests pass unchanged;
+mutation list `tools/mutations/kinds-28-server.json`. `mvn verify` runs on the pull request.
+
+### 18.23 Contacts, rooms, moving in, viewings and questions as capabilities (kinds PR 29)
+
+**Decision (owner direction, 2026-10-15).** The places a kind shows for its contact, its rooms, its moving in, its viewings and
+its questions are switched by `capabilities`, not by a kind id: a place is shown only while the kind's file lists it **and** the
+capability is on (`capabilityAllows` on the website, `KindCapabilities.allows` in `:shared`; both are read by the kind's labels,
+`KindLabels.isVisible`, so every screen that asked `isVisible` already follows them). The rules, held to one another by
+`kind-capabilities.spec.ts`, `KindCapabilitiesVectorsTest` and the vectors' `sectionsFollow`:
+
+| Place | Shown while | The house | The school |
+|---|---|---|---|
+| `section.rooms` | `rooms` is on | on | off |
+| `section.moveIn` | `moveIn` is on (it stays a boolean: there is one built-in list, `default-movein.json`; a seed name is added the day a second list exists) | on | off |
+| `section.viewings` and `section.questions` | `viewings` is present | `{questionsSeed: house}` | `{questionsSeed: school}` (new) |
+| `field.brokerId` | `contacts.role` is `broker` | broker | office |
+
+**Contacts.** A saved phone makes or links a broker only where the file says `contacts.autoCreateFromPhone`. The phones did this
+since S4b-BL-260 (`BrokerStore.linked`); the website did not: `BrokerStore.link` and the one-off migration made a broker from a
+school's phone (found building this change, fixed with a test). They now read the capability on both stacks; the `broker` record
+type stays internal (no kind file names it), and a kind with another role has a name and a phone on the candidate and nothing more.
+
+**Viewings and questions for the school (a DRAFT for the owner's review; hi, ta and te under review).** `school.json` lists the
+`questions` and `viewings` sections (*Questions for a visit*, *School visits*) and `capabilities.viewings.questionsSeed` is `school`
+(the schema's enum is `house`, `school`). A school visit or open day is a viewing of the school: the same record, the same form,
+the same reminders, the same calendar file; the words are the kind's: eighteen more ids of the kind file's `words` (`viewingPlan`,
+`viewingNone`, `viewingAll`, `viewingsIntro`, `viewingsEmpty`, `viewingsDataBody`, `questionsDataBody`, `questionsIntro`,
+`questionsEmpty`, `questionsNoneToPick` and, phone only, `viewingChannel`, `viewingChannelDesc`, `viewingSoon`, `viewingTitle`,
+`viewingOpen`, `viewingGone`, `viewingDirections`, `viewingBody`), the house's equal to today's strings in four languages, the
+school's new. The Android reminder is worded by them and posts on its own channel, `viewings_school`, private on a lock screen like
+the house's (the lock-screen public text stays *Doorprints reminder* for every kind); the iPhone's body is the kind's `viewingBody`
+(it has no channels). The list of viewings (*Your data > Viewings*, *Settings > Viewings*) is the space's: a school's visits in the
+school space, the house's viewings in the house space, one whose candidate is gone in the default space; with one space it lists
+all, as it always did.
+
+**One bank per kind, in the one set of records.** The school's seed is `docs/schemas/kinds/school-questions.json` (format
+`doorprints-kind-questions/1`, six questions: fees, admission, class size, safety, water and toilets, hours and holidays), embedded as
+`SCHOOL_QUESTIONS` and `DefaultQuestions.SCHOOL` and read by `question.spec.ts` and `DefaultQuestionsFileTest`. Its ids carry the
+kind (`qd_school_<name>`; a question the person adds in a school space is `q_school_` and 8 hex), so **a question's kind is read from
+its id alone**: no record, backup or sync format changes (door 9; the server stores a question as any record). The school's bank is
+seeded **the first time its questions are opened** (the Questions page of the school space, a school's page), once, by the local mark
+`questions.seeded.school` (not synced); a person who only keeps houses never gets a school question, so a house-only bank, its backup
+and its sync are exactly what they were. *Reset to defaults* resets the bank of the space on screen and leaves the other kind's
+edits; a question's *applies to* control (rent, buy, both) is not offered for a school, whose scope is `BOTH` (`questionScopesOf`,
+`QuestionScope.of`, held to each kind file's `questions.scopes`). The 100-question cap counts every kind's.
+
+**Search and the AI.** Answers were already searched for every kind (`searchText`, `HouseSearch`); the school's `search` list now names
+`questions` as the house's does. The school's `ai` slots are unchanged: a provider still sees none of the school's questions or
+viewings (what the AI sees is its own change; the server's `Ask` lines for a school do not name them).
+
+**House literals closed on these paths.** `HouseEditScreen` (`it.forKind(...)` when the draft is not already of the space's kind),
+`PasteListing` (`KindSettingRules.HOUSE`, the wire's default kind), `CompareScreen`, `ModelLabels.displayName` and `KindSettingsRows`
+(`CompareCriteria.usesPersonScoring`: a kind whose Compare scores the person's ten checklist keys), `BrokerStore` (the capability),
+`HouseStatusRules`; `QuestionsSection`, `ViewingsCard`, `ViewingsHistory`, the Settings rows' hints and the Questions screen read the
+kind's labels and words instead of the house's. The iPhone's reminder names no kind (`KindWordKeys.key`).
+
+**Not here (stated, not hidden).** The viewing form, its calendar file and the second-viewing prompt keep their generic words (*House*
+in the picker, *First viewing*); the merged Hunt reminder (*Viewing at ... Start Hunt mode?*) keeps the house's words; a school's
+readable copy lists its questions and viewings under the generic headings (copies are WP8's, §18.24); *Start Hunt mode* from a
+reminder starts the default kind's walk (both kinds have viewings now: §18.20); the AI does not read school questions.
+
+**Tests** ([06](06-test-plan.md) TC-U-278, TC-M-86): the website's `kind-capabilities.spec.ts`, `kind-labels.spec.ts`, `question.spec.ts`,
+`question-store.spec.ts`, `broker-store.spec.ts`, `questions-page.spec.ts`, `viewings-page-spaces.spec.ts`,
+`house-viewings-card.spec.ts`, `school-words.spec.ts`, `school-form.spec.ts` (and its golden), `kind-words.spec.ts`; the phones'
+`KindCapabilitiesVectorsTest`, `KindWordVectorsTest`, `DefaultQuestionsFileTest`, `QuestionsRepositoryTest`, `SpaceUiTest`,
+`HuntSpaceTest`; mutation list `tools/mutations/kinds-29-web.json`; the baselines `school_viewings_{en,hi}_light.png` and
+`school_questions_{en,hi}_light.png` (new) and `school_edit_{en_light,ta_dark}.png` (they gain the questions and visits cards); **zero
+diff in every house baseline**.
+
+### 18.24 Filters, the baseline kind and a school's copy words as capabilities (kinds PR 30)
+
+**Two more members of `capabilities`** (additive; the kind's `version` stays 1; the schema, the website's `parseCapabilities`, `:shared`'s
+`KindCapabilities.parse` and the server's `KindFiles.capabilities` refuse the same malformed values, held to `capabilities-vectors.json`):
+
+| Key | Meaning | The house | The school |
+|---|---|---|---|
+| `filters` | the extras the list and the map can be filtered by: ids of enum or switch extras of the kind, at most six, no repeats, in the order the rows are shown | none | `board`, `medium`, `busService` |
+| `baseline` | the kind whose paths, wire shape, copy file names and words are the app's original, from before there were kinds; only the house | true | false |
+
+**Filters.** The rows of the list's filter were *every* enum and switch of a kind that is not a house field (S4b-BL-265, §18.10); they are
+now the kind file's `filters`, in its order (`filterableExtras` on the website, `KindFilter.rows` in `:shared`). For the two built-in kinds
+the rows are the same as before (the school's board, medium and bus), so `kind-filter-vectors.json` and the baselines are unchanged; a new
+kind chooses its rows in its file. A filter on a number or an amount is not built (the rows are choices).
+
+**The baseline kind.** The house's addresses (`/houses/:id`, `/compare`, `/ask`, `/plan`), the AI calls that name no kind, the copies'
+file names that are not renamed by the kind's plural word (`Doorprints-schools-2026-09-22-...` is a school's, §18.13) and the house's
+own words were compared with the id `house`. They ask `isBaselineKind` (`capabilities.baseline`) now: `spaceFileName`, `aiShownIn`,
+`SpaceService.detailLink` and `toolLink`, `copyVoice`, the routes' tool pages and the three AI calls of `AiService`. A kind this build does
+not know is not the baseline. `baseline-literals.spec.ts` scans those five files and fails on a comparison with the literal. The stored
+default of a candidate's kind (`kind ?? 'house'`, door 3), the wire's `kind` default and the phones' `KindSettingRules.HOUSE` are the
+record format's, not a capability, and stay; the house's pins (the AI request bodies, the routes, every copy name) are byte for byte
+what they were.
+
+**A school's copy.** The copy's file name is the kind's plural word (already so: `many`); its sections are placed where the kind file lists
+them (the cost block headed *Fees*, §18.10) and, since §18.23, its visits and questions are named in the school's words in every writer:
+`kind-export-words.ts` and `KindExportWords` gain `section.viewings`, `table.viewings` and `section.questions` (*School visits*,
+*Questions for a visit*, in four languages, hi, ta and te under review), held to each other by `SchoolCopyVoiceTest`. The order of a
+copy's blocks stays the house's fixed order for every kind (reordering every writer by the kind file is not built); the house's
+headings are untouched.
+
+**Tests** ([06](06-test-plan.md) TC-U-279): `kind-capabilities.spec.ts`, `baseline-literals.spec.ts`, `extra-filter.spec.ts`,
+`kind-copy-voice.spec.ts`; `KindCapabilitiesVectorsTest`, `SchoolCopyVoiceTest`, `KindFilterVectorsTest`; the server's
+`KindCapabilitiesFileTest`; mutation lists `tools/mutations/kinds-30-web.json` and `kinds-30-android.json`; no new screen, so no new baseline
+(the school's list with its filter rows, `school_list_en_light.png`, is unchanged), and zero diff in every house baseline.
+
+### 18.25 Every word comes from the kind file (kinds PR 31)
+
+**What was left.** The kind file's `words` (S4b-BL-278, S4b-BL-316) held the ids, but three stacks still held a copy by hand: the website's
+`space-words.ts` tables and `space-tool-words.ts` (about a hundred house-key to school-key pairs, of which 22 carried an id), and the phones'
+`KindWordKeys` map. A new kind would have needed all three to be edited, and a copy can drift.
+
+**Built.**
+
+- **Every word has an id.** `kind.schema.json` `words` names 159 ids (94 before; additive, `format` stays `doorprints-kind/1`, door 4): the 16 of
+  S4b-BL-278, the phone's other words of S4b-BL-316, the Hunt and viewing words of kinds PR 26 and 29, and now the website's: Compare, Ask,
+  Plan, the copies' cover and options, the Areas and Places pages, the tab titles, the walk-end sheet, the map's offline and on-the-server lines,
+  the calendar file's word and the viewing reminder's line, the iPhone's empty list and map note. Twelve website keys were joined to existing phone
+  ids (the same slot: `compareChoose`, `exportScope`, `aiDisclosure`, ...); a word only one stack has is `null` on the other (`android: null`
+  for the website's words; `web: null` for the phone's). `house.json` holds today's keys, so a house space is word for word what it
+  was; `school.json` holds the school's. A kind with no `words` reads the house's.
+- **No hand-written table.** `tools/gen-kind-words.mjs` writes `web/src/app/core/kind-words.generated.ts` (one row per word, a column per kind file)
+  and `android/shared/.../model/KindWordData.kt` (one map per kind) from `docs/schemas/kinds/*.json`; `--check` (with `tools/gen-kind-words.test.mjs`) is in
+  `tools/check.sh` and the *Commit author emails* job of `security.yml` and fails a stale file. The website's `toolWord` table of a kind is
+  the pairs "the house's key, the key this kind reads" of the rows (`core/kind-word-table.ts`); `spaceWords` reads the 16 ids; the phones'
+  `SpaceWords`, `HuntWords` and `PageWords` are built for every kind in `KindWordKeys.KINDS`. A kind the build has no file for reads the house's. The one table
+  left is the website's `*` table (`ANY`): the words of a thing that acts on every space belong to no kind.
+- **Entries, not houses, once more than the house is in use.** The texts of the whole app that name houses (the website's Connect page, the
+  sync-paused and *remove all data* texts, the first download; the phones' Settings: the alert distance, the GPS note, the server's counts, the
+  AI notes, the Places hint, the privacy note) read *entries* when two or more kinds are on or the default kind is not the baseline
+  (`SpaceService.appWord`, `SpaceUi.neutral` and `appText`), the rule the backup's and the import's words already had (S4b-BL-291). The house
+  app alone keeps today's texts; hi, ta and te are marked *under review*.
+- **The tour.** Owner decision: a generic sentence, not a text per kind. The house tour is word for word what it was. In another kind's space a step
+  reads the kind's own words where it names the Add button, the search, the details, Compare or the viewings, and one generic sentence
+  (`tour.kind.welcome`, `.body`, `.action`, `.doneBody`, `.doneAction`; on the phones `tour_kind_*`) with the kind's plural where the house's text says
+  *house*; Compare opens the space's own address (`/k/<kind>/compare`). A step that names no kind is the same everywhere.
+- **Notifications, the walk check, the reminder.** The viewing reminder's line reads *A visit at ...* for a school (the kind of the viewing's
+  candidate); the walk-end sheet (*Link it to a school*, *Which school was this walk to?*, the empty line and the full-house line) and the
+  calendar file's word follow the kind on both stacks. The notification channels and bodies of Hunt mode and of the viewings were already
+  the kind's (kinds PR 26 and 29); the others (the walk's battery stop, the exports, the area wake-up) name no kind.
+- **Voice.** No Voice text names a house in any language (hints, rationale, statuses), so none needs a kind's word; a test pins it
+  (`school-words.spec.ts`, `KindWordVectorsTest`). **Copy file names** are the kind's plural word since §18.24; **empty states** (the list, the
+  map, the iPhone's) read the kind's words.
+- **The server.** It reads no top-level `words`; its copies of `house.json` and `school.json` (`backend/src/main/resources/kinds/`) are
+  byte-identical (`KindFileResourcesTest`) and `KindFiles` allows at most 200 words (159 now: 41 left before the limit is raised).
+
+**Vectors and tests** ([06](06-test-plan.md) TC-U-280, TC-M-88). `kind-word-vectors.json` now pins 143 words after the sixteen (the website's key
+and English text of each, the phone's key and text in four languages where it has one); web `kind-words.spec.ts`, `tour-text.spec.ts`,
+`space.spec.ts` (*the app-wide texts*), `viewing-reminder.service.spec.ts`, `walk-end-sheet.spec.ts`; `:shared` `KindWordVectorsTest`;
+`:ui` `SpaceUiTest`, `TourTest`; `:app` `SchoolWordsScreenTest`; mutation lists `tools/mutations/kinds-31-web.json` and `kinds-31-android.json`.
+New baselines (English and Hindi, light): `school_walk_end`, `school_walk_end_pick`, `school_tour_add`, `school_tour_compare`; zero diff in every house baseline.
+
+**Not built.** A tour text per kind (owner: generic); a third kind's words (it reads the house's until its file has `words`); a kind chosen by the person.
+
+### 18.26 The conformance suite and the kind tripwire (kinds PR 32)
+
+**What was missing.** Every earlier kinds change was checked on the house and the school. Nothing proved that a *third* kind, one with every
+capability on, works on all three stacks, and nothing stopped a new feature from quietly asking "is this the house?" instead of the kind's
+capability. A kind is a file; this pull request makes that a tested claim.
+
+**Built.**
+
+- **`zz_all`, the synthetic kind** (`docs/schemas/kinds/test-all.json`): every capability on (`map`, `hunt`, `rooms`, `moveIn`, `contacts`,
+  `viewings` with a questions seed, `compare` criteria, `paths`, `identity`, `filters`), two money cadences (month, once), three money extras,
+  a number, an enum, a text, a bool and a date extra, a checklist and `ai` slots. It is valid against `kind.schema.json` and is accepted by the
+  Java loader (`KindConformanceFileTest`), which serves it with no Java of its own (no prompt pack: its prompts are written from its words). It is
+  **never in a release build's list**: no build file, no `application.yml` and no kind-files folder holds it, and a test on each stack says
+  so (`release-kinds.spec.ts`, `ReleaseKindsTest`, `KindConformanceFileTest`); the tripwire fails any source file that names it.
+- **The same flows for every kind** (website): `shared/testing/kind-flows.ts` has `forKind('house' | 'school' | 'zz_all')`, which registers the
+  file through four development-only seams (`registerTestKind`, `registerTestCapabilities`, `registerTestAiKind`, `registerQuestionBank`; each
+  throws outside development mode, so a release build cannot register a kind) and builds candidates of the kind. `kind-conformance.spec.ts` runs
+  one set of tests per kind: the file against the schema, the registry, which pages and cards the capabilities show, the four languages' keys for
+  every word, the routes, search and filters, saving, deleting and undoing, the copies (Markdown, HTML, CSV), the backup round trip and the AI
+  document.
+- **India's boundaries for every kind.** The boundary rules take a style and a URL, never a kind. `india-boundaries-kinds.spec.ts` draws the map
+  with each kind registered and compares it with the house's, byte for byte; the tripwire fails a kind symbol in any of the five map-rules files
+  ([06](06-test-plan.md) TC-M-25, *every kind*).
+- **The tripwire** (`tools/check-kind-literals.mjs`, `tools/kind-literals-allow.json`; `tools/check.sh` and the *Commit author emails* job of
+  `security.yml`): a non-test source file may not say `'house'`, `"house"`, `HOUSE_KIND` or `KindSettingRules.HOUSE`, nor name `zz_all`, outside
+  the allow-list (33 files: the kind files' loaders and registries, a candidate's record format, the wire adapters of the backup and the sync,
+  the dictionaries; each entry has its exact most hits and a stale entry fails). The code asks the capability instead:
+  `isBaselineKind`, `kindOfCandidate`, `baselineKindId` (website), `KindCapabilities.of(x).baseline`, `Candidates.kindOf`,
+  `Candidates.BASELINE_KIND` (phones), `AiKinds.isBaseline`, `AiKinds.kindOf` (server).
+
+**Found and fixed on the way.**
+
+- The website's backup dropped a non-house candidate's `kind`, so a school saved and imported came back a house (`backupHouse`).
+- The generic AI document (website `kind-ai.ts`, phones `KindAi.kt`) wrote no `money`, `checklist` or `date` line and took the number bounds as 0 to 0
+  when a file named none; they now do what the server's `KindDocuments` does (the bound defaults to 10^15, an amount from 0).
+
+**Not built** (named, so nobody reads them as done). The phones have no host-test registry for a synthetic kind (their `DevKinds`, `KindLabels`
+and `DefaultQuestions` are hand copies), so the Compose screens of `zz_all`, its Hunt rules and its copies are covered by the kind-file tests and
+the house and school screens, not by a `zz_all` Space; the TC-M-25 pass with the live map for a school and `zz_all` (zoom 5 to 8 over Kashmir
+and Arunachal Pradesh) is a manual step, not run; the house-known cost and rooms ids in the devices' AI documents; a user-authored kind
+(still Planned, ADR-36b). Every device-side `zz_all` flow is therefore a follow-up, not a claim.
+
+**Tests** ([06](06-test-plan.md) TC-U-281, TC-M-89; [ops/manual-test-checklist.md](ops/manual-test-checklist.md) MT-121); mutation list
+`tools/mutations/kinds-32-web.json`.
 
 ## 19. Voice input (ADR-37)
 

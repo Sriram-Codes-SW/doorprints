@@ -27,6 +27,7 @@ import { HouseApiService } from '../../core/house-api.service';
 import { StatsDto } from '../../core/models';
 import { errorMsg } from '../../core/format';
 import { Announcer } from '../../core/announcer.service';
+import { SpaceService } from '../../core/space.service';
 import { Msg, TranslationService } from '../../i18n/translation.service';
 import type { TKey } from '../../i18n/en';
 import { ConfirmService } from '../../core/confirm.service';
@@ -71,6 +72,7 @@ export class ConnectPage {
   private readonly router = inject(Router);
   private readonly confirm = inject(ConfirmService);
   private readonly announcer = inject(Announcer);
+  protected readonly space = inject(SpaceService);
   protected readonly ai = inject(AiService);
   private readonly aiSession = inject(AiSessionState);
   private readonly pairingApi = inject(PairingService);
@@ -572,7 +574,7 @@ export class ConnectPage {
         this.offerSaveAnyway.set(false);
         if (thenSave) {
           this.announcer.announce({
-            key: 'connect.success',
+            key: this.space.appWord('connect.success'),
             params: { houses: stats.houses, visits: stats.visits, streets: stats.streets },
           });
           this.commit(tested);

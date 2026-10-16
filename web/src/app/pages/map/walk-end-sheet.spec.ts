@@ -21,6 +21,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ConfirmService } from '../../core/confirm.service';
 import { houseOf } from '../../core/candidate';
 import type { CandidateDto } from '../../core/candidate';
+import { DEFAULT_KIND_KEY, ENABLED_KINDS_KEY, EXPERIMENTAL_KINDS_KEY } from '../../core/kind-setting';
 import { newHouse } from '../../core/models';
 import type { HouseDto } from '../../core/models';
 import { TraceRecorderService } from '../../core/trace-recorder.service';
@@ -94,6 +95,20 @@ describe('WalkEndSheet', () => {
     };
     return { fixture, host, dialog, $, click };
   }
+
+  it('in a school space it says school: the sentence, the button, the picker and the empty line (kinds PR 31)', async () => {
+    localStorage.setItem(EXPERIMENTAL_KINDS_KEY, '1');
+    localStorage.setItem(ENABLED_KINDS_KEY, '["school"]');
+    localStorage.setItem(DEFAULT_KIND_KEY, 'school');
+    const r = await render();
+    expect(r.host.textContent).toContain('Link it to a school to keep it.');
+    expect(r.$('#walk-end-save')!.textContent!.trim()).toBe('Save with a school');
+    await r.click('#walk-end-save');
+    expect(r.$('#walk-end-title')!.textContent).toBe('Which school was this walk to?');
+    expect(r.$('#walk-end-none')!.textContent).toBe('You have no saved schools yet. Add a school first, or keep the walk for 30 days.');
+    expect(refusalMessage('houseFull', 'school')).toEqual({ key: 'school.traceSaveFull', params: { max: 20 } });
+    expect(refusalMessage('houseFull')).toEqual({ key: 'trace.save.houseFull', params: { max: 20 } });
+  });
 
   it('stays shut while no walk is to be asked about', async () => {
     const r = await render({ points: 3 });

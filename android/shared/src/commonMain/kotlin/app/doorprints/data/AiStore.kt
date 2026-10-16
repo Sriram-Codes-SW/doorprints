@@ -18,6 +18,7 @@
 
 package app.doorprints.data
 
+import app.doorprints.shared.model.KindCapabilities
 import app.doorprints.shared.ai.AiHouse
 import app.doorprints.shared.ai.AiKind
 import app.doorprints.shared.ai.AiProviderConfig
@@ -264,7 +265,7 @@ internal class AiStore(
     /** The kind to send the server for [space]: none for the house (today's call), the space's when the server named it, else a refusal. */
     private fun serverKind(space: SpaceView?): String? {
         val kind = space?.kind
-        if (kind == null || kind == KindSettingRules.HOUSE) return null
+        if (kind == null || KindCapabilities.of(kind).baseline) return null
         if (kind !in _serverKinds.value) throw ApiException(ApiException.Kind.AI_OFF)
         return kind
     }

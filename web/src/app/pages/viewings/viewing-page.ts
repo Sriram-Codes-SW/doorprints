@@ -25,6 +25,7 @@ import { ConfirmService } from '../../core/confirm.service';
 import { errorMsg } from '../../core/format';
 import { LocalDataService } from '../../core/local-data.service';
 import type { HouseDto } from '../../core/models';
+import { toolWord } from '../../core/space-tool-words';
 import type { TKey } from '../../i18n/en';
 import { TPipe } from '../../i18n/t.pipe';
 import { Msg, TranslationService } from '../../i18n/translation.service';
@@ -270,7 +271,7 @@ export class ViewingPage implements OnInit {
       viewing,
       house?.label || this.i18n.t('common.untitled'),
       house?.address,
-      this.i18n.t('viewings.icsWord'),
+      this.i18n.t(toolWord(house?.kind, 'viewings.icsWord')),
       this.stamp ?? Date.now(),
     );
   }

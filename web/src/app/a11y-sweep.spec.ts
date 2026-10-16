@@ -115,9 +115,9 @@ const OTHER: HouseDto = { ...newHouse(12.95, 77.6), id: 'h2', label: 'Lake view'
 const SCHOOL: HouseDto = {
   ...newHouse(26.1433, 91.7898), id: 's1', kind: 'school', label: 'Pine Hill School', status: 'SHORTLISTED', rating: 4, priceType: null,
   street: 'GS Road', locality: 'Dispur', createdAt: '2026-09-20T10:00:00.000Z', updatedAt: '2026-09-20T10:00:00.000Z',
-  extrasOther: { board: 'CBSE', busService: true, fees: { amount: 96000, cadence: 'year' } },
+  checklist: { safety: 5, teachers: 3, classsize: 4 }, extrasOther: { board: 'CBSE', busService: true, commuteMinutes: 20, fees: { amount: 96000, cadence: 'year' } },
 };
-const SCHOOL2: HouseDto = { ...SCHOOL, id: 's2', label: 'Oak Valley', extrasOther: { board: 'ICSE' } };
+const SCHOOL2: HouseDto = { ...SCHOOL, id: 's2', label: 'Oak Valley', checklist: { safety: 2, teachers: 3 }, extrasOther: { board: 'ICSE', commuteMinutes: 35, fees: { amount: 72000, cadence: 'year' } } };
 const PHOTO: PhotoSummary = { id: 'p1', createdAt: '2026-10-01T06:00:00.000Z', roomId: 'r1', tags: ['MOVE_IN', 'DAMP'], caption: 'Corner', metaUpdatedAt: 5 };
 const VIEWING = { id: 'v1', houseId: 'h1', startsAt: Date.now() + 3_600_000, durationMin: 30, kind: 'FIRST', status: 'PLANNED', remindMin: 60 };
 

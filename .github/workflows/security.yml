@@ -149,6 +149,17 @@ jobs:
           # docs/14 §7 *Status words*: no docs/10 row says In review without a pull request number (offline)
           node --test tools/check-sprint-status.test.mjs
           node tools/check-sprint-status.mjs
+      # docs/03 §18.25: the generated words of the kind files are what the kind files say (offline).
+      - name: Kind words are generated from the kind files
+        run: |
+          node --test tools/gen-kind-words.test.mjs
+          node tools/gen-kind-words.mjs --check
+      # docs/03 §18.26: the kind tripwire. No source names the house kind outside its allow-list, none names the test-only kind zz_all, and the
+      # map rules (style and India boundary lines) read no kind (offline).
+      - name: Kind tripwire (no house literal outside the allow-list, no zz_all, the map rules read no kind)
+        run: |
+          node --test tools/check-kind-literals.test.mjs
+          node tools/check-kind-literals.mjs
       # S4b-BL-175: the fake AI provider server's own tests (Node built-ins only, no network, no key). The adapters are run
       # against it by the Web (fake-provider.wire.spec.ts) and Android (FakeProviderWireTest) workflows.
       - name: Fake AI provider server tests

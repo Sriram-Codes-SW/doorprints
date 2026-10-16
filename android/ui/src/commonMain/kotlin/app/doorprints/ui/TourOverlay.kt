@@ -166,7 +166,7 @@ fun TourOverlay(
                 registry.firstOnScreen(step.targets)?.let { registry.scrollIntoView(it) }
             }
             PlacedCard(area, spot, bottom = false, gap, clear) { probe ->
-                StepCard(step, session.position, session.size, session.isFirst, session.isLast, probe, onNext, onBack, onSkip)
+                TourStepCard(step, session.position, session.size, session.isFirst, session.isLast, probe, onNext, onBack, onSkip)
             }
         } else {
             PlacedCard(area, null, bottom = true, gap, clear) { probe -> OfferCard(probe, onStart, onDecline) }
@@ -241,11 +241,11 @@ private fun CardSurface(title: String, probe: Boolean, content: @Composable Colu
 
 /**
  * One tour step: its count, the title (focused when the step appears), the text with the *Try it* line, and *Skip*,
- * *Back* and *Next* or *Finish*.
+ * *Back* and *Next* or *Finish*. Public so a screenshot can draw a step on its own, in the space it is given (kinds PR 31).
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun StepCard(
+fun TourStepCard(
     step: TourStep,
     position: Int,
     size: Int,
@@ -256,7 +256,13 @@ private fun StepCard(
     onBack: () -> Unit,
     onSkip: () -> Unit,
 ) {
-    val title = stringResource(step.title)
+    // The step in the space on screen: the house's own text for the house, the kind's words and the generic sentence for another kind (kinds PR 31).
+    val space = LocalSpace.current
+    val text = step.textIn(space)
+    val many = stringResource(space.words.many).lowercase()
+    @Composable
+    fun part(p: TourPart): String = if (p.many) stringResource(p.res, many) else stringResource(p.res)
+    val title = part(text.title)
     val focus = remember { FocusRequester() }
     // Focus goes to the title when a step appears, so a screen reader starts at what the step is about.
     if (!probe) {
@@ -279,12 +285,12 @@ private fun StepCard(
                 .then(if (probe) Modifier else Modifier.focusRequester(focus).focusable()),
         )
         Column(if (probe) Modifier else Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())) {
-            Text(stringResource(step.body), style = MaterialTheme.typography.bodyMedium)
+            Text(part(text.body), style = MaterialTheme.typography.bodyMedium)
             Text(
                 buildAnnotatedString {
                     withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(stringResource(Res.string.tour_try_it)) }
                     append(" ")
-                    append(stringResource(step.action))
+                    append(part(text.action))
                 },
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(top = 8.dp).fillMaxWidth()

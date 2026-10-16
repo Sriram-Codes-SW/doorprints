@@ -16,6 +16,8 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+import { baselineKindId, kindOfCandidate } from './candidate';
+import { isBaselineKind } from './kind-capabilities';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { GuardsCheckEnd, Router, type Routes } from '@angular/router';
 import type { BuiltInKind } from './dev-kinds';
@@ -35,12 +37,12 @@ const HOUSE_PATH = /^\/(?:houses|compare|ask|plan)(?:\/|$)/;
 export function kindOfPath(path: string): string | null {
   const m = SPACE_PATH.exec(path);
   if (m) return m[1];
-  return HOUSE_PATH.test(path) ? 'house' : null;
+  return HOUSE_PATH.test(path) ? baselineKindId() : null;
 }
 
 /** The space a candidate belongs to: its own kind when that kind has a space here, else the default space. */
 export function spaceOf(h: Pick<HouseDto, 'kind'>, multi: boolean, dflt: string, available: readonly string[]): string {
-  const kind = h.kind ?? 'house';
+  const kind = kindOfCandidate(h);
   return multi && available.includes(kind) ? kind : dflt;
 }
 
@@ -87,6 +89,17 @@ export class SpaceService {
     });
   }
 
+  /**
+   * The app-wide texts (Connect, Your data's sync and removal, the first download) say "houses" in the house app. Once more than the
+   * house is in use (two or more kinds on, or the default is another kind) they say "entries" (`*`, kinds PR 31; docs/03 section 18.25).
+   */
+  readonly neutral = computed(() => this.multi() || !isBaselineKind(this.dflt()));
+
+  /** An app-wide word: the house's key for the house app alone, the neutral one when {@link neutral}. */
+  appWord(key: TKey): TKey {
+    return toolWord(this.neutral() ? '*' : null, key);
+  }
+
   /** A house word in the space's own: the house's key in the house space, the kind's where it has one (S4b-BL-259). */
   kindWord(key: TKey): TKey {
     return toolWord(this.kind(), key);
@@ -105,7 +118,7 @@ export class SpaceService {
 
   /** A candidate's page in its space (a house keeps `/houses/<id>`). */
   detailLink(id: string, kind: string = this.kind()): string[] {
-    return this.multi() && kind !== 'house' ? ['/k', kind, id] : ['/houses', id];
+    return this.multi() && !isBaselineKind(kind) ? ['/k', kind, id] : ['/houses', id];
   }
 
   /**
@@ -118,7 +131,7 @@ export class SpaceService {
 
   /** A tool's page in a space: the house keeps `/compare`, `/ask` and `/plan`, any other kind has `/k/<kind>/<tool>`. */
   toolLink(tool: SpaceTool, kind: string = this.kind()): string {
-    return this.multi() && kind !== 'house' ? `/k/${kind}/${tool}` : `/${tool}`;
+    return this.multi() && !isBaselineKind(kind) ? `/k/${kind}/${tool}` : `/${tool}`;
   }
 
   /** The kind a new candidate is: the space's on `/k/<kind>/new` when that kind is enabled, else the default kind. */

@@ -16,6 +16,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+import { capabilitiesOf } from '../core/kind-capabilities';
 import type { KindExtra, KindFields } from '../core/kind-fields';
 import type { HouseDto } from '../core/models';
 
@@ -30,9 +31,16 @@ import type { HouseDto } from '../core/models';
  */
 export type ExtraFilter = Readonly<Record<string, string | null>>;
 
-/** The extras of `fields` the list can be filtered by, in the kind file's order: enums and switches. */
+/**
+ * The extras of `fields` the list can be filtered by: the ones the kind file names in `capabilities.filters` (kinds PR 30, docs/03
+ * §18.24), in that order, that are enums or switches of the kind. A kind that names none, the house, has no rows.
+ */
 export function filterableExtras(fields: KindFields): KindExtra[] {
-  return fields.others().filter((f) => f.type === 'enum' || f.type === 'bool');
+  const own = new Map(fields.others().map((f) => [f.id, f]));
+  return capabilitiesOf(fields.kind).filters.flatMap((id) => {
+    const f = own.get(id);
+    return f && (f.type === 'enum' || f.type === 'bool') ? [f] : [];
+  });
 }
 
 /** The choices of a filterable extra: an enum's option ids, or `yes` and `no` for a switch. */

@@ -54,4 +54,10 @@ describe('a release build ships the school compiled in but off (S4b-BL-309, 2026
     expect(availableKinds(false, null)).toEqual(['house']);
     expect(availableKinds(false, '')).toEqual(['house']);
   });
+
+  it('the synthetic conformance kind is never in a release list, and an unlisted id is not available (kinds PR 32)', () => {
+    expect(build.configurations['production'].define?.['DOORPRINTS_KINDS']).not.toContain('zz_all');
+    expect(availableKinds(false, 'house,school')).not.toContain('zz_all');
+    expect(RELEASED_KINDS).not.toContain('zz_all');
+  });
 });

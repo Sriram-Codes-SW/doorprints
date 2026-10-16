@@ -41,6 +41,9 @@ internal object KindExportWords {
             "col.label" to "School",
             "col.listingUrl" to "Website",
             "col.houses" to "Schools",
+            "section.questions" to "Questions for a visit",
+            "section.viewings" to "School visits",
+            "table.viewings" to "School visits",
             "section.cost" to "Fees",
         ),
         "hi" to mapOf(
@@ -55,6 +58,9 @@ internal object KindExportWords {
             "col.label" to "स्कूल",
             "col.listingUrl" to "वेबसाइट",
             "col.houses" to "स्कूल",
+            "section.questions" to "दौरे के लिए सवाल",
+            "section.viewings" to "स्कूल का दौरा",
+            "table.viewings" to "स्कूल का दौरा",
             "section.cost" to "फ़ीस",
         ),
         "ta" to mapOf(
@@ -69,6 +75,9 @@ internal object KindExportWords {
             "col.label" to "பள்ளி",
             "col.listingUrl" to "இணையதளம்",
             "col.houses" to "பள்ளிகள்",
+            "section.questions" to "வருகைக்கான கேள்விகள்",
+            "section.viewings" to "பள்ளி வருகைகள்",
+            "table.viewings" to "பள்ளி வருகைகள்",
             "section.cost" to "கட்டணம்",
         ),
         "te" to mapOf(
@@ -83,6 +92,9 @@ internal object KindExportWords {
             "col.label" to "పాఠశాల",
             "col.listingUrl" to "వెబ్‌సైట్",
             "col.houses" to "పాఠశాలలు",
+            "section.questions" to "సందర్శన కోసం ప్రశ్నలు",
+            "section.viewings" to "పాఠశాల సందర్శనలు",
+            "table.viewings" to "పాఠశాల సందర్శనలు",
             "section.cost" to "ఫీజు",
         ),
     )

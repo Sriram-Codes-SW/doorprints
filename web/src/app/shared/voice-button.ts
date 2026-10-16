@@ -26,6 +26,7 @@ import type { TKey } from '../i18n/en';
 import { type Msg } from '../i18n/translation.service';
 import { TPipe } from '../i18n/t.pipe';
 import { GLYPHS } from './glyphs';
+import { baselineKindId } from '../core/candidate';
 
 type Phase = 'idle' | 'starting' | 'recording' | 'transcribing';
 
@@ -121,7 +122,7 @@ export class VoiceButton implements OnDestroy {
   /** The box's character limit, if it has one; words past it are left out and the status says so. */
   readonly max = input<number | null>(null);
   /** The space on screen (key terms for the model). */
-  readonly kind = input<string>('house');
+  readonly kind = input<string>(baselineKindId());
   /** The box's new value: what it held, then the words. */
   readonly valueChange = output<string>();
 

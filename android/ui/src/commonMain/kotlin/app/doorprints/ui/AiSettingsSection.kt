@@ -104,7 +104,7 @@ fun AiSettingsSection(settings: AppSettings, aiOff: AiOff?) {
     SectionHeading(stringResource(Res.string.settings_ai_heading))
     SwitchRow(
         text = stringResource(Res.string.settings_ai_switch),
-        hint = stringResource(Res.string.settings_ai_hint),
+        hint = stringResource(appText(Res.string.settings_ai_hint, Res.string.settings_ai_hint_any)),
         checked = settings.aiFeatures,
         horizontalPadding = 0.dp,
         modifier = Modifier.tourTarget(TourTargets.SETTINGS_AI),
@@ -160,7 +160,7 @@ private fun AiWorthIt() {
     val desc = stringResource(Res.string.settings_ai_guide_desc)
     Column(Modifier.fillMaxWidth().testTag(AI_WORTH_TAG), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         // One first sentence for everyone, the website's (Ask and Plan read one list at a time; S4b-BL-302).
-        for (sentence in listOf(Res.string.settings_ai_worth, Res.string.settings_ai_cost, Res.string.settings_ai_sends)) {
+        for (sentence in listOf(Res.string.settings_ai_worth, Res.string.settings_ai_cost, appText(Res.string.settings_ai_sends, Res.string.settings_ai_sends_any))) {
             Text(stringResource(sentence), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         TextButton(

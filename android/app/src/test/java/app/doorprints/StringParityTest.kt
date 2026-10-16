@@ -159,7 +159,7 @@ class StringParityTest {
     }
 
     /**
-     * The keys kept in both places (S4b-BL-106; there were 58 before it): the manifest's `app_name`, and the texts the
+     * The keys kept in both places (S4b-BL-106; there were 58 before it; kinds PR 26 added the Hunt words of the house): the manifest's `app_name`, and the texts the
      * hunt service, the area wake-up's notification and the share and open choosers read synchronously from an
      * Android `Context`. Every other text the Android code shares with the screens comes from the Compose resources.
      */
@@ -170,6 +170,13 @@ class StringParityTest {
             "notif_seen_house", "notif_distance", "notif_visited_before", "notif_street_title", "notif_street_text",
             "notif_street_text_since", "notif_stay_title", "notif_stay_text", "notif_battery_title",
             "notif_area_wakeup", "export_share", "export_open",
+            // Kinds PR 26 (docs/03 section 18.20): the house's Hunt words are the kind file's `android` keys, so the walk's ongoing text and
+            // its alerts channel's name and description exist in the Compose resources too, equal to the Context ones (keysInBothPlacesReadTheSame).
+            "notif_hunt_text", "notif_channel_alerts", "notif_channel_alerts_desc",
+            // Kinds PR 29 (docs/03 section 18.23): the viewing reminder's words are the kind file's `android` keys too, so the channel's name and
+            // description and the notification's title, soon line, open and directions actions exist in the Compose resources as well.
+            "notif_channel_viewings", "notif_channel_viewings_desc", "notif_viewing_soon", "notif_viewing_title", "notif_viewing_open",
+            "notif_viewing_directions", "notif_viewing_house_gone",
         )
         val both = read(android.resolve("values/strings.xml")).keys intersect read(compose.resolve("values/strings.xml")).keys
         assertEquals("keys in both places", expected, both)

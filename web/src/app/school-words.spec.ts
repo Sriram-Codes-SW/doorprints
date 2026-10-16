@@ -54,7 +54,7 @@ const HOUSE_WORD: Record<Lang, RegExp> = {
   en: /house|BHK|\bflat\b/i,
   hi: /मकान|घर/,
   ta: /வீடு|வீட்/,
-  te: /ఇల్లు|ఇళ్ళు|ఇళ్లు|ఇంటి|ఇంట/,
+  te: /ఇల్లు|ఇళ్ళు|ఇళ్లు|ఇంటి|ఇంట(?!ర్)/,
 };
 
 const SCHOOL: HouseDto = {
@@ -62,7 +62,7 @@ const SCHOOL: HouseDto = {
   street: 'GS Road', locality: 'Dispur', createdAt: '2026-09-20T10:00:00.000Z', updatedAt: '2026-09-20T10:00:00.000Z',
   extrasOther: { board: 'CBSE', fees: { amount: 96000, cadence: 'year' } },
 };
-const SCHOOL2: HouseDto = { ...SCHOOL, id: 's2', label: 'Oak Valley' };
+const SCHOOL2: HouseDto = { ...SCHOOL, id: 's2', label: 'Oak Valley', checklist: { safety: 5 } }; // 5 on one item and 4 stars: 4.5
 const HOUSE: HouseDto = {
   ...newHouse(26.15, 91.8), id: 'h1', label: 'Green View', status: 'SHORTLISTED', price: 32000, priceType: 'RENT', rating: 4,
   createdAt: '2026-09-21T10:00:00.000Z', updatedAt: '2026-09-21T10:00:00.000Z',
@@ -187,6 +187,17 @@ describe('the school’s words in the dictionaries (docs/03 §18.9)', () => {
   });
 });
 
+describe('the voice words name no kind (kinds PR 31)', () => {
+  it('no voice.* text says house in any language: the hints, the rationale and the statuses hold for every kind', () => {
+    for (const lang of LANGS) {
+      const d = DICTIONARIES[lang] as Record<string, string>;
+      const keys = Object.keys(d).filter((k) => k.startsWith('voice.'));
+      expect(keys.length, lang).toBeGreaterThan(30);
+      for (const k of keys) expect(d[k].replace(/\{\w+\}/g, '').match(HOUSE_WORD[lang]), `${lang} ${k}`).toBeNull();
+    }
+  });
+});
+
 describe('the space words that name the areas a candidate is in (S4b-BL-256)', () => {
   it('a school’s are the school’s keys, a house’s the keys they were', () => {
     expect([spaceWords('school').areaInReach, spaceWords('school').areaNotesNone]).toEqual(['school.areaNotesInReach', 'school.areaNotesNone']);
@@ -277,7 +288,9 @@ describe('a school space’s list and Your data (S4b-BL-277)', () => {
   const stubMap = () => vi.spyOn(MapPage.prototype, 'ngAfterViewInit').mockImplementation(() => undefined);
   const rowsOf = (host: HTMLElement) => [...host.querySelectorAll('ul.list li')].map((li) => text(li));
 
-  it('a school’s row is its name, status and place: no price, no score, no BHK (en, hi, ta, te)', async () => {
+  // The school has its own checklist since kinds PR 27 (docs/03 §18.21), so its row shows a score as the house's does (the rating
+  // here, as nothing is checked yet); it still has no price and no BHK.
+  it('a school’s row is its name, status, score and place: no price, no BHK (en, hi, ta, te)', async () => {
     stubMap();
     for (const lang of LANGS) {
       const m = await mount(MapPage, lang);
@@ -285,12 +298,12 @@ describe('a school space’s list and Your data (S4b-BL-277)', () => {
       expect(rows, lang).toHaveLength(2);
       const score = (DICTIONARIES[lang] as Record<string, string>)['common.score'];
       for (const row of rows) {
-        expect(row.includes(score), `${lang} ${row}`).toBe(false);
-        expect(row, lang).not.toMatch(/4\.0|₹|—/);
+        expect(row.includes(score), `${lang} ${row}`).toBe(true);
+        expect(row, lang).not.toMatch(/₹|—/);
       }
     }
     const en = rowsOf((await mount(MapPage, 'en')).host);
-    expect(en).toEqual(['Pine Hill School★ Shortlisted GS Road, Dispur', 'Oak Valley★ Shortlisted GS Road, Dispur']);
+    expect(en).toEqual(['Pine Hill School★ Shortlisted ★Score 4.0 GS Road, Dispur', 'Oak Valley★ Shortlisted ★Score 4.5 GS Road, Dispur']);
   });
 
   // S4b-BL-265: the chip rows over a kind's typed extras. The rules are kind-filter-vectors.json's (shared/extra-filter.spec.ts).
@@ -335,15 +348,18 @@ describe('a school space’s list and Your data (S4b-BL-277)', () => {
     expect(words(h.host)).toContain('Zoom the map to show every house in the list');
   });
 
-  it('Your data without criteria, questions and viewings while a school space is the last one; with them in the house space', async () => {
+  it('Your data without criteria while a school space is the last one, with the questions and viewings cards in the school’s words (kinds PR 29); all three in the house space', async () => {
     for (const lang of LANGS) {
       const m = await mount(DataPage, lang, { real: true });
       expect(m.host.querySelector('#criteria-heading'), lang).toBeNull();
-      expect(m.host.querySelector('#questions-heading'), lang).toBeNull();
-      expect(m.host.querySelector('#viewings-heading'), lang).toBeNull();
+      expect(m.host.querySelector('#questions-heading'), lang).not.toBeNull();
+      expect(m.host.querySelector('#viewings-heading'), lang).not.toBeNull();
       expect(m.host.querySelector('#areas-heading'), lang).not.toBeNull();
       expect(m.host.querySelector('#brokers-heading'), lang).not.toBeNull();
     }
+    const sc = await mount(DataPage, 'en', { real: true });
+    expect(words(sc.host)).toContain('Plan a school visit or open day, and see the ones coming up and the ones you have done.');
+    expect(words(sc.host)).toContain('The questions you like to ask on a school visit.');
     const h = await mount(DataPage, 'en', { real: true, dflt: 'house' });
     for (const id of ['criteria', 'questions', 'viewings']) expect(h.host.querySelector(`#${id}-heading`), id).not.toBeNull();
     // One kind enabled (the default, and every production build): the house, with the cards it always had.

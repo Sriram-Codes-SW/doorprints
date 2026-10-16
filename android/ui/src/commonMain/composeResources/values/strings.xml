@@ -1689,6 +1689,15 @@
     <string name="school_grades">Grades offered</string>
     <string name="school_commute">Commute (minutes)</string>
     <string name="school_bus">School bus</string>
+    <!-- kinds PR 27 (2026-10-15): the school's checklist (docs/03 §18.21), a draft for the owner's review. -->
+    <string name="school_check_dropoff">Safe drop-off and pick-up</string>
+    <string name="school_check_grounds">Classrooms and playground</string>
+    <string name="school_check_sanitation">Drinking water and toilets</string>
+    <string name="school_check_teachers">Teachers are approachable</string>
+    <string name="school_check_classsize">Class size</string>
+    <string name="school_check_homework">Homework and daily schedule</string>
+    <string name="school_check_activities">Sports and activities</string>
+    <string name="school_check_safety">Safety and CCTV</string>
     <string name="kind_option_not_set">Not set</string>
     <!-- S4b-BL-274 (2026-10-14): spaces on the phones (kinds PR C): the chooser, What you track, a school space's words, the tools per space. Hindi, Tamil and Telugu are under review (the website's words where it has them). -->
     <string name="chooser_heading">What are you looking for?</string>
@@ -1880,4 +1889,77 @@
     <string name="voice_switch_hint_sarvam">Off until you turn it on. Tap the microphone, speak for up to 30 seconds, and the words are written into the box for you to check and change. Nothing is sent until you press the box’s own button.</string>
     <string name="voice_disclosure_sarvam">Audio goes from this phone straight to %1$s (Sarvam AI, India) with your own Sarvam key, about INR %2$s a minute at their list price, up to 30 seconds at a time. Anything you say, including numbers and names, is sent as audio, and a phone number said aloud cannot be left out the way a typed one is. The recording is not saved on this phone.</string>
     <string name="voice_needs_sarvam_key">Save your own Sarvam key above to use Sarvam for voice input.</string>
+    <!-- Kinds PR 26, Hunt as a capability (docs/03 §18.20, 2026-10-15): the Hunt words of the kind files. The house's three are the :app
+         notification strings (same text, kept equal by KindWordVectorsTest); the school's are under review. -->
+    <string name="notif_hunt_text">Watching for houses and streets you have visited</string>
+    <string name="notif_channel_alerts">House and street alerts</string>
+    <string name="notif_channel_alerts_desc">When you pass a house or street you have visited before</string>
+    <string name="school_notif_seen">You have seen this school: %1$s</string>
+    <string name="school_notif_street_text">Saved schools: %1$d, visits: %2$d</string>
+    <string name="school_notif_street_text_since">Saved schools: %1$d, visits: %2$d, first on %3$s</string>
+    <string name="school_map_street_seen">%1$s · Been here: schools %2$d, visits %3$d</string>
+    <string name="school_notif_stay_title">Are you at a school?</string>
+    <string name="school_map_hunt_notify_rationale">Hunt mode tells you with a notification when you pass a school you have seen.</string>
+    <string name="school_hunt_stopped_left_space">Hunt mode stopped. It runs in the Schools space only.</string>
+    <string name="school_hunt_needs_kind">Hunt mode runs in the Schools space only, and Schools is turned off in What you track.</string>
+    <string name="school_notif_hunt_text">Watching for schools and streets you have visited</string>
+    <string name="school_notif_channel_alerts">School and street alerts</string>
+    <string name="school_notif_channel_alerts_desc">When you pass a school or street you have visited before</string>
+    <string name="school_map_notifications_off">Notifications are off, so Hunt mode cannot tell you when you pass a school.</string>
+    <string name="school_map_location_off">Location is off for Doorprints. Hunt mode and ‘Save school here’ need it.</string>
+    <string name="school_map_needs_precise">Hunt mode and ‘Save school here’ need precise location.</string>
+    <!-- Kinds PR 29, viewings as a capability (docs/03 §18.23, 2026-10-15): the viewing words of the kind files. The house's seven reminder strings are the :app strings (same text, kept equal by StringParityTest); the school's are a DRAFT for the owner's review, hi, ta and te under review. -->
+    <string name="notif_channel_viewings">Viewing reminders</string>
+    <string name="notif_channel_viewings_desc">Before a viewing you have planned</string>
+    <string name="notif_viewing_soon">Viewing at %1$s in %2$d min</string>
+    <string name="notif_viewing_title">Viewing at %1$s</string>
+    <string name="notif_viewing_open">Open house</string>
+    <string name="notif_viewing_house_gone">a house that is gone</string>
+    <string name="notif_viewing_directions">Directions to the house</string>
+    <string name="school_viewings_heading">School visits</string>
+    <string name="school_questions_heading">Questions for a visit</string>
+    <string name="school_viewings_plan">Plan a visit</string>
+    <string name="school_viewings_none">No visit planned</string>
+    <string name="school_viewings_all">All visits to this school</string>
+    <string name="school_viewings_intro">When you plan to visit a school or go to an open day, and how it went.</string>
+    <string name="school_viewings_empty">No visits yet. Plan one from a school.</string>
+    <string name="school_settings_viewings_hint">Plan a school visit or open day, and see the ones coming up and the ones you have done.</string>
+    <string name="school_settings_questions_hint">The questions you like to ask on a school visit.</string>
+    <string name="school_notif_channel_viewings">School visit reminders</string>
+    <string name="school_notif_channel_viewings_desc">Before a school visit you have planned</string>
+    <string name="school_notif_viewing_soon">Visit to %1$s in %2$d min</string>
+    <string name="school_notif_viewing_title">Visit to %1$s</string>
+    <string name="school_notif_viewing_open">Open school</string>
+    <string name="school_notif_viewing_gone">a school that is gone</string>
+    <string name="school_notif_viewing_directions">Directions to the school</string>
+    <string name="school_questions_intro">The questions you like to ask on a school visit. On a school, Add the usual questions asks the ones set to Ask by default.</string>
+    <string name="school_questions_empty">No questions yet. Add the usual questions to bring them to the visit.</string>
+    <string name="school_questions_pick_none">Every question on your list is already on this school.</string>
+    <string name="school_viewing_reminder_body">Visit to %1$s at %2$s</string>
+    <!-- Kinds PR 31 (docs/03 section 18.25): the Settings texts once more than the house is in use say entries, and the school's walk-check pick words. -->
+    <string name="settings_connected_any">Connected. Entries on the server: %1$d</string>
+    <string name="settings_photos_wifi_hint_any">Saves mobile data. Entries and visits still sync on mobile data.</string>
+    <string name="settings_alert_radius_any">Alert when I am within %1$d m of a saved entry</string>
+    <string name="settings_gps_note_any">GPS is usually accurate to 5–20 m, so neighbouring places can be confused. Alerts pause when the signal is weak (indoors), and hunt mode stops by itself when the battery is low.</string>
+    <string name="settings_places_hint_any">Work, school, family: every entry shows how far they are</string>
+    <string name="settings_privacy_note_any">Your entries and visits stay on this phone and your own server. Map tiles come from OpenFreeMap, and street names, and the place a shared listing names when you tap Find, from the phone’s built-in geocoder (Google). Photos are saved without location data.</string>
+    <string name="settings_privacy_note_ios_any">Your entries and visits stay on this iPhone and on your own server, if you connect one. Map tiles come from OpenFreeMap, and street names, and the place a shared listing names when you tap Find, from Apple’s geocoder.</string>
+    <string name="settings_ai_hint_any">When this is on, what you ask or paste into an AI feature, with the matching notes, goes to an AI service: through your server, or straight from this phone to the one you choose, with your own key. Contact names and phone numbers saved with an entry are left out.</string>
+    <string name="settings_ai_sends_any">Your question and the matching notes go to the service you chose, with saved contact names, phones and emails replaced first as far as we can. A pasted ad is sent as pasted.</string>
+    <string name="school_trace_end_body">Link it to a school to keep it. Otherwise it stays for 30 days, then it goes. It stays on this phone and is never in a backup or a copy.</string>
+    <string name="school_trace_end_save">Save with a school</string>
+    <string name="school_trace_pick_title">Which school was this walk to?</string>
+    <string name="school_trace_pick_search">Search your schools</string>
+    <string name="school_trace_pick_none">You have no saved schools yet. Add a school first, or keep the walk for 30 days.</string>
+    <string name="school_trace_save_full">This school already has %1$d saved walks. Delete one first.</string>
+    <!-- Kinds PR 31 (docs/03 section 18.25): the tour in the space of another kind: generic sentences that name the kind's plural. -->
+    <string name="tour_kind_welcome">Doorprints remembers the %1$s you keep. Everything stays on this phone unless you choose to back it up or share it.</string>
+    <string name="tour_kind_body">This part of Doorprints works for %1$s too. Look at it, then tap Next.</string>
+    <string name="tour_kind_action">Open one of your %1$s, or just look around, then tap Next.</string>
+    <string name="tour_kind_done_body">These are the main parts of Doorprints. Start by adding to your %1$s, and keep the app open when you visit.</string>
+    <string name="tour_kind_done_action">Tap Finish, then add your first one.</string>
+    <string name="tour_kind_compare_title">Compare %1$s</string>
+    <!-- Kinds PR 31 (docs/03 section 18.25): words of the kind files. -->
+    <string name="school_houses_empty_ios">No schools yet. You can’t add schools on iPhone yet. If you have a Doorprints server, connect it in Settings and your schools will show up here.</string>
+    <string name="school_map_not_on_this_phone">The map isn’t on iPhone yet. All your schools are in the ‘Schools’ tab.</string>
 </resources>

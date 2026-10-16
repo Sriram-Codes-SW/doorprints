@@ -32,7 +32,7 @@ import javax.xml.parsers.DocumentBuilderFactory
 
 /**
  * `docs/schemas/kinds/kind-word-vectors.json` (S4b-BL-316): the phone words of the kind files that are not the sixteen of
- * S4b-BL-278, as the house had them before `SpaceWords` and `PageWords` stopped holding tables. The house's keys and its texts
+ * S4b-BL-278 (and, since kinds PR 31, the website's other words, with a null phone key), as the house had them before `SpaceWords` and `PageWords` stopped holding tables. The house's keys and its texts
  * in en, hi, ta and te are pinned, so a house space is word for word what it was (the Roborazzi baselines say the same in
  * pixels); the files' `words` and [KindWordKeys] are the vectors'. The website's `kind-words.spec.ts` reads the same file.
  */
@@ -79,6 +79,7 @@ class KindWordVectorsTest {
                 val house = w.getValue("house").jsonObject
                 val key = house.keyOrNull("android")
                 assertEquals(id, key, KindWordKeys.HOUSE[id])
+                if (key == null) continue // a word only the website has (kinds PR 31): the website's spec pins its text
                 assertEquals("$lang $id ($key)", house.getValue("text").jsonObject.getValue(lang).jsonPrimitive.content, dict[key])
             }
         }
@@ -92,6 +93,7 @@ class KindWordVectorsTest {
             val school = w.getValue("school").jsonObject
             val key = school.keyOrNull("android")
             assertEquals(id, key, KindWordKeys.SCHOOL[id])
+            if (key == null) continue // a word only the website has (kinds PR 31)
             assertNotNull("$id ($key) is not a Compose string", en[key])
             assertEquals(id, school.getValue("text").jsonObject.getValue("en").jsonPrimitive.content, en[key])
         }
@@ -108,6 +110,17 @@ class KindWordVectorsTest {
                 assertEquals("$file $id web", v.keyOrNull("web"), entry.keyOrNull("web"))
                 assertEquals("$file $id android", v.keyOrNull("android"), entry.keyOrNull("android"))
             }
+        }
+    }
+
+    // Kinds PR 31: the Voice hints, the rationale and the statuses say nothing of a kind, so they hold in every space.
+    @Test
+    fun noVoiceTextNamesAHouseInAnyLanguage() {
+        val house = mapOf("en" to Regex("(?i)house"), "hi" to Regex("मकान"), "ta" to Regex("வீடு|வீட்"), "te" to Regex("ఇల్లు|ఇళ్|ఇంటి"))
+        for ((lang, pattern) in house) {
+            val voice = composeStrings(lang).filterKeys { it.startsWith("voice_") }
+            assert(voice.size > 25) { "$lang has ${voice.size} voice texts" }
+            for ((key, text) in voice) assert(!pattern.containsMatchIn(text)) { "$lang $key names a house" }
         }
     }
 }

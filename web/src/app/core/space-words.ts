@@ -18,14 +18,16 @@
 
 import type { TKey } from '../i18n/en';
 import { kindById } from './kind-setting';
+import { kindWordKey } from './kind-word-table';
+import { baselineKindId } from './candidate';
 
 /**
  * The words of a space's first screen and of its candidate page that name the kind (kinds PR 8, S4b-BL-212; S4b-BL-277,
  * S4b-BL-259, S4b-BL-256): the list heading, the map's region, the Add button and its hint, the search, the list's
  * counts, the loading, empty and no-match lines, the new candidate's save button and its area-notes line. The house's
  * are today's keys, so a house space is word for word what it was; the counter is the kind file's `kind.many` (the
- * resolver). The words are the `words` of the kind files (`house.json`, `school.json`; S4b-BL-278), of which these two
- * tables are the website's copy, as `HOUSE_LABELS` is of `labels`; `kind-words.spec.ts` holds them to the files.
+ * resolver). The words are the `words` of the kind files (`house.json`, `school.json`; S4b-BL-278), read through the file
+ * generated from them (`kind-word-table.ts`, S4b-BL-316): no table of words is written by hand here.
  */
 export interface SpaceWords {
   heading: TKey;
@@ -48,49 +50,17 @@ export interface SpaceWords {
   areaInReach: TKey;
 }
 
-const HOUSE: Omit<SpaceWords, 'many'> = {
-  heading: 'map.heading',
-  regionLabel: 'map.regionLabel',
-  regionHint: 'map.regionHint',
-  add: 'map.add',
-  addHint: 'map.addHint',
-  addHintShort: 'map.addHintShort',
-  search: 'map.search',
-  listLabel: 'map.listLabel',
-  shown: 'map.shown',
-  loading: 'map.loading',
-  emptyTitle: 'map.emptyTitle',
-  emptyBody: 'map.emptyBody',
-  noMatch: 'map.noMatch',
-  create: 'house.create',
-  areaNotesNone: 'areaNotes.none',
-  areaInReach: 'areaNotes.inReach',
-};
+const IDS = ['heading', 'regionLabel', 'regionHint', 'add', 'addHint', 'addHintShort', 'search', 'listLabel', 'shown', 'loading',
+  'emptyTitle', 'emptyBody', 'noMatch', 'create', 'areaNotesNone', 'areaInReach'] as const;
 
-const SCHOOL: Omit<SpaceWords, 'many'> = {
-  heading: 'school.heading',
-  regionLabel: 'school.regionLabel',
-  regionHint: 'school.regionHint',
-  add: 'school.add',
-  addHint: 'school.addHint',
-  addHintShort: 'school.addHintShort',
-  search: 'school.search',
-  listLabel: 'school.listLabel',
-  shown: 'school.shown',
-  loading: 'school.loading',
-  emptyTitle: 'school.emptyTitle',
-  emptyBody: 'school.emptyBody',
-  noMatch: 'school.noMatch',
-  create: 'school.create',
-  areaNotesNone: 'school.areaNotesNone',
-  areaInReach: 'school.areaNotesInReach',
-};
-
-const WORDS: Readonly<Record<string, Omit<SpaceWords, 'many'>>> = { house: HOUSE, school: SCHOOL };
-
-/** The space words of `kind`; a kind with no table of its own reads the house's. */
+/** The space words of `kind`: the kind file's `words`, the house's for a kind with none (`kind-word-table.ts`). */
 export function spaceWords(kind: string | null | undefined): SpaceWords {
-  const k = kindById(kind ?? 'house');
-  const table = Object.prototype.hasOwnProperty.call(WORDS, k.id) ? WORDS[k.id] : HOUSE;
-  return { ...table, many: k.keys.ref('kind.many') as TKey };
+  const k = kindById(kind ?? baselineKindId());
+  const w = (id: (typeof IDS)[number]): TKey => kindWordKey(k.id, id) as TKey;
+  return {
+    heading: w('heading'), regionLabel: w('regionLabel'), regionHint: w('regionHint'), add: w('add'), addHint: w('addHint'),
+    addHintShort: w('addHintShort'), search: w('search'), listLabel: w('listLabel'), shown: w('shown'), loading: w('loading'),
+    emptyTitle: w('emptyTitle'), emptyBody: w('emptyBody'), noMatch: w('noMatch'), create: w('create'),
+    areaNotesNone: w('areaNotesNone'), areaInReach: w('areaInReach'), many: k.keys.ref('kind.many') as TKey,
+  };
 }

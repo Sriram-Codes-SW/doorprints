@@ -20,7 +20,8 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { LocalDataError } from '../core/local-error';
 import { LocalStore } from './local-store.service';
 import { SETTING_KEYS } from './records';
-import { DEFAULT_QUESTIONS, MAX_QUESTIONS, MAX_QUESTION_TEXT } from '../shared/question';
+import { DEFAULT_QUESTIONS, MAX_QUESTIONS, MAX_QUESTION_TEXT, questionKindOf } from '../shared/question';
+import { SCHOOL_QUESTIONS } from '../shared/school-questions';
 import type { Question } from '../shared/question';
 
 const T1 = Date.parse('2026-09-01T00:00:00.000Z');
@@ -230,5 +231,59 @@ describe('the question bank (LocalStore.questions)', () => {
   it('keeps the questions saved before the one that fails when a list is saved', async () => {
     await expect(store.questions.saveMany([own(1), own(2, { id: 'nope' }), own(3)], T1)).rejects.toBeInstanceOf(LocalDataError);
     expect((await store.questions.all()).map((q) => q.id)).toEqual([own(1).id]);
+  });
+
+  // Kinds PR 29 (docs/03 §18.23): each kind has a bank of its own in the one set of records.
+  describe('a kind’s own bank', () => {
+    it('seeds the school’s six questions once, in the language asked for, and never with the house’s start', async () => {
+      await store.questions.seedOnce(() => 'en', T1);
+      expect((await store.questions.all()).filter((q) => questionKindOf(q.id) === 'school')).toEqual([]);
+      expect(await store.questions.seedKindOnce('school', 'hi', T2)).toBe(6);
+      const school = (await store.questions.all()).filter((q) => questionKindOf(q.id) === 'school');
+      expect(school.map((q) => q.id)).toEqual(SCHOOL_QUESTIONS.map((d) => d.id));
+      expect(school[0].text).toBe(SCHOOL_QUESTIONS[0].text.hi);
+      expect(await store.setting(`${SETTING_KEYS.questionsSeeded}.school`)).toBe('1');
+      expect(await store.questions.seedKindOnce('school', 'en', T3)).toBe(0);
+    });
+
+    it('writes nothing for a kind whose seeding is already marked done on this device, even with no question of it left', async () => {
+      await store.setSetting(`${SETTING_KEYS.questionsSeeded}.school`, '1');
+      expect(await store.questions.seedKindOnce('school', 'en', T1)).toBe(0);
+      expect((await store.questions.all()).filter((q) => questionKindOf(q.id) === 'school')).toEqual([]);
+    });
+
+    it('leaves a house-only bank exactly the fourteen of the house when the school is never opened', async () => {
+      await store.questions.seedOnce(() => 'en', T1);
+      expect((await store.questions.all()).map((q) => q.id)).toEqual(DEFAULT_QUESTIONS.map((d) => d.id));
+    });
+
+    it('has no seed for the house here and none for a kind with no bank', async () => {
+      expect(await store.questions.seedKindOnce('house', 'en', T1)).toBe(0);
+      expect(await store.questions.seedKindOnce('villa', 'en', T1)).toBe(0);
+      expect(await store.questions.all()).toEqual([]);
+    });
+
+    it('resets one kind’s defaults and leaves the other kind’s edits alone', async () => {
+      await store.questions.seedOnce(() => 'en', T1);
+      await store.questions.seedKindOnce('school', 'en', T1);
+      await store.questions.save({ id: SCHOOL_QUESTIONS[0].id, text: 'Edited school', category: 'MONEY', appliesTo: 'BOTH', defaultOn: true, sort: 0 }, T2);
+      await store.questions.save({ id: 'qd_water', text: 'Edited house', category: 'WATER_POWER', appliesTo: 'BOTH', defaultOn: true, sort: 4 }, T2);
+      expect(await store.questions.reset('en', T3, 'school')).toBe(6);
+      const by = new Map((await store.questions.all()).map((q) => [q.id, q.text]));
+      expect(by.get(SCHOOL_QUESTIONS[0].id)).toBe(SCHOOL_QUESTIONS[0].text.en);
+      expect(by.get('qd_water')).toBe('Edited house');
+    });
+
+    it('adds a school’s own question with its kind in the id and the next sort of that kind’s bank', async () => {
+      await store.questions.seedOnce(() => 'en', T1);
+      await store.questions.seedKindOnce('school', 'en', T1);
+      const added = await store.questions.add('Is there a bus stop at the gate?', 'OTHER', 'BOTH', T2, undefined, 'school');
+      expect(added.id).toMatch(/^q_school_[0-9a-f]{8}$/);
+      expect(added.sort).toBe(6);
+      expect(questionKindOf(added.id)).toBe('school');
+      const house = await store.questions.add('Is there a lift?', 'BUILDING', 'BOTH', T3);
+      expect(house.id).toMatch(/^q_[0-9a-f]{8}$/);
+      expect(house.sort).toBe(14);
+    });
   });
 });

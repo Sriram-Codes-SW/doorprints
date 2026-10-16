@@ -11,21 +11,21 @@
   "mutations": [
     {
       "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/HuntSpace.kt",
-      "find": "wasHere && !isHere && active",
-      "replace": "!isHere && active",
-      "expect": "aWalkStartedWhileAnotherSpaceIsOnScreenIsNotStoppedByBeingThere"
+      "find": "active && walkKind != null && walkKind == was && now != was",
+      "replace": "active && walkKind != null && now != was",
+      "expect": "aWalkStartedWhileAnotherSpaceIsOnScreenIsNotStoppedByLeavingThatSpace"
     },
     {
       "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/HuntSpace.kt",
-      "find": "wasHere && !isHere && active",
-      "replace": "wasHere && !isHere",
+      "find": "active && walkKind != null && walkKind == was && now != was",
+      "replace": "walkKind != null && walkKind == was && now != was",
       "expect": "noWalkNothingToStop"
     },
     {
       "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/HuntSpace.kt",
-      "find": "wasHere && !isHere && active",
-      "replace": "wasHere && active",
-      "expect": "staysInTheHouseSpaceTheWalkGoesOn"
+      "find": "active && walkKind != null && walkKind == was && now != was",
+      "replace": "active && walkKind != null && walkKind == was",
+      "expect": "staysInTheWalksSpaceTheWalkGoesOn"
     }
   ]
 }

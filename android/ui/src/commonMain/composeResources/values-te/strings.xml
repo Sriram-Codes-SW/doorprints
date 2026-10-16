@@ -1692,6 +1692,15 @@
     <string name="school_grades">తరగతులు</string>
     <string name="school_commute">ప్రయాణ సమయం (నిమిషాలు)</string>
     <string name="school_bus">స్కూల్ బస్సు</string>
+    <!-- kinds PR 27 (2026-10-15): the school's checklist (docs/03 §18.21), a draft for the owner's review. Under review. -->
+    <string name="school_check_dropoff">సురక్షితంగా దింపడం, తీసుకెళ్లడం</string>
+    <string name="school_check_grounds">తరగతి గదులు, ఆటస్థలం</string>
+    <string name="school_check_sanitation">తాగునీరు, మరుగుదొడ్లు</string>
+    <string name="school_check_teachers">ఉపాధ్యాయులను సులభంగా కలవగలరు</string>
+    <string name="school_check_classsize">తరగతిలో విద్యార్థుల సంఖ్య</string>
+    <string name="school_check_homework">హోంవర్క్, రోజువారీ సమయపట్టిక</string>
+    <string name="school_check_activities">ఆటలు, కార్యకలాపాలు</string>
+    <string name="school_check_safety">భద్రత, CCTV</string>
     <string name="kind_option_not_set">సెట్ చేయలేదు</string>
     <!-- S4b-BL-274 (2026-10-14): spaces on the phones (kinds PR C): the chooser, What you track, a school space's words, the tools per space. Hindi, Tamil and Telugu are under review (the website's words where it has them). -->
     <string name="chooser_heading">మీరు ఏమి వెతుకుతున్నారు?</string>
@@ -1883,4 +1892,77 @@
     <string name="voice_switch_hint_sarvam">మీరు ఆన్ చేసే వరకు ఆఫ్‌లో ఉంటుంది. మైక్రోఫోన్ నొక్కి, 30 సెకన్ల వరకు మాట్లాడండి; మాటలు బాక్స్‌లో రాయబడతాయి, మీరు చూసి మార్చవచ్చు. బాక్స్ సొంత బటన్ నొక్కే వరకు ఏదీ పంపబడదు.</string>
     <string name="voice_disclosure_sarvam">ఆడియో ఈ ఫోన్ నుండి నేరుగా %1$s కి (Sarvam AI, భారత్) మీ సొంత Sarvam కీతో వెళ్తుంది, వారి జాబితా ధరతో నిమిషానికి సుమారు ₹%2$s, ఒకసారికి 30 సెకన్ల వరకు. మీరు చెప్పేదంతా, సంఖ్యలు, పేర్లతో సహా, ఆడియోగా పంపబడుతుంది; చెప్పిన ఫోన్ నంబర్‌ను టైప్ చేసిన నంబర్ లాగా తొలగించలేరు. రికార్డింగ్ ఈ ఫోన్‌లో సేవ్ చేయబడదు.</string>
     <string name="voice_needs_sarvam_key">వాయిస్ ఇన్‌పుట్‌కు Sarvam వాడాలంటే పైన మీ సొంత Sarvam కీని సేవ్ చేయండి.</string>
+    <!-- Kinds PR 26, Hunt as a capability (docs/03 §18.20, 2026-10-15): the Hunt words of the kind files. The house's three are the :app
+         notification strings (same text, kept equal by KindWordVectorsTest); the school's are under review. -->
+    <string name="notif_hunt_text">మీరు చూసిన ఇళ్లు, వీధుల కోసం గమనిస్తోంది</string>
+    <string name="notif_channel_alerts">ఇల్లు, వీధి హెచ్చరికలు</string>
+    <string name="notif_channel_alerts_desc">మీరు ఇంతకు ముందు చూసిన ఇల్లు లేదా వీధిని దాటినప్పుడు</string>
+    <string name="school_notif_seen">ఈ పాఠశాలను మీరు ఇప్పటికే చూశారు: %1$s</string>
+    <string name="school_notif_street_text">సేవ్ చేసిన పాఠశాలలు: %1$d, సందర్శనలు: %2$d</string>
+    <string name="school_notif_street_text_since">సేవ్ చేసిన పాఠశాలలు: %1$d, సందర్శనలు: %2$d, మొదటిసారి %3$s</string>
+    <string name="school_map_street_seen">%1$s · ఇక్కడికి వచ్చారు: పాఠశాలలు %2$d, సందర్శనలు %3$d</string>
+    <string name="school_notif_stay_title">మీరు ఏదైనా పాఠశాల దగ్గర ఉన్నారా?</string>
+    <string name="school_map_hunt_notify_rationale">మీరు చూసిన పాఠశాల దగ్గర నుండి వెళ్లినప్పుడు హంట్ మోడ్ నోటిఫికేషన్‌తో చెబుతుంది.</string>
+    <string name="school_hunt_stopped_left_space">హంట్ మోడ్ ఆగిపోయింది. ఇది పాఠశాలల విభాగంలో మాత్రమే నడుస్తుంది.</string>
+    <string name="school_hunt_needs_kind">హంట్ మోడ్ పాఠశాలల విభాగంలో మాత్రమే నడుస్తుంది; మీరు ట్రాక్ చేసేవిలో పాఠశాలలు ఆఫ్‌లో ఉన్నాయి.</string>
+    <string name="school_notif_hunt_text">మీరు చూసిన పాఠశాలలు, వీధుల కోసం గమనిస్తోంది</string>
+    <string name="school_notif_channel_alerts">పాఠశాల, వీధి హెచ్చరికలు</string>
+    <string name="school_notif_channel_alerts_desc">మీరు ఇంతకు ముందు చూసిన పాఠశాల లేదా వీధిని దాటినప్పుడు</string>
+    <string name="school_map_notifications_off">నోటిఫికేషన్‌లు ఆఫ్‌లో ఉన్నాయి, కాబట్టి మీరు పాఠశాల దగ్గర నుండి వెళ్లినప్పుడు హంట్ మోడ్ మీకు తెలియజేయదు.</string>
+    <string name="school_map_location_off">Doorprints కోసం స్థానం ఆఫ్‌లో ఉంది. హంట్ మోడ్‌కు, ‘ఇక్కడ పాఠశాల సేవ్ చేయండి’కి ఇది అవసరం.</string>
+    <string name="school_map_needs_precise">హంట్ మోడ్‌కు, ‘ఇక్కడ పాఠశాల సేవ్ చేయండి’కి ఖచ్చితమైన స్థానం అవసరం.</string>
+    <!-- Kinds PR 29, viewings as a capability (docs/03 §18.23, 2026-10-15): the viewing words of the kind files. The house's seven reminder strings are the :app strings (same text, kept equal by StringParityTest); the school's are a DRAFT for the owner's review, hi, ta and te under review. -->
+    <string name="notif_channel_viewings">పరిశీలన రిమైండర్‌లు</string>
+    <string name="notif_channel_viewings_desc">మీరు ప్లాన్ చేసిన పరిశీలనకు ముందు</string>
+    <string name="notif_viewing_soon">%1$s వద్ద పరిశీలన %2$d నిమిషాల్లో</string>
+    <string name="notif_viewing_title">%1$s వద్ద పరిశీలన</string>
+    <string name="notif_viewing_open">ఇంటిని తెరవండి</string>
+    <string name="notif_viewing_house_gone">తొలగించిన ఇల్లు</string>
+    <string name="notif_viewing_directions">ఇంటికి దారి</string>
+    <string name="school_viewings_heading">పాఠశాల సందర్శనలు</string>
+    <string name="school_questions_heading">సందర్శన కోసం ప్రశ్నలు</string>
+    <string name="school_viewings_plan">సందర్శనను ప్లాన్ చేయండి</string>
+    <string name="school_viewings_none">ప్లాన్ చేసిన సందర్శన లేదు</string>
+    <string name="school_viewings_all">ఈ పాఠశాలకు సంబంధించిన అన్ని సందర్శనలు</string>
+    <string name="school_viewings_intro">మీరు పాఠశాలను చూడటానికి లేదా ఓపెన్ డేకి వెళ్లాలని ప్లాన్ చేసినప్పుడు, అది ఎలా జరిగింది.</string>
+    <string name="school_viewings_empty">ఇంకా సందర్శనలు లేవు. ఒక పాఠశాల నుండి ప్లాన్ చేయండి.</string>
+    <string name="school_settings_viewings_hint">పాఠశాల సందర్శన లేదా ఓపెన్ డేను ప్లాన్ చేసి, రాబోయేవి, పూర్తయినవి చూడండి.</string>
+    <string name="school_settings_questions_hint">పాఠశాల సందర్శనలో మీరు అడగాలనుకునే ప్రశ్నలు.</string>
+    <string name="school_notif_channel_viewings">పాఠశాల సందర్శన రిమైండర్లు</string>
+    <string name="school_notif_channel_viewings_desc">మీరు ప్లాన్ చేసిన పాఠశాల సందర్శనకు ముందు</string>
+    <string name="school_notif_viewing_soon">%1$s పాఠశాల సందర్శన %2$d నిమిషాల్లో</string>
+    <string name="school_notif_viewing_title">%1$s పాఠశాల సందర్శన</string>
+    <string name="school_notif_viewing_open">పాఠశాలను తెరవండి</string>
+    <string name="school_notif_viewing_gone">తొలగించిన పాఠశాల</string>
+    <string name="school_notif_viewing_directions">పాఠశాలకు దారి</string>
+    <string name="school_questions_intro">పాఠశాల సందర్శనలో మీరు అడగాలనుకునే ప్రశ్నలు. పాఠశాలపై “సాధారణ ప్రశ్నలను జోడించు” అనేది “ఎప్పుడూ అడగండి” అని గుర్తించినవాటిని జోడిస్తుంది.</string>
+    <string name="school_questions_empty">ఇంకా ప్రశ్నలు లేవు. సందర్శనకు తీసుకెళ్లడానికి సాధారణ ప్రశ్నలను జోడించండి.</string>
+    <string name="school_questions_pick_none">మీ జాబితాలోని ప్రతి ప్రశ్న ఇప్పటికే ఈ పాఠశాలలో ఉంది.</string>
+    <string name="school_viewing_reminder_body">%1$s పాఠశాల సందర్శన, %2$s కి</string>
+    <!-- Kinds PR 31 (docs/03 section 18.25, 2026-10-15): under review. -->
+    <string name="settings_connected_any">కనెక్ట్ అయింది. సర్వర్‌లో నమోదులు: %1$d</string>
+    <string name="settings_photos_wifi_hint_any">మొబైల్ డేటా ఆదా అవుతుంది. నమోదులు, సందర్శనలు మొబైల్ డేటాలో కూడా సింక్ అవుతాయి.</string>
+    <string name="settings_alert_radius_any">సేవ్ చేసిన నమోదుకు %1$d మీ లోపల ఉన్నప్పుడు హెచ్చరించండి</string>
+    <string name="settings_gps_note_any">GPS సాధారణంగా 5–20 మీ వరకు ఖచ్చితంగా ఉంటుంది, కాబట్టి పక్కపక్క స్థలాలు గందరగోళం కావచ్చు. సిగ్నల్ బలహీనంగా ఉంటే (లోపల) హెచ్చరికలు ఆగుతాయి, బ్యాటరీ తక్కువైతే హంట్ మోడ్ దానంతట అదే ఆగుతుంది.</string>
+    <string name="settings_places_hint_any">ఆఫీసు, బడి, కుటుంబం: ప్రతి నమోదు అవి ఎంత దూరమో చూపుతుంది</string>
+    <string name="settings_privacy_note_any">మీ నమోదులు, సందర్శనలు ఈ ఫోన్‌లో, మీ సొంత సర్వర్‌లో మాత్రమే ఉంటాయి. మ్యాప్‌లు OpenFreeMap నుండి, వీధి పేర్లు, “కనుగొనండి” నొక్కినప్పుడు పంచుకున్న లిస్టింగ్ చెప్పే స్థలం ఫోన్ జియోకోడర్ (Google) నుండి వస్తాయి. ఫోటోలు స్థాన సమాచారం లేకుండా సేవ్ అవుతాయి.</string>
+    <string name="settings_privacy_note_ios_any">మీ నమోదులు, సందర్శనలు ఈ iPhoneలో, మీరు కనెక్ట్ చేస్తే మీ సొంత సర్వర్‌లో మాత్రమే ఉంటాయి. మ్యాప్‌లు OpenFreeMap నుండి, వీధి పేర్లు, “కనుగొనండి” నొక్కినప్పుడు పంచుకున్న లిస్టింగ్ చెప్పే స్థలం Apple జియోకోడర్ నుండి వస్తాయి.</string>
+    <string name="settings_ai_hint_any">ఇది ఆన్‌లో ఉన్నప్పుడు, AI ఫీచర్‌లో మీరు అడిగేది లేదా పేస్ట్ చేసేది, సరిపోయే నోట్స్‌తో కలిసి ఒక AI సేవకు వెళ్తుంది: మీ సర్వర్ ద్వారా, లేదా మీరు ఎంచుకున్న సేవకు మీ సొంత కీతో ఈ ఫోన్ నుండి నేరుగా. నమోదుతో సేవ్ చేసిన కాంటాక్ట్ పేర్లు, ఫోన్ నంబర్లు పంపబడవు.</string>
+    <string name="settings_ai_sends_any">మీ ప్రశ్న, సరిపోయే నోట్స్ మీరు ఎంచుకున్న సేవకు వెళ్తాయి; సేవ్ చేసిన కాంటాక్ట్ పేర్లు, ఫోన్ నంబర్లు, ఈమెయిళ్లను ముందుగా, మా వల్ల అయినంత వరకు, మారుస్తాము. పేస్ట్ చేసిన ప్రకటన పేస్ట్ చేసినట్లే పంపబడుతుంది.</string>
+    <string name="school_trace_end_body">ఉంచుకోవడానికి దీన్ని ఒక పాఠశాలకు జోడించండి. లేకపోతే ఇది 30 రోజులు ఉండి, తర్వాత పోతుంది. ఇది ఈ ఫోన్‌లో మాత్రమే ఉంటుంది; బ్యాకప్‌లో లేదా కాపీలో ఉండదు.</string>
+    <string name="school_trace_end_save">పాఠశాలతో సేవ్ చేయి</string>
+    <string name="school_trace_pick_title">ఈ నడక ఏ పాఠశాల వరకు?</string>
+    <string name="school_trace_pick_search">మీ పాఠశాలలను వెతకండి</string>
+    <string name="school_trace_pick_none">మీరు ఇంకా పాఠశాలలను సేవ్ చేయలేదు. ముందు ఒక పాఠశాలను చేర్చండి, లేదా నడకను 30 రోజులు ఉంచండి.</string>
+    <string name="school_trace_save_full">ఈ పాఠశాలకు ఇప్పటికే %1$d నడకలు సేవ్ అయ్యాయి. ముందు ఒకదాన్ని తొలగించండి.</string>
+    <!-- Kinds PR 31 (docs/03 section 18.25, 2026-10-15): under review. -->
+    <string name="tour_kind_welcome">మీరు ఉంచుకునే %1$sను Doorprints గుర్తుంచుకుంటుంది. మీరు బ్యాకప్ చేయాలని లేదా పంచుకోవాలని ఎంచుకోకపోతే అంతా ఈ ఫోన్‌లోనే ఉంటుంది.</string>
+    <string name="tour_kind_body">Doorprints లోని ఈ భాగం %1$sకి కూడా పనిచేస్తుంది. చూసి, తదుపరి నొక్కండి.</string>
+    <string name="tour_kind_action">మీ %1$sలో ఒకదాన్ని తెరవండి, లేదా చూసి తదుపరి నొక్కండి.</string>
+    <string name="tour_kind_done_body">ఇవి Doorprints యొక్క ముఖ్య భాగాలు. మీ %1$sకి జోడించడం ప్రారంభించండి, వెళ్లినప్పుడు యాప్‌ను తెరిచి ఉంచండి.</string>
+    <string name="tour_kind_done_action">ముగించు నొక్కి, మీ మొదటిదాన్ని చేర్చండి.</string>
+    <string name="tour_kind_compare_title">%1$sను పోల్చండి</string>
+    <!-- Kinds PR 31 (docs/03 section 18.25, 2026-10-15): under review. -->
+    <string name="school_houses_empty_ios">ఇంకా పాఠశాలలు లేవు. iPhoneలో ఇంకా పాఠశాలలు చేర్చలేరు. మీకు Doorprints సర్వర్ ఉంటే, దాన్ని సెట్టింగ్‌లలో కనెక్ట్ చేయండి; మీ పాఠశాలలు ఇక్కడ కనిపిస్తాయి.</string>
+    <string name="school_map_not_on_this_phone">మ్యాప్ ఇంకా iPhoneలో లేదు. మీ పాఠశాలలన్నీ ‘పాఠశాలలు’ ట్యాబ్‌లో ఉన్నాయి.</string>
 </resources>

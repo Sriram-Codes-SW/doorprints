@@ -20,14 +20,14 @@
   <!-- The same page top as every other screen: title and intro above, the form in one card below. -->
   <header class="page-head">
     <h1 id="connect-title" tabindex="-1">{{ 'connect.title' | t }}</h1>
-    <p class="muted">{{ 'connect.intro' | t }}</p>
+    <p class="muted">{{ space.appWord('connect.intro') | t }}</p>
   </header>
   @if (invite(); as link) {
     <!-- Opened from the owner page's QR code or link. Nothing is sent until "Connect": anyone can send such a link,
          and connecting to a stranger's server would copy your houses to it. -->
     <section class="card invite" aria-labelledby="invite-heading">
       <h2 id="invite-heading" tabindex="-1">{{ 'connect.inviteHeading' | t }}</h2>
-      <p>{{ 'connect.inviteBody' | t }}</p>
+      <p>{{ space.appWord('connect.inviteBody') | t }}</p>
       <p class="server-name">{{ link.server }}</p>
       <p class="muted small">{{ 'connect.inviteWarning' | t }}</p>
       <div class="field checkbox">
@@ -266,14 +266,14 @@
         aria-describedby="ai-features-hint"
       />
       <label for="ai-features">{{ 'connect.aiSwitch' | t }}</label>
-      <p id="ai-features-hint" class="muted small">{{ 'connect.aiHint' | t }}</p>
+      <p id="ai-features-hint" class="muted small">{{ space.appWord('connect.aiHint') | t }}</p>
     </div>
     <!-- S4b-BL-215: three honest sentences (what it is for, what it costs, what it sends) with the guide's section.
          Always shown, so the choice to turn AI on is informed; the same words as the guide and the phone apps. -->
     <div class="ai-worth muted small" id="ai-worth">
       <p>{{ 'connect.aiWorth' | t }}</p>
       <p>{{ 'connect.aiCost' | t }}</p>
-      <p>{{ 'connect.aiSends' | t }}</p>
+      <p>{{ space.appWord('connect.aiSends') | t }}</p>
       <p>
         <a [href]="aiGuideHref()" target="_blank" rel="noopener noreferrer" [attr.aria-label]="'connect.aiGuideAria' | t">{{ 'connect.aiGuide' | t }}</a>
       </p>

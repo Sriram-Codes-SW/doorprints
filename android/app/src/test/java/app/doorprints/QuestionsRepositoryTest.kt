@@ -151,6 +151,61 @@ class QuestionsRepositoryTest {
         assertEquals(emptyList<String>(), ids())
     }
 
+    // ---- Kinds PR 29 (docs/03 section 18.23): each kind has a bank of its own in the one set of records.
+
+    @Test
+    fun theSchoolsSixQuestionsAreSeededOnceWhenItsQuestionsAreOpenedAndNeverWithTheHousesStart(): Unit = runBlocking {
+        repo.seedQuestionsOnce("en")
+        assertEquals(DefaultQuestions.ALL.map { it.id }, ids())
+        repo.seedKindQuestionsOnce("school", "hi")
+        val school = repo.questions().filter { it.kind == "school" }
+        assertEquals(DefaultQuestions.SCHOOL.map { it.id }, school.map { it.id })
+        assertEquals(DefaultQuestions.SCHOOL[0].text.getValue("hi"), school[0].text)
+        // Clean and stamped like the house's seed: never pushed, and another device's edit wins.
+        assertFalse(db.records().get(QuestionType.name, school[0].id)!!.dirty)
+        assertTrue(settings.questionsSeededFor("school"))
+        for (q in school) repo.deleteQuestion(q.id)
+        repo.seedKindQuestionsOnce("school", "hi")
+        assertEquals(emptyList<String>(), repo.questions().filter { it.kind == "school" }.map { it.id })
+        // The house has no second seed here, and a kind with no bank has none.
+        repo.seedKindQuestionsOnce("house", "en")
+        repo.seedKindQuestionsOnce("villa", "en")
+        assertEquals(DefaultQuestions.ALL.map { it.id }, ids())
+    }
+
+    @Test
+    fun aKindWhoseSeedingIsMarkedDoneOnThisPhoneSeedsNothingAndTheHouseHasNoSecondSeed(): Unit = runBlocking {
+        settings.markQuestionsSeededFor("school")
+        repo.seedKindQuestionsOnce("school", "en")
+        repo.seedKindQuestionsOnce("house", "en") // the house's seed is seedQuestionsOnce's, not this one's
+        assertEquals(emptyList<String>(), ids())
+    }
+
+    @Test
+    fun aHouseOnlyPhoneKeepsExactlyTheFourteenWhenTheSchoolIsNeverOpened(): Unit = runBlocking {
+        repo.seedQuestionsOnce("en")
+        assertEquals(14, repo.questions().size)
+        assertFalse(settings.questionsSeededFor("school"))
+    }
+
+    @Test
+    fun resetOfOneKindLeavesTheOtherKindsEditsAndAnAddedQuestionCarriesItsKind(): Unit = runBlocking {
+        repo.seedQuestionsOnce("en")
+        repo.seedKindQuestionsOnce("school", "en")
+        repo.saveQuestion(repo.questions().first { it.id == "qd_school_fees" }.copy(text = "Edited school"))
+        repo.saveQuestion(repo.questions().first { it.id == "qd_water" }.copy(text = "Edited house"))
+        repo.resetQuestions("en", "school")
+        val bank = repo.questions().associate { it.id to it.text }
+        assertEquals(DefaultQuestions.byId("qd_school_fees")!!.text.getValue("en"), bank.getValue("qd_school_fees"))
+        assertEquals("Edited house", bank.getValue("qd_water"))
+        val mine = repo.addQuestion("Is there a bus stop at the gate?", kind = "school")
+        assertTrue(Regex("q_school_[0-9a-f]{8}").matches(mine))
+        assertEquals(6, repo.questions().first { it.id == mine }.sort)
+        val house = repo.addQuestion("Is there a lift?")
+        assertTrue(Regex("q_[0-9a-f]{8}").matches(house))
+        assertEquals(14, repo.questions().first { it.id == house }.sort)
+    }
+
     @Test
     fun seedingRespectsATombstoneAndAnEditAndTakesAnyOtherLanguageAsEnglish(): Unit = runBlocking {
         assertEquals(14, repo.seedQuestions("mr"))

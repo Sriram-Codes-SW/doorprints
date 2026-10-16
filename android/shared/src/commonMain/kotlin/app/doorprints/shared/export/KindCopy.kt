@@ -18,6 +18,7 @@
 
 package app.doorprints.shared.export
 
+import app.doorprints.shared.model.KindCapabilities
 import app.doorprints.shared.model.DevKinds
 import app.doorprints.shared.model.KindExtra
 import app.doorprints.shared.model.KindFields
@@ -87,6 +88,6 @@ object KindCopy {
         val own = options.space?.let { fieldsOfKind(it.kind, options) }
         val all = houses.map { fieldsOf(it, options) }.distinctBy { it.kind }
         val voice = own ?: all.singleOrNull()
-        return voice?.takeIf { it.kind != KindSettingRules.HOUSE }
+        return voice?.takeIf { !KindCapabilities.of(it.kind).baseline }
     }
 }

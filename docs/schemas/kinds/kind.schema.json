@@ -23,10 +23,10 @@
    }
   },
   "words": {
-   "description": "The words of a space's first screen and of its candidate page that name the kind (S4b-BL-278): the list heading, the map's region and its hint, the Add button and its hints, the search, the list's label and counts, the loading, empty and no-match lines, the create button and the area-notes lines, and since S4b-BL-316 the phone's other words that name the kind (Compare, the Assistant, the copies' scope, the map's location notes, the form's titles and questions, the walk check, the Areas and Places lines; `web` is null where only the phone has that word). Optional and additive (a reader that does not know it ignores it, so `format` stays `doorprints-kind/1`). Keys per stack as in `labels`; `android` is the Compose string (`null`: the phone shows no text there; both built-in files give it since S4b-BL-278 and S4b-BL-316, and `SpaceWords` and `PageWords` read it, with no table of their own). A kind with no `words` reads the house's.",
+   "description": "The words of a space's first screen and of its candidate page that name the kind (S4b-BL-278): the list heading, the map's region and its hint, the Add button and its hints, the search, the list's label and counts, the loading, empty and no-match lines, the create button and the area-notes lines, and since S4b-BL-316 the phone's other words that name the kind (Compare, the Assistant, the copies' scope, the map's location notes, the form's titles and questions, the walk check, the Areas and Places lines; and since kinds PR 26 the Hunt mode words, docs/03 §18.20: the alerts, the street line, the walk's notification and channel; `web` is null where only the phone has that word). Optional and additive (a reader that does not know it ignores it, so `format` stays `doorprints-kind/1`). Keys per stack as in `labels`; `android` is the Compose string (`null`: the phone shows no text there; both built-in files give it since S4b-BL-278 and S4b-BL-316, and `SpaceWords` and `PageWords` read it, with no table of their own). A kind with no `words` reads the house's.",
    "type": "object",
    "additionalProperties": false,
-   "propertyNames": { "enum": ["heading", "regionLabel", "regionHint", "add", "addHint", "addHintShort", "search", "listLabel", "shown", "loading", "emptyTitle", "emptyBody", "noMatch", "create", "areaNotesNone", "areaInReach", "unnamed", "addHintListing", "addHintListingShort", "compareHint", "comparePickMore", "compareChoose", "compareEmpty", "compareEmptyBody", "compareFootnote", "askLabel", "askHint", "askNotGrounded", "askSources", "planHint", "exportEmpty", "exportScope", "exportScopeAll", "exportIncludeRejected", "exportPhotosShortlisted", "locationOff", "needsPrecise", "locationOffNoHunt", "needsPreciseNoHunt", "saveNeedsLocation", "detailsTitle", "notFoundTitle", "notFound", "defaultLabel", "defaultLabelStreet", "discardNew", "deleteTitle", "pageNeedsPrecise", "savePhotosFirst", "walkButton", "walkPlace", "walkLabel", "walkApprox", "walksEmpty", "aiDisclosure", "aiDisclosureOwnKey", "placeFound", "placeNotFound", "openDetails", "areasEmptyBody", "notesEmpty", "areaDeleteBody", "placeDeleteBody", "placesEmptyBody"] },
+   "propertyNames": { "enum": ["heading", "regionLabel", "regionHint", "add", "addHint", "addHintShort", "search", "listLabel", "shown", "loading", "emptyTitle", "emptyBody", "noMatch", "create", "areaNotesNone", "areaInReach", "unnamed", "addHintListing", "addHintListingShort", "compareHint", "comparePickMore", "compareChoose", "compareEmpty", "compareEmptyBody", "compareFootnote", "askLabel", "askHint", "askNotGrounded", "askSources", "planHint", "exportEmpty", "exportScope", "exportScopeAll", "exportIncludeRejected", "exportPhotosShortlisted", "locationOff", "needsPrecise", "locationOffNoHunt", "needsPreciseNoHunt", "saveNeedsLocation", "detailsTitle", "notFoundTitle", "notFound", "defaultLabel", "defaultLabelStreet", "discardNew", "deleteTitle", "pageNeedsPrecise", "savePhotosFirst", "walkButton", "walkPlace", "walkLabel", "walkApprox", "walksEmpty", "aiDisclosure", "aiDisclosureOwnKey", "placeFound", "placeNotFound", "openDetails", "areasEmptyBody", "notesEmpty", "areaDeleteBody", "placeDeleteBody", "placesEmptyBody", "huntSeen", "huntStreetText", "huntStreetTextSince", "huntStreetSeen", "huntStayTitle", "huntNotifyRationale", "huntLeftSpace", "huntNeedsKind", "huntOngoingText", "huntChannelAlerts", "huntChannelAlertsDesc", "huntNotificationsOff", "viewingPlan", "viewingNone", "viewingAll", "viewingsIntro", "viewingsEmpty", "viewingsDataBody", "questionsDataBody", "viewingChannel", "viewingChannelDesc", "viewingSoon", "viewingTitle", "viewingOpen", "viewingGone", "viewingDirections", "questionsIntro", "questionsEmpty", "questionsNoneToPick", "viewingBody", "viewingsHeading", "questionsRemove", "viewingsSaveFirst", "compareTitle", "compareNone", "compareAdd", "comparePicker", "compareCaption", "compareSearch", "compareOnlyOne", "askIntro", "planTitle", "planIntro", "planNoStops", "dataEmptyAction", "dataNoShortlisted", "dataNoneMatch", "dataCount", "dataPreview", "shareCreate", "shareHint", "titleNew", "titleDetails", "titleMap", "namePlaceholder", "nameRequired", "locationRequired", "locationUnset", "mapLabel", "saveFirstVisits", "listingHint", "fitTitle", "walkTitle", "areasIntro", "areasDataBody", "areasConfirmDelete", "placesDataBody", "placesIntro", "placesEmpty", "placesConfirmDelete", "expTitle", "expCounts", "expScopeAll", "expScopeShortlisted", "expScopeSelected", "expRejectedIncluded", "expRejectedLeftOut", "expPhotosAll", "expPhotosShortlisted", "expColName", "expNone", "viewingRemindText", "mapOnServerTitle", "mapOffline", "viewingIcsWord", "traceEndBody", "traceEndSave", "tracePickTitle", "tracePickSearch", "tracePickNone", "tracePickList", "tracePickNoMatch", "traceSaveFull", "listEmptyIos", "mapNotHere"] },
    "patternProperties": {
     "^[a-zA-Z]+$": {
      "type": "object",
@@ -118,7 +118,7 @@
    "items": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]{0,39}$" }
   },
   "ai": {
-   "description": "The AI contract slots (reserved; read by the server and both cores from kinds PR 7, S4b-BL-211). `extract`: what the listing extract fills; `ask`: what an Ask document line carries; `plan`: what Plan filters on; `never`: what a saved candidate never sends to a provider.",
+   "description": "The AI contract slots (reserved; read by the server and both cores from kinds PR 7, S4b-BL-211). `extract`: what the listing extract fills; `ask`: what an Ask document line carries; `plan`: what Plan filters on; `never`: what a saved candidate never sends to a provider. `words` (optional, kinds PR 28): the English words the server's prompts and documents use for the kind.",
    "type": "object",
    "additionalProperties": false,
    "required": ["extract", "ask", "plan", "never"],
@@ -126,13 +126,117 @@
     "extract": { "$ref": "#/$defs/ids" },
     "ask": { "$ref": "#/$defs/ids" },
     "plan": { "$ref": "#/$defs/ids" },
-    "never": { "$ref": "#/$defs/ids" }
+    "never": { "$ref": "#/$defs/ids" },
+    "words": { "$ref": "#/$defs/aiWords" }
+   }
+  },
+  "capabilities": {
+   "description": "What the kind can do beyond its fields, one switch or small setting per feature (docs/03 §18.19). Optional: a kind file without it, and a kind the app does not know, has the defaults (the map and the paths on, everything else off). A feature a kind leaves out is absent or false. Nothing here is text or a link: only booleans, small numbers and ids from the fixed lists below, so a kind file can never carry a prompt, a URL or markup. Read by `capabilitiesOf` (web `core/kind-capabilities.ts`, :shared `KindCapabilities`); the phones read the Hunt block (kinds PR 26).",
+   "type": "object",
+   "additionalProperties": false,
+   "properties": {
+    "map": { "description": "The kind's candidates are drawn on the map.", "type": "boolean" },
+    "hunt": {
+     "description": "Hunt mode (alerts near a saved place, stays that make a visit; docs/03 §18.20): `alertRadiusM` is how near, in metres, 30 to 300 (the default of the kind's radius; the house's own is the person's Settings value); `stayCreates` whether a stay at an unsaved place offers to save it as an entry of this kind; `streetMemory` whether the walk tells the person about streets this kind has saved places or visits on; `areas` whether an area wake-up may start a walk of this kind. The walk belongs to the space it was started in.",
+     "type": "object",
+     "additionalProperties": false,
+     "required": ["alertRadiusM", "stayCreates", "streetMemory", "areas"],
+     "properties": {
+      "alertRadiusM": { "type": "integer", "minimum": 30, "maximum": 300 },
+      "stayCreates": { "type": "boolean" },
+      "streetMemory": { "type": "boolean" },
+      "areas": { "type": "boolean" }
+     }
+    },
+    "rooms": { "description": "The rooms list (names, sizes, photos per room).", "type": "boolean" },
+    "moveIn": { "description": "The moving-in checklist.", "type": "boolean" },
+    "contacts": {
+     "description": "The candidate's contact: `role` is whose contact it is (a broker, an office, an agent); `autoCreateFromPhone` whether saving a phone number makes or links the address-book entry for it (the brokers list).",
+     "type": "object",
+     "additionalProperties": false,
+     "required": ["role", "autoCreateFromPhone"],
+     "properties": {
+      "role": { "enum": ["broker", "office", "agent"] },
+      "autoCreateFromPhone": { "type": "boolean" }
+     }
+    },
+    "viewings": {
+     "description": "Viewings with their questions; `questionsSeed` names the built-in question bank that seeds them (`house`, or `school` since kinds PR 29: docs/schemas/kinds/school-questions.json). A viewing of a kind other than the house is that kind's visit (open day), worded by the kind's `viewing*` words.",
+     "type": "object",
+     "additionalProperties": false,
+     "required": ["questionsSeed"],
+     "properties": {
+      "questionsSeed": { "enum": ["house", "school"] }
+     }
+    },
+    "compare": {
+     "description": "Compare: the criteria it scores, in order, as checklist keys or extra ids of this kind (at most ten).",
+     "type": "object",
+     "additionalProperties": false,
+     "required": ["criteria"],
+     "properties": {
+      "criteria": {
+       "type": "array",
+       "minItems": 1,
+       "maxItems": 10,
+       "uniqueItems": true,
+       "items": { "type": "string", "pattern": "^[a-z][A-Za-z0-9_]{0,39}$" }
+      }
+     }
+    },
+    "paths": { "description": "Walks and paths (the walks section, path tracing, place checks).", "type": "boolean" },
+    "baseline": { "description": "The kind whose paths, wire shape, copy file names and words are the app's original, from before there were kinds (the house; kinds PR 30): its pages keep their own addresses, its AI calls name no kind, its copies are not renamed. Only the house has it; false when absent.", "type": "boolean" },
+    "filters": { "description": "The extras of this kind the list and the map can be filtered by (kinds PR 30): ids of enum or switch extras of the kind, at most six, no repeats, in the order the rows are shown. None when absent.", "type": "array", "maxItems": 6, "uniqueItems": true, "items": { "type": "string", "pattern": "^[a-z][A-Za-z0-9_]{0,39}$" } },
+    "identity": {
+     "description": "How the kind looks in the chooser: an icon and a colour from the bundled lists. Not drawn yet.",
+     "type": "object",
+     "additionalProperties": false,
+     "required": ["icon", "colour"],
+     "properties": {
+      "icon": { "enum": ["home", "school", "building", "apartment", "shop", "hospital", "office", "park", "car", "bike", "bus", "train", "cart", "hotel", "restaurant", "gym", "book", "heart", "star", "flag", "key", "pin", "briefcase", "paw"] },
+      "colour": { "enum": ["terracotta", "indigo", "teal", "forest", "amber", "rose", "slate", "plum"] }
+     }
+    }
    }
   }
  },
  "$defs": {
   "kindId": { "type": "string", "pattern": "^[a-z][a-z0-9_]{1,31}$" },
   "fieldId": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]{0,39}$" },
+  "aiWord": {
+   "description": "One English word or short phrase the server's prompts and Ask documents speak in (kinds PR 28, docs/03 §18.22). Letters, digits, spaces and . , ' ( ) / - only, so a word can carry no markup, no line break, no colon (a document line's key ends at the first colon) and no instruction of any length.",
+   "type": "string",
+   "pattern": "^[A-Za-z][A-Za-z0-9 .,'()/-]{0,59}$"
+  },
+  "aiWords": {
+   "description": "The English words of the kind's AI text, optional (kinds PR 28): the server reads a kind through its file alone. `noun`: the first line's key of an Ask document (`School: <name>`) and the word of a generated label; `records`: the plural, the name of the Ask records' block (`schools-<nonce>`) and the word in the Ask refusal (`I don't know based on the schools you have saved.`); `extras`: for each typed extra an `ai` slot names, its `words` (the key of its document line) and, for an `enum`, the words of each option id. An extra the server's AI already knows by id (the house's bedrooms, area, floor and cost fields, `docs/03` §18.22) needs none. Nothing here is a prompt: the prompts are the server's, from these words.",
+   "type": "object",
+   "additionalProperties": false,
+   "required": ["noun", "records"],
+   "properties": {
+    "noun": { "$ref": "#/$defs/aiWord" },
+    "records": { "type": "string", "pattern": "^[a-z]{2,24}$" },
+    "extras": {
+     "type": "object",
+     "maxProperties": 60,
+     "propertyNames": { "$ref": "#/$defs/fieldId" },
+     "additionalProperties": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["words"],
+      "properties": {
+       "words": { "$ref": "#/$defs/aiWord" },
+       "options": {
+        "type": "object",
+        "maxProperties": 30,
+        "propertyNames": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{0,31}$" },
+        "additionalProperties": { "$ref": "#/$defs/aiWord" }
+       }
+      }
+     }
+    }
+   }
+  },
   "ids": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]{0,39}$" } },
   "webKey": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*(\\.[A-Za-z0-9_]+)+$" },
   "androidKey": { "type": "string", "pattern": "^[a-z][A-Za-z0-9_]*$" },

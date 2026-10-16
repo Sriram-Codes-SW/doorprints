@@ -20,6 +20,7 @@ package app.doorprints.server.ai.rag;
 import app.doorprints.server.ai.ContactRedactor;
 import app.doorprints.server.ai.PromptSafety;
 import app.doorprints.server.ai.kind.AiKind;
+import app.doorprints.server.ai.kind.AiKinds;
 import app.doorprints.server.house.HouseDto;
 import app.doorprints.server.visit.VisitDto;
 import tools.jackson.databind.JsonNode;
@@ -46,17 +47,107 @@ public final class KindDocuments {
     }
 
     static String text(HouseDto h, List<VisitDto> visits, AreaLines.All areas, AiKind k) {
+        return text(h, visits, List.of(), areas, k);
+    }
+
+    /**
+     * The document of {@code h} as kind {@code k}'s {@code ai.ask} slot says (kinds PR 28, §18.22), line by line in the
+     * slot's order. Every kind is written here, the house too: an id the server's AI knows (the house's price, size, area,
+     * floor, cost, rooms, questions, viewings, moving in and checklist) is written in its own words and rules, any other
+     * extra by its type and the words of its kind file. A line that needs two ids (a deposit in rupees or months) is written
+     * where the first of them stands. {@code never} ids are skipped whatever the slot says.
+     */
+    static String text(HouseDto h, List<VisitDto> visits, List<ViewingLine> viewings, AreaLines.All areas, AiKind k) {
         var r = ContactRedactor.forHouse(h);
         var sb = new StringBuilder();
+        var cost = h.cost();
+        var written = new java.util.HashSet<String>();
         for (var id : k.ask()) {
-            if (k.never().contains(id)) continue;
+            if (k.never().contains(id) || written.contains(id)) continue;
             switch (id) {
                 case "label" -> HouseDocuments.line(sb, k.noun(), r.freeText(h.label()));
                 case "address" -> HouseDocuments.line(sb, "Address", r.place(h.address()));
                 case "street" -> HouseDocuments.line(sb, "Street", r.place(h.street()));
                 case "locality" -> HouseDocuments.line(sb, "Locality", r.place(h.locality()));
+                case "money" -> {
+                    if (h.price() != null) {
+                        HouseDocuments.line(sb, "Price", "Rs " + h.price() + (h.priceType() == null ? ""
+                                : "RENT".equals(h.priceType()) ? " per month (rent)" : " (sale)"));
+                    }
+                }
+                case "bedrooms" -> {
+                    if (h.bedrooms() != null) {
+                        HouseDocuments.line(sb, "Size", h.bedrooms() == 0 ? "studio / 1RK" : h.bedrooms() + " BHK");
+                    }
+                }
+                case "areaSqft" -> {
+                    if (h.areaSqft() != null) HouseDocuments.line(sb, "Carpet area", h.areaSqft() + " sq ft");
+                }
+                // S4b-BL-87: the floor in words, the same as the apps': 0 the ground floor, a negative one a basement level.
+                case "floor" -> {
+                    if (h.floor() != null) {
+                        HouseDocuments.line(sb, "Floor", h.floor() == 0 ? "ground floor"
+                                : h.floor() < 0 ? "basement " + -h.floor() : h.floor().toString());
+                    }
+                }
+                case "deposit", "depositMonths" -> {
+                    written.addAll(java.util.List.of("deposit", "depositMonths"));
+                    if (cost != null) {
+                        HouseDocuments.line(sb, "Deposit", HouseDocuments.rupeesOrMonths(
+                                slot(k, "deposit") ? cost.deposit() : null,
+                                slot(k, "depositMonths") ? cost.depositMonths() : null));
+                    }
+                }
+                case "maintenance", "maintenanceIncluded" -> {
+                    written.addAll(java.util.List.of("maintenance", "maintenanceIncluded"));
+                    if (cost != null && slot(k, "maintenance") && cost.maintenance() != null) {
+                        HouseDocuments.line(sb, "Maintenance", "Rs " + cost.maintenance() + " per month"
+                                + (!slot(k, "maintenanceIncluded") ? ""
+                                : Boolean.TRUE.equals(cost.maintenanceIncluded()) ? " (included)" : " (not included)"));
+                    }
+                }
+                case "brokerage", "brokerageMonths" -> {
+                    written.addAll(java.util.List.of("brokerage", "brokerageMonths"));
+                    if (cost != null) {
+                        HouseDocuments.line(sb, "Brokerage", HouseDocuments.rupeesOrMonths(
+                                slot(k, "brokerage") ? cost.brokerage() : null,
+                                slot(k, "brokerageMonths") ? cost.brokerageMonths() : null));
+                    }
+                }
+                case "lockInMonths" -> {
+                    if (cost != null && cost.lockInMonths() != null) {
+                        HouseDocuments.line(sb, "Lock-in", HouseDocuments.months(cost.lockInMonths()));
+                    }
+                }
+                case "noticeMonths" -> {
+                    if (cost != null && cost.noticeMonths() != null) {
+                        HouseDocuments.line(sb, "Notice", HouseDocuments.months(cost.noticeMonths()));
+                    }
+                }
+                case "availableFrom" -> {
+                    if (cost != null) HouseDocuments.line(sb, "Available from", cost.availableFrom());
+                }
+                case "agreedPrice" -> {
+                    if (cost != null && cost.agreedPrice() != null) {
+                        HouseDocuments.line(sb, "Agreed price", "Rs " + cost.agreedPrice());
+                    }
+                }
+                case "rooms" -> HouseDocuments.line(sb, "Rooms", HouseDocuments.rooms(h.rooms(), r));
+                case "questions" -> HouseDocuments.answerLines(sb, h.answers(), r);
+                case "viewings" -> HouseDocuments.viewingLines(sb, viewings, r);
+                case "moveIn" -> HouseDocuments.movingInLines(sb, h.moveIn(), r);
+                case "checklist" -> {
+                    if (h.checklist() != null && !h.checklist().isEmpty()) {
+                        var items = new StringBuilder();
+                        new java.util.TreeMap<>(h.checklist()).forEach((key, v) -> items.append(items.isEmpty() ? "" : ", ")
+                                .append(r.freeText(key)).append(' ').append(v).append("/5"));
+                        HouseDocuments.line(sb, "Checklist", items.toString());
+                    }
+                }
                 case "status" -> HouseDocuments.line(sb, "Status", h.status() == null ? null : h.status().name());
-                case "rating" -> HouseDocuments.line(sb, "My rating", h.rating() == null ? null : h.rating() + "/5");
+                case "rating" -> {
+                    if (h.rating() != null) HouseDocuments.line(sb, "My rating", h.rating() + "/5");
+                }
                 case "areaNotes" -> HouseDocuments.areaNoteLines(sb, h, areas, r);
                 case "distances" -> HouseDocuments.distanceLines(sb, h, areas, r);
                 case "visits" -> HouseDocuments.line(sb, "Visits", HouseDocuments.visitSummary(visits));
@@ -70,13 +161,21 @@ public final class KindDocuments {
                 }
                 default -> {
                     var extra = k.extra(id);
-                    if (extra == null) throw new IllegalStateException("kind " + k.id() + " cannot write " + id);
+                    if (extra == null || extra.words() == null) {
+                        throw new IllegalStateException("kind " + k.id() + " cannot write " + id);
+                    }
                     var other = h.extras() == null ? null : h.extras().other().get(id);
                     HouseDocuments.line(sb, extra.words(), value(extra, other, r));
                 }
             }
         }
+        // Deliberately no "Contact" line: the contact name and phone never go to the provider (F-30).
         return sb.toString().strip();
+    }
+
+    /** Whether the kind's {@code ask} slot names {@code id} and {@code never} does not. */
+    private static boolean slot(AiKind k, String id) {
+        return k.allows(k.ask(), id);
     }
 
     /**
@@ -99,8 +198,10 @@ public final class KindDocuments {
                 yield n == null || n < e.min() || n > e.max() ? null : n.toString();
             }
             case "bool" -> v.isBoolean() ? (v.asBoolean() ? "yes" : "no") : null;
+            case "date" -> v.isString() && v.asString().matches("\\d{4}-\\d{2}-\\d{2}") ? v.asString() : null;
             case "money" -> {
-                if (!v.isObject() || !v.path("cadence").isString() || !e.cadence().equals(v.path("cadence").asString())) {
+                if (e.cadence() == null || !v.isObject() || !v.path("cadence").isString()
+                        || !e.cadence().equals(v.path("cadence").asString())) {
                     yield null;
                 }
                 var amount = whole(v.path("amount"));
@@ -148,7 +249,7 @@ public final class KindDocuments {
         var m = new HashMap<String, Object>();
         m.put("houseId", h.id().toString());
         // The kind the text was written under: Ask drops the document once the kind leaves KINDS_AVAILABLE (S4b-BL-308).
-        m.put("kind", k.id());
+        if (!AiKinds.alwaysAvailable(k.id())) m.put("kind", k.id());
         m.put("label", h.label() == null || !k.allows(k.ask(), "label") ? "" : r.freeText(h.label()));
         if (h.status() != null && k.allows(k.ask(), "status")) m.put("status", h.status().name());
         if (k.allows(k.ask(), "money")) {

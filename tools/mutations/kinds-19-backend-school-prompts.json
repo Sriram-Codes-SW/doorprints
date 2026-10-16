@@ -39,8 +39,8 @@
     },
     {
       "file": "backend/src/main/java/app/doorprints/server/ai/rag/AskPrompts.java",
-      "find": "        var k = kindOf(docs, kinds);\n        if (k == null) return build(question, docs, nonce);",
-      "replace": "        AiKind k = null;\n        if (k == null) return build(question, docs, nonce);",
+      "find": "var k = kindOf(docs, kinds);",
+      "replace": "AiKind k = null;",
       "expect": "aSchoolsAskSystemTextAndRefusalAreTheVectors"
     },
     {
@@ -63,8 +63,8 @@
     },
     {
       "file": "backend/src/main/java/app/doorprints/server/ai/kind/AiKinds.java",
-      "find": "        return BUILT_IN.values().stream().anyMatch(k -> k.refusal().equals(sentence));",
-      "replace": "        return false;",
+      "find": "return LOADED.values().stream().anyMatch(k -> !k.id().equals(House.HOUSE_KIND) && k.refusal().equals(sentence));",
+      "replace": "return false;",
       "expect": "theSchoolsRefusalSentenceIsARefusalToo"
     },
     {

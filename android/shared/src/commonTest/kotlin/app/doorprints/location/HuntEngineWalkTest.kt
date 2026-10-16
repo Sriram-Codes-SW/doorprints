@@ -81,7 +81,7 @@ class HuntEngineWalkTest {
     private val effects = Effects()
     private val clock = 1_760_000_000_000L
 
-    private fun TestScope.engine() = HuntEngine(data, { _, _ -> null }, { null }, effects, this, now = { clock })
+    private fun TestScope.engine() = HuntEngine(data, { _, _ -> null }, { null }, effects, this, "house", now = { clock })
 
     @BeforeTest fun reset() = HuntState.update { HuntState.State() }
     @AfterTest fun clear() = HuntState.update { HuntState.State() }

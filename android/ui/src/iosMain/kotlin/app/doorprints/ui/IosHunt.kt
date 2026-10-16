@@ -34,11 +34,7 @@ import app.doorprints.ui.res.common_score_value
 import app.doorprints.ui.res.hunt_battery_text
 import app.doorprints.ui.res.notif_battery_title
 import app.doorprints.ui.res.notif_distance
-import app.doorprints.ui.res.notif_seen_house
 import app.doorprints.ui.res.notif_stay_text
-import app.doorprints.ui.res.notif_stay_title
-import app.doorprints.ui.res.notif_street_text
-import app.doorprints.ui.res.notif_street_text_since
 import app.doorprints.ui.res.notif_street_title
 import app.doorprints.ui.res.notif_visited_before
 import app.doorprints.ui.res.price_per_month
@@ -93,6 +89,8 @@ internal object IosHunt : HuntEffects {
     const val KEY_NEW_LAT = "newLat"
     const val KEY_NEW_LON = "newLon"
     const val KEY_VISIT_ID = "visitId"
+    /** The kind of the walk that raised a "stay here?" alert (docs/03 section 18.20); read back only when it is one of the app's own kinds. */
+    const val KEY_NEW_KIND = "newKind"
     /** A viewing to open (slice 3c); a reminder queued before S4b-BL-94c still carries it. */
     const val KEY_OPEN_VIEWING = "openViewing"
     /** A Hunt mode reminder's viewing ([IosViewingReminders], S4b-BL-94c): its tap opens the Map, which offers Hunt mode. */
@@ -105,18 +103,25 @@ internal object IosHunt : HuntEffects {
     private var engine: HuntEngine? = null
     private var scope: CoroutineScope? = null
 
+    /** The kind of the walk running (the space it was started in, docs/03 section 18.20); the alerts are worded in its words. */
+    private var kind: String = ""
+    private val words: HuntWords get() = HuntWords.of(kind)
+
     /** Set before a stop the user did not ask for; the Map says why ([HuntState.State.stopReason]). */
     private var stopReason: HuntState.StopReason? = null
 
     val running: Boolean get() = engine != null
 
     /**
-     * Starts Hunt mode; true when it runs (already or from now). False without starting when the location permission
-     * is missing, as Android's `HuntService.start`: the Map then shows its location note.
+     * Starts Hunt mode for the space of [walkKind]; true when it runs (already or from now). False without starting when the
+     * kind has no Hunt mode or the location permission is missing, as Android's `HuntService.start`: the Map then shows its
+     * location note.
      */
-    fun start(): Boolean {
+    fun start(walkKind: String): Boolean {
         if (engine != null) return true
+        if (!HuntSpace.has(walkKind)) return false
         if (iosLocationAccess() == LocationAccess.NONE) return false
+        kind = walkKind
         val engineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
         val newManager = CLLocationManager().apply {
             desiredAccuracy = kCLLocationAccuracyBest
@@ -138,11 +143,12 @@ internal object IosHunt : HuntEffects {
         throttle.reset()
         UIDevice.currentDevice.batteryMonitoringEnabled = true
         val newEngine = HuntEngine(
-            data = HuntData.of(IosAppContainer.repository),
+            data = HuntData.of(IosAppContainer.repository, walkKind),
             streets = { lat, lon -> IosGeocoder.place(lat, lon)?.street },
             battery = ::readBattery,
             effects = this,
             scope = engineScope,
+            kind = walkKind,
         )
         engine = newEngine
         // start() asks for walking-rate fixes (requestUpdates), which starts Core Location.
@@ -234,18 +240,22 @@ internal object IosHunt : HuntEffects {
         getString(Res.string.notif_battery_title) to getString(Res.string.hunt_battery_text, percent)
     }
 
-    override fun alertHouse(house: HouseEntity, distanceM: Int) =
+    override fun alertHouse(house: HouseEntity, distanceM: Int) {
+        val words = words
         alert("house:${house.id}", mapOf<Any?, Any?>(KEY_OPEN_HOUSE to house.id)) {
-            getString(Res.string.notif_seen_house, house.label) to
+            getString(words.seen, house.label) to
                 getString(Res.string.notif_distance, describe(house), distanceM)
         }
+    }
 
-    override fun alertStreet(street: String, houses: Int, visits: Int, firstVisit: Long?) =
+    override fun alertStreet(street: String, houses: Int, visits: Int, firstVisit: Long?) {
+        val words = words
         alert("street:${StreetAlerts.key(street)}") {
-            val text = firstVisit?.let { getString(Res.string.notif_street_text_since, houses, visits, Formats.date(it)) }
-                ?: getString(Res.string.notif_street_text, houses, visits)
+            val text = firstVisit?.let { getString(words.streetTextSince, houses, visits, Formats.date(it)) }
+                ?: getString(words.streetText, houses, visits)
             getString(Res.string.notif_street_title, street) to text
         }
+    }
 
     /**
      * The repeated-path alert (docs/11 5.27.5): the default notification sound; no place, distance or count in it, under the
@@ -258,10 +268,13 @@ internal object IosHunt : HuntEffects {
         RepeatAlerts.signal()
     }
 
-    override fun alertStay(visitId: String, lat: Double, lon: Double) = alert(
-        stayAlertId(visitId),
-        mapOf<Any?, Any?>(KEY_NEW_LAT to lat.toString(), KEY_NEW_LON to lon.toString(), KEY_VISIT_ID to visitId),
-    ) { getString(Res.string.notif_stay_title) to getString(Res.string.notif_stay_text) }
+    override fun alertStay(visitId: String, lat: Double, lon: Double) {
+        val words = words
+        alert(
+            stayAlertId(visitId),
+            mapOf<Any?, Any?>(KEY_NEW_LAT to lat.toString(), KEY_NEW_LON to lon.toString(), KEY_VISIT_ID to visitId, KEY_NEW_KIND to kind),
+        ) { getString(words.stayTitle) to getString(Res.string.notif_stay_text) }
+    }
 
     /** The id of the "are you at a house?" alert for [visitId]; the house form takes it down once saved. */
     fun stayAlertId(visitId: String): String = "stay:$visitId"

@@ -18,6 +18,7 @@
 
 package app.doorprints.data
 
+import app.doorprints.shared.model.Candidates
 import app.doorprints.shared.ai.AiKind
 import app.doorprints.shared.ai.AiProviderConfig
 import app.doorprints.shared.ai.AiQuality
@@ -224,7 +225,7 @@ class SettingsStore(
     /** Where the person's own Gemini key is kept (docs/03 §13.1); null where a platform has none (tests). */
     private val geminiSecrets: SecretStore? = null,
     /** The kinds this build ships (kinds PR C, S4b-BL-274): the default is the house alone; the release build passes the house and the school, compiled in and off ([KindSettingRules.availableOf]). */
-    val availableKinds: List<String> = listOf(KindSettingRules.HOUSE),
+    val availableKinds: List<String> = listOf(Candidates.BASELINE_KIND),
     /**
      * Where the person's own Sarvam key for speech to text is kept (ADR-37, voice PR 7): a slot of its own beside [geminiSecrets]
      * (`sarvamKeyEnc` on Android, the Keychain item `sarvam_key` on the iPhone), never in [AppSettings] and so in no backup,
@@ -737,6 +738,11 @@ class SettingsStore(
     suspend fun questionsSeeded(): Boolean = dataStore.data.first()[Keys.questionsSeeded] ?: false
 
     suspend fun markQuestionsSeeded() = dataStore.edit { it[Keys.questionsSeeded] = true }
+
+    /** A kind's own question bank was seeded on this install (kinds PR 29, docs/03 section 18.23): `questions.seeded.<kind>`, not synced. */
+    suspend fun questionsSeededFor(kind: String): Boolean = dataStore.data.first()[booleanPreferencesKey("questions.seeded.$kind")] ?: false
+
+    suspend fun markQuestionsSeededFor(kind: String) = dataStore.edit { it[booleanPreferencesKey("questions.seeded.$kind")] = true }
 
     suspend fun saveAiProvider(choice: AiProviderChoice) = dataStore.edit { it[Keys.aiProvider] = choice.name }
 

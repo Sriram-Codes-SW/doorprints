@@ -96,6 +96,13 @@ class ReleaseKindsTest {
     }
 
     @Test
+    fun theSyntheticConformanceKindIsInNoReleaseList() {
+        assertFalse(releaseKinds().contains("zz_all"))
+        assertFalse(KindSettingRules.availableOf(releaseKinds()).contains("zz_all"))
+        assertFalse(KindSettingRules.RELEASED.contains("zz_all"))
+    }
+
+    @Test
     fun theDebugBuildListsWhatTheReleaseListsAndOnlyAnExplicitPropertyTurnsTheDeveloperFlagOn() {
         val debug = block("        debug {")
         assertTrue(debug.contains("val kinds = named ?: \"${releaseKinds()}\""))
@@ -121,7 +128,7 @@ class ReleaseKindsTest {
         assertTrue("the iPhone's list is the release's", ios.contains("internal const val IOS_AVAILABLE_KINDS = \"${releaseKinds()}\""))
         assertTrue("the app's store passes the list", ios.contains("availableKinds = KindSettingRules.availableOf(IOS_AVAILABLE_KINDS)"))
         assertTrue("the store's default must stay the house alone", fileUp("shared/src/commonMain/kotlin/app/doorprints/data/Settings.kt").readText()
-            .contains("val availableKinds: List<String> = listOf(KindSettingRules.HOUSE)"))
+            .contains("val availableKinds: List<String> = listOf(Candidates.BASELINE_KIND)"))
         val shell = File(fileUp("shared/build.gradle.kts").parentFile.parentFile.parentFile, "ios/Doorprints")
         if (shell.isDirectory) {
             val swift = shell.walkTopDown().filter { it.isFile && it.extension == "swift" }.map { it.readText() }.joinToString("\n")

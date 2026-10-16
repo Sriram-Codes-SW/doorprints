@@ -89,7 +89,7 @@ class ParityVectorsTest {
             for (var c : (ArrayNode) out.get(key)) {
                 var o = (ObjectNode) c;
                 var raw = o.get("raw").isNull() ? null : JSON.treeToValue(o.get("raw"), RawListing.class);
-                o.set("expected", JSON.valueToTree(DraftSanitizer.sanitize(raw, o.get("source").asText())));
+                o.set("expected", JSON.valueToTree(app.doorprints.server.ai.extract.HouseRaw.sanitize(raw, o.get("source").asText())));
             }
         }
         for (var c : (ArrayNode) out.get("listingLinks")) {

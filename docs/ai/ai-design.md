@@ -83,6 +83,7 @@
 | v0.79   | 2026-10-15 | Claude (Code), engineer       | 8.8: **the spoken set** (S4b-BL-220, voice PR 3; `feat/voice-3-spoken-eval-set`; [voice-input](voice-input.md) v0.4, [06](../06-test-plan.md) TC-AI-52, [10](../10-sprint-log.md) v0.334): `docs/ai/evals/spoken-set.json` 0.1, the fourth `eval_set` choice; informational, no thresholds; the golden set and the verdict logic are pinned by a test. No model was run; the Vertex run follows the merge. |
 | v0.80   | 2026-10-15 | Claude (Code), engineer       | **8.4 and 8.5: numbers in native digits** (S4b-BL-174b, [10](../10-sprint-log.md) v0.337, [06](../06-test-plan.md) TC-U-257): `DraftSanitizer` in Java, Kotlin and TypeScript and the no-AI listing parsers read a price, a bedroom count, an area and a phone written in the digits of Indian scripts as 0-9 (the `asciiDigits` of the contact redactor, now public on the server), so the model's copy of `४५,०००` is 45,000 and not a dropped field; the parity vectors gain `sanitizeNative` (3), kept apart from `sanitize` so the house pins are unchanged. The redactor already removed native-digit phones in all three ports (6 more vectors). `hard-extract-03` keeps its KNOWN GAP label until a real-model run. |
 | v0.81   | 2026-10-15 | Claude (Code), engineer       | **8.9: the audio clip suite** (S4b-BL-224, voice PR 7): the eight CC0 clips, the manual `voice` suite, its metrics and the stop-rule line; [06](../06-test-plan.md) TC-AI-53. |
+| v0.82   | 2026-10-15 | Claude (Code), engineer       | **16.13: the server reads every kind, the house too, from its kind file** (kinds PR 28, [03](../03-design.md) §18.22, [06](../06-test-plan.md) TC-U-272..277; `feat/kinds-28-server-kind-reader`): the Extract, Ask and planner texts, the Extract answer's fields and the Ask document lines of the house and the school are data read by one code path; the house's output is the pinned bytes. 16.1 and 16.8 say where the house stands. |
 
 Status: implemented in `backend/` (package `app.doorprints.server.ai`), **off by default**. Not yet compiled in this
 sandbox (no Maven Central access) — CI compiles and runs the tests. Provider: AI Studio by default, Vertex AI with
@@ -1991,7 +1992,7 @@ phone's `BuildConfig.DEV_KINDS`. With the flag off, for a house, and for a kind 
 
 The Extract, Ask and Plan prompts (**until S4b-BL-234, 16.11, which adds one rule to them**), the house document lines and their metadata, the Plan tools' summaries, details and
 filters, the request and response bodies, and every section of `docs/ai/evals/parity-vectors.json` (**the `prompts` section changed in 16.11**). A house's AI code is
-not routed through the slots at all: the kind is decided first and only another kind takes the new path. *Safety test
+not routed through the slots at all: the kind is decided first and only another kind takes the new path. *(Since kinds PR 28, 16.13, the house is read through its file by the same code and the pins prove the bytes did not move.)* *Safety test
 first*: the server's house pins (`HouseAskPinsTest`, `HousePlanPinsTest`, `HouseExtractPinsTest`: SHA-256 of each output
 for the golden set's 30 fixture houses and one house with every field), committed from main before the code and green
 after it. The website pins its own the same way (`core/ai/house-ai-pins.spec.ts` with `golden/house-ai-pins.golden.ts`:
@@ -2272,7 +2273,28 @@ that is newer than an app still works (the app reads both) and an app that is ne
 house's own switch is a re-pin of the five house pins and `parity-vectors.json` and is the owner's decision, not needed for a
 school. Schema descriptions are per class, so a per-kind description needs a second output record per kind on the server and a
 second schema object on each device, with their own pins: skipped here, since a safe description change that moves no pin does
-not exist (the house's request bodies carry the schema). The row stays Planned.
+not exist (the house's request bodies carry the schema). The row stays Planned. *(Since kinds PR 28, 16.13, the server has no output record per kind: the schema is built from the kind's fields.)*
+
+### 16.13 The server reads every kind, the house too, from its kind file (kinds PR 28)
+
+Until now a kind other than the house was a Java constant (`AiKinds.SCHOOL`) and the house a set of hand-written texts and lines, so a new kind meant
+Java edits. The server now has **one reader of kind files** (`KindFiles`, [03](../03-design.md) §18.22) and **one path for the AI**:
+
+| What the AI sends | Written by | Its source for the house and the school | For a kind with only a file |
+|---|---|---|---|
+| Ask document lines and metadata | `KindDocuments.text` / `.metadata` | the kind file's `ai.ask` slot, in its order; the house's own lines (price, size, area, floor, cost, rooms, questions, viewings, moving in, checklist) by id | the slot, by each extra's type and `ai.words` |
+| Ask prompt | `AskPrompts.build` | `kinds/<id>.prompts.json` `ask.system` | written from `ai.words` (`KindPrompts.generic`) |
+| Extract prompt, schema and draft | `ExtractionPrompts.build`, `KindOutputConverter`, `KindDraftSanitizer` | `kinds/<id>.prompts.json` `extract` (system text and the answer's fields) and the `extract` slot | written from `ai.words` and the slot |
+| Planner text | `VisitPlannerService.systemPrompt` | `kinds/<id>.prompts.json` `plan.system` | written from `ai.words` |
+| Refusal sentence | `AiKind.refusal` | derived from `ai.words.records` (the old sentences, exactly) | the same rule |
+
+Not changed: the Plan tools (`searchHouses`, `nearbyHouses`, `houseDetails`) still read a house as it is (their text filter looks at the address
+and notes), the injection and privacy rules of 16.6 (a contact is redacted and `ai.never` ids are never written, whatever a slot says), the
+request and response bodies. The house pins (`HouseAskPinsTest`, `HouseExtractPinsTest`, `HousePlanPinsTest`), `parity-vectors.json` and the
+school's vectors are green unchanged: they are the proof that moving the house's texts and lines into the shared path changed no byte. The structured
+answer of Extract is no longer a Java record per kind: `KindOutputConverter` builds the JSON schema from the kind's fields and its schema and format text
+equal, byte for byte, what Spring AI wrote for the two records (kept in the tests as oracles). The model sees nothing new and no kind file text reaches a prompt but
+the words, which are short, charset-limited and refused if they carry markup, a colon or a line break.
 
 ## Sources
 

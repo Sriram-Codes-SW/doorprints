@@ -54,11 +54,10 @@ import { LocalStore } from '../../data/local-store.service';
 import type { HouseAnswer, MoveIn } from '../../core/models';
 import { MOVE_IN_TAG } from '../../shared/photo-tags';
 import type { PhotoMetaInput } from '../../data/photo-store';
-import { HouseMoveInCard } from './house-move-in-card';
+import { HouseMoveInCard, type OpenedPhoto } from './house-move-in-card';
 import { HouseCheckCard } from './house-check-card';
 import { HouseWalksCard } from './house-walks-card';
 import { TraceStore } from '../../data/trace-store';
-import type { OpenedPhoto } from './house-move-in-card';
 import { PhotoMetaEditor } from './photo-meta-editor';
 import { HousePhotos, isStorageFull } from './house-photos';
 import { HouseRooms } from './house-rooms';
@@ -70,16 +69,15 @@ import { SpaceService } from '../../core/space.service';
 import { type SpaceWords, spaceWords } from '../../core/space-words';
 import { toolWord } from '../../core/space-tool-words';
 import { blankToNull, clone, sharedFromNavigation, sortBrokers, toWholeNumber, withCost } from './house-page-input';
-import { QUESTION_CATEGORIES } from '../../shared/question';
-import type { Question, QuestionCategory } from '../../shared/question';
+import { QUESTION_CATEGORIES, questionsOfKind, type Question, type QuestionCategory } from '../../shared/question';
 import { HouseViewingsCard } from '../viewings/house-viewings-card';
 import { HouseAreaNotesCard, HouseDistancesCard } from '../areas/house-area-cards';
 import { addUsual, answerFor, ordered, usualQuestions } from '../../shared/house-answers';
 import { duplicateFlats } from '../../shared/duplicate-flat';
 import { costSummary } from '../../shared/house-cost';
 import { brokerLine } from '../../shared/broker';
-import { criterionName } from '../../shared/criterion-name';
 import { DEFAULT_SCORING, evaluateScore } from '../../shared/scoring';
+import { kindCriterionName, scoringForKind } from '../../shared/compare-criteria';
 import type { Criterion, ScoreResult, Scoring } from '../../shared/scoring';
 import type { BrokerRow } from '../../shared/broker';
 import { LocalDataError } from '../../core/local-error';
@@ -103,6 +101,7 @@ import { ListReturn } from '../map/list-return';
 import { GLYPHS } from '../../shared/glyphs';
 import { parseListingText } from '../../shared/listing-text';
 import { RunResult, runResult } from '../../shared/run-result';
+import { isBaselineKind } from '../../core/kind-capabilities';
 
 interface OpenPhoto {
   src: string;
@@ -186,6 +185,7 @@ export class HouseDetailPage implements OnInit, OnDestroy {
   protected readonly space = inject(SpaceService);
   /** The kind's words for the save button and the area-notes line (a school's, S4b-BL-212). */
   protected get W(): SpaceWords { return spaceWords(this.kind().id); }
+  protected readonly isBaseline = computed(() => isBaselineKind(this.kind().id)); // the checklist links to the person's own criteria only for the baseline kind
   /**
    * A house word of the page in the kind's own (S4b-BL-259): the house's key for a house, a school's for a school; with no
    * candidate loaded (the *not found* card) the kind of the space on screen.
@@ -266,8 +266,9 @@ export class HouseDetailPage implements OnInit, OnDestroy {
   private shortQuery: MediaQueryList | null = null;
   private onShortChange: (() => void) | null = null;
 
-  /** The question bank (slice 3a), archived questions included; empty until it is read. */
-  private readonly bank = signal<Question[]>([]);
+  /** The question bank (slice 3a), archived included, of every kind, empty until read; `bank` is the candidate's kind's own, seeded when its page first opens (PR 29, §18.23). */
+  private readonly allQuestions = signal<Question[]>([]);
+  private readonly bank = computed(() => questionsOfKind(this.allQuestions(), this.kind().id));
   protected readonly maxAnswers = MAX_ANSWERS;
   protected readonly maxAnswerText = MAX_ANSWER_TEXT;
   protected readonly maxAnswer = MAX_ANSWER;
@@ -289,13 +290,13 @@ export class HouseDetailPage implements OnInit, OnDestroy {
   });
   /** The ids of the answers in the order the cards are shown; kept while typing so a card does not jump when it turns Answered. */
   private answerIds: string[] = [];
-  /** The effective scoring (slice 2); the defaults until it is read. */
-  private readonly scoring = signal<Scoring>(DEFAULT_SCORING);
+  /** The person's effective scoring (slice 2), the defaults until it is read; the kind's own checklist scores a school (kinds PR 27, §18.21). */
+  private readonly personScoring = signal<Scoring>(DEFAULT_SCORING);
   /**
    * The criteria the checklist asks about: the active ones in the person's order, custom ones by label, weight-0 ones
    * marked "ignored". Archived criteria are hidden here but their stored scores stay on the house.
    */
-  protected readonly checklist = computed<Criterion[]>(() => this.scoring().criteria.filter((c) => c.archived !== true));
+  protected readonly checklist = computed<Criterion[]>(() => scoringForKind(this.kind(), this.personScoring()).criteria.filter((c) => c.archived !== true));
   protected readonly statuses = STATUSES;
   /** The status words of the candidate's kind (S4b-BL-256). */
   protected readonly statusKey = computed(() => statusKeys(this.kind().labels));
@@ -399,13 +400,12 @@ export class HouseDetailPage implements OnInit, OnDestroy {
    * text arrives in navigation state, never in the URL, because it often holds a phone number.
    */
   ngOnInit(): void {
-    this.api.questions().subscribe({
-      next: (list) => this.bank.set(list),
-      error: () => this.bank.set([]),
-    });
+    const readQuestions = () => this.api.questions().subscribe({ next: (list) => this.allQuestions.set(list), error: () => this.allQuestions.set([]) });
+    readQuestions();
+    if (!isBaselineKind(this.space.kind())) this.api.seedKindQuestions(this.space.kind(), this.i18n.lang()).subscribe({ next: readQuestions, error: () => undefined });
     this.api.scoring().subscribe({
-      next: (scoring) => this.scoring.set(scoring),
-      error: () => this.scoring.set(DEFAULT_SCORING),
+      next: (scoring) => this.personScoring.set(scoring),
+      error: () => this.personScoring.set(DEFAULT_SCORING),
     });
     this.api.brokers().subscribe({
       next: (rows) => this.brokers.set(sortBrokers(rows)),
@@ -681,17 +681,17 @@ export class HouseDetailPage implements OnInit, OnDestroy {
 
   /** The score result of the house as edited: overall, coverage and the must-haves it misses or has not checked. */
   protected result(h: HouseDto): ScoreResult {
-    return evaluateScore(h.checklist, h.rating, this.scoring());
+    return evaluateScore(h.checklist, h.rating, scoringForKind(this.kind(), this.personScoring()));
   }
 
   /** A criterion's name: a built-in's translation, a custom criterion's own label. */
   protected nameOf(c: Pick<Criterion, 'key' | 'label'>): string {
-    return criterionName(c, (key) => this.i18n.t(key));
+    return kindCriterionName(this.kind(), c, (key) => this.i18n.t(key));
   }
 
   /** The names of some criterion keys, for the must-have lines. */
   protected namesOf(keys: readonly string[]): string {
-    return keys.map((key) => this.nameOf(this.scoring().criteria.find((c) => c.key === key) ?? { key })).join(', ');
+    return keys.map((key) => this.nameOf(scoringForKind(this.kind(), this.personScoring()).criteria.find((c) => c.key === key) ?? { key })).join(', ');
   }
 
   /**

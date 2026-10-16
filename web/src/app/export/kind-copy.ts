@@ -16,6 +16,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+import { isBaselineKind } from '../core/kind-capabilities';
 import type { Dict, TKey } from '../i18n/en';
 import type { HouseDto } from '../core/models';
 import type { KindFields } from '../core/kind-fields';
@@ -90,7 +91,7 @@ export function copyVoice(chosen: readonly Pick<HouseDto, 'kind'>[], kinds: Copy
   const own = space ? kinds.fieldsOf(space) : undefined;
   const all = new Set(chosen.map((h) => kinds.fieldsOf(h.kind)));
   const voice = own ?? (all.size === 1 ? [...all][0] : undefined);
-  return voice && voice.kind !== 'house' ? voice : undefined;
+  return voice && !isBaselineKind(voice.kind) ? voice : undefined;
 }
 
 /** A word of the app's dictionary in the copy's voice: the kind's own where it has one, else the house's key. */
@@ -98,9 +99,13 @@ export function copyWord(voice: KindFields | undefined, key: TKey): TKey {
   return toolWord(voice?.kind, key);
 }
 
-/** Whether the copy shows a place of its kind (`field.money`, `section.checklist`): every place, in a copy without a voice. */
+/**
+ * Whether the copy shows a place of its kind (`field.money`, `section.checklist`): every place, in a copy without a voice.
+ * A copy writes the checklist, its scores and its Scores table of the house only: the school's own checklist (kinds PR 27,
+ * docs/03 §18.21) is on the pages and in Compare, and a copy of it is a later change, so a school's copy is as it was.
+ */
 export function copyShows(voice: KindFields | undefined, ref: string): boolean {
-  return !voice || voice.labels.isVisible(ref);
+  return !voice || (ref !== 'section.checklist' && voice.labels.isVisible(ref));
 }
 
 /**

@@ -1692,6 +1692,15 @@
     <string name="school_grades">कक्षाएँ</string>
     <string name="school_commute">आने-जाने का समय (मिनट)</string>
     <string name="school_bus">स्कूल बस</string>
+    <!-- kinds PR 27 (2026-10-15): the school's checklist (docs/03 §18.21), a draft for the owner's review. Under review. -->
+    <string name="school_check_dropoff">सुरक्षित छोड़ने और लेने की जगह</string>
+    <string name="school_check_grounds">कक्षाएँ और खेल का मैदान</string>
+    <string name="school_check_sanitation">पीने का पानी और शौचालय</string>
+    <string name="school_check_teachers">शिक्षक आसानी से मिलते हैं</string>
+    <string name="school_check_classsize">कक्षा में बच्चों की संख्या</string>
+    <string name="school_check_homework">गृहकार्य और रोज़ की दिनचर्या</string>
+    <string name="school_check_activities">खेल और गतिविधियाँ</string>
+    <string name="school_check_safety">सुरक्षा और CCTV</string>
     <string name="kind_option_not_set">तय नहीं</string>
     <!-- S4b-BL-274 (2026-10-14): spaces on the phones (kinds PR C): the chooser, What you track, a school space's words, the tools per space. Hindi, Tamil and Telugu are under review (the website's words where it has them). -->
     <string name="chooser_heading">आप क्या ढूँढ रहे हैं?</string>
@@ -1883,4 +1892,77 @@
     <string name="voice_switch_hint_sarvam">जब तक आप चालू न करें, यह बंद रहता है। माइक्रोफ़ोन दबाएँ, 30 सेकंड तक बोलें, और शब्द बॉक्स में लिख दिए जाते हैं ताकि आप जाँचें और बदलें। बॉक्स का अपना बटन दबाने तक कुछ नहीं भेजा जाता।</string>
     <string name="voice_disclosure_sarvam">ऑडियो इस फ़ोन से सीधे %1$s (Sarvam AI, भारत) को आपकी अपनी Sarvam कुंजी से जाता है, उनकी सूची-कीमत पर लगभग ₹%2$s प्रति मिनट, एक बार में 30 सेकंड तक। आप जो भी बोलते हैं, नंबर और नाम समेत, ऑडियो के रूप में भेजा जाता है, और बोला गया फ़ोन नंबर टाइप किए गए नंबर की तरह हटाया नहीं जा सकता। रिकॉर्डिंग इस फ़ोन पर सहेजी नहीं जाती।</string>
     <string name="voice_needs_sarvam_key">आवाज़ से लिखने के लिए Sarvam इस्तेमाल करने हेतु ऊपर अपनी Sarvam कुंजी सहेजें।</string>
+    <!-- Kinds PR 26, Hunt as a capability (docs/03 §18.20, 2026-10-15): the Hunt words of the kind files. The house's three are the :app
+         notification strings (same text, kept equal by KindWordVectorsTest); the school's are under review. -->
+    <string name="notif_hunt_text">आपके देखे मकानों और सड़कों पर नज़र रखी जा रही है</string>
+    <string name="notif_channel_alerts">मकान और सड़क की सूचनाएँ</string>
+    <string name="notif_channel_alerts_desc">जब आप पहले देखे मकान या सड़क से गुज़रें</string>
+    <string name="school_notif_seen">यह स्कूल आप देख चुके हैं: %1$s</string>
+    <string name="school_notif_street_text">सहेजे स्कूल: %1$d, दौरे: %2$d</string>
+    <string name="school_notif_street_text_since">सहेजे स्कूल: %1$d, दौरे: %2$d, पहली बार %3$s</string>
+    <string name="school_map_street_seen">%1$s · यहाँ आ चुके हैं: स्कूल %2$d, दौरे %3$d</string>
+    <string name="school_notif_stay_title">क्या आप किसी स्कूल पर हैं?</string>
+    <string name="school_map_hunt_notify_rationale">जब आप किसी देखे हुए स्कूल के पास से गुज़रते हैं, तो हंट मोड सूचना देकर बताता है।</string>
+    <string name="school_hunt_stopped_left_space">हंट मोड रुक गया। यह केवल स्कूल वाले स्थान में चलता है।</string>
+    <string name="school_hunt_needs_kind">हंट मोड केवल स्कूल वाले स्थान में चलता है, और आप क्या ट्रैक करते हैं में स्कूल बंद हैं।</string>
+    <string name="school_notif_hunt_text">आपके देखे स्कूलों और सड़कों पर नज़र रखी जा रही है</string>
+    <string name="school_notif_channel_alerts">स्कूल और सड़क की सूचनाएँ</string>
+    <string name="school_notif_channel_alerts_desc">जब आप पहले देखे स्कूल या सड़क से गुज़रें</string>
+    <string name="school_map_notifications_off">सूचनाएँ बंद हैं, इसलिए हंट मोड आपको नहीं बता सकता कि आप किसी स्कूल के पास से गुज़रे।</string>
+    <string name="school_map_location_off">Doorprints के लिए जगह की अनुमति बंद है। हंट मोड और ‘यहाँ स्कूल सहेजें’ को इसकी ज़रूरत है।</string>
+    <string name="school_map_needs_precise">हंट मोड और ‘यहाँ स्कूल सहेजें’ को सटीक जगह चाहिए।</string>
+    <!-- Kinds PR 29, viewings as a capability (docs/03 §18.23, 2026-10-15): the viewing words of the kind files. The house's seven reminder strings are the :app strings (same text, kept equal by StringParityTest); the school's are a DRAFT for the owner's review, hi, ta and te under review. -->
+    <string name="notif_channel_viewings">मकान देखने के रिमाइंडर</string>
+    <string name="notif_channel_viewings_desc">आपके तय मकान देखने से पहले</string>
+    <string name="notif_viewing_soon">%1$s में मकान देखना %2$d मिनट में</string>
+    <string name="notif_viewing_title">%1$s में मकान देखना</string>
+    <string name="notif_viewing_open">मकान खोलें</string>
+    <string name="notif_viewing_house_gone">हटाया गया मकान</string>
+    <string name="notif_viewing_directions">मकान तक रास्ता</string>
+    <string name="school_viewings_heading">स्कूल का दौरा</string>
+    <string name="school_questions_heading">दौरे के लिए सवाल</string>
+    <string name="school_viewings_plan">दौरा तय करें</string>
+    <string name="school_viewings_none">कोई दौरा तय नहीं</string>
+    <string name="school_viewings_all">इस स्कूल के सभी दौरे</string>
+    <string name="school_viewings_intro">जब आप किसी स्कूल को देखने या ओपन डे पर जाने की योजना बनाते हैं, और वह कैसा रहा।</string>
+    <string name="school_viewings_empty">अभी कोई दौरा नहीं। किसी स्कूल से एक तय करें।</string>
+    <string name="school_settings_viewings_hint">स्कूल का दौरा या ओपन डे तय करें, और आने वाले तथा हो चुके दौरे देखें।</string>
+    <string name="school_settings_questions_hint">स्कूल के दौरे पर आप जो सवाल पूछना चाहते हैं।</string>
+    <string name="school_notif_channel_viewings">स्कूल दौरे की याद दिलाने वाली सूचनाएँ</string>
+    <string name="school_notif_channel_viewings_desc">आपके तय किए स्कूल दौरे से पहले</string>
+    <string name="school_notif_viewing_soon">%1$s का दौरा %2$d मिनट में</string>
+    <string name="school_notif_viewing_title">%1$s का दौरा</string>
+    <string name="school_notif_viewing_open">स्कूल खोलें</string>
+    <string name="school_notif_viewing_gone">हटाया जा चुका स्कूल</string>
+    <string name="school_notif_viewing_directions">स्कूल का रास्ता</string>
+    <string name="school_questions_intro">स्कूल के दौरे पर आप जो सवाल पूछना चाहते हैं। किसी स्कूल पर “आम सवाल जोड़ें” वे सवाल जोड़ता है जो “हमेशा पूछें” पर हैं।</string>
+    <string name="school_questions_empty">अभी कोई सवाल नहीं। दौरे पर ले जाने के लिए आम सवाल जोड़ें।</string>
+    <string name="school_questions_pick_none">आपकी सूची का हर सवाल इस स्कूल पर पहले से है।</string>
+    <string name="school_viewing_reminder_body">%1$s का दौरा, %2$s बजे</string>
+    <!-- Kinds PR 31 (docs/03 section 18.25, 2026-10-15): under review. -->
+    <string name="settings_connected_any">जुड़ गया। सर्वर पर प्रविष्टियाँ: %1$d</string>
+    <string name="settings_photos_wifi_hint_any">मोबाइल डेटा बचाता है। प्रविष्टियाँ और दौरे मोबाइल डेटा पर भी सिंक होते हैं।</string>
+    <string name="settings_alert_radius_any">सहेजी गई प्रविष्टि से %1$d मी के भीतर होने पर सूचना दें</string>
+    <string name="settings_gps_note_any">GPS आमतौर पर 5–20 मी तक सटीक होता है, इसलिए पास-पास की जगहें गड़बड़ा सकती हैं। सिग्नल कमज़ोर हो (अंदर) तो सूचनाएँ रुक जाती हैं, और बैटरी कम होने पर हंट मोड अपने-आप बंद हो जाता है।</string>
+    <string name="settings_places_hint_any">दफ़्तर, स्कूल, परिवार: हर प्रविष्टि दिखाती है कि वे कितनी दूर हैं</string>
+    <string name="settings_privacy_note_any">आपकी प्रविष्टियाँ और दौरे इसी फ़ोन और आपके अपने सर्वर पर रहते हैं। नक्शे OpenFreeMap से और सड़कों के नाम, और “खोजें” टैप करने पर साझा लिस्टिंग में लिखी जगह, फ़ोन के जियोकोडर (Google) से आते हैं। तस्वीरें जगह की जानकारी के बिना सहेजी जाती हैं।</string>
+    <string name="settings_privacy_note_ios_any">आपकी प्रविष्टियाँ और दौरे इसी iPhone पर, और अगर आप सर्वर जोड़ें तो आपके अपने सर्वर पर, रहते हैं। नक्शे OpenFreeMap से आते हैं, और सड़कों के नाम, और “खोजें” टैप करने पर साझा लिस्टिंग में लिखी जगह, Apple के जियोकोडर से।</string>
+    <string name="settings_ai_hint_any">चालू होने पर, आप AI सुविधा में जो पूछते या चिपकाते हैं, वह मिलते-जुलते नोट्स के साथ एक AI सेवा को जाता है: आपके सर्वर के ज़रिए, या आपकी चुनी सेवा को आपकी अपनी कुंजी से सीधे इस फ़ोन से। प्रविष्टि के साथ सहेजे गए संपर्क के नाम और फ़ोन नंबर नहीं भेजे जाते।</string>
+    <string name="settings_ai_sends_any">आपका सवाल और मिलते-जुलते नोट्स आपकी चुनी सेवा को जाते हैं; सहेजे गए संपर्क के नाम, फ़ोन और ईमेल पहले, जहाँ तक हम कर सकते हैं, बदल दिए जाते हैं। चिपकाया हुआ विज्ञापन जैसा है वैसा ही भेजा जाता है।</string>
+    <string name="school_trace_end_body">इसे रखने के लिए किसी स्कूल से जोड़ें। नहीं तो यह 30 दिन रहेगी, फिर मिट जाएगी। यह इसी फ़ोन पर रहती है, किसी बैकअप या कॉपी में नहीं जाती।</string>
+    <string name="school_trace_end_save">स्कूल के साथ सहेजें</string>
+    <string name="school_trace_pick_title">यह सैर किस स्कूल तक थी?</string>
+    <string name="school_trace_pick_search">अपने स्कूल खोजें</string>
+    <string name="school_trace_pick_none">आपका अभी कोई स्कूल सहेजा नहीं है। पहले स्कूल जोड़ें, या सैर को 30 दिन रखें।</string>
+    <string name="school_trace_save_full">इस स्कूल की %1$d सैर पहले से सहेजी हैं। पहले एक मिटाएँ।</string>
+    <!-- Kinds PR 31 (docs/03 section 18.25, 2026-10-15): under review. -->
+    <string name="tour_kind_welcome">Doorprints आपके सहेजे हुए %1$s को याद रखता है। जब तक आप बैकअप या साझा न करें, सब कुछ इसी फ़ोन पर रहता है।</string>
+    <string name="tour_kind_body">Doorprints का यह हिस्सा %1$s के लिए भी काम करता है। इसे देखें, फिर आगे दबाएँ।</string>
+    <string name="tour_kind_action">अपने %1$s में से कोई खोलें, या बस देखें और आगे दबाएँ।</string>
+    <string name="tour_kind_done_body">ये Doorprints के मुख्य हिस्से हैं। अपने %1$s में जोड़ना शुरू करें, और जाते समय ऐप खुला रखें।</string>
+    <string name="tour_kind_done_action">समाप्त करें दबाएँ, फिर अपना पहला जोड़ें।</string>
+    <string name="tour_kind_compare_title">%1$s की तुलना करें</string>
+    <!-- Kinds PR 31 (docs/03 section 18.25, 2026-10-15): under review. -->
+    <string name="school_houses_empty_ios">अभी कोई स्कूल नहीं। iPhone पर अभी स्कूल जोड़े नहीं जा सकते। अगर आपका Doorprints सर्वर है, तो उसे सेटिंग्स में जोड़ें, फिर आपके स्कूल यहाँ दिखने लगेंगे।</string>
+    <string name="school_map_not_on_this_phone">नक्शा अभी iPhone पर नहीं है। आपके सभी स्कूल ‘स्कूल’ टैब में हैं।</string>
 </resources>

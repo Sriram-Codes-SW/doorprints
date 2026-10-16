@@ -1,5 +1,8 @@
 {
-  "spec": ["backend/src/test/java/app/doorprints/server/house/CandidateExtrasTest.java", "backend/src/test/java/app/doorprints/server/ai/eval/FixtureSeedingTest.java"],
+  "spec": [
+    "backend/src/test/java/app/doorprints/server/house/CandidateExtrasTest.java",
+    "backend/src/test/java/app/doorprints/server/ai/eval/FixtureSeedingTest.java"
+  ],
   "maven": [
     "-Dtest=CandidateExtrasTest,FixtureSeedingTest"
   ],
@@ -42,8 +45,8 @@
     },
     {
       "file": "backend/src/main/java/app/doorprints/server/house/HouseDto.java",
-      "find": "|| Money.HOUSE_CADENCES.contains(money.cadence());",
-      "replace": "|| Money.CADENCES.contains(money.cadence());",
+      "find": "return allowed == null || allowed.contains(money.cadence());",
+      "replace": "return allowed == null || Money.CADENCES.contains(money.cadence());",
       "expect": "theKindIsRequiredAndAHousesMoneyIsARentOrASale"
     },
     {

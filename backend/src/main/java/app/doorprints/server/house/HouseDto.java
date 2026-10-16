@@ -18,6 +18,7 @@
 
 package app.doorprints.server.house;
 
+import app.doorprints.server.ai.kind.KindFiles;
 import app.doorprints.server.record.RecordDto;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
@@ -176,13 +177,17 @@ public record HouseDto(
         return extras == null ? null : extras.cost();
     }
 
-    /** A house's money is a rent or a sale ({@code docs/schemas/kinds/house.json}); other kinds may use any cadence. */
+    /**
+     * A candidate's money keeps to the cadences its kind file gives its money ({@code core.money.cadences}: a house's is a
+     * rent, {@code month}, or a sale, {@code once}); a kind whose file shows no money, and a kind with no file, may use any.
+     */
     @JsonIgnore
     @AssertTrue(message = "money.cadence must be month (a rent) or once (a sale) for a house")
     public boolean isMoneyOfTheKind() {
         // A missing cadence is the money's own @NotNull (Set.of would throw on null).
-        return money == null || money.cadence() == null || !House.HOUSE_KIND.equals(kind)
-                || Money.HOUSE_CADENCES.contains(money.cadence());
+        if (money == null || money.cadence() == null) return true;
+        var allowed = KindFiles.moneyCadences(kind);
+        return allowed == null || allowed.contains(money.cadence());
     }
 
     /** Two rooms with one id cannot be told apart by the clients; a getter constraint so Bean Validation runs it. */

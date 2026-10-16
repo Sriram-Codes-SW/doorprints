@@ -20,7 +20,9 @@ package app.doorprints.server.ai.extract;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 
 /**
- * What the model is asked to fill for a school listing (kinds PR 7, S4b-BL-211): the fields of the schools kind's
+ * TEST ORACLE (kinds PR 28): the record that was the school's structured-output target before the server read the kind files. The server
+ * no longer has it; the tests keep it to prove that {@link KindOutputConverter} writes byte for byte its JSON schema and that
+ * the sanitizer reads the same fields. What the model is asked to fill for a school listing (kinds PR 7, S4b-BL-211): the fields of the schools kind's
  * {@code ai.extract} slot, all text, as {@link RawListing} is for a house; {@link KindDraftSanitizer} does the typed
  * parsing. The descriptions are word for word those of {@code docs/schemas/kinds/kind-ai-vectors.json}
  * ({@code extract.schema}), which the website's and the phone's schemas hold too.

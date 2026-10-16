@@ -1692,6 +1692,15 @@
     <string name="school_grades">வகுப்புகள்</string>
     <string name="school_commute">பயண நேரம் (நிமிடங்கள்)</string>
     <string name="school_bus">பள்ளிப் பேருந்து</string>
+    <!-- kinds PR 27 (2026-10-15): the school's checklist (docs/03 §18.21), a draft for the owner's review. Under review. -->
+    <string name="school_check_dropoff">பாதுகாப்பான இறக்கி-ஏற்றும் இடம்</string>
+    <string name="school_check_grounds">வகுப்பறைகளும் விளையாட்டு மைதானமும்</string>
+    <string name="school_check_sanitation">குடிநீரும் கழிப்பறைகளும்</string>
+    <string name="school_check_teachers">ஆசிரியர்களை எளிதில் அணுக முடியும்</string>
+    <string name="school_check_classsize">வகுப்பின் மாணவர் எண்ணிக்கை</string>
+    <string name="school_check_homework">ஹோம்வொர்க்கும் தினசரி நேரமும்</string>
+    <string name="school_check_activities">விளையாட்டும் செயல்பாடுகளும்</string>
+    <string name="school_check_safety">பாதுகாப்பும் CCTV-யும்</string>
     <string name="kind_option_not_set">அமைக்கப்படவில்லை</string>
     <!-- S4b-BL-274 (2026-10-14): spaces on the phones (kinds PR C): the chooser, What you track, a school space's words, the tools per space. Hindi, Tamil and Telugu are under review (the website's words where it has them). -->
     <string name="chooser_heading">நீங்கள் எதைத் தேடுகிறீர்கள்?</string>
@@ -1883,4 +1892,77 @@
     <string name="voice_switch_hint_sarvam">நீங்கள் இயக்கும் வரை அணைந்திருக்கும். மைக்ரோஃபோனை அழுத்தி, 30 வினாடி வரை பேசுங்கள்; சொற்கள் பெட்டியில் எழுதப்படும், நீங்கள் சரிபார்த்து மாற்றலாம். பெட்டியின் சொந்த பொத்தானை அழுத்தும் வரை எதுவும் அனுப்பப்படாது.</string>
     <string name="voice_disclosure_sarvam">ஆடியோ இந்த ஃபோனிலிருந்து நேரடியாக %1$s க்கு (Sarvam AI, இந்தியா) உங்கள் சொந்த Sarvam சாவியுடன் செல்கிறது, அவர்களின் பட்டியல் விலையில் நிமிடத்திற்கு சுமார் ₹%2$s, ஒரு முறைக்கு 30 வினாடி வரை. நீங்கள் சொல்லும் அனைத்தும், எண்கள் மற்றும் பெயர்கள் உட்பட, ஆடியோவாக அனுப்பப்படும்; சொன்ன தொலைபேசி எண்ணை தட்டச்சு செய்த எண்ணைப் போல நீக்க முடியாது. பதிவு இந்த ஃபோனில் சேமிக்கப்படாது.</string>
     <string name="voice_needs_sarvam_key">குரல் உள்ளீட்டுக்கு Sarvam ஐப் பயன்படுத்த, மேலே உங்கள் சொந்த Sarvam சாவியைச் சேமிக்கவும்.</string>
+    <!-- Kinds PR 26, Hunt as a capability (docs/03 §18.20, 2026-10-15): the Hunt words of the kind files. The house's three are the :app
+         notification strings (same text, kept equal by KindWordVectorsTest); the school's are under review. -->
+    <string name="notif_hunt_text">நீங்கள் பார்த்த வீடுகளையும் தெருக்களையும் கவனிக்கிறது</string>
+    <string name="notif_channel_alerts">வீடு, தெரு அறிவிப்புகள்</string>
+    <string name="notif_channel_alerts_desc">முன்பு பார்த்த வீடு அல்லது தெருவைக் கடக்கும்போது</string>
+    <string name="school_notif_seen">இந்தப் பள்ளியை ஏற்கெனவே பார்த்துள்ளீர்கள்: %1$s</string>
+    <string name="school_notif_street_text">சேமித்த பள்ளிகள்: %1$d, வருகைகள்: %2$d</string>
+    <string name="school_notif_street_text_since">சேமித்த பள்ளிகள்: %1$d, வருகைகள்: %2$d, முதல் முறை %3$s</string>
+    <string name="school_map_street_seen">%1$s · முன்பு வந்துள்ளீர்கள்: பள்ளிகள் %2$d, வருகைகள் %3$d</string>
+    <string name="school_notif_stay_title">நீங்கள் ஒரு பள்ளியில் இருக்கிறீர்களா?</string>
+    <string name="school_map_hunt_notify_rationale">நீங்கள் பார்த்த பள்ளியைக் கடக்கும்போது தேடல் பயன்முறை அறிவிப்பு மூலம் தெரிவிக்கும்.</string>
+    <string name="school_hunt_stopped_left_space">தேடல் பயன்முறை நின்றது. இது பள்ளிகள் பகுதியில் மட்டுமே இயங்கும்.</string>
+    <string name="school_hunt_needs_kind">தேடல் பயன்முறை பள்ளிகள் பகுதியில் மட்டுமே இயங்கும்; நீங்கள் கண்காணிப்பவை என்பதில் பள்ளிகள் அணைக்கப்பட்டுள்ளன.</string>
+    <string name="school_notif_hunt_text">நீங்கள் பார்த்த பள்ளிகளையும் தெருக்களையும் கவனிக்கிறது</string>
+    <string name="school_notif_channel_alerts">பள்ளி, தெரு அறிவிப்புகள்</string>
+    <string name="school_notif_channel_alerts_desc">முன்பு பார்த்த பள்ளி அல்லது தெருவைக் கடக்கும்போது</string>
+    <string name="school_map_notifications_off">அறிவிப்புகள் அணைக்கப்பட்டுள்ளன, அதனால் நீங்கள் ஒரு பள்ளியைக் கடக்கும்போது தேடல் பயன்முறை தெரிவிக்க முடியாது.</string>
+    <string name="school_map_location_off">Doorprints-க்கு இருப்பிடம் அணைக்கப்பட்டுள்ளது. தேடல் பயன்முறைக்கும் ‘இங்கே பள்ளியைச் சேமி’க்கும் இது தேவை.</string>
+    <string name="school_map_needs_precise">தேடல் பயன்முறைக்கும் ‘இங்கே பள்ளியைச் சேமி’க்கும் துல்லியமான இருப்பிடம் தேவை.</string>
+    <!-- Kinds PR 29, viewings as a capability (docs/03 §18.23, 2026-10-15): the viewing words of the kind files. The house's seven reminder strings are the :app strings (same text, kept equal by StringParityTest); the school's are a DRAFT for the owner's review, hi, ta and te under review. -->
+    <string name="notif_channel_viewings">பார்வையிடல் நினைவூட்டல்கள்</string>
+    <string name="notif_channel_viewings_desc">நீங்கள் திட்டமிட்ட பார்வையிடலுக்கு முன்</string>
+    <string name="notif_viewing_soon">%1$s இல் பார்வையிடல் %2$d நிமிடத்தில்</string>
+    <string name="notif_viewing_title">%1$s இல் பார்வையிடல்</string>
+    <string name="notif_viewing_open">வீட்டைத் திற</string>
+    <string name="notif_viewing_house_gone">நீக்கப்பட்ட வீடு</string>
+    <string name="notif_viewing_directions">வீட்டுக்கு வழி</string>
+    <string name="school_viewings_heading">பள்ளி வருகைகள்</string>
+    <string name="school_questions_heading">வருகைக்கான கேள்விகள்</string>
+    <string name="school_viewings_plan">வருகையைத் திட்டமிடுங்கள்</string>
+    <string name="school_viewings_none">திட்டமிட்ட வருகை இல்லை</string>
+    <string name="school_viewings_all">இந்தப் பள்ளிக்கான அனைத்து வருகைகளும்</string>
+    <string name="school_viewings_intro">பள்ளியைப் பார்க்க அல்லது திறந்த நாளுக்குச் செல்லத் திட்டமிடும்போது, அது எப்படி இருந்தது.</string>
+    <string name="school_viewings_empty">இன்னும் வருகைகள் இல்லை. ஒரு பள்ளியிலிருந்து திட்டமிடுங்கள்.</string>
+    <string name="school_settings_viewings_hint">பள்ளி வருகை அல்லது திறந்த நாளைத் திட்டமிட்டு, வரவிருப்பவை மற்றும் முடிந்தவற்றைப் பாருங்கள்.</string>
+    <string name="school_settings_questions_hint">பள்ளி வருகையில் நீங்கள் கேட்க விரும்பும் கேள்விகள்.</string>
+    <string name="school_notif_channel_viewings">பள்ளி வருகை நினைவூட்டல்கள்</string>
+    <string name="school_notif_channel_viewings_desc">நீங்கள் திட்டமிட்ட பள்ளி வருகைக்கு முன்</string>
+    <string name="school_notif_viewing_soon">%1$s பள்ளிக்கு வருகை %2$d நிமிடத்தில்</string>
+    <string name="school_notif_viewing_title">%1$s பள்ளிக்கு வருகை</string>
+    <string name="school_notif_viewing_open">பள்ளியைத் திற</string>
+    <string name="school_notif_viewing_gone">நீக்கப்பட்ட பள்ளி</string>
+    <string name="school_notif_viewing_directions">பள்ளிக்கான வழி</string>
+    <string name="school_questions_intro">பள்ளி வருகையில் நீங்கள் கேட்க விரும்பும் கேள்விகள். ஒரு பள்ளியில் “வழக்கமான கேள்விகளைச் சேர்” என்பது “எப்போதும் கேள்” எனக் குறிக்கப்பட்டவற்றைச் சேர்க்கும்.</string>
+    <string name="school_questions_empty">இன்னும் கேள்விகள் இல்லை. வருகைக்குக் கொண்டுசெல்ல வழக்கமான கேள்விகளைச் சேர்க்கவும்.</string>
+    <string name="school_questions_pick_none">உங்கள் பட்டியலில் உள்ள ஒவ்வொரு கேள்வியும் ஏற்கனவே இந்தப் பள்ளியில் உள்ளது.</string>
+    <string name="school_viewing_reminder_body">%1$s பள்ளிக்கு வருகை, %2$s மணிக்கு</string>
+    <!-- Kinds PR 31 (docs/03 section 18.25, 2026-10-15): under review. -->
+    <string name="settings_connected_any">இணைக்கப்பட்டது. சர்வரில் பதிவுகள்: %1$d</string>
+    <string name="settings_photos_wifi_hint_any">மொபைல் டேட்டாவைச் சேமிக்கும். பதிவுகளும் வருகைகளும் மொபைல் டேட்டாவிலும் ஒத்திசைக்கப்படும்.</string>
+    <string name="settings_alert_radius_any">சேமித்த பதிவிலிருந்து %1$d மீ-க்குள் இருக்கும்போது அறிவி</string>
+    <string name="settings_gps_note_any">GPS பொதுவாக 5–20 மீ துல்லியமானது, எனவே அருகிலுள்ள இடங்கள் குழம்பலாம். சமிக்ஞை பலவீனமாக இருக்கும்போது (உள்ளே) அறிவிப்புகள் நிற்கும்; பேட்டரி குறைந்தால் தேடல் பயன்முறை தானாக நிற்கும்.</string>
+    <string name="settings_places_hint_any">அலுவலகம், பள்ளி, குடும்பம்: ஒவ்வொரு பதிவும் அவை எவ்வளவு தூரம் என்று காட்டும்</string>
+    <string name="settings_privacy_note_any">உங்கள் பதிவுகளும் வருகைகளும் இந்த ஃபோனிலும் உங்கள் சொந்த சர்வரிலும் மட்டுமே இருக்கும். வரைபடங்கள் OpenFreeMap-இலிருந்தும், தெருப் பெயர்களும், “கண்டுபிடி” தட்டும்போது பகிர்ந்த பட்டியல் குறிப்பிடும் இடமும் ஃபோனின் ஜியோகோடரிலிருந்தும் (Google) வருகின்றன. படங்கள் இருப்பிடத் தகவல் இல்லாமல் சேமிக்கப்படுகின்றன.</string>
+    <string name="settings_privacy_note_ios_any">உங்கள் பதிவுகளும் வருகைகளும் இந்த iPhone-இலும், நீங்கள் இணைத்தால் உங்கள் சொந்த சர்வரிலும் மட்டுமே இருக்கும். வரைபடங்கள் OpenFreeMap-இலிருந்தும், தெருப் பெயர்களும், “கண்டுபிடி” தட்டும்போது பகிர்ந்த பட்டியல் குறிப்பிடும் இடமும் Apple-இன் ஜியோகோடரிலிருந்தும் வருகின்றன.</string>
+    <string name="settings_ai_hint_any">இது இயக்கத்தில் இருக்கும்போது, AI வசதியில் நீங்கள் கேட்பது அல்லது ஒட்டுவது, பொருந்தும் குறிப்புகளுடன் ஒரு AI சேவைக்குச் செல்லும்: உங்கள் சர்வர் வழியாக, அல்லது நீங்கள் தேர்ந்தெடுத்த சேவைக்கு உங்கள் சொந்த சாவியுடன் இந்தத் தொலைபேசியிலிருந்து நேரடியாக. பதிவுடன் சேமித்த தொடர்புப் பெயர்களும் தொலைபேசி எண்களும் அனுப்பப்படாது.</string>
+    <string name="settings_ai_sends_any">உங்கள் கேள்வியும் பொருந்தும் குறிப்புகளும் நீங்கள் தேர்ந்தெடுத்த சேவைக்குச் செல்லும்; சேமித்த தொடர்புப் பெயர்கள், தொலைபேசி எண்கள், மின்னஞ்சல்கள் முதலில், எங்களால் முடிந்தவரை, மாற்றப்படும். ஒட்டிய விளம்பரம் ஒட்டியபடியே அனுப்பப்படும்.</string>
+    <string name="school_trace_end_body">வைத்திருக்க இதை ஒரு பள்ளியுடன் இணைக்கவும். இல்லையெனில் 30 நாட்கள் இருக்கும், பிறகு நீங்கும். இது இந்தத் தொலைபேசியில் மட்டும் இருக்கும்; காப்புப் பிரதியிலோ நகலிலோ செல்லாது.</string>
+    <string name="school_trace_end_save">பள்ளியுடன் சேமி</string>
+    <string name="school_trace_pick_title">இந்த நடை எந்தப் பள்ளிக்கு?</string>
+    <string name="school_trace_pick_search">உங்கள் பள்ளிகளைத் தேடுங்கள்</string>
+    <string name="school_trace_pick_none">இன்னும் சேமித்த பள்ளிகள் இல்லை. முதலில் ஒரு பள்ளியைச் சேருங்கள், அல்லது நடையை 30 நாட்கள் வையுங்கள்.</string>
+    <string name="school_trace_save_full">இந்தப் பள்ளிக்கு ஏற்கனவே %1$d நடைகள் சேமிக்கப்பட்டுள்ளன. முதலில் ஒன்றை அழியுங்கள்.</string>
+    <!-- Kinds PR 31 (docs/03 section 18.25, 2026-10-15): under review. -->
+    <string name="tour_kind_welcome">நீங்கள் சேமிக்கும் %1$s ஐ Doorprints நினைவில் வைத்திருக்கும். நீங்கள் காப்புப்பிரதி எடுக்கவோ பகிரவோ தேர்வு செய்யாத வரை எல்லாம் இந்தத் தொலைபேசியிலேயே இருக்கும்.</string>
+    <string name="tour_kind_body">Doorprints இன் இந்தப் பகுதி %1$s க்கும் செயல்படும். பார்த்துவிட்டு அடுத்து என்பதைத் தொடுங்கள்.</string>
+    <string name="tour_kind_action">உங்கள் %1$s இல் ஒன்றைத் திறக்கவும், அல்லது பார்த்துவிட்டு அடுத்து என்பதைத் தொடுங்கள்.</string>
+    <string name="tour_kind_done_body">இவை Doorprints இன் முக்கியப் பகுதிகள். உங்கள் %1$s இல் சேர்க்கத் தொடங்குங்கள், செல்லும்போது செயலியைத் திறந்து வைத்திருங்கள்.</string>
+    <string name="tour_kind_done_action">முடி என்பதைத் தொட்டு, உங்கள் முதலாவதைச் சேர்க்கவும்.</string>
+    <string name="tour_kind_compare_title">%1$s ஐ ஒப்பிடுங்கள்</string>
+    <!-- Kinds PR 31 (docs/03 section 18.25, 2026-10-15): under review. -->
+    <string name="school_houses_empty_ios">இன்னும் பள்ளிகள் இல்லை. iPhone-இல் இப்போது பள்ளிகளைச் சேர்க்க முடியாது. உங்களிடம் Doorprints சர்வர் இருந்தால், அதை அமைப்புகளில் இணைக்கவும்; உங்கள் பள்ளிகள் இங்கே தோன்றும்.</string>
+    <string name="school_map_not_on_this_phone">வரைபடம் இன்னும் iPhone-இல் இல்லை. உங்கள் எல்லாப் பள்ளிகளும் ‘பள்ளிகள்’ தாவலில் உள்ளன.</string>
 </resources>

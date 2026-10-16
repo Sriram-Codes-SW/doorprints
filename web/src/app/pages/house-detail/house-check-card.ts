@@ -36,6 +36,7 @@ import { checkGeoJson } from '../../shared/trace-style';
 import { CheckResultView } from '../map/place-check-panel';
 import { PlaceCheckState, boundsOf } from '../map/place-check-state';
 import type { CheckAnswer } from '../map/place-check-state';
+import { baselineKindId } from '../../core/candidate';
 
 const NO_WALKS = { type: 'FeatureCollection' as const, features: [] };
 
@@ -69,7 +70,7 @@ export class HouseCheckCard {
 
   readonly house = input.required<HouseDto>();
   /** The candidate's kind: its words for the question and the map's label (S4b-BL-259). */
-  readonly kind = input('house');
+  readonly kind = input(baselineKindId());
   /** A house not saved yet (`/houses/new`) has no stored spot to check. */
   readonly isNew = input(false);
   /** False for a new house with no position yet: there is nothing to check. */

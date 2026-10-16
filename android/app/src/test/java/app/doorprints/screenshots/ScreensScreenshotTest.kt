@@ -140,16 +140,21 @@ import app.doorprints.ui.ImportScreen
 import app.doorprints.ui.LocalAppServices
 import app.doorprints.ui.LocalPlatformFeatures
 import app.doorprints.ui.MapScreen
+import app.doorprints.location.HuntState
 import app.doorprints.ui.PlatformFeatures
 import app.doorprints.ui.ProvideAppServices
 import app.doorprints.ui.SettingsScreen
 import app.doorprints.shared.model.Criterion
 import app.doorprints.shared.model.HouseStatus
 import kotlinx.coroutines.flow.first
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.cancelAndJoin
 import app.doorprints.FakeVoiceRepository
 import app.doorprints.FakeVoiceServices
+import app.doorprints.ui.res.school_trace_end_save
+import app.doorprints.ui.res.school_trace_pick_title
 import app.doorprints.ui.res.voice_mic
 import app.doorprints.ui.res.voice_mic_desc
 import app.doorprints.ui.res.voice_status_recording
@@ -466,6 +471,95 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
         }
     }
 
+    /**
+     * The school space's Hunt card with a walk running (kinds PR 26, S4b-BL-304; docs/03 section 18.20): the switch on, the street
+     * line in the school's words (*Been here: schools 2, visits 3*), the nearest saved school and *Finish walk*. The map view is an
+     * empty box here, as in every Map shot (MapLibre cannot run under Robolectric). English and Hindi, light only; the house's Hunt card
+     * has no shot of its own and is unchanged.
+     */
+    @Test fun schoolMapHunt() {
+        assumeTrue(!dark && (lang == "en" || lang == "hi"))
+        val on = KindSetting(listOf("house", "school"), experimental = "1", enabledText = "[\"house\",\"school\"]")
+        HuntState.update {
+            it.copy(
+                active = true, kind = "school", lat = 26.1433, lon = 91.7898, accuracyM = 8f, lastFixAt = System.currentTimeMillis() + 3_600_000L,
+                street = "GS Road", streetHouses = 2, streetVisits = 3, nearestHouse = SchoolSample.entity(), nearestDistanceM = 80.0,
+                startedAt = 1L,
+            )
+        }
+        try {
+            shoot("school_map_hunt", STATIC) {
+                CompositionLocalProvider(
+                    LocalInspectionMode provides true, LocalSpace provides SpaceUi(on, "school"), app.doorprints.ui.LocalDevKinds provides true,
+                ) { MapScreen(onOpenHouse = {}, onNewHouse = { _, _ -> }) }
+            }
+        } finally {
+            HuntState.update { HuntState.State() }
+        }
+    }
+
+    /**
+     * A school's Compare (kinds PR 27, docs/03 §18.21; DRAFT for the owner's review): two schools side by side with the Checklist
+     * score, the school's own rows (the lower fees and commute are marked, the admission fee is not) and the eight checklist
+     * items. English light only; no house baseline changes (the house's Compare is `compare`).
+     */
+    @Test fun schoolCompare() {
+        englishLightOnly()
+        val repo = ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository
+        val pine = SchoolSample.entity().copy(checklist = mapOf("safety" to 5, "teachers" to 4, "classsize" to 3))
+        val oak = pine.copy(
+            id = "55555555-5555-4555-8555-000000000210", label = "Oak Valley", checklist = mapOf("safety" to 3, "teachers" to 4),
+            extrasOther = buildJsonObject {
+                put("board", "ICSE")
+                put("commuteMinutes", 35)
+                put("fees", buildJsonObject { put("amount", 72000); put("cadence", "year") })
+            },
+        )
+        runBlocking { saveAtFixedTime(repo, pine); saveAtFixedTime(repo, oak) }
+        val on = KindSetting(listOf("house", "school"), experimental = "1", enabledText = "[\"house\",\"school\"]")
+        shoot("school_compare", readyText = "Pine Hill School") {
+            CompositionLocalProvider(LocalSpace provides SpaceUi(on, "school"), app.doorprints.ui.LocalDevKinds provides true) {
+                val houses by LocalAppServices.current.repository.houses.collectAsState(initial = null)
+                val counts by LocalAppServices.current.repository.visitCounts.collectAsState(initial = emptyList())
+                CompareScreen(houses?.filter { it.kind == "school" }, counts, onOpenHouse = {})
+            }
+        }
+    }
+
+    /**
+     * A school's visits (kinds PR 29, docs/03 §18.23): the viewings screen in the school space, headed and worded by the school's
+     * file (*School visits*, *Plan a visit*), one planned visit of the sample school. A DRAFT for the owner's review. English and
+     * Hindi light only, to keep the image set small; no house baseline changes.
+     */
+    @Test fun schoolViewings() {
+        assumeTrue(!dark && (lang == "en" || lang == "hi"))
+        val repo = ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository
+        val now = 1_760_100_000_000
+        runBlocking {
+            saveAtFixedTime(repo, SchoolSample.entity())
+            repo.saveViewing(Viewing("v_00000011", SchoolSample.ID, now + 26 * 3_600_000L, kind = "FIRST", withWhom = "Principal", notes = "Ask about the bus route."))
+        }
+        val on = KindSetting(listOf("house", "school"), experimental = "1", enabledText = "[\"house\",\"school\"]")
+        shoot("school_viewings", readyText = "Ask about the bus route.") {
+            CompositionLocalProvider(LocalSpace provides SpaceUi(on, "school"), app.doorprints.ui.LocalDevKinds provides true) {
+                Column(Modifier.verticalScroll(rememberScrollState())) { ViewingsHistory(null, onOpenViewing = {}, onPlan = { _, _ -> }, nowMs = now) }
+            }
+        }
+    }
+    /**
+     * The school's questions (kinds PR 29): Settings > Questions in the school space, its six seeded questions and its own
+     * intro. A DRAFT for the owner's review; English and Hindi light only.
+     */
+    @Test fun schoolQuestions() {
+        assumeTrue(!dark && (lang == "en" || lang == "hi"))
+        val repo = ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository
+        runBlocking { repo.seedKindQuestionsOnce("school", lang) }
+        val on = KindSetting(listOf("house", "school"), experimental = "1", enabledText = "[\"house\",\"school\"]")
+        shoot("school_questions", readyText = DefaultQuestions.SCHOOL.first().question(lang).text) {
+            CompositionLocalProvider(LocalSpace provides SpaceUi(on, "school"), app.doorprints.ui.LocalDevKinds provides true) { QuestionsEditor() }
+        }
+    }
+
     @Test fun chooserHidden() {
         assumeTrue((lang == "en" && !dark) || (lang == "ta" && dark))
         val repo = ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository
@@ -652,6 +746,54 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
             app.doorprints.ui.WalkEndSheetContent(
                 app.doorprints.ui.WalkSummary(1_760_000_000_000L, shotWalk), shotHouses, 30, null, {}, {}, {}, initiallyPicking = true,
             )
+        }
+    }
+
+    /**
+     * The walk check's Save sheet in a school space (kinds PR 31, docs/03 section 18.25): *Link it to a school to keep it*, *Save with a school*, and the picker
+     * (*Which school was this walk to?*, the search, the school). English and Hindi, light only; the house's are `walk_end` and `walk_end_pick`, unchanged.
+     */
+    /** The sample school, put where the shot walk ends (as the house shots' houses are). */
+    private val nearSchool get() = SchoolSample.entity().copy(lat = 12.9692, lon = 77.5946)
+
+    @Test fun schoolWalkEnd() {
+        assumeTrue(!dark && (lang == "en" || lang == "hi"))
+        val on = KindSetting(listOf("house", "school"), experimental = "1", enabledText = "[\"house\",\"school\"]")
+        shoot("school_walk_end", text(Res.string.school_trace_end_save)) {
+            CompositionLocalProvider(LocalSpace provides SpaceUi(on, "school")) {
+                app.doorprints.ui.WalkEndSheetContent(app.doorprints.ui.WalkSummary(1_760_000_000_000L, shotWalk), listOf(nearSchool), 30, null, {}, {}, {})
+            }
+        }
+    }
+
+    @Test fun schoolWalkEndPick() {
+        assumeTrue(!dark && (lang == "en" || lang == "hi"))
+        val on = KindSetting(listOf("house", "school"), experimental = "1", enabledText = "[\"house\",\"school\"]")
+        shoot("school_walk_end_pick", text(Res.string.school_trace_pick_title)) {
+            CompositionLocalProvider(LocalSpace provides SpaceUi(on, "school")) {
+                app.doorprints.ui.WalkEndSheetContent(
+                    app.doorprints.ui.WalkSummary(1_760_000_000_000L, shotWalk), listOf(nearSchool), 30, null, {}, {}, {}, initiallyPicking = true,
+                )
+            }
+        }
+    }
+
+    /**
+     * Two steps of the guided tour in a school space (kinds PR 31): *Add*, in the school's own words for the button, the hint and the action, and *Compare*, whose
+     * title and sentences are the tour's generic ones naming the kind's plural. English and Hindi, light only; the house tour is `tour_criteria` and `tour_help`, unchanged.
+     */
+    @Test fun schoolTourAdd() = schoolTour("add", 1)
+
+    @Test fun schoolTourCompare() = schoolTour("compare", 7)
+
+    private fun schoolTour(id: String, position: Int) {
+        assumeTrue(!dark && (lang == "en" || lang == "hi"))
+        val on = KindSetting(listOf("house", "school"), experimental = "1", enabledText = "[\"house\",\"school\"]")
+        val step = app.doorprints.ui.TourSteps.ALL.first { it.id == id }
+        shoot("school_tour_$id", STATIC) {
+            CompositionLocalProvider(LocalSpace provides SpaceUi(on, "school")) {
+                Box(Modifier.padding(16.dp)) { app.doorprints.ui.TourStepCard(step, position, 25, false, false, false, {}, {}, {}) }
+            }
         }
     }
 
