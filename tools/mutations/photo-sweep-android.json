@@ -44,8 +44,8 @@
     },
     {
       "file": "android/shared/src/commonMain/kotlin/app/doorprints/drive/photo/PhotoSweepRules.kt",
-      "find": "if (oldestKeptBackupAt != null &&",
-      "replace": "if (oldestKeptBackupAt == null &&",
+      "find": "if (oldestKeptBackupAt != null && photo.deletedAt >= oldestKeptBackupAt) continue",
+      "replace": "if (oldestKeptBackupAt != null && photo.deletedAt >= oldestKeptBackupAt + 1) continue",
       "expect": "theSharedVectors"
     },
     {
@@ -80,8 +80,8 @@
     },
     {
       "file": "android/shared/src/commonMain/kotlin/app/doorprints/drive/backup/DriveBackupService.kt",
-      "find": "var oldestStaying: Long? = null\n            for (b in backups) {",
-      "replace": "var oldestStaying: Long? = null\n            for (b in backups.drop(1)) {",
+      "find": "if (o == null || b.createdAt < o) oldestStaying = b.createdAt",
+      "replace": "if (o == null || b.createdAt > o) oldestStaying = b.createdAt",
       "expect": "aHeldShrinkGuardStillCountsTheBackupsThatWouldHaveBeenPruned"
     },
     {

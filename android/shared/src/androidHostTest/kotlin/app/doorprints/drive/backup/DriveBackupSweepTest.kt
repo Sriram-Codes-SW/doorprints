@@ -78,6 +78,7 @@ class DriveBackupSweepTest {
         val done = service.done(folder, Payload.of(2_000, 5, seed = 1))
         assertFalse(binned(file))
         assertTrue(done.tidy.trashed.none { it == file })
+        assertNull(done.tidy.problem)
     }
 
     @Test
@@ -136,15 +137,19 @@ class DriveBackupSweepTest {
     @Test
     fun theBackupsRetentionPrunedDoNotCountAsStaying() = runTest {
         val folder = ready()
-        val t0 = clock.now()
-        // Deleted two days after the first backup, which retention prunes long before day 40.
-        val (file, gone) = photoFile("p1", t0 + 2 * day)
-        val service = serviceWith { listOf(gone) }
-        repeat(40) {
-            service.done(folder, Payload.of(2_000, houses = 20, seed = it))
-            clock.advance(day)
+        val service = serviceWith(null)
+        val first = service.done(folder, Payload.of(2_000, 5)).backup
+        // Deleted a day after the first backup, which therefore holds the photo, for as long as it stays.
+        val (file, gone) = photoFile("p1", first.createdAt + day)
+        val sweeping = serviceWith { listOf(gone) }
+        // Backups a month apart: retention keeps the newest 7, so the first is pruned at the 8th run, exactly when no
+        // backup that stays could hold the photo any more; the sweep of that same run must take the file.
+        for (i in 1..7) {
+            clock.advance(31 * day)
+            sweeping.done(folder, Payload.of(2_000, 5, seed = i))
+            if (i < 7) assertFalse("run ${i + 1}", binned(file))
         }
-        assertTrue(a.binned().isNotEmpty())
+        assertTrue(a.binned().any { it.id == first.fileId })
         assertTrue(binned(file))
     }
 
