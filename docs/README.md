@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | SSDLC document index |
-| Version | 0.128 |
-| Date | 2026-10-15 |
+| Version | 0.130 |
+| Date | 2026-10-16 |
 | Author | Claude (Cowork) |
 | Status | Draft |
 
@@ -28,6 +28,8 @@
 | 0.126 | 2026-10-15 | Claude (Code), docs | Root README rewritten around the kinds model; 12 v0.9 (section H: where the kinds model may be named), 14 v0.197. |
 | 0.127 | 2026-10-15 | Claude (Code), docs | Voice stated as built on all three platforms: 16 v0.3, 03 v0.150, 14 v0.198. |
 | 0.128 | 2026-10-15 | Claude (Code), docs | Docs 03 v0.160, 06 v0.280, 16 v0.4, ops checklist v0.23 and schemas v1.63: the school's "compiled in, off" wording (`docs/school-compiled-in-wording`). |
+| 0.129 | 2026-10-16 | Claude (Code), lead | New [ops/soi-review-pack.md](ops/soi-review-pack.md) (the Survey of India review pack for the OVSF/1M/7 boundary file `web/public/geo/in-boundaries-soi.json`, built by `web/scripts/geo/build_in_boundaries_soi.py` and checked by `tools/soi-verify.py`), with its index row. |
+| 0.130 | 2026-10-16 | Claude (Code), lead | **The Survey of India's lines on the map** (S4b-BL-114, branch `feat/soi-boundary-data`): 02 v0.95 (RR-16), 03 v0.171 (ADR-22: the SoI lines, the corridor rule, Natural Earth for the world lines only), 06 v0.292 (TC-M-25 spots and the web run of 2026-10-01; TC-U-54, -55, -73), 10 v0.356 (S4b-BL-114; S4b-BL-10), 14 v0.201, [ops/soi-review-pack.md](ops/soi-review-pack.md) v0.4, NOTICE, the root and web READMEs, the guide, the CHANGELOG. Synced with `main` on 2026-10-16 (the kinds refactor #373/#374 merged; the map-rules files stay kind-blind; web `india-boundaries.ts` now re-exports the Survey of India decoder from `india-boundaries-soi.ts`, split for the file-size budget); the pull request (#100) stays an open draft, not merged until the TC-M-25 device look and the Survey of India's answer. |
 | 0.112 | 2026-10-06 | Claude | The review backlog: docs/01 v0.41, 06 v0.131 (section 10.1), 07 v0.60, 14 v0.89. |
 | 0.111 | 2026-10-06 | Claude | Full-system review fixes and the manual test checklist (`docs/ops/manual-test-checklist.md`): docs/07 v0.59, docs/14 v0.88. |
 | 0.110 | 2026-10-06 | Claude | Review fixes on PR #139: docs/10 v0.149, 06 v0.130, 15 v0.27. |
@@ -97,8 +99,6 @@
 | 0.54 | 2026-09-29 | Claude (Code), lead | **The web dependency update and the owner's requests of 2026-09-28/29** (branch `claude/sleepy-brown-479259`): 01 v0.34 (CON-03), 02 v0.37 (F-27, RR-16), 03 v0.34 (stack row, ADR-22), 06 v0.48 (TC-S-26; TC-M-26 local run), 07 v0.40 (`commit-identity`, `npm-angular`), 10 v0.54 (§16; S4b-BL-53 to -55; S4b-FR-1's search decision; the Survey of India letter sent), 11 v0.20, 14 v0.22, [ops/soi-boundary-data-request.md](ops/soi-boundary-data-request.md) v0.4, CLAUDE.md (search rule, commit identity), the root and web READMEs, the CHANGELOG. |
 | 0.55 | 2026-09-29 | Claude (Code), Docs team | **The user guide** (not numbered; 13 stays reserved for the release security checklist) (owner request of 2026-09-29): an illustrated guide for first-time users of the website, the Android app and the iPhone app, with its screenshots in `guide/docs/images/`, built as an MkDocs site (`guide/`, `.github/workflows/pages.yml`). Versions: 10 v0.57 (new §17; S4b-BL-60 and S4b-BL-61), 14 v0.24. Root README links the guide. |
 | 0.56 | 2026-09-29 | Claude (Code), lead | New **13**, the release security checklist (S4b-SEC-3). 06 v0.54 (§11.1, the gate check by check; TC-AI-04 at 25 cases), [ai/ai-design.md](ai/ai-design.md) v0.21 (golden set v0.6). |
-| 0.66 | 2026-10-01 | Claude (Code), lead | S4b-BL-103 (branch `test/followup-gaps`): 06 v0.93 (TC-U-119, TC-U-120, TC-U-121), 10 v0.117 (S4b-BL-103 done; S4b-BL-90d, -92f, -93e tested). |
-| 0.67 | 2026-10-01 | Claude (Code), lead | S4b-BL-108 (branch `feat/web-open-backup-file-handler`): 06 v0.94 (TC-U-122, TC-M-45), 10 v0.118 (S4b-BL-108 done in code), 11 v0.54 (5.2, 5.28: the website's file handler). |
 | 0.68 | 2026-10-01 | Claude (Code), lead | S4b-BL-106 (branch `refactor/app-to-shared-s4b-bl-106`): 06 v0.95 (TC-U-47, TC-U-52, TC-U-59), 10 v0.119 (S4b-BL-106 and S4b-BL-76 done in code, S4b-BL-41 nearer). |
 | 0.71 | 2026-10-02 | Claude (Code), lead | New **15**, Google Drive backup, sync, deletion and sharing (design for the owner's requests of 2026-10-02; branch `docs/google-drive-backup-design`): 02 v0.48 (§10 the Drive channel), 06 v0.97 (TC-M-46..49 planned), 10 v0.121 (S4b-BL-74 done, S4b-BL-115..124), 13 v0.2 (re-scoped for D-28, part I), 14 v0.73 (N17). (0.69 and 0.70 are taken by the Survey of India branch.) |
 | 0.72 | 2026-10-02 | Claude (Code), lead | 15 v0.2 (the owner's additions: encryption with device keys and a recovery key, device authentication for deletes and the required screen lock, photos on mobile data): 02 v0.49, 06 v0.98 (TC-M-50..54), 10 v0.122 (S4b-BL-125..128, -123 withdrawn), 13 v0.3 (I10..I14), 14 v0.74. |
@@ -171,6 +171,7 @@ Everything must run on free tiers. These documents follow a Secure Software Deve
 | 15 | [Google Drive backup and sharing](15-google-drive-backup-and-sharing.md) | Design, **decided by the owner on 2026-10-02** ([03](03-design.md) ADR-33; version 1 in §1.6): backup and *Import a backup* through the person's own Google Drive, automatic sync and what "no data loss" can honestly mean, deleting the data in Drive, encryption with device keys and a recovery key, device authentication, an authenticator app and the screen lock, photos on Wi-Fi or mobile data, sharing with someone who uses Doorprints, the `drive.file` scope and the owner's Google Cloud setup checklist, the phased plan (S4b-BL-115..130) | Lead |
 | 16 | [Architecture overview](16-architecture-overview.md) | The map: what Doorprints is in ten minutes, one component diagram, every store with its current version (Room, IndexedDB, Flyway), entry files per stack, the data contracts, a reading path and where the recent designs live; the rule that keeps it current | Lead |
 | – | [ops/firebase-hosting-setup.md](ops/firebase-hosting-setup.md) | Pointer named by `web.yml`'s skip notice: the Firebase Hosting owner guide and its status live in [07 §6.3](07-secure-build-and-deploy.md#63-web-firebase-hosting) | Docs team |
+| – | [ops/soi-review-pack.md](ops/soi-review-pack.md) | For the Survey of India's reviewers: the OVSF/1M/7 data used, what was done to it (selection of whole vertex runs, exact re-projection, 7-decimal rounding), how to check it with `tools/soi-verify.py`, the size options and the questions for SoI | Lead |
 | – | [ops/firebase-test-lab-setup.md](ops/firebase-test-lab-setup.md) | Pointer to the Firebase Test Lab owner guide and its status (the `android-emulator.yml` Test Lab job is skipped until it is done); the guide lives in [07 §7.2](07-secure-build-and-deploy.md#72-firebase-test-lab-owner-setup-keyless) | Docs team |
 | – | [ops/manual-test-checklist.md](ops/manual-test-checklist.md) | The manual test checklist (MT-01..MT-85): every test, standalone, for real devices and accounts, with what was automated or reviewed and a Pass / Fail / Date line |
 | – | [ops/ios-qr-scanner-notes.md](ops/ios-qr-scanner-notes.md) | Session record: the iPhone's QR scanner (AVFoundation, `QrScanSession`; S4b-BL-136), what CI proves and what only an iPhone proves; the decisions are in [15](15-google-drive-backup-and-sharing.md) §9.5 i |
