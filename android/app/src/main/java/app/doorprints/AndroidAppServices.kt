@@ -97,6 +97,12 @@ import java.io.File
  * Each member forwards to the code the screens called before they moved to `:ui`, with the same context.
  */
 class AndroidAppServices(private val app: DoorprintsApp, override val repository: AndroidRepository) : AppServices {
+    /** *Recently deleted* getting photos back from Google Drive (S4b-BL-293): only when Drive is in use on this phone, so a phone that never used it never builds it. */
+    override val photoRestore: PhotoRestoreServices = PhotoRestoreServices { req ->
+        val drive = app.container.drive
+        if (drive.engaged) drive.controller.restorePhotos(req, connectIfClosed = true) else PhotoRestoreReport.noConnection(req.known)
+    }
+
     override val appScope: CoroutineScope get() = app.appScope
 
     /** *Voice input* (S4b-BL-222): the microphone, its permission and the own-key transcription, on the app-wide HTTP client. */
@@ -200,12 +206,6 @@ private class AndroidSettingsServices(private val app: DoorprintsApp) : Settings
 
     override fun settingsVisible(visible: Boolean) {
         ScreenWatch.settingsScreen = visible
-    }
-
-    /** *Recently deleted* getting photos back from Google Drive (S4b-BL-293): only when Drive is in use on this phone, so a phone that never used it never builds it. */
-    override val photoRestore: PhotoRestoreServices = PhotoRestoreServices { req ->
-        val drive = app.container.drive
-        if (drive.engaged) drive.controller.restorePhotos(req, connectIfClosed = true) else PhotoRestoreReport.noConnection(req.known)
     }
 
     /** Settings > Google Drive (docs/15 §2): the Drive screens behind the screen-lock rule ([DriveSettingsSection]). */

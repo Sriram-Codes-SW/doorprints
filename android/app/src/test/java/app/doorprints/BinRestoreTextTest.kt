@@ -22,6 +22,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import app.doorprints.data.BinRestore
 import app.doorprints.drive.photo.PhotoRestoreReason
 import app.doorprints.screenshots.ScreenshotTestApp
+import app.doorprints.i18n.AppLocale
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
