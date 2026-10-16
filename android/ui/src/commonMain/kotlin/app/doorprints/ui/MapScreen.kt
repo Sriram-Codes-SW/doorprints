@@ -640,7 +640,7 @@ fun MapScreen(
     val keptSnack = stringResource(Res.string.trace_kept_snack)
     val deletedSnack = stringResource(Res.string.trace_deleted_snack)
     val tooLongText = stringResource(Res.string.trace_save_too_long, TraceConstants.MAX_WALK_POINTS)
-    val houseFullText = stringResource(Res.string.trace_save_house_full, TraceConstants.MAX_WALKS_PER_HOUSE)
+    val houseFullText = stringResource(LocalSpace.current.words.traceSaveFull, TraceConstants.MAX_WALKS_PER_HOUSE)
     val allFullText = stringResource(Res.string.trace_save_all_full, TraceConstants.MAX_SAVED_WALKS)
     val failedWalkText = stringResource(Res.string.trace_save_failed_walk)
     val failedHouseText = stringResource(Res.string.trace_save_failed_house)

@@ -804,7 +804,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
         // The houses could not be read back (an IndexedDB error): the count is not said, but focus still moves on.
       }
       if (this.destroyed) return;
-      if (n !== null) this.announcer.announce({ key: 'data.migrationDone', params: { n } });
+      if (n !== null) this.announcer.announce({ key: this.space.appWord('data.migrationDone'), params: { n } });
     }
     const heading = document.getElementById('houses-heading');
     heading?.setAttribute('tabindex', '-1');

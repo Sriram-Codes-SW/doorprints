@@ -58,19 +58,14 @@ import app.doorprints.ui.res.Res
 import app.doorprints.ui.res.common_cancel
 import app.doorprints.ui.res.common_delete
 import app.doorprints.ui.res.house_unnamed
-import app.doorprints.ui.res.trace_end_body
 import app.doorprints.ui.res.trace_end_delete
 import app.doorprints.ui.res.trace_end_delete_confirm
 import app.doorprints.ui.res.trace_end_keep
-import app.doorprints.ui.res.trace_end_save
 import app.doorprints.ui.res.trace_end_summary
 import app.doorprints.ui.res.trace_end_title
 import app.doorprints.ui.res.trace_pick_confirm
 import app.doorprints.ui.res.trace_pick_near
 import app.doorprints.ui.res.trace_pick_nearest
-import app.doorprints.ui.res.trace_pick_none
-import app.doorprints.ui.res.trace_pick_search
-import app.doorprints.ui.res.trace_pick_title
 import app.doorprints.ui.res.trace_unit_km
 import app.doorprints.ui.res.trace_unit_m
 import org.jetbrains.compose.resources.stringResource
@@ -132,14 +127,14 @@ fun WalkEndSheetContent(
                 stringResource(Res.string.trace_end_summary, distanceText(summary.distanceM), summary.minutes),
                 style = MaterialTheme.typography.bodyLarge,
             )
-            Text(stringResource(Res.string.trace_end_body), style = MaterialTheme.typography.bodyMedium)
+            Text(stringResource(LocalSpace.current.words.traceEndBody), style = MaterialTheme.typography.bodyMedium)
             RefusalNote(refusal)
             // The default is the primary button; the other two are quieter.
             Button(onClick = onKeep, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                 ButtonLabel(stringResource(Res.string.trace_end_keep))
             }
             OutlinedButton(onClick = { picking = true }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                ButtonLabel(stringResource(Res.string.trace_end_save))
+                ButtonLabel(stringResource(LocalSpace.current.words.traceEndSave))
             }
             TextButton(onClick = { confirmDelete = true }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                 ButtonLabel(stringResource(Res.string.trace_end_delete))
@@ -199,12 +194,12 @@ private fun HousePicker(
     val devKinds = kindsOn()
     val found = remember(query, houses, language, devKinds) { WalkPicker.search(query, houses, language, devKinds) }
     Text(
-        stringResource(Res.string.trace_pick_title),
+        stringResource(LocalSpace.current.words.tracePickTitle),
         style = MaterialTheme.typography.titleLarge,
         modifier = Modifier.semantics { heading() },
     )
     if (houses.isEmpty()) {
-        Text(stringResource(Res.string.trace_pick_none), style = MaterialTheme.typography.bodyMedium)
+        Text(stringResource(LocalSpace.current.words.tracePickNone), style = MaterialTheme.typography.bodyMedium)
         Button(onClick = onKeep, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
             ButtonLabel(stringResource(Res.string.trace_end_keep))
         }
@@ -220,7 +215,7 @@ private fun HousePicker(
     }
     OutlinedTextField(
         query, { query = it },
-        label = { Text(stringResource(Res.string.trace_pick_search)) },
+        label = { Text(stringResource(LocalSpace.current.words.tracePickSearch)) },
         singleLine = true,
         modifier = Modifier.fillMaxWidth(),
     )

@@ -20,6 +20,7 @@ package app.doorprints.ui
 
 import androidx.compose.ui.geometry.Rect
 import app.doorprints.data.TourEnd
+import app.doorprints.shared.model.KindSetting
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -328,5 +329,42 @@ class TourTest {
             checked++
         }
         assertTrue(checked > 100)
+    }
+
+    // --- the tour in the space of another kind (kinds PR 31, docs/03 section 18.25) ---
+
+    private val schoolSpace = SpaceUi(
+        KindSetting(available = listOf("house", "school"), experimental = "1", enabledText = "[\"house\",\"school\"]"), "school",
+    )
+
+    @Test
+    fun theHouseTourIsEveryStepsOwnStrings() {
+        for (step in TourSteps.ALL) {
+            val text = step.textIn(SpaceUi.HOUSE)
+            assertEquals(listOf(step.title.key, step.body.key, step.action.key), listOf(text.title.res.key, text.body.res.key, text.action.res.key), step.id)
+            assertFalse(text.title.many || text.body.many || text.action.many, step.id)
+        }
+    }
+
+    @Test
+    fun aSchoolSpaceNamesItsOwnAddSearchDetailsCompareAndVisitWordsAndOtherwiseOneGenericSentence() {
+        fun text(id: String) = TourSteps.ALL.first { it.id == id }.textIn(schoolSpace)
+        assertEquals(
+            listOf("school_add_on_map", "school_add_tip", "school_add_tip_a11y"),
+            text("add").let { listOf(it.title.res.key, it.body.res.key, it.action.res.key) },
+        )
+        assertEquals("school_search", text("find").title.res.key)
+        assertEquals("tour_find_body", text("find").body.res.key) // a step that does not say "house" keeps its text
+        assertEquals("school_details_title", text("house").title.res.key)
+        assertEquals(listOf("tour_kind_compare_title", "tour_kind_body", "tour_kind_action"), text("compare").let { listOf(it.title.res.key, it.body.res.key, it.action.res.key) })
+        assertEquals("school_viewings_plan", text("viewings").title.res.key)
+        assertEquals("tour_kind_welcome", text("welcome").body.res.key)
+        assertEquals(listOf("tour_kind_done_body", "tour_kind_done_action"), text("done").let { listOf(it.body.res.key, it.action.res.key) })
+        assertTrue(text("compare").body.many && text("compare").title.many && !text("add").body.many)
+        // A step that says nothing about the kind is the same everywhere.
+        for (id in listOf("language", "offline", "save", "share", "drive", "ai", "areas", "lock", "help")) {
+            val step = TourSteps.ALL.first { it.id == id }
+            assertEquals(step.body.key, step.textIn(schoolSpace).body.res.key, id)
+        }
     }
 }

@@ -65,6 +65,18 @@ const ANY: Readonly<Partial<Record<TKey, TKey>>> = {
   'imp.done': 'imp.doneAny',
   'imp.doneRemoved': 'imp.doneRemovedAny',
   'imp.seeHouses': 'imp.seeAny',
+  // Kinds PR 31: the app-wide texts of Connect, Your data and the first download (SpaceService.appWord).
+  'connect.intro': 'connect.introAny',
+  'connect.success': 'connect.successAny',
+  'connect.aiHint': 'connect.aiHintAny',
+  'connect.aiSends': 'connect.aiSendsAny',
+  'connect.inviteBody': 'connect.inviteBodyAny',
+  'data.syncPaused': 'data.syncPausedAny',
+  'data.migrationTitle': 'data.migrationTitleAny',
+  'data.clearBody': 'data.clearBodyAny',
+  'confirm.clearBrowser': 'confirm.clearBrowserAny',
+  'data.migrationDone': 'data.migrationDoneAny',
+  'data.progressHouses': 'data.progressHousesAny',
 };
 
 /**

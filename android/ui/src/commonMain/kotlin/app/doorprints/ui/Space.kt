@@ -31,6 +31,7 @@ import app.doorprints.data.Repository
 import app.doorprints.shared.export.ExportOptions
 import app.doorprints.shared.model.BuiltInKind
 import app.doorprints.shared.model.DevKinds
+import app.doorprints.shared.model.KindCapabilities
 import app.doorprints.shared.model.KindSetting
 import app.doorprints.shared.model.KindWordKeys
 import app.doorprints.shared.model.KindSettingRules
@@ -89,6 +90,16 @@ class SpaceWords(
     val locationOffNoHunt: StringResource,
     val needsPreciseNoHunt: StringResource,
     val saveNeedsLocation: StringResource,
+    /**
+     * The walk check's *Save this walk?* sheet (kinds PR 31, docs/03 section 18.25): *Link it to a school to keep it*, its button, the picker's title,
+     * search and empty line, and the line for a candidate that has the most saved walks.
+     */
+    val traceEndBody: StringResource,
+    val traceEndSave: StringResource,
+    val tracePickTitle: StringResource,
+    val tracePickSearch: StringResource,
+    val tracePickNone: StringResource,
+    val traceSaveFull: StringResource,
 ) {
     companion object {
         /** The words of the kind whose file keys are [keys] (`KindWordKeys`): every word is the file's `android` key, none is this class's. */
@@ -106,6 +117,8 @@ class SpaceWords(
                 exportIncludeRejected = w("exportIncludeRejected"), exportPhotosShortlisted = w("exportPhotosShortlisted"),
                 locationOff = w("locationOff"), needsPrecise = w("needsPrecise"), locationOffNoHunt = w("locationOffNoHunt"),
                 needsPreciseNoHunt = w("needsPreciseNoHunt"), saveNeedsLocation = w("saveNeedsLocation"),
+                traceEndBody = w("traceEndBody"), traceEndSave = w("traceEndSave"), tracePickTitle = w("tracePickTitle"),
+                tracePickSearch = w("tracePickSearch"), tracePickNone = w("tracePickNone"), traceSaveFull = w("traceSaveFull"),
             )
         }
 
@@ -199,6 +212,13 @@ class SpaceUi(val setting: KindSetting, val kind: String) {
     /** This space's kind has Hunt mode (its `capabilities.hunt`, docs/03 section 18.20): its card and its switch are offered here and in no space without it. */
     val huntHere: Boolean get() = HuntSpace.has(built.id)
 
+    /**
+     * The app-wide Settings texts (the alert distance, the GPS note, the server's counts, the AI notes, the privacy note) say "houses" in the
+     * house app. Once more than the house is in use (two or more kinds on, or the default is another kind) they say "entries"
+     * (kinds PR 31; docs/03 section 18.25), the way the backup's and the import's words do.
+     */
+    val neutral: Boolean get() = multi || !KindCapabilities.of(setting.default).baseline
+
     /** The space is one the person turned off: it still opens, with a note, and nothing in it is hidden or deleted. */
     val hidden: Boolean get() = multi && kind !in setting.enabled
 
@@ -224,6 +244,10 @@ class SpaceUi(val setting: KindSetting, val kind: String) {
             SpaceUi(setting, if (!setting.spaces) setting.default else chosen?.takeIf { it in setting.available } ?: setting.default)
     }
 }
+
+/** An app-wide Settings text: [base] (the house app's) or its [neutral] reading once more than the house is in use ([SpaceUi.neutral]). */
+@Composable
+fun appText(base: StringResource, neutral: StringResource): StringResource = if (LocalSpace.current.neutral) neutral else base
 
 /** The space on screen; the house alone unless [DoorprintsRoot] provides another. */
 val LocalSpace = staticCompositionLocalOf { SpaceUi.HOUSE }

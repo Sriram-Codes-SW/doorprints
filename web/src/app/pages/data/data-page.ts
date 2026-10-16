@@ -785,7 +785,7 @@ export class DataPage implements OnInit, OnDestroy {
               { key: 'confirm.clearUnsynced', params: { n: unsynced, list: this.deviceSentence() } },
               { confirmKey: 'data.clear', altKey: this.sync.paused() ? null : 'data.syncFirst', danger: true },
             )
-          : (await this.confirm.ask({ key: 'confirm.clearBrowser', params: { list: this.deviceSentence() } }, { confirmKey: 'data.clear', danger: true }))
+          : (await this.confirm.ask({ key: this.space.appWord('confirm.clearBrowser'), params: { list: this.deviceSentence() } }, { confirmKey: 'data.clear', danger: true }))
             ? 'confirm'
             : 'cancel';
       if (answer === 'cancel') return;

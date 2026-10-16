@@ -256,7 +256,13 @@ private fun StepCard(
     onBack: () -> Unit,
     onSkip: () -> Unit,
 ) {
-    val title = stringResource(step.title)
+    // The step in the space on screen: the house's own text for the house, the kind's words and the generic sentence for another kind (kinds PR 31).
+    val space = LocalSpace.current
+    val text = step.textIn(space)
+    val many = stringResource(space.words.many).lowercase()
+    @Composable
+    fun part(p: TourPart): String = if (p.many) stringResource(p.res, many) else stringResource(p.res)
+    val title = part(text.title)
     val focus = remember { FocusRequester() }
     // Focus goes to the title when a step appears, so a screen reader starts at what the step is about.
     if (!probe) {
@@ -279,12 +285,12 @@ private fun StepCard(
                 .then(if (probe) Modifier else Modifier.focusRequester(focus).focusable()),
         )
         Column(if (probe) Modifier else Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())) {
-            Text(stringResource(step.body), style = MaterialTheme.typography.bodyMedium)
+            Text(part(text.body), style = MaterialTheme.typography.bodyMedium)
             Text(
                 buildAnnotatedString {
                     withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(stringResource(Res.string.tour_try_it)) }
                     append(" ")
-                    append(stringResource(step.action))
+                    append(part(text.action))
                 },
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(top = 8.dp).fillMaxWidth()

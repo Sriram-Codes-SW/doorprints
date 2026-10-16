@@ -154,7 +154,18 @@
   "expPhotosShortlisted": { "web": "exp.photosShortlisted", "android": null },
   "expColName": { "web": "exp.colHouse", "android": null },
   "expNone": { "web": "exp.noHouses", "android": null },
-  "viewingRemindText": { "web": "viewings.remind.text", "android": null }
+  "viewingRemindText": { "web": "viewings.remind.text", "android": null },
+  "mapOnServerTitle": { "web": "map.onServerTitle", "android": null },
+  "mapOffline": { "web": "map.offline", "android": null },
+  "viewingIcsWord": { "web": "viewings.icsWord", "android": null },
+  "traceEndBody": { "web": "trace.end.bodyWeb", "android": "trace_end_body" },
+  "traceEndSave": { "web": "trace.end.save", "android": "trace_end_save" },
+  "tracePickTitle": { "web": "trace.pick.title", "android": "trace_pick_title" },
+  "tracePickSearch": { "web": "trace.pick.search", "android": "trace_pick_search" },
+  "tracePickNone": { "web": "trace.pick.none", "android": "trace_pick_none" },
+  "tracePickList": { "web": "trace.pick.listLabel", "android": null },
+  "tracePickNoMatch": { "web": "trace.pick.noMatch", "android": null },
+  "traceSaveFull": { "web": "trace.save.houseFull", "android": "trace_save_house_full" }
  },
  "statuses": [
   { "id": "NEW", "label": { "web": "status.NEW", "android": "status_NEW" } },

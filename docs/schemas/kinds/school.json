@@ -154,7 +154,18 @@
   "expPhotosShortlisted": { "web": "school.expPhotosShortlisted", "android": null },
   "expColName": { "web": "school.expColSchool", "android": null },
   "expNone": { "web": "school.expNone", "android": null },
-  "viewingRemindText": { "web": "school.viewings.remindText", "android": null }
+  "viewingRemindText": { "web": "school.viewings.remindText", "android": null },
+  "mapOnServerTitle": { "web": "school.mapOnServerTitle", "android": null },
+  "mapOffline": { "web": "school.mapOffline", "android": null },
+  "viewingIcsWord": { "web": "school.viewings.icsWord", "android": null },
+  "traceEndBody": { "web": "school.traceEndBody", "android": "school_trace_end_body" },
+  "traceEndSave": { "web": "school.traceEndSave", "android": "school_trace_end_save" },
+  "tracePickTitle": { "web": "school.tracePickTitle", "android": "school_trace_pick_title" },
+  "tracePickSearch": { "web": "school.tracePickSearch", "android": "school_trace_pick_search" },
+  "tracePickNone": { "web": "school.tracePickNone", "android": "school_trace_pick_none" },
+  "tracePickList": { "web": "school.tracePickList", "android": null },
+  "tracePickNoMatch": { "web": "school.tracePickNoMatch", "android": null },
+  "traceSaveFull": { "web": "school.traceSaveFull", "android": "school_trace_save_full" }
  },
  "statuses": [
   { "id": "NEW", "label": { "web": "status.NEW", "android": "status_NEW" } },

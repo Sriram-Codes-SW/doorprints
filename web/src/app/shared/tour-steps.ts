@@ -78,8 +78,14 @@ export const TOUR_STEPS: readonly TourStep[] = [
   { id: 'ai', route: '/connect', target: '#ai-heading', title: 'tour.ai.title', body: 'tour.ai.body', action: 'tour.ai.action', kind: { body: 'generic' } },
   { id: 'install', route: '/data', target: '#install-heading', title: 'tour.install.title', body: 'tour.install.body', action: 'tour.install.action' },
   { id: 'help', route: '/data', target: '#help-heading', title: 'tour.help.title', body: 'tour.help.body', action: 'tour.help.action' },
-  { id: 'done', route: '/', title: 'tour.done.title', body: 'tour.done.body', action: 'tour.done.action' },
+  { id: 'done', route: '/', title: 'tour.done.title', body: 'tour.done.body', action: 'tour.done.action', kind: { body: 'generic', action: 'generic' } },
 ];
+
+/** The generic sentences, by part and step id (`*`: every other step). */
+const GENERIC: Readonly<Record<'body' | 'action', Readonly<Record<string, TKey>>>> = {
+  body: { '*': 'tour.kind.body', welcome: 'tour.kind.welcome', done: 'tour.kind.doneBody' },
+  action: { '*': 'tour.kind.action', done: 'tour.kind.doneAction' },
+};
 
 /**
  * The text of a tour step in the space of `kind`. The baseline kind (the house) gets the step's own keys, so the house tour is word for
@@ -93,7 +99,7 @@ export function tourText(step: TourStep, kind: string): TourText {
   const pick = (part: 'title' | 'body' | 'action', own: TKey): TKey => {
     const k = step.kind?.[part];
     if (!k) return own;
-    if (k === 'generic') return step.id === 'welcome' ? 'tour.kind.welcome' : part === 'action' ? 'tour.kind.action' : 'tour.kind.body';
+    if (k === 'generic') return part === 'title' ? own : (GENERIC[part][step.id] ?? GENERIC[part]['*']);
     return 'word' in k ? (words[k.word] as TKey) : toolWord(kind, k.tool);
   };
   return {

@@ -53,8 +53,10 @@ afterEach(() => {
 describe('the kind-neutral words (S4b-BL-291)', () => {
   const pairs = toolWordPairs('*');
 
-  it('cover the Full backup’s options and gaps and the import preview', () => {
+  it('cover the Full backup’s options and gaps, the import preview and the app-wide texts of Connect and the first download', () => {
     expect(pairs.map(([house]) => house).sort()).toEqual([
+      'connect.aiHint', 'connect.aiSends', 'connect.intro', 'connect.inviteBody', 'connect.success', 'confirm.clearBrowser', 'data.clearBody',
+      'data.migrationDone', 'data.migrationTitle', 'data.progressHouses', 'data.syncPaused',
       'data.empty', 'data.emptyAction', 'data.countHouses', 'data.gapNotSelected', 'data.gapNotShortlisted', 'data.gapPhotosNotShortlisted',
       'data.gapRejected', 'data.includeRejected', 'data.noShortlisted', 'data.noneMatch', 'data.photosShortlisted', 'data.preview', 'data.scope',
       'data.scopeAll', 'imp.checklistsCleared', 'imp.done', 'imp.doneRemoved', 'imp.floorsLeftBlank', 'imp.intro', 'imp.modeCopyHint',

@@ -54,7 +54,7 @@ const HOUSE_WORD: Record<Lang, RegExp> = {
   en: /house|BHK|\bflat\b/i,
   hi: /मकान|घर/,
   ta: /வீடு|வீட்/,
-  te: /ఇల్లు|ఇళ్ళు|ఇళ్లు|ఇంటి|ఇంట/,
+  te: /ఇల్లు|ఇళ్ళు|ఇళ్లు|ఇంటి|ఇంట(?!ర్)/,
 };
 
 const SCHOOL: HouseDto = {

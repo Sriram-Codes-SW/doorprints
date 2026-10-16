@@ -49,7 +49,9 @@ internal object KindWordData {
         "walkTitle", "areasIntro", "areasDataBody", "areasConfirmDelete", "placesDataBody", "placesIntro",
         "placesEmpty", "placesConfirmDelete", "expTitle", "expCounts", "expScopeAll", "expScopeShortlisted",
         "expScopeSelected", "expRejectedIncluded", "expRejectedLeftOut", "expPhotosAll", "expPhotosShortlisted", "expColName",
-        "expNone", "viewingRemindText",
+        "expNone", "viewingRemindText", "mapOnServerTitle", "mapOffline", "viewingIcsWord", "traceEndBody",
+        "traceEndSave", "tracePickTitle", "tracePickSearch", "tracePickNone", "tracePickList", "tracePickNoMatch",
+        "traceSaveFull",
     )
 
     private fun table(vararg keys: Pair<String, String?>): Map<String, String?> {
@@ -108,7 +110,11 @@ internal object KindWordData {
             "expCounts" to null, "expScopeAll" to null, "expScopeShortlisted" to null,
             "expScopeSelected" to null, "expRejectedIncluded" to null, "expRejectedLeftOut" to null,
             "expPhotosAll" to null, "expPhotosShortlisted" to null, "expColName" to null,
-            "expNone" to null, "viewingRemindText" to null,
+            "expNone" to null, "viewingRemindText" to null, "mapOnServerTitle" to null,
+            "mapOffline" to null, "viewingIcsWord" to null, "traceEndBody" to "trace_end_body",
+            "traceEndSave" to "trace_end_save", "tracePickTitle" to "trace_pick_title", "tracePickSearch" to "trace_pick_search",
+            "tracePickNone" to "trace_pick_none", "tracePickList" to null, "tracePickNoMatch" to null,
+            "traceSaveFull" to "trace_save_house_full",
         ),
         "school" to table(
             "heading" to "schools_title", "regionLabel" to "school_region_desc", "regionHint" to null,
@@ -159,7 +165,11 @@ internal object KindWordData {
             "expCounts" to null, "expScopeAll" to null, "expScopeShortlisted" to null,
             "expScopeSelected" to null, "expRejectedIncluded" to null, "expRejectedLeftOut" to null,
             "expPhotosAll" to null, "expPhotosShortlisted" to null, "expColName" to null,
-            "expNone" to null, "viewingRemindText" to null,
+            "expNone" to null, "viewingRemindText" to null, "mapOnServerTitle" to null,
+            "mapOffline" to null, "viewingIcsWord" to null, "traceEndBody" to "school_trace_end_body",
+            "traceEndSave" to "school_trace_end_save", "tracePickTitle" to "school_trace_pick_title", "tracePickSearch" to "school_trace_pick_search",
+            "tracePickNone" to "school_trace_pick_none", "tracePickList" to null, "tracePickNoMatch" to null,
+            "traceSaveFull" to "school_trace_save_full",
         ),
     )
 }

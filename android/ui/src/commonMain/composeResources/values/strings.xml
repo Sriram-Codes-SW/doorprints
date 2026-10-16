@@ -1936,4 +1936,27 @@
     <string name="school_questions_empty">No questions yet. Add the usual questions to bring them to the visit.</string>
     <string name="school_questions_pick_none">Every question on your list is already on this school.</string>
     <string name="school_viewing_reminder_body">Visit to %1$s at %2$s</string>
+    <!-- Kinds PR 31 (docs/03 section 18.25): the Settings texts once more than the house is in use say entries, and the school's walk-check pick words. -->
+    <string name="settings_connected_any">Connected. Entries on the server: %1$d</string>
+    <string name="settings_photos_wifi_hint_any">Saves mobile data. Entries and visits still sync on mobile data.</string>
+    <string name="settings_alert_radius_any">Alert when I am within %1$d m of a saved entry</string>
+    <string name="settings_gps_note_any">GPS is usually accurate to 5–20 m, so neighbouring places can be confused. Alerts pause when the signal is weak (indoors), and hunt mode stops by itself when the battery is low.</string>
+    <string name="settings_places_hint_any">Work, school, family: every entry shows how far they are</string>
+    <string name="settings_privacy_note_any">Your entries and visits stay on this phone and your own server. Map tiles come from OpenFreeMap, and street names, and the place a shared listing names when you tap Find, from the phone’s built-in geocoder (Google). Photos are saved without location data.</string>
+    <string name="settings_privacy_note_ios_any">Your entries and visits stay on this iPhone and on your own server, if you connect one. Map tiles come from OpenFreeMap, and street names, and the place a shared listing names when you tap Find, from Apple’s geocoder.</string>
+    <string name="settings_ai_hint_any">When this is on, what you ask or paste into an AI feature, with the matching notes, goes to an AI service: through your server, or straight from this phone to the one you choose, with your own key. Contact names and phone numbers saved with an entry are left out.</string>
+    <string name="settings_ai_sends_any">Your question and the matching notes go to the service you chose, with saved contact names, phones and emails replaced first as far as we can. A pasted ad is sent as pasted.</string>
+    <string name="school_trace_end_body">Link it to a school to keep it. Otherwise it stays for 30 days, then it goes. It stays on this phone and is never in a backup or a copy.</string>
+    <string name="school_trace_end_save">Save with a school</string>
+    <string name="school_trace_pick_title">Which school was this walk to?</string>
+    <string name="school_trace_pick_search">Search your schools</string>
+    <string name="school_trace_pick_none">You have no saved schools yet. Add a school first, or keep the walk for 30 days.</string>
+    <string name="school_trace_save_full">This school already has %1$d saved walks. Delete one first.</string>
+    <!-- Kinds PR 31 (docs/03 section 18.25): the tour in the space of another kind: generic sentences that name the kind's plural. -->
+    <string name="tour_kind_welcome">Doorprints remembers the %1$s you keep. Everything stays on this phone unless you choose to back it up or share it.</string>
+    <string name="tour_kind_body">This part of Doorprints works for %1$s too. Look at it, then tap Next.</string>
+    <string name="tour_kind_action">Try it with one of your %1$s, or just look around and tap Next.</string>
+    <string name="tour_kind_done_body">These are the main parts of Doorprints. Start by adding to your %1$s, and keep the app open when you visit.</string>
+    <string name="tour_kind_done_action">Tap Finish, then add your first one.</string>
+    <string name="tour_kind_compare_title">Compare %1$s</string>
 </resources>

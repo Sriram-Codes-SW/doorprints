@@ -51,8 +51,9 @@ describe('the tour text of a step in a space (kinds PR 31)', () => {
     expect(tourText(step('compare'), 'school')).toMatchObject({ title: 'school.compareTitle', body: 'tour.kind.body' });
     expect(tourText(step('viewings'), 'school')).toMatchObject({ title: 'school.viewings.heading' });
     expect(tourText(step('welcome'), 'school')).toMatchObject({ title: 'tour.welcome.title', body: 'tour.kind.welcome', many: 'school.many' });
+    expect(tourText(step('done'), 'school')).toMatchObject({ title: 'tour.done.title', body: 'tour.kind.doneBody', action: 'tour.kind.doneAction' });
     // A step that says nothing about the kind is the same everywhere.
-    for (const id of ['language', 'offline', 'save', 'drive', 'install', 'help', 'done']) {
+    for (const id of ['language', 'offline', 'save', 'drive', 'install', 'help']) {
       expect(tourText(step(id), 'school'), id).toMatchObject({ title: step(id).title, body: step(id).body, action: step(id).action });
     }
   });
@@ -60,7 +61,7 @@ describe('the tour text of a step in a space (kinds PR 31)', () => {
   it('every generic sentence has text in all four languages with its {many}', () => {
     for (const lang of ['en', 'hi', 'ta', 'te'] as Lang[]) {
       const dict = DICTIONARIES[lang] as Record<string, string>;
-      for (const k of ['tour.kind.welcome', 'tour.kind.body', 'tour.kind.action']) {
+      for (const k of ['tour.kind.welcome', 'tour.kind.body', 'tour.kind.action', 'tour.kind.doneBody']) {
         expect(dict[k], `${lang} ${k}`).toContain('{many}');
       }
     }

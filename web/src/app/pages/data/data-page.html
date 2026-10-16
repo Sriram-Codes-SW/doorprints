@@ -308,7 +308,7 @@
     @if (sync.enabled()) {
       <!-- After "Not now" or "Stop" nothing is sent or fetched; say so, and offer the download here, which is the
            only way back (the banner does not return). -->
-      <p class="muted">{{ (sync.paused() ? 'data.syncPaused' : 'data.syncOn') | t }}</p>
+      <p class="muted">{{ (sync.paused() ? space.appWord('data.syncPaused') : 'data.syncOn') | t }}</p>
       <div role="status">
         @if (!sync.online()) {
           <!-- Offline is a normal state here, not a failure: a neutral line, never an alert. -->
@@ -496,7 +496,7 @@
 
   <section class="card danger" aria-labelledby="clear-heading">
     <h2 id="clear-heading">{{ 'data.clearHeading' | t }}</h2>
-    <p class="muted">{{ 'data.clearBody' | t }}</p>
+    <p class="muted">{{ space.appWord('data.clearBody') | t }}</p>
     @if (deviceSentence(); as list) {
       <p id="clear-counts" class="muted">{{ list }}</p>
     }

@@ -1939,4 +1939,27 @@
     <string name="school_questions_empty">अभी कोई सवाल नहीं। दौरे पर ले जाने के लिए आम सवाल जोड़ें।</string>
     <string name="school_questions_pick_none">आपकी सूची का हर सवाल इस स्कूल पर पहले से है।</string>
     <string name="school_viewing_reminder_body">%1$s का दौरा, %2$s बजे</string>
+    <!-- Kinds PR 31 (docs/03 section 18.25, 2026-10-15): under review. -->
+    <string name="settings_connected_any">जुड़ गया। सर्वर पर प्रविष्टियाँ: %1$d</string>
+    <string name="settings_photos_wifi_hint_any">मोबाइल डेटा बचाता है। प्रविष्टियाँ और दौरे मोबाइल डेटा पर भी सिंक होते हैं।</string>
+    <string name="settings_alert_radius_any">सहेजी गई प्रविष्टि से %1$d मी के भीतर होने पर सूचना दें</string>
+    <string name="settings_gps_note_any">GPS आमतौर पर 5–20 मी तक सटीक होता है, इसलिए पास-पास की जगहें गड़बड़ा सकती हैं। सिग्नल कमज़ोर हो (अंदर) तो सूचनाएँ रुक जाती हैं, और बैटरी कम होने पर हंट मोड अपने-आप बंद हो जाता है।</string>
+    <string name="settings_places_hint_any">दफ़्तर, स्कूल, परिवार: हर प्रविष्टि दिखाती है कि वे कितनी दूर हैं</string>
+    <string name="settings_privacy_note_any">आपकी प्रविष्टियाँ और दौरे इसी फ़ोन और आपके अपने सर्वर पर रहते हैं। नक्शे OpenFreeMap से और सड़कों के नाम, और “खोजें” टैप करने पर साझा लिस्टिंग में लिखी जगह, फ़ोन के जियोकोडर (Google) से आते हैं। तस्वीरें जगह की जानकारी के बिना सहेजी जाती हैं।</string>
+    <string name="settings_privacy_note_ios_any">आपकी प्रविष्टियाँ और दौरे इसी iPhone पर, और अगर आप सर्वर जोड़ें तो आपके अपने सर्वर पर, रहते हैं। नक्शे OpenFreeMap से आते हैं, और सड़कों के नाम, और “खोजें” टैप करने पर साझा लिस्टिंग में लिखी जगह, Apple के जियोकोडर से।</string>
+    <string name="settings_ai_hint_any">चालू होने पर, आप AI सुविधा में जो पूछते या चिपकाते हैं, वह मिलते-जुलते नोट्स के साथ एक AI सेवा को जाता है: आपके सर्वर के ज़रिए, या आपकी चुनी सेवा को आपकी अपनी कुंजी से सीधे इस फ़ोन से। प्रविष्टि के साथ सहेजे गए संपर्क के नाम और फ़ोन नंबर नहीं भेजे जाते।</string>
+    <string name="settings_ai_sends_any">आपका सवाल और मिलते-जुलते नोट्स आपकी चुनी सेवा को जाते हैं; सहेजे गए संपर्क के नाम, फ़ोन और ईमेल पहले, जहाँ तक हम कर सकते हैं, बदल दिए जाते हैं। चिपकाया हुआ विज्ञापन जैसा है वैसा ही भेजा जाता है।</string>
+    <string name="school_trace_end_body">इसे रखने के लिए किसी स्कूल से जोड़ें। नहीं तो यह 30 दिन रहेगी, फिर मिट जाएगी। यह इसी फ़ोन पर रहती है, किसी बैकअप या कॉपी में नहीं जाती।</string>
+    <string name="school_trace_end_save">स्कूल के साथ सहेजें</string>
+    <string name="school_trace_pick_title">यह सैर किस स्कूल तक थी?</string>
+    <string name="school_trace_pick_search">अपने स्कूल खोजें</string>
+    <string name="school_trace_pick_none">आपका अभी कोई स्कूल सहेजा नहीं है। पहले स्कूल जोड़ें, या सैर को 30 दिन रखें।</string>
+    <string name="school_trace_save_full">इस स्कूल की %1$d सैर पहले से सहेजी हैं। पहले एक मिटाएँ।</string>
+    <!-- Kinds PR 31 (docs/03 section 18.25, 2026-10-15): under review. -->
+    <string name="tour_kind_welcome">Doorprints आपके सहेजे हुए %1$s को याद रखता है। जब तक आप बैकअप या साझा न करें, सब कुछ इसी फ़ोन पर रहता है।</string>
+    <string name="tour_kind_body">Doorprints का यह हिस्सा %1$s के लिए भी काम करता है। इसे देखें, फिर आगे दबाएँ।</string>
+    <string name="tour_kind_action">अपने %1$s में से किसी के साथ आज़माएँ, या बस देखें और आगे दबाएँ।</string>
+    <string name="tour_kind_done_body">ये Doorprints के मुख्य हिस्से हैं। अपने %1$s में जोड़ना शुरू करें, और जाते समय ऐप खुला रखें।</string>
+    <string name="tour_kind_done_action">समाप्त करें दबाएँ, फिर अपना पहला जोड़ें।</string>
+    <string name="tour_kind_compare_title">%1$s की तुलना करें</string>
 </resources>

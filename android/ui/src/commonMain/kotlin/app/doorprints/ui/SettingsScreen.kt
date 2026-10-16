@@ -433,7 +433,7 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {},
             SectionHeading(stringResource(Res.string.settings_hunt))
             // Each slider is named by its sentence and says its value in metres or minutes (WCAG 4.1.2), as the
             // keep-backups slider does; the visible sentence is hidden from TalkBack so it is not read twice.
-            val radiusText = stringResource(Res.string.settings_alert_radius, radius.toInt())
+            val radiusText = stringResource(appText(Res.string.settings_alert_radius, Res.string.settings_alert_radius_any), radius.toInt())
             Text(radiusText, modifier = Modifier.clearAndSetSemantics { })
             Slider(radius, { radius = it }, valueRange = 15f..100f, steps = 16, colors = brandSliderColors(),
                 modifier = Modifier.semantics {
@@ -449,7 +449,7 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {},
                     stateDescription = stay.toInt().toString()
                 },
                 onValueChangeFinished = { scope.launch { repo.settings.saveTracking(radius.toInt(), stay.toInt()) } })
-            Text(stringResource(Res.string.settings_gps_note), style = MaterialTheme.typography.bodySmall)
+            Text(stringResource(appText(Res.string.settings_gps_note, Res.string.settings_gps_note_any)), style = MaterialTheme.typography.bodySmall)
             PathTraceSection(settings)
             // The Hunt mode reminder before a viewing (docs/11 5.16, slice 3c): the switch and the lead time.
             HuntRemindersSection()
@@ -673,7 +673,7 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {},
         }
         val lastTest = testResult
         val statusText = lastTest?.fold(
-            { stringResource(Res.string.settings_connected, it) },
+            { stringResource(appText(Res.string.settings_connected, Res.string.settings_connected_any), it) },
             { stringResource(Res.string.settings_connect_failed, SyncOutcome.fromError(it).text()) },
         ) ?: settings.lastSync?.text()
         val statusTone = serverStatusTone(lastTest?.isSuccess, settings.lastSync?.kind)
@@ -718,7 +718,7 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {},
         }
         SwitchRow(
             text = stringResource(Res.string.settings_photos_wifi),
-            hint = stringResource(Res.string.settings_photos_wifi_hint),
+            hint = stringResource(appText(Res.string.settings_photos_wifi_hint, Res.string.settings_photos_wifi_hint_any)),
             checked = settings.photosOnWifiOnly,
             // This column is already padded; the shared row adds no inset of its own here.
             horizontalPadding = 0.dp,
@@ -740,7 +740,7 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {},
             Modifier.tourTarget(TourTargets.SETTINGS_AREAS),
         )
         HorizontalDivider()
-        NavRow(stringResource(Res.string.settings_places), stringResource(Res.string.settings_places_hint), onOpenPlaces)
+        NavRow(stringResource(Res.string.settings_places), stringResource(appText(Res.string.settings_places_hint, Res.string.settings_places_hint_any)), onOpenPlaces)
 
         // How room sizes are shown and typed (docs/11 5.6, slice 1c): this phone's own choice, not synced or backed up.
         HorizontalDivider()
@@ -752,7 +752,8 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {},
         // its note names the iPhone and the map tiles only.
         Text(
             stringResource(
-                if (platformFeatures.addPhotos) Res.string.settings_privacy_note else Res.string.settings_privacy_note_ios,
+                if (platformFeatures.addPhotos) appText(Res.string.settings_privacy_note, Res.string.settings_privacy_note_any)
+                else appText(Res.string.settings_privacy_note_ios, Res.string.settings_privacy_note_ios_any),
             ),
             style = MaterialTheme.typography.bodySmall,
         )

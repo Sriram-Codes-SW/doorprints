@@ -142,6 +142,34 @@ describe('SpaceService', () => {
   });
 });
 
+describe('the app-wide texts say entries once more than the house is in use (kinds PR 31)', () => {
+  function service(spaces: boolean) {
+    TestBed.configureTestingModule({ providers: [provideRouter(routesFor(spaces, ['house', 'school']))] });
+    return TestBed.inject(SpaceService);
+  }
+
+  it('the house alone keeps its keys; two kinds, or the school alone, read the neutral ones', () => {
+    const house = service(false);
+    expect([house.neutral(), house.appWord('connect.intro')]).toEqual([false, 'connect.intro']);
+    TestBed.resetTestingModule();
+    twoKinds();
+    const two = service(true);
+    expect([two.neutral(), two.appWord('connect.intro'), two.appWord('app.name')]).toEqual([true, 'connect.introAny', 'app.name']);
+    TestBed.resetTestingModule();
+    localStorage.setItem(EXPERIMENTAL_KINDS_KEY, '1');
+    localStorage.setItem(ENABLED_KINDS_KEY, '["school"]');
+    localStorage.setItem(DEFAULT_KIND_KEY, 'school');
+    const school = service(false);
+    expect([school.neutral(), school.appWord('data.clearBody')]).toEqual([true, 'data.clearBodyAny']);
+  });
+
+  it('a space page words its offline and on-the-server lines by the kind', () => {
+    twoKinds('school');
+    const space = service(true);
+    expect([space.kindWord('map.offline'), space.kindWord('map.onServerTitle')]).toEqual(['school.mapOffline', 'school.mapOnServerTitle']);
+  });
+});
+
 describe('the school as the default kind (docs/03 §18.18)', () => {
   function service(spaces: boolean) {
     TestBed.configureTestingModule({ providers: [provideRouter(routesFor(spaces, ['house', 'school']))] });

@@ -2445,6 +2445,211 @@
      "en": "A visit at {time}. Open Doorprints for the place."
     }
    }
+  },
+  {
+   "id": "mapOnServerTitle",
+   "house": {
+    "web": "map.onServerTitle",
+    "android": null,
+    "text": {
+     "en": "Your houses are on your server"
+    }
+   },
+   "school": {
+    "web": "school.mapOnServerTitle",
+    "android": null,
+    "text": {
+     "en": "Your schools are on your server"
+    }
+   }
+  },
+  {
+   "id": "mapOffline",
+   "house": {
+    "web": "map.offline",
+    "android": null,
+    "text": {
+     "en": "The map needs an internet connection. Your houses are still in the list. To add one now, use your location or type the latitude and longitude."
+    }
+   },
+   "school": {
+    "web": "school.mapOffline",
+    "android": null,
+    "text": {
+     "en": "The map needs an internet connection. Your schools are still in the list. To add one now, use your location or type the latitude and longitude."
+    }
+   }
+  },
+  {
+   "id": "viewingIcsWord",
+   "house": {
+    "web": "viewings.icsWord",
+    "android": null,
+    "text": {
+     "en": "Viewing"
+    }
+   },
+   "school": {
+    "web": "school.viewings.icsWord",
+    "android": null,
+    "text": {
+     "en": "Visit"
+    }
+   }
+  },
+  {
+   "id": "traceEndBody",
+   "house": {
+    "web": "trace.end.bodyWeb",
+    "android": "trace_end_body",
+    "text": {
+     "en": "Link it to a house to keep it. Otherwise it stays for 30 days, then it goes. It stays on this phone and is never in a backup or a copy.",
+     "hi": "इसे रखने के लिए किसी मकान से जोड़ें। नहीं तो यह 30 दिन रहेगी, फिर मिट जाएगी। यह इसी फ़ोन पर रहती है, किसी बैकअप या कॉपी में नहीं जाती।",
+     "ta": "வைத்திருக்க இதை ஒரு வீட்டுடன் இணைக்கவும். இல்லையெனில் 30 நாட்கள் இருக்கும், பிறகு நீங்கும். இது இந்தத் தொலைபேசியில் மட்டும் இருக்கும்; காப்புப் பிரதியிலோ நகலிலோ செல்லாது.",
+     "te": "ఉంచుకోవడానికి దీన్ని ఒక ఇంటికి జోడించండి. లేకపోతే ఇది 30 రోజులు ఉండి, తర్వాత పోతుంది. ఇది ఈ ఫోన్‌లో మాత్రమే ఉంటుంది; బ్యాకప్‌లో లేదా కాపీలో ఉండదు."
+    }
+   },
+   "school": {
+    "web": "school.traceEndBody",
+    "android": "school_trace_end_body",
+    "text": {
+     "en": "Link it to a school to keep it. Otherwise it stays for 30 days, then it goes. It stays on this phone and is never in a backup or a copy."
+    }
+   }
+  },
+  {
+   "id": "traceEndSave",
+   "house": {
+    "web": "trace.end.save",
+    "android": "trace_end_save",
+    "text": {
+     "en": "Save with a house",
+     "hi": "मकान के साथ सहेजें",
+     "ta": "வீட்டுடன் சேமி",
+     "te": "ఇంటితో సేవ్ చేయి"
+    }
+   },
+   "school": {
+    "web": "school.traceEndSave",
+    "android": "school_trace_end_save",
+    "text": {
+     "en": "Save with a school"
+    }
+   }
+  },
+  {
+   "id": "tracePickTitle",
+   "house": {
+    "web": "trace.pick.title",
+    "android": "trace_pick_title",
+    "text": {
+     "en": "Which house was this walk to?",
+     "hi": "यह सैर किस मकान तक थी?",
+     "ta": "இந்த நடை எந்த வீட்டுக்கு?",
+     "te": "ఈ నడక ఏ ఇంటి వరకు?"
+    }
+   },
+   "school": {
+    "web": "school.tracePickTitle",
+    "android": "school_trace_pick_title",
+    "text": {
+     "en": "Which school was this walk to?"
+    }
+   }
+  },
+  {
+   "id": "tracePickSearch",
+   "house": {
+    "web": "trace.pick.search",
+    "android": "trace_pick_search",
+    "text": {
+     "en": "Search your houses",
+     "hi": "अपने मकान खोजें",
+     "ta": "உங்கள் வீடுகளைத் தேடுங்கள்",
+     "te": "మీ ఇళ్లను వెతకండి"
+    }
+   },
+   "school": {
+    "web": "school.tracePickSearch",
+    "android": "school_trace_pick_search",
+    "text": {
+     "en": "Search your schools"
+    }
+   }
+  },
+  {
+   "id": "tracePickNone",
+   "house": {
+    "web": "trace.pick.none",
+    "android": "trace_pick_none",
+    "text": {
+     "en": "You have no saved houses yet. Add a house first, or keep the walk for 30 days.",
+     "hi": "आपका अभी कोई मकान सहेजा नहीं है। पहले मकान जोड़ें, या सैर को 30 दिन रखें।",
+     "ta": "இன்னும் சேமித்த வீடுகள் இல்லை. முதலில் ஒரு வீட்டைச் சேருங்கள், அல்லது நடையை 30 நாட்கள் வையுங்கள்.",
+     "te": "మీరు ఇంకా ఇళ్లను సేవ్ చేయలేదు. ముందు ఒక ఇంటిని చేర్చండి, లేదా నడకను 30 రోజులు ఉంచండి."
+    }
+   },
+   "school": {
+    "web": "school.tracePickNone",
+    "android": "school_trace_pick_none",
+    "text": {
+     "en": "You have no saved schools yet. Add a school first, or keep the walk for 30 days."
+    }
+   }
+  },
+  {
+   "id": "tracePickList",
+   "house": {
+    "web": "trace.pick.listLabel",
+    "android": null,
+    "text": {
+     "en": "Houses for this walk"
+    }
+   },
+   "school": {
+    "web": "school.tracePickList",
+    "android": null,
+    "text": {
+     "en": "Schools for this walk"
+    }
+   }
+  },
+  {
+   "id": "tracePickNoMatch",
+   "house": {
+    "web": "trace.pick.noMatch",
+    "android": null,
+    "text": {
+     "en": "No house matches."
+    }
+   },
+   "school": {
+    "web": "school.tracePickNoMatch",
+    "android": null,
+    "text": {
+     "en": "No school matches."
+    }
+   }
+  },
+  {
+   "id": "traceSaveFull",
+   "house": {
+    "web": "trace.save.houseFull",
+    "android": "trace_save_house_full",
+    "text": {
+     "en": "This house already has %1$d saved walks. Delete one first.",
+     "hi": "इस मकान की %1$d सैर पहले से सहेजी हैं। पहले एक मिटाएँ।",
+     "ta": "இந்த வீட்டுக்கு ஏற்கனவே %1$d நடைகள் சேமிக்கப்பட்டுள்ளன. முதலில் ஒன்றை அழியுங்கள்.",
+     "te": "ఈ ఇంటికి ఇప్పటికే %1$d నడకలు సేవ్ అయ్యాయి. ముందు ఒకదాన్ని తొలగించండి."
+    }
+   },
+   "school": {
+    "web": "school.traceSaveFull",
+    "android": "school_trace_save_full",
+    "text": {
+     "en": "This school already has %1$d saved walks. Delete one first."
+    }
+   }
   }
  ]
 }

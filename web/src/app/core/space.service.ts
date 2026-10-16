@@ -88,6 +88,17 @@ export class SpaceService {
     });
   }
 
+  /**
+   * The app-wide texts (Connect, Your data's sync and removal, the first download) say "houses" in the house app. Once more than the
+   * house is in use (two or more kinds on, or the default is another kind) they say "entries" (`*`, kinds PR 31; docs/03 section 18.25).
+   */
+  readonly neutral = computed(() => this.multi() || !isBaselineKind(this.dflt()));
+
+  /** An app-wide word: the house's key for the house app alone, the neutral one when {@link neutral}. */
+  appWord(key: TKey): TKey {
+    return toolWord(this.neutral() ? '*' : null, key);
+  }
+
   /** A house word in the space's own: the house's key in the house space, the kind's where it has one (S4b-BL-259). */
   kindWord(key: TKey): TKey {
     return toolWord(this.kind(), key);
