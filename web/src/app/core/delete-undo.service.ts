@@ -71,8 +71,6 @@ export interface Restored {
   readonly photosFromDrive: number;
   /** Why the others did not come back, each reason once. */
   readonly reasons: readonly PhotoRestoreReason[];
-  /** How to try the photos again, when a second attempt can help (Drive was not connected, or offline); null otherwise. */
-  readonly retry: PhotoRetry | null;
 }
 
 /**
@@ -127,6 +125,12 @@ export class DeleteUndoService {
 
   /** The delete that can be undone now, or null. */
   readonly offer = signal<UndoOffer | null>(null);
+  /**
+   * How to try the photos of the candidate just restored again, or null (S4b-BL-293). Set by {@link restore} and
+   * {@link retryPhotos}; the card offers *Retry photos* while it is not null. Kept here, beside {@link offer}, rather
+   * than in {@link Restored}: it is what the next attempt needs, not part of what the restore reports.
+   */
+  readonly photoRetry = signal<PhotoRetry | null>(null);
   private held: readonly PhotoRecord[] = [];
   private timer: ReturnType<typeof setTimeout> | undefined;
 
@@ -222,7 +226,8 @@ export class DeleteUndoService {
     const { fromDrive, failed, connection, stillGone } = await this.bringPhotosBack({ ...ctx, known: result.gone }, now, restorer);
     this.sync.syncSoon();
     const summary = summarize(noted, result.photosBack + fromDrive, failed, connection);
-    return { name: entry.name, photosTotal: summary.total, photosBack: summary.restored, photosFromDrive: fromDrive, reasons: summary.reasons, retry: retryOffer(entry.name, ctx, stillGone) };
+    this.photoRetry.set(retryOffer(entry.name, ctx, stillGone));
+    return { name: entry.name, photosTotal: summary.total, photosBack: summary.restored, photosFromDrive: fromDrive, reasons: summary.reasons };
   }
 
   /**
@@ -235,7 +240,8 @@ export class DeleteUndoService {
     this.sync.syncSoon();
     const summary = summarize(retry.noted, fromDrive, failed, connection);
     const ctx = { houseId: retry.houseId, houseDeletedAt: retry.houseDeletedAt, noted: retry.noted };
-    return { name: retry.name, photosTotal: summary.total, photosBack: summary.restored, photosFromDrive: fromDrive, reasons: summary.reasons, retry: retryOffer(retry.name, ctx, stillGone) };
+    this.photoRetry.set(retryOffer(retry.name, ctx, stillGone));
+    return { name: retry.name, photosTotal: summary.total, photosBack: summary.restored, photosFromDrive: fromDrive, reasons: summary.reasons };
   }
 
   /**
