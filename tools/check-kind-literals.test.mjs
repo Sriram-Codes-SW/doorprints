@@ -36,7 +36,7 @@ test('comments are blanked with their line breaks, and a URL in a string is not 
   const code = withoutComments(text);
   assert.equal(code.split('\n').length, text.split('\n').length);
   assert.ok(!code.includes('HOUSE_KIND'));
-  assert.ok(code.includes("https://x.test/house"));
+  assert.match(code, /const u = 'https:\/\/x\.test\/house';/);
   assert.deepEqual(errorsOf([file('web/src/app/a.ts', text)]).map((e) => e.split(':')[1]), ['4']);
 });
 
