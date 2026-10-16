@@ -34,6 +34,8 @@ import { BackupLister } from './backup-listing';
 import { backupName, BACKUP_MIME, BACKUP_PARTIAL_PREFIX } from './backup-names';
 import { selectRetention } from './backup-retention';
 import type { ShrinkHold } from './backup-retention';
+import { photoFilesToSweep } from '../photo-sweep-rules';
+import type { GonePhoto } from '../photo-restore-rules';
 import { decideBackup } from './backup-schedule';
 import type { ScheduleDecision } from './backup-schedule';
 import { BackupMeta } from './backup-meta';
@@ -72,6 +74,20 @@ export const MAX_BACKUP_PLAINTEXT = 1024 * 1024 * 1024 + 64 * 1024 * 1024;
 export const STALE_PARTIAL_MS = 24 * 60 * 60 * 1000;
 /** How many confirmed shrink drops a device remembers (the oldest are dropped first). */
 export const MAX_CONFIRMED = 32;
+
+/**
+ * The authenticated `createdAt` of the oldest backup that **stays** in Drive after this tidy, or null when none stays.
+ *
+ * It is the backups minus the pruned ones, not retention's `keep`: when the shrink guard holds, `prune` is empty and the
+ * backups that would have gone are still in the folder, still able to refer to a photo's file. Keying on what actually
+ * survives is what keeps the clean-up from taking a file a held backup still needs.
+ */
+function oldestStayingAt(backups: readonly DriveBackup[], pruned: readonly string[]): number | null {
+  const gone = new Set(pruned);
+  let oldest: number | null = null;
+  for (const b of backups) if (!gone.has(b.fileId) && (oldest == null || b.createdAt < oldest)) oldest = b.createdAt;
+  return oldest;
+}
 
 class FolderWithoutKeys extends Error {}
 
@@ -112,6 +128,11 @@ export class DriveBackupService {
     private readonly utcOffsetMinutes: () => number,
     private readonly scratch: ScratchSpace = memoryScratchSpace,
     private readonly locks: LockRunner = new WebLockRunner(),
+    /**
+     * The photo tombstones of this device's own sync file, for the 30-day clean-up (docs/15 §5.1, S4b-BL-293); without
+     * it no clean-up runs (a build that syncs nothing, and most tests).
+     */
+    private readonly photoTombstones: (() => Promise<readonly GonePhoto[]>) | null = null,
   ) {
     this.keysFile = new KeysFile(p);
     this.controlFile = new ControlFile(p);
@@ -577,10 +598,25 @@ export class DriveBackupService {
       const result = selectRetention(backups.map((b) => ({ id: b.fileId, createdAt: b.createdAt, houses: b.houses })), this.utcOffsetMinutes(), new Set(st.confirmedDrops));
       hold = result.hold;
       for (const id of result.prune) if (await this.trashQuietly(id)) trashed.push(id);
+      // The 30-day clean-up (docs/15 §5.1): a deleted photo's file leaves Drive once it can no longer be wanted.
+      for (const id of await this.sweepFiles(oldestStayingAt(backups, result.prune), now)) if (await this.trashQuietly(id)) trashed.push(id);
     } catch (e) {
       problem = DriveProblem.of(e);
     }
     return { report: { trashed, completed, hold, problem }, missing };
+  }
+
+  /**
+   * The Drive files the 30-day clean-up may take (docs/15 §5.1, {@link photoFilesToSweep}), or none when no tombstone
+   * source is wired. A clean-up that cannot read its tombstones is skipped, never thrown: it must not fail a backup.
+   */
+  private async sweepFiles(oldestKeptBackupAt: number | null, now: number): Promise<string[]> {
+    if (!this.photoTombstones) return [];
+    try {
+      return photoFilesToSweep({ photos: await this.photoTombstones(), oldestKeptBackupAt, now });
+    } catch {
+      return [];
+    }
   }
 
   /** Moves `fileId` to Drive's bin; one already gone counts as done. Other failures propagate. */
