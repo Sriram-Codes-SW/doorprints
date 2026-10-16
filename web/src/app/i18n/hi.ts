@@ -1783,6 +1783,8 @@ export const hi: Dict = {
   'delete.photosAllDrive': '{name} वापस लाया गया। इसकी तस्वीरें आपकी Google Drive से वापस आ गईं (तस्वीरें: {n})।',
   'delete.photosSome': '{name} वापस लाया गया। वापस आई तस्वीरें: {n} में से {back}। बाकी वापस नहीं आ सकीं: {why}।',
   'delete.photosNone': '{name} वापस लाया गया। इसकी तस्वीरें वापस नहीं आ सकीं: {why}।',
+  'delete.retryPhotos': 'तस्वीरें फिर से लाने की कोशिश करें',
+  'delete.retryAria': '{name} की तस्वीरें फिर से लाने की कोशिश करें',
   'delete.why.notConnected': 'इस डिवाइस पर Google Drive जुड़ी नहीं है',
   'delete.why.offline': 'Google Drive से कनेक्शन नहीं था',
   'delete.why.pastWindow': 'वे 30 दिन से पहले हटाई गई थीं',

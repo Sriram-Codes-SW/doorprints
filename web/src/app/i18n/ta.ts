@@ -1783,6 +1783,8 @@ export const ta: Dict = {
   'delete.photosAllDrive': '{name} மீட்கப்பட்டது. இதன் படங்கள் உங்கள் Google Drive-இலிருந்து திரும்பி வந்தன (படங்கள்: {n}).',
   'delete.photosSome': '{name} மீட்கப்பட்டது. திரும்பி வந்த படங்கள்: {n}-இல் {back}. மற்றவற்றை மீட்க முடியவில்லை: {why}.',
   'delete.photosNone': '{name} மீட்கப்பட்டது. இதன் படங்களை மீட்க முடியவில்லை: {why}.',
+  'delete.retryPhotos': 'படங்களை மீண்டும் முயலவும்',
+  'delete.retryAria': '{name} இன் படங்களை மீண்டும் முயலவும்',
   'delete.why.notConnected': 'இந்தச் சாதனத்தில் Google Drive இணைக்கப்படவில்லை',
   'delete.why.offline': 'Google Drive-உடன் இணைப்பு இல்லை',
   'delete.why.pastWindow': 'அவை 30 நாட்களுக்கு முன் நீக்கப்பட்டவை',

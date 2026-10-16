@@ -1783,6 +1783,8 @@ export const te: Dict = {
   'delete.photosAllDrive': '{name} పునరుద్ధరించబడింది. దీని ఫోటోలు మీ Google Drive నుండి తిరిగి వచ్చాయి (ఫోటోలు: {n}).',
   'delete.photosSome': '{name} పునరుద్ధరించబడింది. తిరిగి వచ్చిన ఫోటోలు: {n}లో {back}. మిగిలినవి పునరుద్ధరించలేకపోయాము: {why}.',
   'delete.photosNone': '{name} పునరుద్ధరించబడింది. దీని ఫోటోలను పునరుద్ధరించలేకపోయాము: {why}.',
+  'delete.retryPhotos': 'ఫోటోలను మళ్లీ ప్రయత్నించండి',
+  'delete.retryAria': '{name} ఫోటోలను మళ్లీ ప్రయత్నించండి',
   'delete.why.notConnected': 'ఈ పరికరంలో Google Drive కనెక్ట్ కాలేదు',
   'delete.why.offline': 'Google Driveతో కనెక్షన్ లేదు',
   'delete.why.pastWindow': 'అవి 30 రోజుల కంటే ముందే తొలగించబడ్డాయి',

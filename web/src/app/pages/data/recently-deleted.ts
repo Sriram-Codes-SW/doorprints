@@ -18,7 +18,7 @@
 
 import { Component, ElementRef, effect, inject, signal, untracked, viewChild } from '@angular/core';
 import { DeleteUndoService } from '../../core/delete-undo.service';
-import type { BinEntry, PhotoRestorer, Restored } from '../../core/delete-undo.service';
+import type { BinEntry, PhotoRestorer, PhotoRetry, Restored } from '../../core/delete-undo.service';
 import { DriveConnectService } from '../../data/drive/connect/drive-connect.service';
 import { errorMsg } from '../../core/format';
 import { LocalDataService } from '../../core/local-data.service';
@@ -58,6 +58,11 @@ const WHY: Record<PhotoRestoreReason, TKey> = {
       <div role="status" aria-atomic="true">
         @if (note(); as m) {
           <p class="note">{{ m.key | t: m.params }}</p>
+        }
+        @if (retry(); as r) {
+          <button type="button" class="btn retry" [disabled]="busy()" [attr.aria-label]="'delete.retryAria' | t: { name: r.name || ('delete.unnamed' | t) }" (click)="retryPhotos()">
+            {{ 'delete.retryPhotos' | t }}
+          </button>
         }
       </div>
       @if (error(); as e) {
@@ -113,6 +118,8 @@ export class RecentlyDeleted {
   protected readonly note = signal<Msg | null>(null);
   protected readonly error = signal<Msg | null>(null);
   protected readonly busy = signal(false);
+  /** The photos of the entry just restored that a retry can still bring back, or null (S4b-BL-293). */
+  protected readonly retry = signal<PhotoRetry | null>(null);
 
   constructor() {
     // Read again after every write to the store (a sync pull, a delete elsewhere) and when the space changes.
@@ -145,6 +152,7 @@ export class RecentlyDeleted {
     try {
       const result = await this.undo.restore(entry, Date.now(), this.drive);
       if (result) this.note.set(this.words(result, entry.name || this.i18n.t('delete.unnamed')));
+      this.retry.set(result?.retry ?? null);
     } catch (err: unknown) {
       failed = { key: 'delete.restoreFailed', params: { reason: errorMsg(err) } };
     }
@@ -152,6 +160,25 @@ export class RecentlyDeleted {
     if (failed) this.error.set(failed);
     this.busy.set(false);
     this.focusAfter(at);
+  }
+
+  /**
+   * Tries the just-restored entry's photos again, after the person reconnected Google Drive (S4b-BL-293). The candidate is
+   * already back, so only its photos are asked for; the words and the Retry button are updated from the new result.
+   */
+  protected async retryPhotos(): Promise<void> {
+    const retry = this.retry();
+    if (!retry || this.busy()) return;
+    this.busy.set(true);
+    this.error.set(null);
+    try {
+      const result = await this.undo.retryPhotos(retry, Date.now(), this.drive);
+      this.note.set(this.words(result, retry.name));
+      this.retry.set(result.retry);
+    } catch (err: unknown) {
+      this.error.set({ key: 'delete.restoreFailed', params: { reason: errorMsg(err) } });
+    }
+    this.busy.set(false);
   }
 
   /** What the person is told about the photos: all back from Google Drive, some, or none and why; nothing special when no photo was lost. */

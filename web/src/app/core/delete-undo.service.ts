@@ -28,7 +28,7 @@ import type { RestoreResult } from '../data/house-bin';
 import { notConnectedReport } from '../data/drive/photo-restorer';
 import type { PhotoRestoreReport, PhotoRestoreRequest } from '../data/drive/photo-restorer';
 import { summarize } from '../data/drive/photo-restore-rules';
-import type { PhotoRestoreReason, RestoreConnection } from '../data/drive/photo-restore-rules';
+import type { GonePhoto, PhotoRestoreReason, RestoreConnection } from '../data/drive/photo-restore-rules';
 import { isoNow } from '../data/records';
 import { SETTING_KEYS, type HouseRecord, type PhotoRecord } from '../data/records';
 
@@ -71,6 +71,31 @@ export interface Restored {
   readonly photosFromDrive: number;
   /** Why the others did not come back, each reason once. */
   readonly reasons: readonly PhotoRestoreReason[];
+  /** How to try the photos again, when a second attempt can help (Drive was not connected, or offline); null otherwise. */
+  readonly retry: PhotoRetry | null;
+}
+
+/**
+ * What retrying a restored candidate's photos needs (S4b-BL-293): everything the restore already had in hand, so a retry
+ * asks Drive again without re-reading the store. Held in memory by {@link DeleteUndoService} while the person is on
+ * *Recently deleted*; it is not stored, so a reload forgets it (the candidate is already back; only its photos wait).
+ */
+export interface PhotoRetry {
+  readonly name: string;
+  readonly houseId: string;
+  readonly houseDeletedAt: number;
+  /** How many photos the candidate had when it was deleted here (0 when unknown). */
+  readonly noted: number;
+  readonly known: readonly GonePhoto[];
+}
+
+/** The retry to offer, when a reason a second try can fix is among the reasons; null otherwise. */
+export function retryOffer(
+  name: string,
+  ctx: { houseId: string; houseDeletedAt: number; noted: number; known: readonly GonePhoto[] },
+  reasons: readonly PhotoRestoreReason[],
+): PhotoRetry | null {
+  return reasons.some((r) => r === 'OFFLINE' || r === 'NOT_CONNECTED') ? { name, ...ctx } : null;
 }
 
 /** The name a candidate goes by in the words around a delete: its label, else its address, else ''. */
@@ -188,35 +213,54 @@ export class DeleteUndoService {
     if (!result) return undefined;
     await this.note(entry.id, 0);
     const noted = Math.max(entry.photos, result.photosBack + result.photosGone);
-    let fromDrive = 0;
-    let failed: PhotoRestoreReason[] = result.gone.map(() => 'MISSING');
-    let connection: RestoreConnection = 'OK';
-    // Drive is always asked: a candidate deleted on another device leaves no note or tombstone here, only its sync file.
-    if (restorer) {
-      let report: PhotoRestoreReport;
-      try {
-        report = await restorer.restorePhotos({ houseId: entry.id, houseDeletedAt: result.deletedAt, known: result.gone });
-      } catch {
-        report = notConnectedReport(result.gone);
-      }
-      connection = report.connection;
-      failed = report.failed.map((f) => f.reason);
-      const stamp = isoNow(now);
-      for (const got of report.fetched) {
-        try {
-          await this.store.photos.put(restoredPhoto(got.photo, entry.id, got.bytes, stamp));
-          fromDrive++;
-        } catch {
-          failed.push('UNREADABLE');
-        }
-      }
-    } else {
-      connection = 'NOT_CONNECTED';
-      failed = result.gone.map(() => 'NOT_CONNECTED');
-    }
+    const ctx = { houseId: entry.id, houseDeletedAt: result.deletedAt, noted, known: result.gone };
+    const { fromDrive, failed, connection } = await this.bringPhotosBack(ctx, now, restorer);
     this.sync.syncSoon();
     const summary = summarize(noted, result.photosBack + fromDrive, failed, connection);
-    return { name: entry.name, photosTotal: summary.total, photosBack: summary.restored, photosFromDrive: fromDrive, reasons: summary.reasons };
+    return { name: entry.name, photosTotal: summary.total, photosBack: summary.restored, photosFromDrive: fromDrive, reasons: summary.reasons, retry: retryOffer(entry.name, ctx, summary.reasons) };
+  }
+
+  /**
+   * Tries the photos of an already-restored candidate again, when the person presses *Retry* in *Recently deleted* after
+   * reconnecting Google Drive (S4b-BL-293). The candidate is already back, so this touches only its photos: it asks Drive
+   * for the same files the restore did and puts back each that answers, exactly like {@link restore}. Nothing is deleted.
+   */
+  async retryPhotos(retry: PhotoRetry, now: number = Date.now(), restorer: PhotoRestorer | null = null): Promise<Restored> {
+    const { fromDrive, failed, connection } = await this.bringPhotosBack(retry, now, restorer);
+    this.sync.syncSoon();
+    const summary = summarize(retry.noted, fromDrive, failed, connection);
+    return { name: retry.name, photosTotal: summary.total, photosBack: summary.restored, photosFromDrive: fromDrive, reasons: summary.reasons, retry: retryOffer(retry.name, retry, summary.reasons) };
+  }
+
+  /**
+   * Asks the person's own Google Drive for the photos of one candidate that have no bytes here, and puts each that answers
+   * back under a new photo id; every failure becomes a reason for a photo, none is thrown. Drive is always asked: a
+   * candidate deleted on another device leaves no note or tombstone here, only its sync file.
+   */
+  private async bringPhotosBack(
+    ctx: { houseId: string; houseDeletedAt: number; known: readonly GonePhoto[] },
+    now: number,
+    restorer: PhotoRestorer | null,
+  ): Promise<{ fromDrive: number; failed: PhotoRestoreReason[]; connection: RestoreConnection }> {
+    if (!restorer) return { fromDrive: 0, failed: ctx.known.map(() => 'NOT_CONNECTED'), connection: 'NOT_CONNECTED' };
+    let report: PhotoRestoreReport;
+    try {
+      report = await restorer.restorePhotos({ houseId: ctx.houseId, houseDeletedAt: ctx.houseDeletedAt, known: ctx.known });
+    } catch {
+      report = notConnectedReport(ctx.known);
+    }
+    let fromDrive = 0;
+    const failed: PhotoRestoreReason[] = report.failed.map((f) => f.reason);
+    const stamp = isoNow(now);
+    for (const got of report.fetched) {
+      try {
+        await this.store.photos.put(restoredPhoto(got.photo, ctx.houseId, got.bytes, stamp));
+        fromDrive++;
+      } catch {
+        failed.push('UNREADABLE');
+      }
+    }
+    return { fromDrive, failed, connection: report.connection };
   }
 
   /** {@link note} for many at once: one read and one write of the notes. */

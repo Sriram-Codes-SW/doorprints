@@ -1786,6 +1786,8 @@ export const en = {
   'delete.photosAllDrive': 'Restored {name}. Its photos came back from your Google Drive (photos: {n}).',
   'delete.photosSome': 'Restored {name}. Photos that came back: {back} of {n}. The others could not be restored: {why}.',
   'delete.photosNone': 'Restored {name}. Its photos could not be restored: {why}.',
+  'delete.retryPhotos': 'Retry photos',
+  'delete.retryAria': 'Retry restoring the photos of {name}',
   'delete.why.notConnected': 'Google Drive is not connected on this device',
   'delete.why.offline': 'there was no connection to Google Drive',
   'delete.why.pastWindow': 'they were deleted more than 30 days ago',
