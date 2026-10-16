@@ -21,7 +21,9 @@ import {
   MAX_QUESTION_TEXT,
   QUESTION_CATEGORIES,
   QUESTION_SCOPES,
+  questionCategoryLabel,
   questionKinds,
+  registerQuestionBank,
   defaultQuestion,
   defaultQuestionsOf,
   isCustomQuestionId,
@@ -33,7 +35,7 @@ import {
   questionsOfKind,
   sortQuestions,
 } from './question';
-import { SCHOOL_QUESTIONS } from './school-questions';
+import { SCHOOL_CATEGORY_LABELS, SCHOOL_QUESTIONS } from './school-questions';
 import schoolSeedJson from '../../../../docs/schemas/kinds/school-questions.json';
 // The one seed file both apps embed (docs/schemas, slice 3a); resolveJsonModule is on for the specs.
 import seedJson from '../../../../docs/schemas/default-questions.json';
@@ -164,6 +166,26 @@ describe('SCHOOL_QUESTIONS', () => {
     expect(seed.format).toBe('doorprints-kind-questions/1');
     expect(JSON.parse(JSON.stringify(SCHOOL_QUESTIONS))).toEqual(seed.questions);
     expect(seed.questions).toHaveLength(6);
+  });
+
+  it('words each category for a school: the file’s categoryLabels, four languages, the bank’s six ids, none of the house’s words', () => {
+    const labels = (seed as unknown as { categoryLabels: Record<string, Record<string, string>> }).categoryLabels;
+    expect(JSON.parse(JSON.stringify(SCHOOL_CATEGORY_LABELS))).toEqual(labels);
+    expect(Object.keys(labels).sort()).toEqual([...QUESTION_CATEGORIES].sort());
+    for (const q of SCHOOL_QUESTIONS) expect(Object.keys(labels), q.id).toContain(q.category);
+    for (const [id, text] of Object.entries(labels)) for (const lang of ['en', 'hi', 'ta', 'te']) expect(text[lang].length, `${id} ${lang}`).toBeGreaterThan(1);
+    // The stored ids are unchanged: the school's questions keep the bank's category names.
+    expect(SCHOOL_QUESTIONS.map((q) => q.category)).toEqual(['MONEY', 'LEGAL', 'RULES', 'BUILDING', 'WATER_POWER', 'OTHER']);
+  });
+
+  it('reads a category header from the kind, and null (so the house’s word) for the house and for a kind or category with none', () => {
+    expect(questionCategoryLabel('school', 'MONEY', 'en')).toBe('Fees and money');
+    expect(questionCategoryLabel('school', 'WATER_POWER', 'hi')).toBe('पानी और शौचालय');
+    expect(questionCategoryLabel('house', 'WATER_POWER', 'en')).toBeNull();
+    expect(questionCategoryLabel('villa', 'MONEY', 'en')).toBeNull();
+    const undo = registerQuestionBank('shop', [], ['BOTH']);
+    expect(questionCategoryLabel('shop', 'MONEY', 'en')).toBeNull();
+    undo();
   });
 
   it('has ids qd_school_ and a name, categories of the bank, scope BOTH (a school has no rent or sale), and short texts', () => {

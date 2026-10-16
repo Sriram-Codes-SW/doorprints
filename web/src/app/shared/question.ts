@@ -20,7 +20,7 @@ import type { Lang } from '../i18n/languages';
 import { isDevMode } from '@angular/core';
 import { baselineKindId } from '../core/candidate';
 import { isBaselineKind } from '../core/kind-capabilities';
-import { SCHOOL_QUESTIONS } from './school-questions';
+import { SCHOOL_CATEGORY_LABELS, SCHOOL_QUESTIONS } from './school-questions';
 
 /**
  * The question bank (docs/11 5.5, slice 3a of the Sprint 4b data model): the questions a person likes to ask at a
@@ -280,13 +280,15 @@ export const DEFAULT_QUESTIONS: readonly DefaultQuestion[] = [
 interface OwnBank {
   readonly questions: readonly DefaultQuestion[];
   readonly scopes: readonly QuestionScope[];
+  /** The kind's own category headers, by category id and language; an id with none reads the house's label. */
+  readonly categoryLabels?: Readonly<Partial<Record<QuestionCategory, Readonly<Record<Lang, string>>>>>;
 }
 
 /**
  * The kinds besides the baseline kind that have a question bank of their own (kinds PR 29, docs/03 §18.23); their ids carry the kind. The school's
  * has no rent or sale, so its questions are all `BOTH` and the scope control is not offered; a kind with no entry has them all.
  */
-const OWN_BANKS = new Map<string, OwnBank>([['school', { questions: SCHOOL_QUESTIONS, scopes: ['BOTH'] }]]);
+const OWN_BANKS = new Map<string, OwnBank>([['school', { questions: SCHOOL_QUESTIONS, scopes: ['BOTH'], categoryLabels: SCHOOL_CATEGORY_LABELS }]]);
 
 /** The kinds that have a question bank of their own. */
 export function questionKinds(): readonly string[] {
@@ -301,6 +303,14 @@ export function registerQuestionBank(kind: string, questions: readonly DefaultQu
   if (!isDevMode()) throw new Error('a question bank is registered only in a development build');
   OWN_BANKS.set(kind, { questions, scopes });
   return () => void OWN_BANKS.delete(kind);
+}
+
+/**
+ * The kind's own header for a question category in [lang], or null when the kind has none (the baseline kind, whose headers are the
+ * `questions.category.*` words, or a category the kind does not word): the caller then shows the house's label.
+ */
+export function questionCategoryLabel(kind: string, category: QuestionCategory, lang: Lang): string | null {
+  return OWN_BANKS.get(kind)?.categoryLabels?.[category]?.[lang] ?? null;
 }
 
 export function questionScopesOf(kind: string): readonly QuestionScope[] {

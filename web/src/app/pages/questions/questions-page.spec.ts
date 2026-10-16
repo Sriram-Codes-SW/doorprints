@@ -343,6 +343,16 @@ describe('QuestionsPage in the school space', () => {
     expect(seedKindQuestions).toHaveBeenCalledWith('school', 'en');
   });
 
+  it('heads the groups with the school’s own words, not the house’s, and the house’s page keeps its own', async () => {
+    const { host } = await renderSchool(both());
+    const heads = [...host.querySelectorAll('section[aria-labelledby^="questions-group-"] h2')].map((h) => h.textContent?.trim());
+    expect(heads).toEqual(['Fees and money', 'Water and toilets', 'Teaching', 'Safety and facilities', 'Admission', 'Daily routine and other']);
+    expect(heads).not.toContain('Water and power');
+    expect(heads).not.toContain('Money');
+    const options = [...host.querySelectorAll<HTMLOptionElement>('#questions-new-category option')].map((o) => o.textContent?.trim());
+    expect(options).toEqual(['Fees and money', 'Water and toilets', 'Teaching', 'Safety and facilities', 'Admission', 'Daily routine and other']);
+  });
+
   it('adds a question to the school’s bank, and resets the school’s defaults only', async () => {
     const { host, addQuestion, resetQuestions } = await renderSchool(both());
     const input = host.querySelector<HTMLInputElement>('form.add input[type="text"]')!;

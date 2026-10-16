@@ -299,7 +299,7 @@ object DefaultQuestions {
             "సంవత్సర ఫీజు ఎంత, అందులో ఏమేం ఉంటాయి (పుస్తకాలు, యూనిఫారం, రవాణా, కార్యకలాపాలు)?",
         ),
         d(
-            "qd_school_admission", QuestionCategory.MONEY, QuestionScope.BOTH, true, 1,
+            "qd_school_admission", QuestionCategory.LEGAL, QuestionScope.BOTH, true, 1,
             "How does admission work, what is the admission fee, and what is the last date to apply?",
             "दाख़िला कैसे होता है, दाख़िला फ़ीस कितनी है और आवेदन की आख़िरी तारीख़ क्या है?",
             "சேர்க்கை எப்படி நடக்கிறது, சேர்க்கைக் கட்டணம் எவ்வளவு, விண்ணப்பிக்க கடைசி தேதி என்ன?",
@@ -334,6 +334,29 @@ object DefaultQuestions {
             "హోంవర్క్ ఎంత ఉంటుంది, స్కూలు సమయాలు ఏమిటి, సెలవులు, పరీక్షలు ఎప్పుడు?",
         ),
     )
+
+    /**
+     * The school's category headers (`categoryLabels` of `school-questions.json`, compared with it by `DefaultQuestionsFileTest`): the bank's six
+     * category names kept, so a stored question keeps its category, each worded for a school. hi, ta and te are under review. The web's twin is
+     * `SCHOOL_CATEGORY_LABELS`.
+     */
+    private val SCHOOL_CATEGORY_LABELS: Map<QuestionCategory, Map<String, String>> = mapOf(
+        QuestionCategory.MONEY to mapOf("en" to "Fees and money", "hi" to "फ़ीस और पैसा", "ta" to "கட்டணம் மற்றும் பணம்", "te" to "ఫీజులు మరియు డబ్బు"),
+        QuestionCategory.WATER_POWER to mapOf("en" to "Water and toilets", "hi" to "पानी और शौचालय", "ta" to "தண்ணீர் மற்றும் கழிப்பறைகள்", "te" to "నీరు మరియు మరుగుదొడ్లు"),
+        QuestionCategory.RULES to mapOf("en" to "Teaching", "hi" to "पढ़ाई", "ta" to "கற்பித்தல்", "te" to "బోధన"),
+        QuestionCategory.BUILDING to mapOf("en" to "Safety and facilities", "hi" to "सुरक्षा और सुविधाएँ", "ta" to "பாதுகாப்பு மற்றும் வசதிகள்", "te" to "భద్రత మరియు సౌకర్యాలు"),
+        QuestionCategory.LEGAL to mapOf("en" to "Admission", "hi" to "दाख़िला", "ta" to "சேர்க்கை", "te" to "అడ్మిషన్"),
+        QuestionCategory.OTHER to mapOf("en" to "Daily routine and other", "hi" to "दिनचर्या और अन्य", "ta" to "அன்றாட நடைமுறை மற்றும் பிற", "te" to "దినచర్య మరియు ఇతరాలు"),
+    )
+
+    /**
+     * The kind's own header for [category] in [language] (anything but en, hi, ta, te reads English), or null when the kind has none (the house, whose headers are
+     * the `question_category_*` strings, or a category the kind does not word): the screen then shows the house's label.
+     */
+    fun categoryLabel(kind: String, category: QuestionCategory, language: String?): String? {
+        val labels = (if (KindCapabilities.of(kind).baseline) null else if (kind == "school") SCHOOL_CATEGORY_LABELS else null)?.get(category) ?: return null
+        return labels[language] ?: labels.getValue("en")
+    }
 
     /** The languages a default has a text in. */
     val LANGUAGES: List<String> = listOf("en", "hi", "ta", "te")

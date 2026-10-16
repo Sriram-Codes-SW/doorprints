@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.169 |
-| Date | 2026-10-15 |
+| Version | 0.170 |
+| Date | 2026-10-16 |
 | Author | Claude (Cowork) |
 | Status | Draft |
 
@@ -180,6 +180,7 @@
 | 0.167 | 2026-10-15 | Claude (Code), engineer | **New §18.24, filters, the baseline kind and a school's copy words as capabilities** (kinds PR 30; `feat/kinds-30-copies-filters`): `capabilities.filters` names the extras the list and the map filter by; `capabilities.baseline` (the house) replaces the comparisons with the id `house` in the paths, the AI calls, the copies' file names and the copy voice; a school's copy names its visits and questions in the school's words. |
 | 0.168 | 2026-10-15 | Claude (Code), engineer | **New §18.25, every word comes from the kind file** (kinds PR 31; `feat/kinds-31-words-from-files`; [06](06-test-plan.md) TC-U-280, TC-M-88): `words` names 159 ids; the website's hand-written word tables and the phones' key map are generated from the kind files (`tools/gen-kind-words.mjs`, `--check` in `tools/check.sh` and `security.yml`); the app-wide texts say *entries* once more than the house is in use; the tour gives another kind its own words and one generic sentence; the walk check, the viewing reminder and the calendar file follow the kind. |
 | 0.169 | 2026-10-16 | Claude (Code), engineer | **New §18.26, the conformance suite and the kind tripwire, and ADR-36b** (kinds PR 32; `feat/kinds-32-conformance-suite`; [06](06-test-plan.md) TC-U-281, TC-M-89): the synthetic kind `zz_all`, the same website flows for house, school and `zz_all`, the boundary rules checked for every kind, `tools/check-kind-literals.mjs`; the backup keeps a candidate's kind; the generic AI document reads money, checklist and date. User-authored kinds stay Planned. |
+| 0.170 | 2026-10-16 | Claude (Code), engineer | **§18.23: the school's question headers are its own** (`fix/kinds-question-categories-and-handoff`): `school-questions.json` gains `categoryLabels` (the bank's six category ids kept, so a stored question keeps its category, each worded for a school in en, hi, ta and te: Fees and money, Water and toilets, Teaching, Safety and facilities, Admission, Daily routine and other; hi, ta and te under review); the admission question moves from `MONEY` to `LEGAL` (labelled *Admission*). A category the kind has no label for, and every category of the house, reads the house's `questions.category.*` word, so the house is word for word what it was. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -3448,6 +3449,8 @@ reminder starts the default kind's walk (both kinds have viewings now: §18.20);
 `HuntSpaceTest`; mutation list `tools/mutations/kinds-29-web.json`; the baselines `school_viewings_{en,hi}_light.png` and
 `school_questions_{en,hi}_light.png` (new) and `school_edit_{en_light,ta_dark}.png` (they gain the questions and visits cards); **zero
 diff in every house baseline**.
+
+**Question headers.** The groups of the Questions screen, its category select and the house form's question picker are headed by the kind's own words: `school-questions.json` `categoryLabels` (category id to the label in en, hi, ta and te), read by `questionCategoryLabel` (website) and `DefaultQuestions.categoryLabel` (`:shared`; `QuestionCategory.label(kind)` in `:ui`). The ids are the bank's six (`MONEY`, `WATER_POWER`, `RULES`, `BUILDING`, `LEGAL`, `OTHER`), so no stored record, backup, sync or server format changes; a category the kind does not word, and the house, read the `questions.category.*` words (`question_category_*` on the phones). The school's *Transport* is not a header: its one transport question sits under *Safety and facilities*. The labels are a DRAFT for the owner's review, hi, ta and te under review.
 
 ### 18.24 Filters, the baseline kind and a school's copy words as capabilities (kinds PR 30)
 

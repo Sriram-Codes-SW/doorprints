@@ -88,6 +88,27 @@ class DefaultQuestionsFileTest {
     }
 
     @Test
+    fun theSchoolsCategoryHeadersAreItsFilesAndTheHouseKeepsTheStringsOfTheApp() {
+        val labels = schoolFile.getValue("categoryLabels").jsonObject
+        assertEquals(QuestionCategory.entries.map { it.name }.sorted(), labels.keys.sorted())
+        for (c in QuestionCategory.entries) {
+            val file = labels.getValue(c.name).jsonObject
+            assertEquals(c.name, DefaultQuestions.LANGUAGES, file.keys.toList())
+            for (lang in DefaultQuestions.LANGUAGES) assertEquals("${c.name} $lang", file.getValue(lang).jsonPrimitive.content, DefaultQuestions.categoryLabel("school", c, lang))
+            // An unknown language reads English; the house has none (its headers are the app's strings); neither has a kind with no file.
+            assertEquals(c.name, file.getValue("en").jsonPrimitive.content, DefaultQuestions.categoryLabel("school", c, "fr"))
+            assertEquals(c.name, null, DefaultQuestions.categoryLabel("house", c, "en"))
+            assertEquals(c.name, null, DefaultQuestions.categoryLabel("villa", c, "en"))
+        }
+        // The stored category ids of the school's questions are unchanged apart from the admission question, which a school words as Admission.
+        assertEquals(
+            listOf("MONEY", "LEGAL", "RULES", "BUILDING", "WATER_POWER", "OTHER"),
+            DefaultQuestions.SCHOOL.map { it.category.name },
+        )
+        for (q in DefaultQuestions.SCHOOL) assertEquals(q.id, true, q.category.name in labels.keys)
+    }
+
+    @Test
     fun theTwoBanksNeverMeetAndTheKindOfAQuestionIsReadFromItsId() {
         val house = DefaultQuestions.ALL.map { it.id }.toSet()
         for (d in DefaultQuestions.SCHOOL) {

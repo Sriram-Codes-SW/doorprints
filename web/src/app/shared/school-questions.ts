@@ -16,7 +16,8 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import type { DefaultQuestion } from './question';
+import type { DefaultQuestion, QuestionCategory } from './question';
+import type { Lang } from '../i18n/languages';
 
 /**
  * The school's question seed (kinds PR 29, docs/03 §18.23), copied from `docs/schemas/kinds/school-questions.json`
@@ -40,7 +41,7 @@ export const SCHOOL_QUESTIONS: readonly DefaultQuestion[] = [
   },
   {
     id: "qd_school_admission",
-    category: "MONEY",
+    category: "LEGAL",
     appliesTo: "BOTH",
     defaultOn: true,
     sort: 1,
@@ -104,3 +105,17 @@ export const SCHOOL_QUESTIONS: readonly DefaultQuestion[] = [
     },
   },
 ];
+
+/**
+ * The school's category headers (`categoryLabels` of `school-questions.json`): the bank's six category ids kept, so a stored question keeps its
+ * category, each worded for a school. A category with no label here reads the house's (`questionCategoryLabel`). The Kotlin twin is
+ * `DefaultQuestions.SCHOOL_CATEGORY_LABELS`; hi, ta and te are under review.
+ */
+export const SCHOOL_CATEGORY_LABELS: Readonly<Partial<Record<QuestionCategory, Readonly<Record<Lang, string>>>>> = {
+  MONEY: { en: "Fees and money", hi: "फ़ीस और पैसा", ta: "கட்டணம் மற்றும் பணம்", te: "ఫీజులు మరియు డబ్బు" },
+  WATER_POWER: { en: "Water and toilets", hi: "पानी और शौचालय", ta: "தண்ணீர் மற்றும் கழிப்பறைகள்", te: "నీరు మరియు మరుగుదొడ్లు" },
+  RULES: { en: "Teaching", hi: "पढ़ाई", ta: "கற்பித்தல்", te: "బోధన" },
+  BUILDING: { en: "Safety and facilities", hi: "सुरक्षा और सुविधाएँ", ta: "பாதுகாப்பு மற்றும் வசதிகள்", te: "భద్రత మరియు సౌకర్యాలు" },
+  LEGAL: { en: "Admission", hi: "दाख़िला", ta: "சேர்க்கை", te: "అడ్మిషன்".replace("ன்","న్") },
+  OTHER: { en: "Daily routine and other", hi: "दिनचर्या और अन्य", ta: "அன்றாட நடைமுறை மற்றும் பிற", te: "దినచర్య మరియు ఇతరాలు" },
+};
