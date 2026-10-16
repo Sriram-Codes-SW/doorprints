@@ -75,11 +75,17 @@ export const STALE_PARTIAL_MS = 24 * 60 * 60 * 1000;
 /** How many confirmed shrink drops a device remembers (the oldest are dropped first). */
 export const MAX_CONFIRMED = 32;
 
-/** The authenticated `createdAt` of the oldest kept backup, or null when none is kept (nothing can refer to a file). */
-function oldestKeptAt(backups: readonly DriveBackup[], keep: readonly string[]): number | null {
-  const kept = new Set(keep);
+/**
+ * The authenticated `createdAt` of the oldest backup that **stays** in Drive after this tidy, or null when none stays.
+ *
+ * It is the backups minus the pruned ones, not retention's `keep`: when the shrink guard holds, `prune` is empty and the
+ * backups that would have gone are still in the folder, still able to refer to a photo's file. Keying on what actually
+ * survives is what keeps the clean-up from taking a file a held backup still needs.
+ */
+function oldestStayingAt(backups: readonly DriveBackup[], pruned: readonly string[]): number | null {
+  const gone = new Set(pruned);
   let oldest: number | null = null;
-  for (const b of backups) if (kept.has(b.fileId) && (oldest == null || b.createdAt < oldest)) oldest = b.createdAt;
+  for (const b of backups) if (!gone.has(b.fileId) && (oldest == null || b.createdAt < oldest)) oldest = b.createdAt;
   return oldest;
 }
 
@@ -593,7 +599,7 @@ export class DriveBackupService {
       hold = result.hold;
       for (const id of result.prune) if (await this.trashQuietly(id)) trashed.push(id);
       // The 30-day clean-up (docs/15 §5.1): a deleted photo's file leaves Drive once it can no longer be wanted.
-      for (const id of await this.sweepFiles(oldestKeptAt(backups, result.keep), now)) if (await this.trashQuietly(id)) trashed.push(id);
+      for (const id of await this.sweepFiles(oldestStayingAt(backups, result.prune), now)) if (await this.trashQuietly(id)) trashed.push(id);
     } catch (e) {
       problem = DriveProblem.of(e);
     }
