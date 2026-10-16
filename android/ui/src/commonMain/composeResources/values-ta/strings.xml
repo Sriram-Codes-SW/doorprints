@@ -1958,7 +1958,7 @@
     <!-- Kinds PR 31 (docs/03 section 18.25, 2026-10-15): under review. -->
     <string name="tour_kind_welcome">நீங்கள் சேமிக்கும் %1$s ஐ Doorprints நினைவில் வைத்திருக்கும். நீங்கள் காப்புப்பிரதி எடுக்கவோ பகிரவோ தேர்வு செய்யாத வரை எல்லாம் இந்தத் தொலைபேசியிலேயே இருக்கும்.</string>
     <string name="tour_kind_body">Doorprints இன் இந்தப் பகுதி %1$s க்கும் செயல்படும். பார்த்துவிட்டு அடுத்து என்பதைத் தொடுங்கள்.</string>
-    <string name="tour_kind_action">உங்கள் %1$s இல் ஒன்றுடன் முயற்சிக்கவும், அல்லது பார்த்துவிட்டு அடுத்து என்பதைத் தொடுங்கள்.</string>
+    <string name="tour_kind_action">உங்கள் %1$s இல் ஒன்றைத் திறக்கவும், அல்லது பார்த்துவிட்டு அடுத்து என்பதைத் தொடுங்கள்.</string>
     <string name="tour_kind_done_body">இவை Doorprints இன் முக்கியப் பகுதிகள். உங்கள் %1$s இல் சேர்க்கத் தொடங்குங்கள், செல்லும்போது செயலியைத் திறந்து வைத்திருங்கள்.</string>
     <string name="tour_kind_done_action">முடி என்பதைத் தொட்டு, உங்கள் முதலாவதைச் சேர்க்கவும்.</string>
     <string name="tour_kind_compare_title">%1$s ஐ ஒப்பிடுங்கள்</string>

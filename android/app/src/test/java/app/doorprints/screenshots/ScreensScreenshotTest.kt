@@ -153,6 +153,8 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.cancelAndJoin
 import app.doorprints.FakeVoiceRepository
 import app.doorprints.FakeVoiceServices
+import app.doorprints.ui.res.school_trace_end_save
+import app.doorprints.ui.res.school_trace_pick_title
 import app.doorprints.ui.res.voice_mic
 import app.doorprints.ui.res.voice_mic_desc
 import app.doorprints.ui.res.voice_status_recording
@@ -744,6 +746,54 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
             app.doorprints.ui.WalkEndSheetContent(
                 app.doorprints.ui.WalkSummary(1_760_000_000_000L, shotWalk), shotHouses, 30, null, {}, {}, {}, initiallyPicking = true,
             )
+        }
+    }
+
+    /**
+     * The walk check's Save sheet in a school space (kinds PR 31, docs/03 section 18.25): *Link it to a school to keep it*, *Save with a school*, and the picker
+     * (*Which school was this walk to?*, the search, the school). English and Hindi, light only; the house's are `walk_end` and `walk_end_pick`, unchanged.
+     */
+    /** The sample school, put where the shot walk ends (as the house shots' houses are). */
+    private val nearSchool get() = SchoolSample.entity().copy(lat = 12.9692, lon = 77.5946)
+
+    @Test fun schoolWalkEnd() {
+        assumeTrue(!dark && (lang == "en" || lang == "hi"))
+        val on = KindSetting(listOf("house", "school"), experimental = "1", enabledText = "[\"house\",\"school\"]")
+        shoot("school_walk_end", text(Res.string.school_trace_end_save)) {
+            CompositionLocalProvider(LocalSpace provides SpaceUi(on, "school")) {
+                app.doorprints.ui.WalkEndSheetContent(app.doorprints.ui.WalkSummary(1_760_000_000_000L, shotWalk), listOf(nearSchool), 30, null, {}, {}, {})
+            }
+        }
+    }
+
+    @Test fun schoolWalkEndPick() {
+        assumeTrue(!dark && (lang == "en" || lang == "hi"))
+        val on = KindSetting(listOf("house", "school"), experimental = "1", enabledText = "[\"house\",\"school\"]")
+        shoot("school_walk_end_pick", text(Res.string.school_trace_pick_title)) {
+            CompositionLocalProvider(LocalSpace provides SpaceUi(on, "school")) {
+                app.doorprints.ui.WalkEndSheetContent(
+                    app.doorprints.ui.WalkSummary(1_760_000_000_000L, shotWalk), listOf(nearSchool), 30, null, {}, {}, {}, initiallyPicking = true,
+                )
+            }
+        }
+    }
+
+    /**
+     * Two steps of the guided tour in a school space (kinds PR 31): *Add*, in the school's own words for the button, the hint and the action, and *Compare*, whose
+     * title and sentences are the tour's generic ones naming the kind's plural. English and Hindi, light only; the house tour is `tour_criteria` and `tour_help`, unchanged.
+     */
+    @Test fun schoolTourAdd() = schoolTour("add", 1)
+
+    @Test fun schoolTourCompare() = schoolTour("compare", 7)
+
+    private fun schoolTour(id: String, position: Int) {
+        assumeTrue(!dark && (lang == "en" || lang == "hi"))
+        val on = KindSetting(listOf("house", "school"), experimental = "1", enabledText = "[\"house\",\"school\"]")
+        val step = app.doorprints.ui.TourSteps.ALL.first { it.id == id }
+        shoot("school_tour_$id", STATIC) {
+            CompositionLocalProvider(LocalSpace provides SpaceUi(on, "school")) {
+                Box(Modifier.padding(16.dp)) { app.doorprints.ui.TourStepCard(step, position, 25, false, false, false, {}, {}, {}) }
+            }
         }
     }
 

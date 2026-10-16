@@ -27,6 +27,8 @@ import androidx.core.content.FileProvider
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.performClick
@@ -42,7 +44,11 @@ import app.doorprints.ui.HouseEditScreen
 import app.doorprints.ui.HouseListScreen
 import app.doorprints.ui.LocalAppServices
 import app.doorprints.ui.LocalSpace
+import app.doorprints.ui.SettingsScreen
 import app.doorprints.ui.SpaceUi
+import app.doorprints.ui.WalkEndSheetContent
+import app.doorprints.ui.WalkSummary
+import app.doorprints.shared.trace.TracePoint
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Before
@@ -152,5 +158,53 @@ class SchoolWordsScreenTest {
         compose.waitUntil(10_000) { rows("Board").fetchSemanticsNodes().isNotEmpty() }
         rows("Contact name").assertCountEquals(1)
         rows("Contact").assertCountEquals(0) // the house's heading for the row, *Contact*, is not there
+    }
+
+    // Kinds PR 31 (docs/03 section 18.25): the walk check's Save sheet and the Settings texts follow the kind.
+    @Test fun theWalkCheckSavesWithASchoolAndAsksWhichSchool() {
+        val pts = (0..5).map { k -> TracePoint(26.14 + k * 0.0005, 91.78, 1_760_000_000_000L + k * 60_000L, 1_760_000_000_000L) }
+        show {
+            WalkEndSheetContent(
+                WalkSummary(1_760_000_000_000L, pts), emptyList(), 30, null, {}, {}, {}, initiallyPicking = false,
+            )
+        }
+        text("Link it to a school to keep it.").assertCountEquals(1)
+        text("Save with a school").assertCountEquals(1)
+        text("house").assertCountEquals(0)
+    }
+
+    @Test fun theWalkPickerNamesTheSchoolsAndTheEmptyListSaysSo() {
+        val pts = (0..5).map { k -> TracePoint(26.14 + k * 0.0005, 91.78, 1_760_000_000_000L + k * 60_000L, 1_760_000_000_000L) }
+        show {
+            WalkEndSheetContent(
+                WalkSummary(1_760_000_000_000L, pts), emptyList(), 30, null, {}, {}, {}, initiallyPicking = true,
+            )
+        }
+        text("Which school was this walk to?").assertCountEquals(1)
+        text("You have no saved schools yet. Add a school first, or keep the walk for 30 days.").assertCountEquals(1)
+        text("house").assertCountEquals(0)
+    }
+
+    // The alert distance is a slider named by its sentence (the visible text is hidden from TalkBack), so look in either place.
+    private fun shown(s: String) = compose.onAllNodes(hasText(s, substring = true) or hasContentDescription(s, substring = true))
+
+    @Test fun theSettingsTextsSayEntriesOnceMoreThanTheHouseIsInUse() {
+        show { SettingsScreen() }
+        compose.waitUntil(10_000) { shown("Alert when I am within").fetchSemanticsNodes().isNotEmpty() }
+        shown("of a saved entry").assertCountEquals(1) // the slider named by the sentence
+        shown("of a saved house").assertCountEquals(0)
+        shown("neighbouring places can be confused").assertCountEquals(1)
+        shown("every entry shows how far they are").assertCountEquals(1)
+        shown("Your entries and visits stay on this phone").assertCountEquals(1)
+        shown("saved house").assertCountEquals(0)
+    }
+
+    @Test fun theHouseAppKeepsItsSettingsTexts() {
+        compose.setContent { kinds.Provide { SettingsScreen() } }
+        compose.waitUntil(10_000) { shown("Alert when I am within").fetchSemanticsNodes().isNotEmpty() }
+        shown("of a saved house").assertCountEquals(1)
+        shown("neighbouring houses can be confused").assertCountEquals(1)
+        shown("every house shows how far they are").assertCountEquals(1)
+        shown("Your houses and visits stay on this phone").assertCountEquals(1)
     }
 }

@@ -1276,7 +1276,7 @@ export const te: Dict = {
   'tour.done.action': 'ముగించు నొక్కి, మీ మొదటి ఇంటిని చేర్చండి.',
   'tour.kind.welcome': 'మీరు ఉంచుకునే {many}ను Doorprints గుర్తుంచుకుంటుంది. మీరు బ్యాకప్ చేయాలని లేదా పంచుకోవాలని ఎంచుకోకపోతే అంతా ఈ పరికరంలోనే ఉంటుంది.',
   'tour.kind.body': 'Doorprints లోని ఈ భాగం {many}కి కూడా పనిచేస్తుంది. చూసి, తదుపరి నొక్కండి.',
-  'tour.kind.action': 'మీ {many}లో ఒకదానితో ప్రయత్నించండి, లేదా చూసి తదుపరి నొక్కండి.',
+  'tour.kind.action': 'మీ {many}లో ఒకదాన్ని తెరవండి, లేదా చూసి తదుపరి నొక్కండి.',
   'tour.kind.doneBody': 'ఇవి Doorprints యొక్క ముఖ్య భాగాలు. మీ {many}కి జోడించడం ప్రారంభించండి, వెళ్లినప్పుడు యాప్‌ను తెరిచి ఉంచండి.',
   'tour.kind.doneAction': 'ముగించు నొక్కి, మీ మొదటిదాన్ని చేర్చండి.',
   // S4b-BL-104 (c, d) (2026-10-01): the Basement switch under Floor, and the import's note on a floor out of range. Under review (owner rule: hi/ta/te ship marked under review).

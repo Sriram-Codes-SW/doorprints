@@ -1955,7 +1955,7 @@
     <!-- Kinds PR 31 (docs/03 section 18.25): the tour in the space of another kind: generic sentences that name the kind's plural. -->
     <string name="tour_kind_welcome">Doorprints remembers the %1$s you keep. Everything stays on this phone unless you choose to back it up or share it.</string>
     <string name="tour_kind_body">This part of Doorprints works for %1$s too. Look at it, then tap Next.</string>
-    <string name="tour_kind_action">Try it with one of your %1$s, or just look around and tap Next.</string>
+    <string name="tour_kind_action">Open one of your %1$s, or just look around, then tap Next.</string>
     <string name="tour_kind_done_body">These are the main parts of Doorprints. Start by adding to your %1$s, and keep the app open when you visit.</string>
     <string name="tour_kind_done_action">Tap Finish, then add your first one.</string>
     <string name="tour_kind_compare_title">Compare %1$s</string>

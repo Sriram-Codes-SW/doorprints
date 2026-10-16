@@ -1276,7 +1276,7 @@ export const hi: Dict = {
   'tour.done.action': 'समाप्त करें दबाएँ, फिर अपना पहला मकान जोड़ें।',
   'tour.kind.welcome': 'Doorprints आपके सहेजे हुए {many} को याद रखता है। जब तक आप बैकअप या साझा न करें, सब कुछ इसी डिवाइस पर रहता है।',
   'tour.kind.body': 'Doorprints का यह हिस्सा {many} के लिए भी काम करता है। इसे देखें, फिर आगे दबाएँ।',
-  'tour.kind.action': 'अपने {many} में से किसी के साथ आज़माएँ, या बस देखें और आगे दबाएँ।',
+  'tour.kind.action': 'अपने {many} में से कोई खोलें, या बस देखें और आगे दबाएँ।',
   'tour.kind.doneBody': 'ये Doorprints के मुख्य हिस्से हैं। अपने {many} में जोड़ना शुरू करें, और जाते समय ऐप खुला रखें।',
   'tour.kind.doneAction': 'समाप्त करें दबाएँ, फिर अपना पहला जोड़ें।',
   // S4b-BL-104 (c, d) (2026-10-01): the Basement switch under Floor, and the import's note on a floor out of range. Under review (owner rule: hi/ta/te ship marked under review).

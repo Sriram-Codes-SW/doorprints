@@ -149,7 +149,7 @@ object TourSteps {
 
     val ALL: List<TourStep> = listOf(
         TourStep("welcome", null, emptyList(), Res.string.tour_welcome_title, Res.string.tour_welcome_body, Res.string.tour_welcome_action, kind = KindTour(body = KindText.Generic)),
-        TourStep("add", MAP, listOf(TourTargets.MAP_SAVE), Res.string.tour_add_title, Res.string.tour_add_body, Res.string.tour_add_action, setOf(TourNeed.MAP), kind = KindTour(KindText.Word { it.words.addOnMap }, KindText.Word { it.words.addTip }, KindText.Word { it.words.addTipA11y })),
+        TourStep("add", MAP, listOf(TourTargets.MAP_SAVE), Res.string.tour_add_title, Res.string.tour_add_body, Res.string.tour_add_action, setOf(TourNeed.MAP), kind = KindTour(KindText.Word { it.words.addOnMap }, KindText.Word { it.words.addTip }, KindText.Word { it.words.saveHere })),
         TourStep("hunt", MAP, listOf(TourTargets.MAP_HUNT), Res.string.tour_hunt_title, Res.string.tour_hunt_body, Res.string.tour_hunt_action, setOf(TourNeed.MAP, TourNeed.HUNT), kind = KindTour(body = KindText.Generic)),
         TourStep("check", MAP, listOf(TourTargets.MAP_CHECK), Res.string.tour_check_title, Res.string.tour_check_body, Res.string.tour_check_action, setOf(TourNeed.MAP)),
         TourStep("offline", MAP, listOf(TourTargets.MAP_OFFLINE), Res.string.tour_offline_title, Res.string.tour_offline_body, Res.string.tour_offline_action, setOf(TourNeed.OFFLINE_MAPS)),

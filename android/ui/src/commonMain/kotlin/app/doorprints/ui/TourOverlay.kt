@@ -166,7 +166,7 @@ fun TourOverlay(
                 registry.firstOnScreen(step.targets)?.let { registry.scrollIntoView(it) }
             }
             PlacedCard(area, spot, bottom = false, gap, clear) { probe ->
-                StepCard(step, session.position, session.size, session.isFirst, session.isLast, probe, onNext, onBack, onSkip)
+                TourStepCard(step, session.position, session.size, session.isFirst, session.isLast, probe, onNext, onBack, onSkip)
             }
         } else {
             PlacedCard(area, null, bottom = true, gap, clear) { probe -> OfferCard(probe, onStart, onDecline) }
@@ -241,11 +241,11 @@ private fun CardSurface(title: String, probe: Boolean, content: @Composable Colu
 
 /**
  * One tour step: its count, the title (focused when the step appears), the text with the *Try it* line, and *Skip*,
- * *Back* and *Next* or *Finish*.
+ * *Back* and *Next* or *Finish*. Public so a screenshot can draw a step on its own, in the space it is given (kinds PR 31).
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun StepCard(
+fun TourStepCard(
     step: TourStep,
     position: Int,
     size: Int,

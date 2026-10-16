@@ -1276,7 +1276,7 @@ export const ta: Dict = {
   'tour.done.action': 'முடி என்பதைத் தொட்டு, உங்கள் முதல் வீட்டைச் சேர்க்கவும்.',
   'tour.kind.welcome': 'நீங்கள் சேமிக்கும் {many} ஐ Doorprints நினைவில் வைத்திருக்கும். நீங்கள் காப்புப்பிரதி எடுக்கவோ பகிரவோ தேர்வு செய்யாத வரை எல்லாம் இந்தச் சாதனத்திலேயே இருக்கும்.',
   'tour.kind.body': 'Doorprints இன் இந்தப் பகுதி {many} க்கும் செயல்படும். பார்த்துவிட்டு அடுத்து என்பதை அழுத்தவும்.',
-  'tour.kind.action': 'உங்கள் {many} இல் ஒன்றுடன் முயற்சிக்கவும், அல்லது பார்த்துவிட்டு அடுத்து என்பதை அழுத்தவும்.',
+  'tour.kind.action': 'உங்கள் {many} இல் ஒன்றைத் திறக்கவும், அல்லது பார்த்துவிட்டு அடுத்து என்பதை அழுத்தவும்.',
   'tour.kind.doneBody': 'இவை Doorprints இன் முக்கியப் பகுதிகள். உங்கள் {many} இல் சேர்க்கத் தொடங்குங்கள், செல்லும்போது செயலியைத் திறந்து வைத்திருங்கள்.',
   'tour.kind.doneAction': 'முடி என்பதைத் தொட்டு, உங்கள் முதலாவதைச் சேர்க்கவும்.',
   // S4b-BL-104 (c, d) (2026-10-01): the Basement switch under Floor, and the import's note on a floor out of range. Under review (owner rule: hi/ta/te ship marked under review).

@@ -350,7 +350,7 @@ class TourTest {
     fun aSchoolSpaceNamesItsOwnAddSearchDetailsCompareAndVisitWordsAndOtherwiseOneGenericSentence() {
         fun text(id: String) = TourSteps.ALL.first { it.id == id }.textIn(schoolSpace)
         assertEquals(
-            listOf("school_add_on_map", "school_add_tip", "school_add_tip_a11y"),
+            listOf("school_add_on_map", "school_add_tip", "school_save_here"),
             text("add").let { listOf(it.title.res.key, it.body.res.key, it.action.res.key) },
         )
         assertEquals("school_search", text("find").title.res.key)

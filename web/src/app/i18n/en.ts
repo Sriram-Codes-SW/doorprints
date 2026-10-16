@@ -1292,7 +1292,7 @@ export const en = {
   'tour.done.action': 'Tap Finish, then add your first house.',
   'tour.kind.welcome': 'Doorprints remembers the {many} you keep. Everything stays on this device unless you choose to back it up or share it.',
   'tour.kind.body': 'This part of Doorprints works for {many} too. Look at it, then press Next.',
-  'tour.kind.action': 'Try it with one of your {many}, or just look around and press Next.',
+  'tour.kind.action': 'Open one of your {many}, or just look around, then press Next.',
   'tour.kind.doneBody': 'These are the main parts of Doorprints. Start by adding to your {many}, and keep the app open when you visit.',
   'tour.kind.doneAction': 'Tap Finish, then add your first one.',
   // S4b-BL-104 (c, d) (2026-10-01): the Basement switch under Floor, and the import's note on a floor out of range.

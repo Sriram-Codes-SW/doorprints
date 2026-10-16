@@ -173,6 +173,10 @@ class StringParityTest {
             // Kinds PR 26 (docs/03 section 18.20): the house's Hunt words are the kind file's `android` keys, so the walk's ongoing text and
             // its alerts channel's name and description exist in the Compose resources too, equal to the Context ones (keysInBothPlacesReadTheSame).
             "notif_hunt_text", "notif_channel_alerts", "notif_channel_alerts_desc",
+            // Kinds PR 29 (docs/03 section 18.23): the viewing reminder's words are the kind file's `android` keys too, so the channel's name and
+            // description and the notification's title, soon line, open and directions actions exist in the Compose resources as well.
+            "notif_channel_viewings", "notif_channel_viewings_desc", "notif_viewing_soon", "notif_viewing_title", "notif_viewing_open",
+            "notif_viewing_directions", "notif_viewing_house_gone",
         )
         val both = read(android.resolve("values/strings.xml")).keys intersect read(compose.resolve("values/strings.xml")).keys
         assertEquals("keys in both places", expected, both)

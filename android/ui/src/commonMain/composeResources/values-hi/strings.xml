@@ -1958,7 +1958,7 @@
     <!-- Kinds PR 31 (docs/03 section 18.25, 2026-10-15): under review. -->
     <string name="tour_kind_welcome">Doorprints आपके सहेजे हुए %1$s को याद रखता है। जब तक आप बैकअप या साझा न करें, सब कुछ इसी फ़ोन पर रहता है।</string>
     <string name="tour_kind_body">Doorprints का यह हिस्सा %1$s के लिए भी काम करता है। इसे देखें, फिर आगे दबाएँ।</string>
-    <string name="tour_kind_action">अपने %1$s में से किसी के साथ आज़माएँ, या बस देखें और आगे दबाएँ।</string>
+    <string name="tour_kind_action">अपने %1$s में से कोई खोलें, या बस देखें और आगे दबाएँ।</string>
     <string name="tour_kind_done_body">ये Doorprints के मुख्य हिस्से हैं। अपने %1$s में जोड़ना शुरू करें, और जाते समय ऐप खुला रखें।</string>
     <string name="tour_kind_done_action">समाप्त करें दबाएँ, फिर अपना पहला जोड़ें।</string>
     <string name="tour_kind_compare_title">%1$s की तुलना करें</string>
