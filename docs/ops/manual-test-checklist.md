@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | The complete manual test list for Doorprints before real-system testing starts and before Android/iOS development continues: every check a person redoes on real devices, whether or not an automated suite or a review session already covered it |
-| Version | 0.29 |
+| Version | 0.30 |
 | Date | 2026-10-15 |
 | Author | Claude, senior reviewer |
 | Status | Draft |
@@ -41,6 +41,7 @@
 | 0.27 | 2026-10-15 | Claude (Code), engineer | **MT-119** (TC-M-87; kinds PR 30, [03](../03-design.md) §18.24): a school's filters and copy. Not run. |
 | 0.28 | 2026-10-15 | Claude (Code), engineer | **MT-120** (TC-M-88; kinds PR 31, [03](../03-design.md) §18.25): a school's tour, walk check and Settings. Not run. |
 | 0.29 | 2026-10-16 | Claude (Code), engineer | **MT-121** (TC-M-89; kinds PR 32, [03](../03-design.md) §18.26): TC-M-25 in a school's and the synthetic kind's space. Not run. |
+| 0.30 | 2026-10-16 | Claude (Code), engineer | **MT-122** (TC-M-90; S4b-BL-293, [15](../15-google-drive-backup-and-sharing.md) §1.4 item 11): a deleted candidate's photos come back from the real Google Drive on *Restore*, and what is said when they cannot. Not run. |
 
 ## 1. How to use this list
 
@@ -1186,3 +1187,27 @@ Expected: every alert and the notification speak the language of the space the w
 | MT-103 | The phones' leftovers of the kinds by eye | anyone | E4 | no | |
 | MT-115 | The school as the default, and the house turned off | anyone | E4 | no | |
 | MT-116 | The school's Hunt mode on a real walk: the alert, its channel, the lock screen, TalkBack | owner | E4, E5 | no | |
+
+## 21. Photos come back from Google Drive after a deletion (S4b-BL-293, TC-M-90)
+
+Needs the owner's test Google account with Google Drive connected on the website and on one phone (E3, E4), the photos synced
+to Drive, and about 20 minutes. Nothing here is run; the unit tests use a fake Drive.
+
+#### MT-122 Restore brings the photos back from the real Drive
+
+1. On the website, open a candidate with three or four photos and wait for the Drive sync to finish (the Google Drive card says *Synced*). In the test account's Drive, open *Doorprints* > *Photos*: one file per photo, each starting with `DPX1` (I10).
+2. Delete the candidate (the *Undo* snackbar goes by). In Drive the photo files are **still there**.
+3. *Your data* > *Recently deleted* > *Restore*. The candidate is back with its photos, and the line under the list says *Its photos came back from your Google Drive (photos: N)*. The photos open and are the right ones, with their room, tags and caption. After the next sync they appear on the phone as new photos (one new file each in Drive; the old files are untouched).
+4. Delete it again. Disconnect Google Drive on the website (or reload the page and do not connect), press *Restore*: the candidate is back and the line says *Google Drive is not connected on this device*. Do the same offline (airplane mode): *there was no connection to Google Drive*.
+5. In Drive, move one of the candidate's photo files to the bin and empty the bin (or delete it), delete the candidate in the app and restore: *Photos that came back: 2 of 3* (or N-1 of N) and *no copy is left in your Google Drive*.
+6. On the phone repeat steps 2 and 3 for a candidate that was deleted on the website with its photos: Settings > *Recently deleted* > *Restore*; the photos come back on the phone, Android and, with an iPhone, there too.
+7. *Delete everything Doorprints keeps in my Google Drive* (the full confirmation), connect again, and press *Restore* on a candidate deleted before: it says *Google Drive is not connected on this device* or *no copy is left in your Google Drive*, never that photos came back.
+8. With TalkBack or VoiceOver (and the website's screen reader) the line under the list is read when it appears; in Hindi, Tamil and Telugu it is in that language and reads naturally to a native speaker (under review).
+
+Expected: the candidate is restored every time, whatever happens to the photos; the words are true each time; Google asked for nothing new (the consent screen lists only the Drive file permission, I1); nothing was uploaded or deleted by a restore. Record any line that does not follow, with the platform, the language and the steps.
+
+### 21.1 Summary rows (add to §13 when the owner starts the run)
+
+| ID | Name | Who | Env | Pass | Notes |
+|---|---|---|---|---|---|
+| MT-122 | Restore brings the photos back from the real Drive, and says why when it cannot | owner | E3, E4 | no | |

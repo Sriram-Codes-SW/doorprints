@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Data flow diagrams (DFD) and data dictionary |
-| Version | 0.27 |
+| Version | 0.28 |
 | Date | 2026-10-15 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -39,6 +39,7 @@
 | 0.25 | 2026-10-15 | Claude (Code), engineer | **DF-49: Android's side is built** (S4b-BL-222, voice PR 5): the section 6 note and the data-dictionary row say so; on Android the recording is 16 kHz mono PCM kept in memory and sent as `audio/wav` (60 s, 2 MB), the permission is `RECORD_AUDIO` asked at the tap. |
 | 0.26 | 2026-10-15 | Claude (Code), engineer | **DF-49 on the iPhone** (S4b-BL-223, voice PR 6): the same flow; the iPhone's capture is an `AVAudioEngine` tap into memory (`IosPcmSource`), sent as the same 16 kHz mono `audio/wav` clip as Android's, never a file; the section 6 note and the data-dictionary row say so. |
 | 0.27 | 2026-10-15 | Claude (Code), engineer | **DF-49 and Sarvam (S4b-BL-224, voice PR 7):** the destination `api.sarvam.ai` joins E6 for speech to text, with its own key slot (T-I52) and a 30 s cut; no new flow and no new trust boundary. |
+| 0.28 | 2026-10-16 | Claude (Code), engineer | **§5.2 items 3, 4 and 6: photos from the person's own Google Drive on *Restore*** (S4b-BL-293, owner decision 2026-10-16): a delete drops the photo from the device at once, the encrypted copy stays in the person's own Drive for at least 30 days so *Restore* can read it back and store it under a new id; the read is the existing sync channel (DF-25's Drive folder, the same `drive.file` scope, `dpx/1` files, nothing uploaded or deleted by the restore); no new data flow, store or trust boundary. |
 
 Related: [Threat model](02-threat-model.md) (uses these element IDs) · [Design](03-design.md) · [Requirements](01-requirements.md) · [AI docs](ai/)
 
@@ -287,11 +288,12 @@ flowchart LR
 
 No new data flow, store or boundary: everything below is P3 reading and writing the `houses`, `photos` and `saved_walks` stores of D3 and the existing change feed (DF-12).
 
-1. **Delete** writes the candidate's row as a tombstone (`deleted: true`, `dirty: true`, `updatedAt` now), drops the bytes of its photos (a photo the server has keeps a tombstone) and deletes its saved walks, which have no tombstone. Before this the page keeps copies of the photos in memory.
+1. **Delete** writes the candidate's row as a tombstone (`deleted: true`, `dirty: true`, `updatedAt` now), drops the bytes of its photos from the device **at once** (a photo the server has keeps a tombstone) and deletes its saved walks, which have no tombstone. Before this the page keeps copies of the photos in memory. **The encrypted copy of each photo stays in the person's own Google Drive for at least 30 days** (its file in `Photos/` is not removed by a delete; [15](15-google-drive-backup-and-sharing.md) §1.4 item 11), so a restore can recover it; *Delete everything* in Drive removes it at once.
 2. **Undo** (10 s, same page session) writes the row again (`deleted: false`, `dirty: true`, `updatedAt` = the later of now and the tombstone's stamp + 1 ms) and puts the photos back from the copies under new ids, marked not uploaded.
-3. **Restore** (*Recently deleted*: this space's tombstones with `updatedAt` within 30 days) does the same flip for the row; photos come back only if their bytes are still stored, else the person is told.
-4. The next sync pushes the newer row; last write wins on the server and in Drive, so the restore reaches every device. Saved walks never come back. A per-candidate photo count is kept in the browser's settings store (never exported or synced) so the list can say photos were lost.
+3. **Restore** (*Recently deleted*: this space's tombstones with `updatedAt` within 30 days) does the same flip for the row first. The photos whose bytes are still stored come back as in step 2. For the others (S4b-BL-293, item 6) the page asks the person's own Google Drive when it is connected on this device and online, and tells the person how many of how many came back and why the others did not.
+4. The next sync pushes the newer row; last write wins on the server and in Drive, so the restore reaches every device. Saved walks never come back. A per-candidate photo count is kept in the browser's settings store (never exported or synced) so the list shows how many photos it had and the result after *Restore* can say how many came back.
 5. **Delete all in this space** (Settings > What you track, one card) is step 1 for every live candidate of that space only: the rows (a kind with no space of its own belongs to the default space) are tombstoned in ONE IndexedDB transaction, each stamped later than the row it replaces, then their photos and saved walks go as in step 1. **Undo** (step 2) restores all of them from the copies held for 10 s; each row is also a *Recently deleted* entry (step 3). A bulk action starts only if none ran on this device in the last 10 s (a time kept in the browser's local storage). No other row is read for writing, which the blast-radius vectors (`docs/schemas/delete-scope-vectors.json`, the `deleteSpace` step) pin. On the phones (S4b-BL-285) the same flow runs on Room: `deleteHouses` tombstones the live rows in one transaction, `restoreHouses` is the Undo and `restoreHouse` is *Restore* in Settings > *Recently deleted*; the pause is kept in memory.
+6. **Photos from Drive on Restore (S4b-BL-293).** After the candidate's row is back, the restore reads this device's own sync file (`sync/1`, one verified download, or the copy held in memory from the last pass) for the candidate's photo tombstones, and for each one still inside the 30 days with a Drive file named, downloads that `photo/1` file, checks it (the `Photos` folder pin, Drive's checksum, the keys through the pin, the plaintext SHA-256 of the row), decrypts it on the device and stores the bytes under a **new** photo id, not uploaded; the next ordinary sync uploads it like any new photo. The restore sends nothing to Drive and deletes nothing there, no photo leaves the person's own Drive and Doorprints, the scope is the same `drive.file`, and a phone that never connected Drive reads nothing. A photo that cannot be had is counted with its reason (not connected, offline, past the 30 days, no copy left, copy not readable) and never fails the candidate's restore. On the phones the same read is `restoreHouseFromBin`.
 
 ## 6. Level 2: AI / RAG (P6, built; off by default)
 

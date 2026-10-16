@@ -1795,7 +1795,7 @@ export const en = {
   // Deletion safeguards PR 2 (2026-10-14, S4b-BL-283): Delete all in this space, the bulk pause, the device counts. hi, ta and te are under review.
   'delete.spaceButton': 'Delete all in this space',
   'delete.spaceButtonAria': 'Delete all in this space: {kind}',
-  'delete.spaceConfirm': 'Delete everything saved in {kind}: {n}? Only this space is deleted, your other spaces are not touched. You can undo for 10 seconds, and bring them back from Recently deleted for 30 days. Their saved walks cannot be brought back.',
+  'delete.spaceConfirm': 'Delete everything saved in {kind}: {n}? Only this space is deleted, your other spaces are not touched. You can undo for 10 seconds, and bring them back from Recently deleted for 30 days (photos too, if your Google Drive is connected and still has them). Their saved walks cannot be brought back.',
   'delete.spaceDo': 'Delete all',
   'delete.deletedMany': 'Deleted from {kind}: {n}',
   'delete.restoredMany': 'Restored to {kind}: {n}',

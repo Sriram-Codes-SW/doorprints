@@ -1766,7 +1766,7 @@
     <!-- S4b-BL-285 (2026-10-14): deletion safeguards on the phones (PR 3): Delete all in this space, Recently deleted, Drive level 3 "all kinds"; the website's words (web i18n `delete.*`, `driveDelete.allKinds`). hi, ta and te are under review. -->
     <string name="delete_space_button">ఈ స్థలంలో అన్నీ తొలగించు</string>
     <string name="delete_space_button_aria">ఈ స్థలంలో అన్నీ తొలగించు: %1$s</string>
-    <string name="delete_space_confirm">%1$sలో భద్రపరచినవన్నీ తొలగించాలా: %2$s? ఈ స్థలం మాత్రమే తొలగిస్తుంది, మీ ఇతర స్థలాలను తాకదు. 10 సెకన్ల వరకు రద్దు చేయవచ్చు, 30 రోజుల వరకు ఇటీవల తొలగించినవి నుండి తిరిగి తీసుకురావచ్చు. వాటి భద్రపరచిన నడకలను తిరిగి తీసుకురాలేము.</string>
+    <string name="delete_space_confirm">%1$sలో భద్రపరచినవన్నీ తొలగించాలా: %2$s? ఈ స్థలం మాత్రమే తొలగిస్తుంది, మీ ఇతర స్థలాలను తాకదు. 10 సెకన్ల వరకు రద్దు చేయవచ్చు, 30 రోజుల వరకు ఇటీవల తొలగించినవి నుండి తిరిగి తీసుకురావచ్చు (Google Drive కనెక్ట్ అయి, అందులో కాపీ ఉంటే ఫోటోలు కూడా). వాటి భద్రపరచిన నడకలను తిరిగి తీసుకురాలేము.</string>
     <string name="delete_space_do">అన్నీ తొలగించు</string>
     <string name="delete_deleted_many">%1$s నుండి తొలగించినవి: %2$s</string>
     <string name="delete_restored_many">%1$sలో పునరుద్ధరించినవి: %2$s</string>

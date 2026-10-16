@@ -328,6 +328,18 @@ describe('DeleteUndoService', () => {
       expect(await livePhotos()).toEqual([]);
     });
 
+    it('photos that left no tombstone here are still counted from the note and say why they are not back', async () => {
+      await store.saveHouse(house('h1'), T0 - 9 * DAY);
+      await store.photos.add('h1', jpeg(), 'u1', T0 - 9 * DAY); // never uploaded: a delete removes it outright
+      await store.photos.add('h1', jpeg(), 'u2', T0 - 9 * DAY);
+      await service.remove('h1', 'House h1');
+      service.dismiss();
+      const [entry] = await service.bin();
+      expect(entry.photos).toBe(2);
+      const { restorer } = restorerOf((req) => notConnectedReport(req.known));
+      expect(await service.restore(entry, T0, restorer)).toEqual({ name: 'House h1', photosTotal: 2, photosBack: 0, photosFromDrive: 0, reasons: ['NOT_CONNECTED'] });
+    });
+
     it('a candidate deleted on another device (no note, no tombstone here) still gets what the sync file names', async () => {
       await store.saveHouse(house('h1'), T0 - 9 * DAY);
       await store.deleteHouse('h1', T0 - DAY);

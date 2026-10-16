@@ -33,10 +33,14 @@ import app.doorprints.drive.sync.SyncWorld
 import app.doorprints.drive.sync.TestDevice
 import app.doorprints.drive.sync.photoRow
 import app.doorprints.shared.model.PhotoMeta
+import app.doorprints.shared.api.IsoTime
 import app.doorprints.shared.sync.SyncKind
+import app.doorprints.shared.sync.SyncRow
 import kotlinx.coroutines.test.runTest
 import kotlinx.io.Buffer
 import kotlinx.io.Source
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -213,6 +217,55 @@ class PhotoRestorerTest {
         assertEquals(RestoreConnection.NOT_CONNECTED, report.connection)
         assertEquals(listOf("p1" to PhotoRestoreReason.NOT_CONNECTED), reasons(report))
         assertEquals(before, s.w.server.requests.size)
+    }
+
+    @Test
+    fun aDriveAnswerThatIsNotAboutTheConnectionIsUnreadableForThatPhotoAndTheOthersStillCome() = runTest {
+        val s = scene()
+        // of this run's GETs the first looks at the Photos folder, the second at the first photo's file
+        val gets = s.w.server.requests.count { it.first == DriveOp.GET }
+        s.w.server.faults.on(DriveOp.GET, gets + 2, DriveFault.Conflict)
+        val report = restorer(s.a).restore(request(s.houseAt))
+        assertEquals(RestoreConnection.OK, report.connection)
+        assertEquals(listOf("p1" to PhotoRestoreReason.UNREADABLE), reasons(report))
+        assertEquals(listOf("p2"), ids(report))
+    }
+
+    @Test
+    fun aTombstoneStagedForTheNextPassIsFoundBeforeAnyFileHasIt() = runTest {
+        val s = scene(listOf("p1"))
+        val eng = s.a.engine()
+        val ref = s.a.photoState.refs.getValue("p1")
+        eng.stage(
+            SyncRow.of(
+                SyncKind.PHOTOS,
+                buildJsonObject {
+                    put("id", "p9")
+                    put("houseId", "h1")
+                    put("contentType", "image/jpeg")
+                    put("sizeBytes", 1)
+                    put("updatedAt", IsoTime.format(s.houseAt + 5000))
+                    put("deleted", true)
+                    put("by", s.a.id)
+                    put("driveFileId", ref.driveFileId)
+                    put("sha256", ref.sha256)
+                },
+            ),
+        )
+        val report = restorer(s.a, eng).restore(request(s.houseAt))
+        assertEquals(listOf("p1", "p9"), ids(report))
+        assertEquals(s.data.getValue("p1").toList(), report.fetched.first { it.photo.id == "p9" }.bytes.toList())
+    }
+
+    @Test
+    fun theDevicesOwnFileIsNotDownloadedAgainWhileItIsTheOneItWroteLast() = runTest {
+        val s = scene()
+        val eng = s.a.engine()
+        s.a.sync(engine = eng)
+        val before = s.w.server.requests.count { it.first == DriveOp.DOWNLOAD }
+        val report = restorer(s.a, eng).restore(request(s.houseAt))
+        assertEquals(listOf("p1", "p2"), ids(report))
+        assertEquals("the two photo files only", 2, s.w.server.requests.count { it.first == DriveOp.DOWNLOAD } - before)
     }
 
     // ---- Delete everything ---------------------------------------------------------------------------------------------

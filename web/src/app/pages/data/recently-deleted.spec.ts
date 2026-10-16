@@ -239,6 +239,19 @@ describe('Recently deleted', () => {
       expect(status).toBe('Restored Blue gate. Its photos could not be restored: no copy is left in your Google Drive and a copy in your Google Drive could not be opened or checked.');
     });
 
+    it('says only "Restored" when the photos came back from bytes still stored here, without Google Drive', async () => {
+      await open('en', '/data', answer([], null));
+      await store.saveHouse(house('h1', { label: 'Blue gate' }), NOW - 9 * DAY);
+      await store.deleteHouse('h1', NOW - DAY);
+      await store.photos.put({ id: 'kept', houseId: 'h1', blob: jpeg(), contentType: 'image/jpeg', sizeBytes: 3, createdAt: null, updatedAt: new Date(NOW - DAY).toISOString(), deleted: true, syncVersion: 0, uploaded: false });
+      const { host, fixture } = await render();
+      host.querySelector<HTMLButtonElement>('button.restore')!.click();
+      vi.useRealTimers();
+      await settle(fixture);
+      expect(text(host.querySelector('[role="status"]'))).toBe('Restored Blue gate');
+      expect(await store.photos.ofHouse('h1')).toHaveLength(1);
+    });
+
     it('says nothing about photos for a candidate that had none', async () => {
       await open('en', '/data', answer([], null));
       await store.saveHouse(house('h1', { label: 'Blue gate' }), NOW - 9 * DAY);

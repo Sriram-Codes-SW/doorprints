@@ -1792,7 +1792,7 @@ export const hi: Dict = {
   // Deletion safeguards PR 2 (2026-10-14): Delete all in this space, the bulk pause, the device counts. Under review (owner rule: hi/ta/te ship marked under review).
   'delete.spaceButton': 'इस स्थान में सब हटाएँ',
   'delete.spaceButtonAria': 'इस स्थान में सब हटाएँ: {kind}',
-  'delete.spaceConfirm': '{kind} में सहेजा सब कुछ हटा दें: {n}? सिर्फ़ यही स्थान हटेगा, आपके दूसरे स्थानों को छुआ नहीं जाएगा। 10 सेकंड तक पूर्ववत कर सकते हैं, और 30 दिन तक हाल में हटाए गए से वापस ला सकते हैं। इनकी सहेजी गई सैरें वापस नहीं आ सकतीं।',
+  'delete.spaceConfirm': '{kind} में सहेजा सब कुछ हटा दें: {n}? सिर्फ़ यही स्थान हटेगा, आपके दूसरे स्थानों को छुआ नहीं जाएगा। 10 सेकंड तक पूर्ववत कर सकते हैं, और 30 दिन तक हाल में हटाए गए से वापस ला सकते हैं (तस्वीरें भी, अगर Google Drive जुड़ी है और उसमें उनकी प्रति अब भी है)। इनकी सहेजी गई सैरें वापस नहीं आ सकतीं।',
   'delete.spaceDo': 'सब हटाएँ',
   'delete.deletedMany': '{kind} से हटाए गए: {n}',
   'delete.restoredMany': '{kind} में वापस लाए गए: {n}',

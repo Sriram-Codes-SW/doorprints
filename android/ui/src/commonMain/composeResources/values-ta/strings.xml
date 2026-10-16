@@ -1766,7 +1766,7 @@
     <!-- S4b-BL-285 (2026-10-14): deletion safeguards on the phones (PR 3): Delete all in this space, Recently deleted, Drive level 3 "all kinds"; the website's words (web i18n `delete.*`, `driveDelete.allKinds`). hi, ta and te are under review. -->
     <string name="delete_space_button">இந்த இடத்தில் அனைத்தையும் நீக்கு</string>
     <string name="delete_space_button_aria">இந்த இடத்தில் அனைத்தையும் நீக்கு: %1$s</string>
-    <string name="delete_space_confirm">%1$s இல் சேமித்த அனைத்தையும் நீக்கவா: %2$s? இந்த இடம் மட்டும் நீக்கப்படும், உங்கள் மற்ற இடங்கள் தொடப்படாது. 10 விநாடிகள் செயல்தவிர்க்கலாம், 30 நாட்களுக்கு சமீபத்தில் நீக்கியவை பட்டியலிலிருந்து மீட்கலாம். அவற்றின் சேமித்த நடைகளை மீட்க முடியாது.</string>
+    <string name="delete_space_confirm">%1$s இல் சேமித்த அனைத்தையும் நீக்கவா: %2$s? இந்த இடம் மட்டும் நீக்கப்படும், உங்கள் மற்ற இடங்கள் தொடப்படாது. 10 விநாடிகள் செயல்தவிர்க்கலாம், 30 நாட்களுக்கு சமீபத்தில் நீக்கியவை பட்டியலிலிருந்து மீட்கலாம் (Google Drive இணைக்கப்பட்டு அதில் நகல் இருந்தால் படங்களும்). அவற்றின் சேமித்த நடைகளை மீட்க முடியாது.</string>
     <string name="delete_space_do">அனைத்தையும் நீக்கு</string>
     <string name="delete_deleted_many">%1$s இலிருந்து நீக்கியவை: %2$s</string>
     <string name="delete_restored_many">%1$s இல் மீட்டவை: %2$s</string>

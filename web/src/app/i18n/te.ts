@@ -1792,7 +1792,7 @@ export const te: Dict = {
   // Deletion safeguards PR 2 (2026-10-14): Delete all in this space, the bulk pause, the device counts. Under review (owner rule: hi/ta/te ship marked under review).
   'delete.spaceButton': 'ఈ స్థలంలో అన్నీ తొలగించు',
   'delete.spaceButtonAria': 'ఈ స్థలంలో అన్నీ తొలగించు: {kind}',
-  'delete.spaceConfirm': '{kind}లో భద్రపరచినవన్నీ తొలగించాలా: {n}? ఈ స్థలం మాత్రమే తొలగిస్తుంది, మీ ఇతర స్థలాలను తాకదు. 10 సెకన్ల వరకు రద్దు చేయవచ్చు, 30 రోజుల వరకు ఇటీవల తొలగించినవి నుండి తిరిగి తీసుకురావచ్చు. వాటి భద్రపరచిన నడకలను తిరిగి తీసుకురాలేము.',
+  'delete.spaceConfirm': '{kind}లో భద్రపరచినవన్నీ తొలగించాలా: {n}? ఈ స్థలం మాత్రమే తొలగిస్తుంది, మీ ఇతర స్థలాలను తాకదు. 10 సెకన్ల వరకు రద్దు చేయవచ్చు, 30 రోజుల వరకు ఇటీవల తొలగించినవి నుండి తిరిగి తీసుకురావచ్చు (Google Drive కనెక్ట్ అయి, అందులో కాపీ ఉంటే ఫోటోలు కూడా). వాటి భద్రపరచిన నడకలను తిరిగి తీసుకురాలేము.',
   'delete.spaceDo': 'అన్నీ తొలగించు',
   'delete.deletedMany': '{kind} నుండి తొలగించినవి: {n}',
   'delete.restoredMany': '{kind}లో పునరుద్ధరించినవి: {n}',

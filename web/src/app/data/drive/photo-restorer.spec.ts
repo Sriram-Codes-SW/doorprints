@@ -23,6 +23,9 @@ import { DriveDeletionService } from './drive-deletion';
 import type { AuthorizationGate } from './drive-deletion';
 import { DriveFaults } from './fake-drive-faults';
 import { FolderSession } from './drive-sync-seams';
+import { DriveSyncEngine } from './drive-sync-engine';
+import { DrivePhotos } from './drive-photos';
+import { syncRowOf } from './drive-sync-backend';
 import { DrivePhotoRestorer } from './photo-restorer';
 import type { PhotoRestoreReport } from './photo-restorer';
 import { photoRow, SyncWorld } from './drive-sync-test-world';
@@ -204,13 +207,59 @@ describe('DrivePhotoRestorer', () => {
     const { a, houseAt } = await scene();
     const s = a.session();
     const unpinned = new FolderSession(s.rootId, s.deviceKid, s.keys, { ...s.guard, watermark: async () => null } as unknown as FolderSession['guard']);
-    const { DriveSyncEngine } = await import('./drive-sync-engine');
-    const { DrivePhotos } = await import('./drive-photos');
     const eng = new DriveSyncEngine(a.drive, a.p, unpinned, a.store, a.local, () => a.now());
     const ph = new DrivePhotos(a.drive, a.p, unpinned, a.photoStore, () => a.now());
     const report = await new DrivePhotoRestorer(eng, ph, () => a.now()).restore(request(houseAt, [gone('p1', houseAt + 1000)]));
     expect(report.connection).toBe('NOT_CONNECTED');
     expect(reasons(report)).toEqual([['p1', 'NOT_CONNECTED']]);
+  });
+
+  it('a failure that is not about the connection (a bug in one photo\'s read) is reported as unreadable and the others still come', async () => {
+    const { a, houseAt, data } = await scene();
+    const real = a.photos();
+    const flaky = Object.assign(Object.create(real) as DrivePhotos, {
+      refs: () => real.refs(),
+      fetchForRestore: async (ref: { driveFileId: string; sha256: string }) => {
+        if (ref.driveFileId === a.photoState.refs['p1'].driveFileId) throw new Error('boom');
+        return real.fetchForRestore(ref);
+      },
+    });
+    const report = await new DrivePhotoRestorer(a.engine(), flaky, () => a.now()).restore(request(houseAt));
+    expect(report.connection).toBe('OK');
+    expect(reasons(report)).toEqual([['p1', 'UNREADABLE']]);
+    expect(ids(report)).toEqual(['p2']);
+    expect(same(report.fetched[0].bytes, data['p2'])).toBe(true);
+  });
+
+  it('while sync is paused (the folder is being deleted) nothing is opened: not connected', async () => {
+    const { a, houseAt, w } = await scene();
+    const paused = new DriveSyncEngine(a.drive, a.p, a.session(), a.store, a.local, () => a.now(), async () => true);
+    const before = w.server.requests.length;
+    const report = await new DrivePhotoRestorer(paused, a.photos(), () => a.now()).restore(request(houseAt, [gone('p1', houseAt + 1000)]));
+    expect(report.connection).toBe('NOT_CONNECTED');
+    expect(reasons(report)).toEqual([['p1', 'NOT_CONNECTED']]);
+    expect(w.server.requests.length).toBe(before);
+  });
+
+  it('a tombstone staged for the next pass is found before any file has it', async () => {
+    const { a, houseAt, data } = await scene(['p1']);
+    const eng = a.engine();
+    const row = syncRowOf('photos', { id: 'p9', houseId: 'h1', contentType: 'image/jpeg', sizeBytes: 1, updatedAt: new Date(houseAt + 5000).toISOString(), deleted: true, driveFileId: a.photoState.refs['p1'].driveFileId, sha256: a.photoState.refs['p1'].sha256 }, a.id);
+    eng.stage(row);
+    const report = await new DrivePhotoRestorer(eng, a.photos(), () => a.now()).restore(request(houseAt));
+    expect(ids(report)).toEqual(['p1', 'p9']);
+    expect(same(report.fetched.find((f) => f.photo.id === 'p9')!.bytes, data['p1'])).toBe(true);
+  });
+
+  it('reads the device\'s own file once while it is the one it wrote last: the sync file is not downloaded again', async () => {
+    const { a, houseAt, w } = await scene();
+    const eng = a.engine();
+    await a.sync({ engine: eng });
+    const downloads = () => w.server.requests.filter((r) => r.op === 'DOWNLOAD').length;
+    const before = downloads();
+    const report = await new DrivePhotoRestorer(eng, a.photos(), () => a.now()).restore(request(houseAt));
+    expect(ids(report)).toEqual(['p1', 'p2']);
+    expect(downloads() - before).toBe(2); // the two photo files only
   });
 
   it('after Delete everything nothing is left to restore', async () => {

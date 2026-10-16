@@ -186,7 +186,8 @@ class DriveSyncEngine(
     suspend fun ownPhotoRows(): List<SyncRow> {
         if (session.guard.watermark() == null) throw KeysException(KeysException.Kind.NOT_PINNED, "no pin for this folder: nothing is opened")
         if (paused()) throw DriveException(DriveException.Kind.CANCELLED, reason = "paused")
-        val rows = HashMap<RowId, SyncRow>()
+        // In the order of the file (by key), then the staged ones: the same order on every run and in the web twin.
+        val rows = LinkedHashMap<RowId, SyncRow>()
         val st = state.load()
         var file: SyncFile? = null
         val cached = ownCache?.takeIf { st.lastChecksum != null && it.first == st.lastChecksum }?.second
@@ -202,6 +203,7 @@ class DriveSyncEngine(
                         val v = verify(ctx, f, session.deviceId)
                         if (file == null || v.file.seq > file.seq) file = v.file
                     } catch (_: Skip) {
+                        continue // a file that fails a check is left out, as in a pass
                     }
                 }
             }
@@ -477,7 +479,7 @@ class DriveSyncEngine(
         for (r in file.rows(SyncKind.PHOTOS)) if (r.stamp.deleted) putIfNewer(current, r)
     }
 
-    private fun putIfNewer(map: HashMap<RowId, SyncRow>, row: SyncRow) {
+    private fun putIfNewer(map: MutableMap<RowId, SyncRow>, row: SyncRow) {
         val id = RowId(row.kind, row.key)
         val had = map[id]
         if (had == null || DriveMerge.takesIncoming(had.stamp, row.stamp)) map[id] = row

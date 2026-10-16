@@ -34,10 +34,6 @@ import app.doorprints.shared.ai.JsonChatModel
 import app.doorprints.shared.api.ApiClient
 import app.doorprints.shared.api.AskResponseDto
 import app.doorprints.shared.api.HouseDraftDto
-import app.doorprints.drive.photo.PhotoRestoreReason
-import app.doorprints.drive.photo.PhotoRestoreReport
-import app.doorprints.drive.photo.PhotoRestoreRequest
-import app.doorprints.drive.photo.PhotoRestoreRules
 import app.doorprints.shared.api.IsoTime
 import app.doorprints.shared.api.PairPolledDto
 import app.doorprints.shared.api.PairStartedDto
@@ -99,7 +95,6 @@ import app.doorprints.shared.sync.SyncOutcome
 import app.doorprints.shared.sync.SyncRules
 import app.doorprints.shared.trace.TracePoint
 import app.doorprints.shared.trace.TraceWalk
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.NonCancellable
@@ -234,34 +229,7 @@ open class CommonRepository(
     override suspend fun restoreHouse(id: String): Boolean = houseWriter.restoreMany(listOf(id)).isNotEmpty()
 
     override suspend fun restoreHouses(ids: List<String>): List<String> = houseWriter.restoreMany(ids)
-
-    override suspend fun restoreHouseFromBin(id: String, fetch: suspend (PhotoRestoreRequest) -> PhotoRestoreReport): BinRestore? {
-        val deletedAt = db.houses().getMany(listOf(id)).firstOrNull()?.takeIf { it.deleted }?.updatedAt ?: return null
-        if (!restoreHouse(id)) return null
-        // The photos are asked of Drive after the candidate is back, and nothing they do can undo that.
-        val report = try {
-            fetch(PhotoRestoreRequest(id, deletedAt))
-        } catch (e: CancellationException) {
-            throw e
-        } catch (_: Exception) {
-            PhotoRestoreReport.noConnection(emptyList())
-        }
-        val failed = report.failed.mapTo(ArrayList()) { it.reason }
-        var fromDrive = 0
-        for (got in report.fetched) {
-            try {
-                val at = got.photo.createdAt?.let { runCatching { IsoTime.parseMillis(it) }.getOrNull() } ?: now()
-                photoStore.addRestored(id, Uuid.random().toString(), got.bytes, at, got.photo.meta)
-                fromDrive++
-            } catch (e: CancellationException) {
-                throw e
-            } catch (_: Exception) {
-                failed += PhotoRestoreReason.UNREADABLE
-            }
-        }
-        val summary = PhotoRestoreRules.summarize(0, fromDrive, failed, report.connection)
-        return BinRestore(summary.total, summary.restored, fromDrive, summary.reasons)
-    }
+    override suspend fun restoreHouseFromBin(id: String, fetch: suspend (app.doorprints.drive.photo.PhotoRestoreRequest) -> app.doorprints.drive.photo.PhotoRestoreReport): BinRestore? = BinRestorer(db, photoStore, ::now) { restoreHouse(it) }.restore(id, fetch)
 
     override fun observeDeletedHouses(): Flow<List<HouseEntity>> = houseWriter.observeDeleted()
 
@@ -1077,7 +1045,6 @@ open class CommonRepository(
         if (result.rows > 0 || actions.photoMeta.isNotEmpty()) syncSoon()
         result
     }
-
 
     /**
      * [applyImport] for [ImportMode.COPY]: all or nothing.

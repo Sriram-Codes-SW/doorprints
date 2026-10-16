@@ -500,21 +500,16 @@ class DriveConnectController(
     }
 
     /**
-     * The photos of a restored candidate, read back from the person's own Google Drive (*Recently deleted*, S4b-BL-293; docs/15
-     * §1.4): nothing is uploaded or deleted, and the same pause as a sync pass applies (a removed screen lock, a half-done
-     * deletion), with no prompt of its own, because it only reads the person's own files. Under the same lock as a pass.
-     * Before the folder is open (and [connectIfClosed] is false), or while paused, every known photo answers *not connected*.
-     * Never throws.
+     * The photos of a restored candidate, read back from the person's own Google Drive (*Recently deleted*, S4b-BL-293): reads
+     * only, under a sync pass's lock and pause; [connectIfClosed] opens the folder first. Never throws; no folder: *not connected*.
      */
     suspend fun restorePhotos(req: PhotoRestoreRequest, connectIfClosed: Boolean = false): PhotoRestoreReport {
-        // The person asked, with the app in front: the folder is opened first like a Drive screen does (Google's sheet shows only when its grant is gone).
         if (session == null && connectIfClosed && connect().state != ConnectState.READY) return PhotoRestoreReport.noConnection(req.known)
         val s = session ?: return PhotoRestoreReport.noConnection(req.known)
         return try {
             ops.withLock {
                 val r = if (rig != null && rigSession === s) rig!! else syncRigs.create(s).also { rig = it; rigSession = s }
-                val engine = r.engine ?: return@withLock PhotoRestoreReport.noConnection(req.known)
-                PhotoRestorer(engine, r.photos, clock).restore(req)
+                r.engine?.let { PhotoRestorer(it, r.photos, clock).restore(req) } ?: PhotoRestoreReport.noConnection(req.known)
             }
         } catch (e: CancellationException) {
             throw e

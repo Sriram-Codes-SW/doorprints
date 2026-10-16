@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.200 |
+| Version | 0.201 |
 | Date | 2026-10-16 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..183); this file lists the lead-level items and points to the rest. |
@@ -208,6 +208,7 @@
 | 0.198 | 2026-10-15 | Claude (Code), docs | README voice row and docs/16, docs/03 §19 updated after the iPhone voice PR merged; `ios/README.md` no longer says *Save a copy* and *Import a backup* are hidden. |
 | 0.199 | 2026-10-15 | Claude (Code), docs | §1 and §2 rewritten to today's state after the merges of #354..#368 (voice on Android and the iPhone with Sarvam, the school compiled in but off on every stack, ENDED_EARLY, the Hunt walk, phone words, the AI card sentence): what is shipped, the owner-only list (device checks, native-speaker review, outline geometry, RR-33, `SARVAM_EVAL_API_KEY`, the [13](13-release-security-checklist.md) gate, the public words), the old per-pull-request bullets dropped (git history keeps them). N-ids kept for links. |
 | 0.200 | 2026-10-16 | Claude (Code), docs | §1 and §2 brought to `main` after #373 (merge 8bfc936): the kinds refactor is built (capabilities, Hunt, Compare, viewings and questions, contacts, rooms and moving in, copies and filters, words from files, the server's reader of every kind file, the conformance suite `zz_all` and the tripwires); what is not built; the owner-only list with MT-104..MT-121 and TC-M-81..84 and 89, and the draft school checklist, criteria, question bank and viewings words for review. No table id changed. |
+| 0.201 | 2026-10-16 | Claude (Code), docs | §2 item 6 (owner request of 2026-10-16: voice input must refuse free-tier provider keys for privacy, later with more analysis; RR-33's acceptance waits on it); S4b-BL-293 (restore photos from Drive) is built on `feat/restore-photos-from-drive`, no longer waiting for the owner's revisit (§1, §2 item 4). |
 
 ## 1. Where things stand (2026-10-16, everything built is merged to `main`)
 
@@ -251,7 +252,7 @@ today's state. No pull request is open apart from a docs one.
   release candidate; it has not yet. The Survey of India boundary data is adopted (N16, ADR-22).
 - **Open and the owner's alone (nothing for a session to build).**
   - Real-device checks, none run: the kinds rows MT-104..MT-121 (MT-112 and MT-113, the chooser and the *Experimental* switch,
-    and the Voice rows MT-104..MT-111 and MT-114 among them) and TC-M-81, TC-M-82, TC-M-83, TC-M-84 and TC-M-89; Google sign-in on
+    and the Voice rows MT-104..MT-111 and MT-114 among them), MT-122 (photos coming back from the real Drive, TC-M-90) and TC-M-81, TC-M-82, TC-M-83, TC-M-84 and TC-M-89; Google sign-in on
     a phone (the Drive real-phone run, N19); the school's wording read by eye; MT-82..MT-87.
   - Native-speaker review of Hindi, Tamil and Telugu, the school's words and the Sarvam words included; they ship *under review*.
     **The owner's review of the drafts:** the school's checklist and Compare criteria, its question bank and headings, and its
@@ -260,24 +261,26 @@ today's state. No pull request is open apart from a docs one.
   - Optional: the repository secret `SARVAM_EVAL_API_KEY`, to run the voice eval suite (`voice`, manual) against Sarvam.
   - [13](13-release-security-checklist.md) before the `v0.1.0` draft is published.
   - The public words (tagline, `index.html`, manifest, README, guide home) stay the house's until a second kind is released
-    (S4b-BL-282; the ADR-13b follow-up goes with that decision); S4b-BL-293 (restore photos from Drive after a deletion) is
-    planned and waits for the owner's revisit.
+    (S4b-BL-282; the ADR-13b follow-up goes with that decision). S4b-BL-293 (restore photos from Drive after a deletion) is
+    built on `feat/restore-photos-from-drive` (owner decision 2026-10-16); only its real Drive round trip (TC-M-90, MT-122) is
+    open and the owner's.
 - **CI** runs on pull requests (whatever their base branch) and on pushes to `main`, not on branch pushes
   ([07](07-secure-build-and-deploy.md) §1); deploy, signing and the dependency graph are main-only.
 
 ## 2. Next, in order
 
 **Now (2026-10-16).** The kinds refactor is built and merged (#373). Nothing is left that a session must build before the owner's checks; what follows is the owner's, in this order.
-1. **Real-device checks** (§1): MT-104..MT-121 and TC-M-81, TC-M-82, TC-M-83, TC-M-84 and TC-M-89 (none run); Google sign-in on a
+1. **Real-device checks** (§1): MT-104..MT-122 and TC-M-81, TC-M-82, TC-M-83, TC-M-84, TC-M-89 and TC-M-90 (none run); Google sign-in on a
    phone; the school's wording by eye; MT-82..MT-87. A failure becomes a fix branch, as §7 says.
 2. **Native-speaker review** of Hindi, Tamil and Telugu (the school's and Sarvam's words included), **and the owner's review of
    the draft school checklist and criteria, the school question bank and the school viewings words**, and the India outline
    geometry; then RR-33 can leave *Proposed*.
 3. **The release gate:** [13](13-release-security-checklist.md) on a release candidate, then publish the `v0.1.0` draft.
 4. **Only when a second kind is released:** the tagline and the public words (S4b-BL-282), the ADR-13b follow-up. Optional at
-   any time: `SARVAM_EVAL_API_KEY` for the voice eval suite; the owner's revisit of S4b-BL-293.
+   any time: `SARVAM_EVAL_API_KEY` for the voice eval suite.
 5. **Planned, when the owner asks** (not built): user-authored kinds by JSON import ([03](03-design.md) ADR-36b), a `zz_all`
    space on the phones, filters on number and amount extras, reordering the copy blocks from the kind file.
+6. **Owner request (2026-10-16), later with more analysis:** voice input must refuse free-tier provider keys for privacy (free tiers may use inputs to improve products) and only let paid-tier requests through, with a message saying it is not allowed on a free tier; needs: how to tell a free key from a paid one per provider, what to do when unknown; RR-33 acceptance waits on this.
 
 The numbered items below keep their ids because other documents link them; their text is history unless it says *open*. N13's
 *Order from here* is superseded by the list above, and N21 (kinds) and its voice rows are Done as the sprint log records, the kinds refactor included (#373, `8bfc936`).
