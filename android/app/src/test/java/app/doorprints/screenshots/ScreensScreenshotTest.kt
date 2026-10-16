@@ -24,6 +24,11 @@ import app.doorprints.TwoKinds
 import app.doorprints.shared.model.KindSetting
 import app.doorprints.ui.ChooserScreen
 import app.doorprints.ui.BinLine
+import app.doorprints.ui.binRestoreMessage
+import app.doorprints.data.BinRestore
+import app.doorprints.drive.photo.PhotoRestoreReason
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.Text
 import app.doorprints.ui.DeleteSpaceDialogCard
 import app.doorprints.ui.KindsSettingsSection
 import app.doorprints.ui.RecentlyDeletedList
@@ -624,6 +629,26 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
                     listOf(BinLine("a", "Green View", "14 Oct 2026, 11:30"), BinLine("b", "Lake Road flat", "9 Oct 2026, 18:05")),
                     hidden = 0, onRestore = {},
                 )
+            }
+        }
+    }
+
+    /**
+     * The words after *Restore* in *Recently deleted* (S4b-BL-293): all the photos back from Google Drive, some back and why the
+     * others are not, none back and why. English light and Hindi dark (hi under review); the messages are the real ones.
+     */
+    @Test fun recentlyDeletedResult() {
+        assumeTrue((lang == "en" && !dark) || (lang == "hi" && dark))
+        val messages = runBlocking {
+            listOf(
+                binRestoreMessage("Green View", BinRestore(photosTotal = 4, photosBack = 4, photosFromDrive = 4)),
+                binRestoreMessage("Green View", BinRestore(4, 3, 3, listOf(PhotoRestoreReason.MISSING))),
+                binRestoreMessage("Lake Road flat", BinRestore(2, 0, 0, listOf(PhotoRestoreReason.NOT_CONNECTED, PhotoRestoreReason.PAST_WINDOW))),
+            )
+        }
+        shoot("recently_deleted_result", messages.first()) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                for (m in messages) Snackbar { Text(m) }
             }
         }
     }

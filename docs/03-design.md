@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.170 |
+| Version | 0.171 |
 | Date | 2026-10-16 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -181,6 +181,7 @@
 | 0.168 | 2026-10-15 | Claude (Code), engineer | **New §18.25, every word comes from the kind file** (kinds PR 31; `feat/kinds-31-words-from-files`; [06](06-test-plan.md) TC-U-280, TC-M-88): `words` names 159 ids; the website's hand-written word tables and the phones' key map are generated from the kind files (`tools/gen-kind-words.mjs`, `--check` in `tools/check.sh` and `security.yml`); the app-wide texts say *entries* once more than the house is in use; the tour gives another kind its own words and one generic sentence; the walk check, the viewing reminder and the calendar file follow the kind. |
 | 0.169 | 2026-10-16 | Claude (Code), engineer | **New §18.26, the conformance suite and the kind tripwire, and ADR-36b** (kinds PR 32; `feat/kinds-32-conformance-suite`; [06](06-test-plan.md) TC-U-281, TC-M-89): the synthetic kind `zz_all`, the same website flows for house, school and `zz_all`, the boundary rules checked for every kind, `tools/check-kind-literals.mjs`; the backup keeps a candidate's kind; the generic AI document reads money, checklist and date. User-authored kinds stay Planned. |
 | 0.170 | 2026-10-16 | Claude (Code), engineer | **§18.23: the school's question headers are its own** (`fix/kinds-question-categories-and-handoff`): `school-questions.json` gains `categoryLabels` (the bank's six category ids kept, so a stored question keeps its category, each worded for a school in en, hi, ta and te: Fees and money, Water and toilets, Teaching, Safety and facilities, Admission, Daily routine and other; hi, ta and te under review); the admission question moves from `MONEY` to `LEGAL` (labelled *Admission*). A category the kind has no label for, and every category of the house, reads the house's `questions.category.*` word, so the house is word for word what it was. |
+| 0.171 | 2026-10-16 | Claude (Code), engineer | **§20: restoring photos from the person's own Google Drive** (S4b-BL-293, owner decision 2026-10-16; `feat/restore-photos-from-drive`): *Restore* in *Recently deleted* brings the candidate back first and then reads each photo it lost from Drive (still there for at least 30 days after the delete, [15](15-google-drive-backup-and-sharing.md) §1.4 item 11), decrypts it like a sync download and stores it under a new id; the result says how many of how many came back and why the others did not (five reasons); the shared rules and vectors `docs/schemas/photo-restore-vectors.json`; no new scope, flow or store. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -3621,8 +3622,35 @@ A short summary of a design that is already written in several places; the ticke
   and 2; [11](11-feature-parity-and-export-spec.md) 5.27.6).
 - **Recently deleted** (the website: *Your data*; the phones: Settings) lists this space's tombstones from the last 30 days, and
   *Restore* flips `deleted`, bumps `updatedAt` past the tombstone's and marks the row dirty, so the next sync carries it to every
-  device and last-write-wins does the rest. Photos come back only while their bytes exist (a Drive restore is S4b-BL-293)
-  ([04](04-data-flow-diagrams.md) §5.2 item 3).
+  device and last-write-wins does the rest. A photo whose bytes are gone from the device (a delete drops them at once) comes
+  back from the person's own Google Drive when it is connected on this device and online, and the encrypted copy is still
+  there ([04](04-data-flow-diagrams.md) §5.2 item 3; S4b-BL-293, below).
+- **Photos from Google Drive (S4b-BL-293, owner decision 2026-10-16).** A delete leaves the photo's encrypted `photo/1` file in
+  the person's own Drive for at least 30 days ([15](15-google-drive-backup-and-sharing.md) §1.4 item 11), so *Restore* can
+  fetch it. The order is fixed: the candidate is restored first and nothing that happens to its photos can undo that. The
+  photos asked for are the candidate's photo tombstones deleted with it (stamped at most a minute before it or later, so a photo
+  the person deleted on purpose earlier stays deleted), found in the tombstones still stored on the device and in this
+  device's own sync file (`DriveSyncEngine.ownPhotoRows`, one verified read, not downloaded again while it is the file this
+  device wrote last); each needs a Drive file named by its row (or by the device's own bookkeeping) and a tombstone inside the
+  30 days. Each file is read by `DrivePhotos.fetchForRestore`, which is `download` without the remembered-as-bad bookkeeping:
+  the `Photos` folder pin, Drive's checksum, the keys through the pin, the revoked-writer rule, the plaintext SHA-256 of the
+  row, the size cap. The bytes are stored under a **new photo id** (the old id is a tombstone every device keeps) with the
+  room, tags and caption the photo had, not uploaded; the next ordinary sync uploads them like any new photo, so the restore
+  itself uploads nothing, deletes nothing and writes nothing to Drive. The rules (which photos, the 30 days, the words) are
+  pure and shared: web `data/drive/photo-restore-rules.ts` and `:shared` `PhotoRestoreRules.kt`, both read
+  `docs/schemas/photo-restore-vectors.json`. The rest is per stack: web `photo-restorer.ts`, `DriveSyncAdapter.restorePhotos`
+  and `DriveConnectService.restorePhotos` (the Data page provides it to *Recently deleted*); phones `PhotoRestorer`,
+  `DriveConnectController.restorePhotos` and `Repository.restoreHouseFromBin` (Android and iPhone share it; `AppServices.photoRestore`
+  is wired to the Drive graph only while Drive is in use, so a phone that never used Drive never builds it). Device
+  authentication is that of a sync read: the folder must be open on this device, the screen-lock pause and a half-finished
+  deletion stop it (`paused` of the engine, the phone's `DriveGate.beforeRun`), and no extra prompt is shown because only the
+  person's own files are read. The result per candidate is `{total, restored, reasons}`: *Google Drive is not connected on this
+  device*, *there was no connection to Google Drive*, *deleted more than 30 days ago*, *no copy is left in your Google Drive*,
+  *a copy could not be opened or checked*, each once, in that order; nothing special is said for a candidate with no photos.
+  On the phones, which keep a house's photos when they delete it, there is nothing to fetch for a house the phone itself
+  deleted; the Drive read matters for photos another device deleted with it. *Delete everything* removes the photo files, so
+  nothing is restorable after it. The server (self-hosted) has no part: it keeps no deleted photo bytes and the feature reads
+  only Google Drive.
 - **Delete all in this space** (Settings > What you track, one card per space) tombstones that space's live candidates only, in
   one transaction (`deleteHouses` on the website's `LocalStore` and on the phones' `Repository`; the vectors' `deleteSpace` step), after a dialog with the count and the kind, a tick
   box over 10 rows, *Save a copy first*, first focus on Cancel; *Undo* for 10 s (`restoreHouses`); at most one bulk action per 10

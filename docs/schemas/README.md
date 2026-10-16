@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | `doorprints-backup/1` — the one backup format for server, Android and web |
-| Version | 1.72 |
+| Version | 1.73 |
 | Date | 2026-10-16 |
 | Date | 2026-10-06 |
 | Author | Claude (Cowork) – Backend team |
@@ -86,6 +86,7 @@
 | 1.70 | 2026-10-15 | Claude (Code), engineer | §8.4: **every word has an id** (kinds PR 31; `feat/kinds-31-words-from-files`; [03](../03-design.md) §18.25): `kind.schema.json` `words` names 65 more ids (159 in all; additive), `web` and `android` null where only one stack has the word; the website's and the phones' tables of words are generated from `house.json` and `school.json` by `tools/gen-kind-words.mjs`; `kind-word-vectors.json` pins 143 words after the sixteen; the backend's copies of the two files are updated. |
 | 1.71 | 2026-10-16 | Claude (Code), engineer | `test-all.json`, the synthetic conformance kind `zz_all` (kinds PR 32; [03](../03-design.md) §18.26): every capability on, valid against the schema and the Java loader, in no build's list. A kind's `ai.extract` names no number extra (the loader refuses it). |
 | 1.72 | 2026-10-16 | Claude (Code), engineer | `kinds/school-questions.json` gains `categoryLabels` (the school's own headers for the bank's six category ids, en, hi, ta and te; [03](../03-design.md) §18.23); the admission question's category is `LEGAL`. The house's headers are unchanged. |
+| 1.73 | 2026-10-16 | Claude (Code), engineer | **`photo-restore-vectors.json`** (format `doorprints-photo-restore-vectors/1`, status *proposed*, S4b-BL-293, restoring photos from Drive): eight `plan` cases (which photos belong to a restored candidate: deleted a minute before it or later; the exact 30-day edge; a Drive file named by the sync file's row or by the device's own bookkeeping) and eight `summary` cases (the reasons in a fixed order, photos nobody recorded); read by the website's `data/drive/photo-restore-rules.spec.ts` and the phones' `PhotoRestoreVectorsTest`. Not part of any backup or sync format. |
 
 Related: [11 Feature parity and export spec](../11-feature-parity-and-export-spec.md) section 5.2 ·
 [03 Design](../03-design.md) ADR-20 and the API table (`GET /api/export`, `POST /api/import`) ·
@@ -876,3 +877,5 @@ changed — the ordering, the checklist leniency, the cap — the change goes in
 document and `backup-sample.json` in one commit.
 
 [`delete-scope-vectors.json`](delete-scope-vectors.json) (format `doorprints-delete-scope-vectors/1`, S4b-BL-287, [02](../02-threat-model.md) T-D15) pins that one delete in a space writes one row. Each case seeds rows (`id`, `kind`, `label`, `deleted`, `dirty`, `updatedAt`), runs `steps` (`delete`, `undo`, `restore`, `deleteSpace`, each with an injected clock `at`; a stamp is the later of `at` and the previous `updatedAt` + 1 ms) and names the expected rows and the ids that must be byte-identical; the list cases name the ids of the *Recently deleted* list per space (`deleted` and `updatedAt` after now - 30 days, newest first; a row with no kind is a house, a kind with no space is the default space's). Status *confirmed*: the website, the phones and the server read it.
+
+[`photo-restore-vectors.json`](photo-restore-vectors.json) (format `doorprints-photo-restore-vectors/1`, S4b-BL-293, [15](../15-google-drive-backup-and-sharing.md) §1.4 item 11, [03](../03-design.md) §20) pins the rules of getting a restored candidate's photos back from the person's own Google Drive. `plan` cases give the candidate (`houseId`, `houseDeletedAt`), `now`, the photo tombstones still stored on the device (`local`: `id`, `deletedAt`), the tombstone rows of the device's own sync file (`file`: `id`, `houseId` or `candidateId`, `deleted`, `deletedAt`, optional `driveFileId` and `sha256`) and the device's own bookkeeping (`refs`), and name the expected `FETCH`, `PAST_WINDOW` or `MISSING` per photo, in order (the local photos first); a photo counts as deleted with its candidate when its tombstone is at most `withCandidateMs` before the candidate's, and as past the window when more than `windowDays` days before `now`. `summary` cases give how many photos the candidate had (`noted`), how many are back, the reasons of the others and how far Drive itself was reached (`connection`), and name the total, the restored count and the reasons once each in a fixed order. Not part of any backup or sync format; status *proposed* until both stacks have read it in a merged pull request.

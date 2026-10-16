@@ -1,0 +1,386 @@
+{
+ "format": "doorprints-photo-restore-vectors/1",
+ "status": "proposed",
+ "note": "Getting a restored candidate's photos back from the person's own Google Drive (S4b-BL-293, docs/15 section 1.4, docs/03 section 20). Not part of any backup or sync format. `plan` cases: which photos belong to a restored candidate and what to do with each (FETCH, PAST_WINDOW, MISSING); `local` are tombstones still stored on the device, `file` are tombstone rows of the device's own sync file (`driveFileId` and `sha256` optional), `refs` is the device's own photo bookkeeping; a photo counts as deleted with its candidate when its tombstone is at most `withCandidateMs` before the candidate's; it is past the window when more than `windowDays` days before `now`. `summary` cases: what the person is told. Times are ISO instants. The vectors are never edited to make a test pass.",
+ "windowDays": 30,
+ "withCandidateMs": 60000,
+ "plan": [
+  {
+   "name": "a photo with a Drive file named by the device's own bookkeeping is fetched",
+   "houseId": "h1",
+   "houseDeletedAt": "2026-10-14T12:00:00.000Z",
+   "now": "2026-10-15T12:00:00.000Z",
+   "local": [
+    {
+     "id": "p1",
+     "deletedAt": "2026-10-14T12:00:00.000Z"
+    }
+   ],
+   "file": [],
+   "refs": {
+    "p1": {
+     "driveFileId": "f1",
+     "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+   },
+   "expect": [
+    {
+     "id": "p1",
+     "action": "FETCH"
+    }
+   ]
+  },
+  {
+   "name": "a tombstone of the sync file names its own Drive file",
+   "houseId": "h1",
+   "houseDeletedAt": "2026-10-14T12:00:00.000Z",
+   "now": "2026-10-15T12:00:00.000Z",
+   "local": [],
+   "file": [
+    {
+     "id": "p2",
+     "houseId": "h1",
+     "deleted": true,
+     "deletedAt": "2026-10-14T12:00:05.000Z",
+     "driveFileId": "f2",
+     "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    }
+   ],
+   "refs": {},
+   "expect": [
+    {
+     "id": "p2",
+     "action": "FETCH"
+    }
+   ]
+  },
+  {
+   "name": "a photo deleted three days before its candidate was deleted earlier on purpose and is not restored with it",
+   "houseId": "h1",
+   "houseDeletedAt": "2026-10-14T12:00:00.000Z",
+   "now": "2026-10-15T12:00:00.000Z",
+   "local": [
+    {
+     "id": "p3",
+     "deletedAt": "2026-10-11T12:00:00.000Z"
+    }
+   ],
+   "file": [
+    {
+     "id": "p4",
+     "houseId": "h1",
+     "deleted": true,
+     "deletedAt": "2026-10-11T12:00:00.000Z",
+     "driveFileId": "f4",
+     "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    }
+   ],
+   "refs": {
+    "p3": {
+     "driveFileId": "f3",
+     "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    }
+   },
+   "expect": []
+  },
+  {
+   "name": "a photo stamped 30 seconds before its candidate counts as deleted with it, 61 seconds before does not",
+   "houseId": "h1",
+   "houseDeletedAt": "2026-10-14T12:00:00.000Z",
+   "now": "2026-10-15T12:00:00.000Z",
+   "local": [
+    {
+     "id": "p5",
+     "deletedAt": "2026-10-14T11:59:30.000Z"
+    },
+    {
+     "id": "p6",
+     "deletedAt": "2026-10-14T11:58:59.000Z"
+    }
+   ],
+   "file": [],
+   "refs": {
+    "p5": {
+     "driveFileId": "f5",
+     "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    },
+    "p6": {
+     "driveFileId": "f6",
+     "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+    }
+   },
+   "expect": [
+    {
+     "id": "p5",
+     "action": "FETCH"
+    }
+   ]
+  },
+  {
+   "name": "another candidate's tombstones and live photo rows of the file are left alone",
+   "houseId": "h1",
+   "houseDeletedAt": "2026-10-14T12:00:00.000Z",
+   "now": "2026-10-15T12:00:00.000Z",
+   "local": [],
+   "file": [
+    {
+     "id": "p7",
+     "houseId": "h2",
+     "deleted": true,
+     "deletedAt": "2026-10-14T12:00:00.000Z",
+     "driveFileId": "f7",
+     "sha256": "1111111111111111111111111111111111111111111111111111111111111111"
+    },
+    {
+     "id": "p8",
+     "houseId": "h1",
+     "deleted": false,
+     "deletedAt": "2026-10-14T12:00:00.000Z",
+     "driveFileId": "f8",
+     "sha256": "2222222222222222222222222222222222222222222222222222222222222222"
+    },
+    {
+     "id": "p9",
+     "candidateId": "h1",
+     "deleted": true,
+     "deletedAt": "2026-10-14T12:00:00.000Z",
+     "driveFileId": "f9",
+     "sha256": "3333333333333333333333333333333333333333333333333333333333333333"
+    }
+   ],
+   "refs": {},
+   "expect": [
+    {
+     "id": "p9",
+     "action": "FETCH"
+    }
+   ]
+  },
+  {
+   "name": "no Drive file known for a photo is missing, not fetched",
+   "houseId": "h1",
+   "houseDeletedAt": "2026-10-14T12:00:00.000Z",
+   "now": "2026-10-15T12:00:00.000Z",
+   "local": [
+    {
+     "id": "p10",
+     "deletedAt": "2026-10-14T12:00:00.000Z"
+    }
+   ],
+   "file": [
+    {
+     "id": "p11",
+     "houseId": "h1",
+     "deleted": true,
+     "deletedAt": "2026-10-14T12:00:00.000Z"
+    }
+   ],
+   "refs": {},
+   "expect": [
+    {
+     "id": "p10",
+     "action": "MISSING"
+    },
+    {
+     "id": "p11",
+     "action": "MISSING"
+    }
+   ]
+  },
+  {
+   "name": "a tombstone exactly 30 days old is fetched, one second older is past the window",
+   "houseId": "h1",
+   "houseDeletedAt": "2026-09-15T12:00:00.000Z",
+   "now": "2026-10-15T12:00:00.000Z",
+   "local": [
+    {
+     "id": "p12",
+     "deletedAt": "2026-09-15T12:00:00.000Z"
+    },
+    {
+     "id": "p13",
+     "deletedAt": "2026-09-15T11:59:59.000Z"
+    }
+   ],
+   "file": [],
+   "refs": {
+    "p12": {
+     "driveFileId": "f12",
+     "sha256": "4444444444444444444444444444444444444444444444444444444444444444"
+    },
+    "p13": {
+     "driveFileId": "f13",
+     "sha256": "5555555555555555555555555555555555555555555555555555555555555555"
+    }
+   },
+   "expect": [
+    {
+     "id": "p12",
+     "action": "FETCH"
+    },
+    {
+     "id": "p13",
+     "action": "PAST_WINDOW"
+    }
+   ]
+  },
+  {
+   "name": "one photo known both here and in the file is listed once, with the file's Drive file",
+   "houseId": "h1",
+   "houseDeletedAt": "2026-10-14T12:00:00.000Z",
+   "now": "2026-10-15T12:00:00.000Z",
+   "local": [
+    {
+     "id": "p14",
+     "deletedAt": "2026-10-14T12:00:00.000Z"
+    }
+   ],
+   "file": [
+    {
+     "id": "p14",
+     "houseId": "h1",
+     "deleted": true,
+     "deletedAt": "2026-10-14T12:00:00.000Z",
+     "driveFileId": "f14",
+     "sha256": "6666666666666666666666666666666666666666666666666666666666666666"
+    }
+   ],
+   "refs": {
+    "p14": {
+     "driveFileId": "old",
+     "sha256": "7777777777777777777777777777777777777777777777777777777777777777"
+    }
+   },
+   "expect": [
+    {
+     "id": "p14",
+     "action": "FETCH",
+     "driveFileId": "f14"
+    }
+   ]
+  }
+ ],
+ "summary": [
+  {
+   "name": "a candidate with no photos says nothing",
+   "noted": 0,
+   "back": 0,
+   "failed": [],
+   "connection": "OK",
+   "expect": {
+    "total": 0,
+    "restored": 0,
+    "reasons": []
+   }
+  },
+  {
+   "name": "every photo is back",
+   "noted": 3,
+   "back": 3,
+   "failed": [],
+   "connection": "OK",
+   "expect": {
+    "total": 3,
+    "restored": 3,
+    "reasons": []
+   }
+  },
+  {
+   "name": "some photos are back and the others say why, once each, in the fixed order",
+   "noted": 4,
+   "back": 1,
+   "failed": [
+    "UNREADABLE",
+    "MISSING",
+    "UNREADABLE"
+   ],
+   "connection": "OK",
+   "expect": {
+    "total": 4,
+    "restored": 1,
+    "reasons": [
+     "MISSING",
+     "UNREADABLE"
+    ]
+   }
+  },
+  {
+   "name": "photos nobody recorded are missing",
+   "noted": 5,
+   "back": 1,
+   "failed": [
+    "MISSING"
+   ],
+   "connection": "OK",
+   "expect": {
+    "total": 5,
+    "restored": 1,
+    "reasons": [
+     "MISSING"
+    ]
+   }
+  },
+  {
+   "name": "photos nobody recorded when Drive is not connected are not connected",
+   "noted": 3,
+   "back": 0,
+   "failed": [],
+   "connection": "NOT_CONNECTED",
+   "expect": {
+    "total": 3,
+    "restored": 0,
+    "reasons": [
+     "NOT_CONNECTED"
+    ]
+   }
+  },
+  {
+   "name": "photos nobody recorded when Drive did not answer say offline",
+   "noted": 2,
+   "back": 0,
+   "failed": [
+    "OFFLINE"
+   ],
+   "connection": "OFFLINE",
+   "expect": {
+    "total": 2,
+    "restored": 0,
+    "reasons": [
+     "OFFLINE"
+    ]
+   }
+  },
+  {
+   "name": "the reasons come in the fixed order whatever the order they arrived in",
+   "noted": 3,
+   "back": 0,
+   "failed": [
+    "UNREADABLE",
+    "PAST_WINDOW",
+    "NOT_CONNECTED"
+   ],
+   "connection": "OK",
+   "expect": {
+    "total": 3,
+    "restored": 0,
+    "reasons": [
+     "NOT_CONNECTED",
+     "PAST_WINDOW",
+     "UNREADABLE"
+    ]
+   }
+  },
+  {
+   "name": "more photos back than were recorded counts them all",
+   "noted": 1,
+   "back": 2,
+   "failed": [],
+   "connection": "OK",
+   "expect": {
+    "total": 2,
+    "restored": 2,
+    "reasons": []
+   }
+  }
+ ]
+}

@@ -1,0 +1,146 @@
+{
+  "spec": "PhotoRestoreVectorsTest, PhotoRestorerTest, BinRestoreRepositoryTest",
+  "gradle": [
+    ":shared:testAndroidHostTest",
+    "--tests",
+    "app.doorprints.drive.photo.PhotoRestoreVectorsTest",
+    "--tests",
+    "app.doorprints.drive.photo.PhotoRestorerTest",
+    "--tests",
+    "app.doorprints.data.BinRestoreRepositoryTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/drive/photo/PhotoRestoreRules.kt",
+      "find": "const val RESTORE_WINDOW_DAYS = 30",
+      "replace": "const val RESTORE_WINDOW_DAYS = 31",
+      "expect": "theWindowAndTheToleranceAreTheVectors"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/drive/photo/PhotoRestoreRules.kt",
+      "find": "photoDeletedAt >= candidateDeletedAt - WITH_CANDIDATE_MS",
+      "replace": "photoDeletedAt > candidateDeletedAt - WITH_CANDIDATE_MS",
+      "expect": "aPhotoDeletedAMinuteBeforeItsCandidateOrLaterWasDeletedWithIt"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/drive/photo/PhotoRestoreRules.kt",
+      "find": "now - photo.deletedAt > RESTORE_WINDOW_DAYS * DAY_MS",
+      "replace": "now - photo.deletedAt >= RESTORE_WINDOW_DAYS * DAY_MS",
+      "expect": "planCases"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/drive/photo/PhotoRestoreRules.kt",
+      "find": "if (had == null) p else had.copy(ref = had.ref ?: p.ref)",
+      "replace": "if (had == null) p else had",
+      "expect": "planCases"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/drive/photo/PhotoRestoreRules.kt",
+      "find": "val photo = p.copy(ref = p.ref ?: refs[p.id])",
+      "replace": "val photo = p",
+      "expect": "planCases"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/drive/photo/PhotoRestoreRules.kt",
+      "find": "if (houseOfRow(row) == houseId) consider(p)",
+      "replace": "consider(p)",
+      "expect": "planCases"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/drive/photo/PhotoRestoreRules.kt",
+      "find": "if (row.kind != SyncKind.PHOTOS || !row.stamp.deleted) return null",
+      "replace": "if (row.kind != SyncKind.PHOTOS) return null",
+      "expect": "planCases"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/drive/photo/PhotoRestoreRules.kt",
+      "find": "RestoreConnection.NOT_CONNECTED -> PhotoRestoreReason.NOT_CONNECTED",
+      "replace": "RestoreConnection.NOT_CONNECTED -> PhotoRestoreReason.MISSING",
+      "expect": "summaryCases"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/drive/photo/PhotoRestoreRules.kt",
+      "find": "val total = maxOf(noted, accounted)",
+      "replace": "val total = accounted",
+      "expect": "summaryCases"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/drive/photo/PhotoRestorer.kt",
+      "find": "DriveException.Kind.UNAUTHORIZED, DriveException.Kind.CANCELLED -> RestoreConnection.NOT_CONNECTED",
+      "replace": "DriveException.Kind.UNAUTHORIZED -> RestoreConnection.NOT_CONNECTED",
+      "expect": "whileSyncIsPausedForWantOfTheScreenLock"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/drive/photo/PhotoRestorer.kt",
+      "find": "if (detail == \"NOT_FOUND\" || detail == \"FORBIDDEN\") PhotoRestoreReason.MISSING else PhotoRestoreReason.UNREADABLE",
+      "replace": "PhotoRestoreReason.UNREADABLE",
+      "expect": "bringsBackOnlyThePhotosWhoseFilesAreStillThere"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/drive/photo/PhotoRestorer.kt",
+      "find": "PhotoSkipReason.NO_REFERENCE, PhotoSkipReason.NO_FOLDER, PhotoSkipReason.NOT_OURS ->",
+      "replace": "PhotoSkipReason.NO_REFERENCE, PhotoSkipReason.NO_FOLDER ->",
+      "expect": "aFileInTheBinIsNotRead"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/drive/photo/PhotoRestorer.kt",
+      "find": "failed += FailedPhoto(item.photo, PhotoRestoreReason.UNREADABLE)",
+      "replace": "failed += FailedPhoto(item.photo, PhotoRestoreReason.MISSING)",
+      "expect": "aDriveAnswerThatIsNotAboutTheConnection"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/drive/photo/DrivePhotos.kt",
+      "find": "?: return RestoreFetch.Gone(PhotoSkipReason.NO_FOLDER, null)",
+      "replace": "?: return RestoreFetch.Gone(PhotoSkipReason.EMPTY, null)",
+      "expect": "afterDeleteEverythingNothingIsLeftToRestore"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/drive/sync/DriveSyncEngine.kt",
+      "find": "if (paused()) throw DriveException(DriveException.Kind.CANCELLED, reason = \"paused\")",
+      "replace": "if (false) throw DriveException(DriveException.Kind.CANCELLED, reason = \"paused\")",
+      "expect": "whileSyncIsPausedForWantOfTheScreenLock"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/drive/sync/DriveSyncEngine.kt",
+      "find": "for (r in staged.values) if (r.kind == SyncKind.PHOTOS) putIfNewer(rows, r)",
+      "replace": "",
+      "expect": "aTombstoneStagedForTheNextPass"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/drive/sync/DriveSyncEngine.kt",
+      "find": "file = cached.file",
+      "replace": "file = null",
+      "expect": "theDevicesOwnFileIsNotDownloadedAgain"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BinRestore.kt",
+      "find": "fetch(PhotoRestoreRequest(id, deletedAt))",
+      "replace": "fetch(PhotoRestoreRequest(id, 0L))",
+      "expect": "everyPhotoComesBackUnderANewId"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BinRestore.kt",
+      "find": "failed += PhotoRestoreReason.UNREADABLE",
+      "replace": "failed += PhotoRestoreReason.MISSING",
+      "expect": "aPhotoThatCannotBeStored"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BinRestore.kt",
+      "find": "PhotoRestoreRules.summarize(0, fromDrive, failed, report.connection)",
+      "replace": "PhotoRestoreRules.summarize(0, 0, failed, report.connection)",
+      "expect": "everyPhotoComesBackUnderANewId"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/PhotoStore.kt",
+      "find": ".withMeta(meta, dirty = meta.metaUpdatedAt > 0)",
+      "replace": ".withMeta(meta, dirty = false)",
+      "expect": "everyPhotoComesBackUnderANewId"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/PhotoStore.kt",
+      "find": "uploaded = false, createdAt = createdAt)",
+      "replace": "uploaded = true, createdAt = createdAt)",
+      "expect": "everyPhotoComesBackUnderANewId"
+    }
+  ]
+}

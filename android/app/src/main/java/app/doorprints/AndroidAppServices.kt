@@ -42,6 +42,7 @@ import androidx.work.WorkInfo
 import app.doorprints.data.AndroidRepository
 import app.doorprints.data.Api
 import app.doorprints.data.Repository
+import app.doorprints.drive.photo.PhotoRestoreReport
 import app.doorprints.drive.wiring.DriveSettingsSection
 import app.doorprints.export.AndroidExportServices
 import app.doorprints.export.AndroidImportServices
@@ -65,6 +66,7 @@ import app.doorprints.ui.ExportServices
 import app.doorprints.ui.HouseFormServices
 import app.doorprints.ui.ImportServices
 import app.doorprints.ui.LanguageChange
+import app.doorprints.ui.PhotoRestoreServices
 import app.doorprints.ui.LocationSource
 import app.doorprints.ui.MapServices
 import app.doorprints.ui.OfflineMapsServices
@@ -95,6 +97,12 @@ import java.io.File
  * Each member forwards to the code the screens called before they moved to `:ui`, with the same context.
  */
 class AndroidAppServices(private val app: DoorprintsApp, override val repository: AndroidRepository) : AppServices {
+    /** *Recently deleted* getting photos back from Google Drive (S4b-BL-293): only when Drive is in use on this phone, so a phone that never used it never builds it. */
+    override val photoRestore: PhotoRestoreServices = PhotoRestoreServices { req ->
+        val drive = app.container.drive
+        if (drive.engaged) drive.controller.restorePhotos(req, connectIfClosed = true) else PhotoRestoreReport.noConnection(req.known)
+    }
+
     override val appScope: CoroutineScope get() = app.appScope
 
     /** *Voice input* (S4b-BL-222): the microphone, its permission and the own-key transcription, on the app-wide HTTP client. */

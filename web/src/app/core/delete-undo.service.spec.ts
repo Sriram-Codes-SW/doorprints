@@ -20,6 +20,10 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DeleteUndoService, UNDO_MS, nameOfRow } from './delete-undo.service';
+import type { PhotoRestorer } from './delete-undo.service';
+import { notConnectedReport } from '../data/drive/photo-restorer';
+import type { PhotoRestoreReport, PhotoRestoreRequest } from '../data/drive/photo-restorer';
+import type { PhotoRestoreReason } from '../data/drive/photo-restore-rules';
 import { Announcer } from './announcer.service';
 import { DEFAULT_KIND_KEY, ENABLED_KINDS_KEY, EXPERIMENTAL_KINDS_KEY } from './kind-setting';
 import type { HouseDto } from './models';
@@ -200,7 +204,8 @@ describe('DeleteUndoService', () => {
       expect(list.map((e) => [e.id, e.name, e.photos])).toEqual([['h2', 'Temple Road', 0], ['h1', 'House h1', 1]]);
       expect(list[0].deletedAt).toBe(new Date(T0 - 2 * DAY).toISOString());
       const restored = await service.restore(list[1]);
-      expect(restored).toEqual({ name: 'House h1', photosGone: 1 });
+      // no Google Drive is offered here: the photo that has no bytes left is not connected
+      expect(restored).toEqual({ name: 'House h1', photosTotal: 1, photosBack: 0, photosFromDrive: 0, reasons: ['NOT_CONNECTED'] });
       expect((await service.bin()).map((e) => e.id)).toEqual(['h2']);
       expect(await store.getHouse('h1')).toMatchObject({ deleted: false, dirty: true });
       expect(JSON.parse((await store.setting(SETTING_KEYS.binPhotos)) ?? '{}')).toEqual({});
@@ -210,7 +215,7 @@ describe('DeleteUndoService', () => {
       await store.saveHouse(house('h1'), T0 - DAY);
       await store.deleteHouse('h1', T0 - 1000);
       const [entry] = await service.bin();
-      expect(await service.restore(entry)).toEqual({ name: 'House h1', photosGone: 0 });
+      expect(await service.restore(entry)).toEqual({ name: 'House h1', photosTotal: 0, photosBack: 0, photosFromDrive: 0, reasons: [] });
       expect(await service.restore(entry)).toBeUndefined();
     });
 
@@ -246,6 +251,122 @@ describe('DeleteUndoService', () => {
       const school = JSON.stringify((await store.allHouses()).find((h) => h.id === 's1'));
       await service.restore((await service.bin())[0]);
       expect(JSON.stringify((await store.allHouses()).find((h) => h.id === 's1'))).toBe(school);
+    });
+  });
+
+  describe('photos from Google Drive (S4b-BL-293)', () => {
+    const seed = async (ids: string[] = ['p1', 'p2']) => {
+      await store.saveHouse(house('h1'), T0 - 9 * DAY);
+      for (const id of ids) {
+        await store.photos.add('h1', jpeg(), id, T0 - 9 * DAY, { roomId: 'r1', tags: ['KITCHEN'], caption: id });
+        await store.photos.put({ ...(await store.photos.get(id))!, uploaded: true });
+      }
+      vi.setSystemTime(T0 - 2 * DAY);
+      await service.remove('h1', 'House h1');
+      service.dismiss();
+      vi.setSystemTime(T0);
+      syncSoon.mockClear();
+      const [entry] = await service.bin();
+      return entry;
+    };
+    const restorerOf = (answer: (req: PhotoRestoreRequest) => PhotoRestoreReport | Promise<PhotoRestoreReport>) => {
+      const calls: PhotoRestoreRequest[] = [];
+      const restorer: PhotoRestorer = { restorePhotos: async (req) => { calls.push(req); return answer(req); } };
+      return { restorer, calls };
+    };
+    const fetched = (req: PhotoRestoreRequest, which: string[]): PhotoRestoreReport['fetched'] =>
+      req.known.filter((p) => which.includes(p.id)).map((photo) => ({ photo, bytes: new Uint8Array([9, 8, 7, 6]) }));
+    const failedOf = (req: PhotoRestoreRequest, which: string[], reason: PhotoRestoreReason): PhotoRestoreReport['failed'] =>
+      req.known.filter((p) => which.includes(p.id)).map((photo) => ({ photo, reason }));
+    const livePhotos = async () => (await store.photos.ofHouse('h1'));
+
+    it('asks Drive for the photos that have no bytes left, with the candidate and when it was deleted, and puts every one back', async () => {
+      const entry = await seed();
+      const { restorer, calls } = restorerOf((req) => ({ connection: 'OK', fetched: fetched(req, ['p1', 'p2']), failed: [] }));
+      const out = await service.restore(entry, T0, restorer);
+      expect(out).toEqual({ name: 'House h1', photosTotal: 2, photosBack: 2, photosFromDrive: 2, reasons: [] });
+      expect(calls).toHaveLength(1);
+      expect(calls[0].houseId).toBe('h1');
+      expect(calls[0].houseDeletedAt).toBe(T0 - 2 * DAY);
+      expect(calls[0].known.map((p) => p.id).sort()).toEqual(['p1', 'p2']);
+      const back = await livePhotos();
+      expect(back).toHaveLength(2);
+      for (const p of back) {
+        expect(['p1', 'p2']).not.toContain(p.id); // new ids: the old ones are tombstones every device keeps
+        expect(p).toMatchObject({ houseId: 'h1', deleted: false, uploaded: false, sizeBytes: 4, roomId: 'r1', tags: ['KITCHEN'], metaDirty: true });
+        expect(new Uint8Array(await p.blob!.arrayBuffer())).toEqual(new Uint8Array([9, 8, 7, 6]));
+      }
+      expect(back.map((p) => p.caption).sort()).toEqual(['p1', 'p2']);
+      expect(await store.getHouse('h1')).toMatchObject({ deleted: false, dirty: true });
+      expect(syncSoon).toHaveBeenCalledTimes(1);
+    });
+
+    it('some photos come back and the others say why', async () => {
+      const entry = await seed();
+      const { restorer } = restorerOf((req) => ({ connection: 'OK', fetched: fetched(req, ['p1']), failed: failedOf(req, ['p2'], 'MISSING') }));
+      expect(await service.restore(entry, T0, restorer)).toEqual({ name: 'House h1', photosTotal: 2, photosBack: 1, photosFromDrive: 1, reasons: ['MISSING'] });
+      expect(await livePhotos()).toHaveLength(1);
+    });
+
+    it('Google Drive not connected: no photo comes back and it says so', async () => {
+      const entry = await seed();
+      const { restorer } = restorerOf((req) => notConnectedReport(req.known));
+      expect(await service.restore(entry, T0, restorer)).toEqual({ name: 'House h1', photosTotal: 2, photosBack: 0, photosFromDrive: 0, reasons: ['NOT_CONNECTED'] });
+      expect(await livePhotos()).toEqual([]);
+      expect(await store.getHouse('h1')).toMatchObject({ deleted: false });
+    });
+
+    it('no Google Drive service at all reads as not connected', async () => {
+      const entry = await seed();
+      expect((await service.restore(entry, T0, null))?.reasons).toEqual(['NOT_CONNECTED']);
+    });
+
+    it.each([['PAST_WINDOW', 'OK'], ['OFFLINE', 'OFFLINE'], ['UNREADABLE', 'OK']] as const)('%s: the photo stays away and the reason is said', async (reason, connection) => {
+      const entry = await seed(['p1']);
+      const { restorer } = restorerOf((req) => ({ connection, fetched: [], failed: failedOf(req, ['p1'], reason) }));
+      expect(await service.restore(entry, T0, restorer)).toEqual({ name: 'House h1', photosTotal: 1, photosBack: 0, photosFromDrive: 0, reasons: [reason] });
+      expect(await livePhotos()).toEqual([]);
+    });
+
+    it('photos that left no tombstone here are still counted from the note and say why they are not back', async () => {
+      await store.saveHouse(house('h1'), T0 - 9 * DAY);
+      await store.photos.add('h1', jpeg(), 'u1', T0 - 9 * DAY); // never uploaded: a delete removes it outright
+      await store.photos.add('h1', jpeg(), 'u2', T0 - 9 * DAY);
+      await service.remove('h1', 'House h1');
+      service.dismiss();
+      const [entry] = await service.bin();
+      expect(entry.photos).toBe(2);
+      const { restorer } = restorerOf((req) => notConnectedReport(req.known));
+      expect(await service.restore(entry, T0, restorer)).toEqual({ name: 'House h1', photosTotal: 2, photosBack: 0, photosFromDrive: 0, reasons: ['NOT_CONNECTED'] });
+    });
+
+    it('a candidate deleted on another device (no note, no tombstone here) still gets what the sync file names', async () => {
+      await store.saveHouse(house('h1'), T0 - 9 * DAY);
+      await store.deleteHouse('h1', T0 - DAY);
+      const [entry] = await service.bin();
+      const { restorer, calls } = restorerOf((req) => ({
+        connection: 'OK',
+        fetched: [{ photo: { id: 'far', deletedAt: T0 - DAY, contentType: 'image/jpeg', createdAt: null, meta: { roomId: null, tags: [], caption: null, metaUpdatedAt: 0 }, ref: null }, bytes: new Uint8Array([1]) }],
+        failed: failedOf(req, [], 'MISSING'),
+      }));
+      expect(await service.restore(entry, T0, restorer)).toEqual({ name: 'House h1', photosTotal: 1, photosBack: 1, photosFromDrive: 1, reasons: [] });
+      expect(calls[0].known).toEqual([]);
+      expect(await livePhotos()).toHaveLength(1);
+    });
+
+    it('a Drive that throws never fails the candidate\'s own restore', async () => {
+      const entry = await seed(['p1']);
+      const { restorer } = restorerOf(() => { throw new Error('boom'); });
+      expect(await service.restore(entry, T0, restorer)).toMatchObject({ photosBack: 0, reasons: ['NOT_CONNECTED'] });
+      expect(await store.getHouse('h1')).toMatchObject({ deleted: false });
+    });
+
+    it('a photo that cannot be stored is counted as not restored and the candidate is still restored', async () => {
+      const entry = await seed(['q1']);
+      vi.spyOn(store.photos, 'put').mockRejectedValueOnce(new Error('quota'));
+      const { restorer } = restorerOf((req) => ({ connection: 'OK', fetched: fetched(req, ['q1']), failed: [] }));
+      expect(await service.restore(entry, T0, restorer)).toMatchObject({ photosTotal: 1, photosBack: 0, photosFromDrive: 0, reasons: ['UNREADABLE'] });
+      expect(await store.getHouse('h1')).toMatchObject({ deleted: false });
     });
   });
 });

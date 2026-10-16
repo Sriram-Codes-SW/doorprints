@@ -261,4 +261,25 @@ describe('DriveSyncAdapter', () => {
     const allowed = adapter.decideBackup(false);
     expect(typeof allowed).toBe('boolean');
   });
+
+  describe('restorePhotos (S4b-BL-293)', () => {
+    const gone = { id: 'p1', deletedAt: 5, contentType: null, createdAt: null, meta: { roomId: null, tags: [], caption: null, metaUpdatedAt: 0 }, ref: null };
+
+    it('answers not connected for each known photo while no folder is open, without touching Drive', async () => {
+      const w = new SyncWorld();
+      const d = await w.add('closed');
+      const closed = new DriveSyncAdapter(() => null, d.drive, () => w.now(), d.photoStore);
+      const before = w.server.requests.length;
+      const report = await closed.restorePhotos({ houseId: 'h1', houseDeletedAt: 1, known: [gone] });
+      expect(report).toMatchObject({ connection: 'NOT_CONNECTED', fetched: [] });
+      expect(report.failed.map((f) => [f.photo.id, f.reason])).toEqual([['p1', 'NOT_CONNECTED']]);
+      expect(w.server.requests.length).toBe(before);
+    });
+
+    it('with an open folder it reads under the sync lock and says a photo with no Drive file is missing', async () => {
+      const report = await adapter.restorePhotos({ houseId: 'h1', houseDeletedAt: 1, known: [{ ...gone, deletedAt: world.now() }] });
+      expect(report.connection).toBe('OK');
+      expect(report.failed.map((f) => [f.photo.id, f.reason])).toEqual([['p1', 'MISSING']]);
+    });
+  });
 });

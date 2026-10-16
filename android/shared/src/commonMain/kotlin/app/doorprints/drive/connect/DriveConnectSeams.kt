@@ -126,7 +126,7 @@ sealed interface DeleteAuthorization {
 }
 
 /** The sync stack built over one opened folder. */
-class SyncRig(val backend: DriveSyncBackend, val photos: DrivePhotos, val local: LocalRows)
+class SyncRig(val backend: DriveSyncBackend, val photos: DrivePhotos, val local: LocalRows, val engine: DriveSyncEngine? = null)
 
 /** Builds the [SyncRig] for an opened folder session; a seam so the controller's tests can use fakes. */
 fun interface SyncRigFactory {
@@ -149,6 +149,6 @@ class DefaultSyncRigFactory(
     override fun create(session: FolderSession): SyncRig {
         val photos = DrivePhotos(drive, p, session, photoState, clock, photoConfig)
         val engine = DriveSyncEngine(drive, p, session, syncState, local, clock, paused, photos)
-        return SyncRig(DriveSyncBackend(engine, local, clock, session.deviceId, photos), photos, local)
+        return SyncRig(DriveSyncBackend(engine, local, clock, session.deviceId, photos), photos, local, engine)
     }
 }

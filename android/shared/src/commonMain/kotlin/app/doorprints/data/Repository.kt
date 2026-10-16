@@ -51,6 +51,8 @@ import app.doorprints.shared.model.KindSetting
 import app.doorprints.shared.model.KindSettingRules
 import app.doorprints.shared.model.SpaceView
 import app.doorprints.shared.model.HouseAnswer
+import app.doorprints.drive.photo.PhotoRestoreReport
+import app.doorprints.drive.photo.PhotoRestoreRequest
 import app.doorprints.shared.model.PhotoMeta
 import app.doorprints.shared.model.Question
 import app.doorprints.shared.model.QuestionCategory
@@ -138,6 +140,16 @@ interface Repository {
      * is missing or not deleted. Only this row is written.
      */
     suspend fun restoreHouse(id: String): Boolean
+
+    /**
+     * *Restore* in *Recently deleted* (S4b-BL-293): [restoreHouse], then the photos the candidate lost are asked of [fetch]
+     * (the person's own Google Drive, which keeps the encrypted copy of a deleted photo for 30 days, docs/15 §1.4) and each
+     * that comes back is stored under a new id; each that cannot is counted with its reason. Whatever [fetch] does, the
+     * candidate's own restore stands. Null when the house is missing or not deleted. The default restores the house and says
+     * nothing of photos (a repository with no Drive).
+     */
+    suspend fun restoreHouseFromBin(id: String, fetch: suspend (PhotoRestoreRequest) -> PhotoRestoreReport): BinRestore? =
+        if (restoreHouse(id)) BinRestore.PLAIN else null
 
     /** [restoreHouse] for many at once (*Undo* of *Delete all in this space*); returns the ids brought back. */
     suspend fun restoreHouses(ids: List<String>): List<String>

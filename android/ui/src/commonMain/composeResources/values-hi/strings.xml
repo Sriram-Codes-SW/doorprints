@@ -1766,14 +1766,23 @@
     <!-- S4b-BL-285 (2026-10-14): deletion safeguards on the phones (PR 3): Delete all in this space, Recently deleted, Drive level 3 "all kinds"; the website's words (web i18n `delete.*`, `driveDelete.allKinds`). hi, ta and te are under review. -->
     <string name="delete_space_button">इस स्थान में सब हटाएँ</string>
     <string name="delete_space_button_aria">इस स्थान में सब हटाएँ: %1$s</string>
-    <string name="delete_space_confirm">%1$s में सहेजा सब कुछ हटा दें: %2$s? सिर्फ़ यही स्थान हटेगा, आपके दूसरे स्थानों को छुआ नहीं जाएगा। 10 सेकंड तक पूर्ववत कर सकते हैं, और 30 दिन तक हाल में हटाए गए से वापस ला सकते हैं। इनकी सहेजी गई सैरें वापस नहीं आ सकतीं।</string>
+    <string name="delete_space_confirm">%1$s में सहेजा सब कुछ हटा दें: %2$s? सिर्फ़ यही स्थान हटेगा, आपके दूसरे स्थानों को छुआ नहीं जाएगा। 10 सेकंड तक पूर्ववत कर सकते हैं, और 30 दिन तक हाल में हटाए गए से वापस ला सकते हैं (तस्वीरें भी, अगर Google Drive जुड़ी है और उसमें उनकी प्रति अब भी है)। इनकी सहेजी गई सैरें वापस नहीं आ सकतीं।</string>
     <string name="delete_space_do">सब हटाएँ</string>
     <string name="delete_deleted_many">%1$s से हटाए गए: %2$s</string>
     <string name="delete_restored_many">%1$s में वापस लाए गए: %2$s</string>
     <string name="delete_restored">%1$s वापस लाया गया</string>
     <string name="delete_bulk_wait">अभी एक साथ कई हटाने का काम हुआ है। %1$d सेकंड रुककर फिर कोशिश करें।</string>
     <string name="delete_recently_deleted">हाल में हटाए गए</string>
-    <string name="delete_bin_body">पिछले 30 दिनों में आपने जो हटाया, वह यहाँ रहता है और आप उसे वापस ला सकते हैं। सहेजी हुई सैरें नहीं रखी जातीं।</string>
+    <string name="delete_bin_body">पिछले 30 दिनों में आपने जो हटाया, वह यहाँ रहता है और आप उसे वापस ला सकते हैं। तस्वीरें भी तब तक वापस आती हैं जब तक उनकी एन्क्रिप्टेड प्रति आपकी अपनी Google Drive में है: वापस लाते समय Google Drive जुड़ी हो और आप ऑनलाइन हों। सहेजी हुई सैरें नहीं रखी जातीं।</string>
+    <!-- S4b-BL-293 (2026-10-16): photos of a restored entry come back from the person's own Google Drive. Under review (owner rule: hi/ta/te ship marked under review). -->
+    <string name="delete_photos_all_drive">%1$s वापस लाया गया। इसकी तस्वीरें आपकी Google Drive से वापस आ गईं (तस्वीरें: %2$s)।</string>
+    <string name="delete_photos_some">%1$s वापस लाया गया। वापस आई तस्वीरें: %3$s में से %2$s। बाकी वापस नहीं आ सकीं: %4$s।</string>
+    <string name="delete_photos_none">%1$s वापस लाया गया। इसकी तस्वीरें वापस नहीं आ सकीं: %2$s।</string>
+    <string name="delete_why_not_connected">इस डिवाइस पर Google Drive जुड़ी नहीं है</string>
+    <string name="delete_why_offline">Google Drive से कनेक्शन नहीं था</string>
+    <string name="delete_why_past_window">वे 30 दिन से पहले हटाई गई थीं</string>
+    <string name="delete_why_missing">आपकी Google Drive में उनकी प्रति नहीं बची</string>
+    <string name="delete_why_unreadable">आपकी Google Drive की प्रति खोली या जाँची नहीं जा सकी</string>
     <string name="delete_bin_empty">पिछले 30 दिनों में कुछ नहीं हटाया गया।</string>
     <string name="delete_bin_more">30 दिन तक %1$d और रखे गए हैं। अगला देखने के लिए एक वापस लाएँ।</string>
     <string name="delete_restore">वापस लाएँ</string>

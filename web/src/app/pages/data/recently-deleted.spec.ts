@@ -20,6 +20,9 @@ import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DeleteUndoService } from '../../core/delete-undo.service';
+import { DriveConnectService } from '../../data/drive/connect/drive-connect.service';
+import type { PhotoRestoreReport, PhotoRestoreRequest } from '../../data/drive/photo-restorer';
+import type { PhotoRestoreReason } from '../../data/drive/photo-restore-rules';
 import { DEFAULT_KIND_KEY, ENABLED_KINDS_KEY, EXPERIMENTAL_KINDS_KEY } from '../../core/kind-setting';
 import type { HouseDto } from '../../core/models';
 import { LocalStore } from '../../data/local-store.service';
@@ -42,10 +45,11 @@ describe('Recently deleted', () => {
   let store: LocalStore;
   let syncSoon: ReturnType<typeof vi.fn>;
 
-  async function open(lang: Lang = 'en', url = '/data') {
+  async function open(lang: Lang = 'en', url = '/data', drive?: (req: PhotoRestoreRequest) => PhotoRestoreReport) {
     syncSoon = vi.fn();
     TestBed.configureTestingModule({
       providers: [
+        ...(drive ? [{ provide: DriveConnectService, useValue: { restorePhotos: async (req: PhotoRestoreRequest) => drive(req) } }] : []),
         provideRouter([{ path: '**', children: [] }]),
         { provide: SyncService, useValue: { syncSoon } },
         { provide: StorageService, useValue: { requestPersistence: () => Promise.resolve() } },
@@ -161,7 +165,7 @@ describe('Recently deleted', () => {
     expect(text(host.querySelector('.empty'))).toBe('Nothing deleted in the last 30 days.');
   });
 
-  it('says the photos could not be restored when the candidate had photos and their bytes are gone', async () => {
+  it('says why the photos could not be restored when the candidate had photos and their bytes are gone', async () => {
     await open();
     await store.saveHouse(house('h1', { label: 'Blue gate' }), NOW - 9 * DAY);
     await store.photos.add('h1', jpeg(), 'p1', NOW - 9 * DAY);
@@ -169,12 +173,111 @@ describe('Recently deleted', () => {
     await undo.remove('h1', 'Blue gate');
     undo.dismiss();
     const { host, fixture } = await render();
-    expect(text(host.querySelector('li'))).toContain('Photos that cannot be restored: 1');
+    expect(text(host.querySelector('li'))).toContain('Photos: 1');
     host.querySelector<HTMLButtonElement>('button.restore')!.click();
     vi.useRealTimers();
     await settle(fixture);
-    expect(text(host.querySelector('[role="status"]'))).toBe('Restored Blue gate. Its photos could not be restored: a delete removes their files.');
+    expect(text(host.querySelector('[role="status"]'))).toBe('Restored Blue gate. Its photos could not be restored: Google Drive is not connected on this device.');
     expect(await store.getHouse('h1')).toBeDefined();
+  });
+
+  describe('photos from Google Drive (S4b-BL-293)', () => {
+    const deletedWithPhotos = async (n: number) => {
+      await store.saveHouse(house('h1', { label: 'Blue gate' }), NOW - 9 * DAY);
+      for (let i = 1; i <= n; i++) {
+        await store.photos.add('h1', jpeg(), `p${i}`, NOW - 9 * DAY);
+        await store.photos.put({ ...(await store.photos.get(`p${i}`))!, uploaded: true });
+      }
+      const undo = TestBed.inject(DeleteUndoService);
+      await undo.remove('h1', 'Blue gate');
+      undo.dismiss();
+    };
+    const answer = (back: string[], why: PhotoRestoreReason | null, connection: PhotoRestoreReport['connection'] = 'OK') => (req: PhotoRestoreRequest): PhotoRestoreReport => ({
+      connection,
+      fetched: req.known.filter((p) => back.includes(p.id)).map((photo) => ({ photo, bytes: new Uint8Array([1, 2]) })),
+      failed: req.known.filter((p) => !back.includes(p.id)).map((photo) => ({ photo, reason: why! })),
+    });
+    const restoreAndRead = async (drive: (req: PhotoRestoreRequest) => PhotoRestoreReport, lang: Lang = 'en', photos = 2) => {
+      await open(lang, '/data', drive);
+      await deletedWithPhotos(photos);
+      const { host, fixture } = await render();
+      host.querySelector<HTMLButtonElement>('button.restore')!.click();
+      vi.useRealTimers();
+      await settle(fixture);
+      return { host, status: text(host.querySelector('[role="status"]')) };
+    };
+
+    it('says every photo came back from Google Drive', async () => {
+      const { host, status } = await restoreAndRead(answer(['p1', 'p2'], null));
+      expect(status).toBe('Restored Blue gate. Its photos came back from your Google Drive (photos: 2).');
+      expect(await store.photos.ofHouse('h1')).toHaveLength(2);
+      expect(audit(host)).toEqual([]);
+    });
+
+    it('says how many of the photos came back and why the others did not', async () => {
+      const { status } = await restoreAndRead(answer(['p1'], 'MISSING'));
+      expect(status).toBe('Restored Blue gate. Photos that came back: 1 of 2. The others could not be restored: no copy is left in your Google Drive.');
+    });
+
+    it.each([
+      ['NOT_CONNECTED', 'Google Drive is not connected on this device'],
+      ['OFFLINE', 'there was no connection to Google Drive'],
+      ['PAST_WINDOW', 'they were deleted more than 30 days ago'],
+      ['MISSING', 'no copy is left in your Google Drive'],
+      ['UNREADABLE', 'a copy in your Google Drive could not be opened or checked'],
+    ] as const)('says %s in words when no photo came back', async (reason, words) => {
+      const { status } = await restoreAndRead(answer([], reason, reason === 'OFFLINE' ? 'OFFLINE' : 'OK'));
+      expect(status).toBe(`Restored Blue gate. Its photos could not be restored: ${words}.`);
+    });
+
+    it('joins several reasons in the language\'s own list pattern', async () => {
+      const { status } = await restoreAndRead((req) => ({
+        connection: 'OK',
+        fetched: [],
+        failed: [{ photo: req.known[0], reason: 'MISSING' }, { photo: req.known[1], reason: 'UNREADABLE' }],
+      }));
+      expect(status).toBe('Restored Blue gate. Its photos could not be restored: no copy is left in your Google Drive and a copy in your Google Drive could not be opened or checked.');
+    });
+
+    it('says only "Restored" when the photos came back from bytes still stored here, without Google Drive', async () => {
+      await open('en', '/data', answer([], null));
+      await store.saveHouse(house('h1', { label: 'Blue gate' }), NOW - 9 * DAY);
+      await store.deleteHouse('h1', NOW - DAY);
+      await store.photos.put({ id: 'kept', houseId: 'h1', blob: jpeg(), contentType: 'image/jpeg', sizeBytes: 3, createdAt: null, updatedAt: new Date(NOW - DAY).toISOString(), deleted: true, syncVersion: 0, uploaded: false });
+      const { host, fixture } = await render();
+      host.querySelector<HTMLButtonElement>('button.restore')!.click();
+      vi.useRealTimers();
+      await settle(fixture);
+      expect(text(host.querySelector('[role="status"]'))).toBe('Restored Blue gate');
+      expect(await store.photos.ofHouse('h1')).toHaveLength(1);
+    });
+
+    it('says nothing about photos for a candidate that had none', async () => {
+      await open('en', '/data', answer([], null));
+      await store.saveHouse(house('h1', { label: 'Blue gate' }), NOW - 9 * DAY);
+      await store.deleteHouse('h1', NOW - DAY);
+      const { host, fixture } = await render();
+      host.querySelector<HTMLButtonElement>('button.restore')!.click();
+      vi.useRealTimers();
+      await settle(fixture);
+      expect(text(host.querySelector('[role="status"]'))).toBe('Restored Blue gate');
+    });
+
+    it('speaks Hindi, Tamil and Telugu too (under review)', async () => {
+      const hi = await restoreAndRead(answer(['p1'], 'OFFLINE', 'OFFLINE'), 'hi');
+      expect(hi.status).toContain('Blue gate');
+      expect(hi.status).toContain('2 में से 1');
+      expect(hi.status).toContain('Google Drive से कनेक्शन नहीं था');
+      TestBed.resetTestingModule();
+      document.body.replaceChildren();
+      const ta = await restoreAndRead(answer(['p1'], 'PAST_WINDOW'), 'ta');
+      expect(ta.status).toContain('2-இல் 1');
+      expect(ta.status).toContain('30 நாட்களுக்கு முன்');
+      TestBed.resetTestingModule();
+      document.body.replaceChildren();
+      const te = await restoreAndRead(answer([], 'UNREADABLE'), 'te');
+      expect(te.status).toContain('Google Driveలోని కాపీని తెరవలేకపోయాము');
+    });
   });
 
   it('with spaces on shows the current space\'s name as a sub-heading and only its tombstones', async () => {

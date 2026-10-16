@@ -1,0 +1,75 @@
+{
+  "spec": [
+    "web/src/app/core/delete-undo.service.spec.ts",
+    "web/src/app/pages/data/recently-deleted.spec.ts",
+    "web/src/app/data/house-bin.spec.ts"
+  ],
+  "mutations": [
+    {
+      "file": "web/src/app/core/delete-undo.service.ts",
+      "find": "      connection = 'NOT_CONNECTED';\n      failed = result.gone.map(() => 'NOT_CONNECTED');",
+      "replace": "      connection = 'NOT_CONNECTED';\n      failed = result.gone.map(() => 'MISSING');",
+      "expect": "no Google Drive service at all"
+    },
+    {
+      "file": "web/src/app/core/delete-undo.service.ts",
+      "find": "houseDeletedAt: result.deletedAt",
+      "replace": "houseDeletedAt: now",
+      "expect": "asks Drive for the photos that have no bytes left"
+    },
+    {
+      "file": "web/src/app/core/delete-undo.service.ts",
+      "find": "const noted = Math.max(entry.photos, result.photosBack + result.photosGone);",
+      "replace": "const noted = result.photosBack + result.photosGone;",
+      "expect": "photos that left no tombstone here are still counted from the note"
+    },
+    {
+      "file": "web/src/app/core/delete-undo.service.ts",
+      "find": "          failed.push('UNREADABLE');\n        }\n      }",
+      "replace": "          failed.push('MISSING');\n        }\n      }",
+      "expect": "cannot be stored"
+    },
+    {
+      "file": "web/src/app/core/delete-undo.service.ts",
+      "find": "    this.sync.syncSoon();\n    const summary",
+      "replace": "    const summary",
+      "expect": "puts every one back"
+    },
+    {
+      "file": "web/src/app/core/delete-undo.service.ts",
+      "find": "      } catch {\n        report = notConnectedReport(result.gone);\n      }",
+      "replace": "      } catch {\n        report = { connection: 'OK', fetched: [], failed: [] };\n      }",
+      "expect": "never fails the candidate"
+    },
+    {
+      "file": "web/src/app/data/house-bin.ts",
+      "find": "    id: uuid(),\n    houseId,\n    blob: new Blob",
+      "replace": "    id: gone.id,\n    houseId,\n    blob: new Blob",
+      "expect": "is a new row with the bytes"
+    },
+    {
+      "file": "web/src/app/data/house-bin.ts",
+      "find": "    uploaded: false,\n  };\n  return (gone.meta.metaUpdatedAt",
+      "replace": "    uploaded: true,\n  };\n  return (gone.meta.metaUpdatedAt",
+      "expect": "is a new row with the bytes"
+    },
+    {
+      "file": "web/src/app/data/house-bin.ts",
+      "find": "return (gone.meta.metaUpdatedAt ?? 0) > 0 ? withPhotoMeta(row, gone.meta, true) : row;",
+      "replace": "return row;",
+      "expect": "is a new row with the bytes"
+    },
+    {
+      "file": "web/src/app/pages/data/recently-deleted.ts",
+      "find": "return r.photosBack === 0\n      ? { key: 'delete.photosNone'",
+      "replace": "return r.photosBack !== 0\n      ? { key: 'delete.photosNone'",
+      "expect": "says how many of the photos came back"
+    },
+    {
+      "file": "web/src/app/pages/data/recently-deleted.ts",
+      "find": "if (r.photosTotal === 0 || (r.reasons.length === 0 && r.photosFromDrive === 0))",
+      "replace": "if (r.photosTotal === 0)",
+      "expect": "says only \"Restored\" when the photos came back from bytes still stored here"
+    }
+  ]
+}

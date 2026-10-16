@@ -21,6 +21,8 @@ package app.doorprints.ui
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.staticCompositionLocalOf
 import app.doorprints.data.Repository
+import app.doorprints.drive.photo.PhotoRestoreReport
+import app.doorprints.drive.photo.PhotoRestoreRequest
 import app.doorprints.export.CopyRecord
 import app.doorprints.export.CopyUndoOutcome
 import kotlinx.coroutines.CoroutineScope
@@ -73,6 +75,12 @@ interface AppServices {
     /** The phone's offline map store (docs/11 5.20): the Map's *Save this area for offline* and Settings' list. */
     val offlineMaps: OfflineMapsServices get() = NoOfflineMaps
 
+    /**
+     * Getting a restored candidate's photos back from the person's own Google Drive (S4b-BL-293, *Recently deleted*): reads
+     * only, behind the same pause as a sync pass; none (every photo *not connected*) where Drive is not in use.
+     */
+    val photoRestore: PhotoRestoreServices get() = NoPhotoRestore
+
     /** *Voice input* (S4b-BL-222): the microphone, its permission and the transcription; none (no microphone drawn) by default. */
     val voice: VoiceServices get() = NoVoice
 
@@ -94,6 +102,16 @@ interface AppServices {
      * …" snackbar. Null when there was no recent change; a [LanguageChange] with a null language for "System default".
      */
     fun consumeLanguageChange(): LanguageChange?
+}
+
+/** The photos of a restored candidate, read back from the person's own Google Drive ([AppServices.photoRestore]); never throws. */
+fun interface PhotoRestoreServices {
+    suspend fun restore(req: PhotoRestoreRequest): PhotoRestoreReport
+}
+
+/** No Google Drive (the default): every photo the candidate lost answers *not connected*. */
+object NoPhotoRestore : PhotoRestoreServices {
+    override suspend fun restore(req: PhotoRestoreRequest): PhotoRestoreReport = PhotoRestoreReport.noConnection(req.known)
 }
 
 /**

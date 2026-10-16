@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Feature parity and offline-copy export specification |
-| Version | 0.73 |
+| Version | 0.74 |
 | Date | 2026-10-15 |
 | Author | Claude (Cowork) – Product/Architecture |
 | Status | Draft: product-owner decisions D-01, D-02, D-03, D-08, D-21 (AI access) and D-23..D-25 (Sprint 4b reminders, hunting areas, location permissions) and D-26 (India's boundaries on the map, 2026-09-24) applied; ready for Sprint 4 planning |
@@ -85,6 +85,7 @@
 | 0.71 | 2026-10-15 | Claude (Code), engineer | **5.4 Another kind's criteria** (kinds PR 27, [03](03-design.md) §18.21): Compare and the checklist for any kind from its kind file; the school's draft checklist and Compare criteria; the house's criteria unchanged. |
 | 0.72 | 2026-10-15 | Claude (Code), engineer | **Viewings, questions and contacts per kind** (kinds PR 29, [03](03-design.md) §18.23): section 10 gains the row *Viewings, questions and contacts in a space*. |
 | 0.73 | 2026-10-15 | Claude (Code), engineer | **Filters, the baseline kind and a school's copy words** (kinds PR 30, [03](03-design.md) §18.24): section 10 gains the row of that name. |
+| 0.74 | 2026-10-16 | Claude (Code), engineer | **5.27.6: *Restore* brings the photos back from the person's own Google Drive** (S4b-BL-293, [03](03-design.md) §20, [15](15-google-drive-backup-and-sharing.md) §1.4 item 11): where the text said the photos of a deleted entry cannot come back, it now says they come back while their encrypted copy is still in the person's Drive (at least 30 days) and Drive is connected and online, with a per-photo result. |
 
 Related: [01 Requirements](01-requirements.md) · [02 Threat model](02-threat-model.md) · [03 Design](03-design.md) · [04 DFDs](04-data-flow-diagrams.md) · [05 UX/a11y/i18n](05-ux-accessibility-i18n.md) · [06 Test plan](06-test-plan.md) · [10 Sprint log](10-sprint-log.md) · [AI design](ai/ai-design.md)
 
@@ -1278,7 +1279,7 @@ nor *Restore* brings them back. The same holds for *Delete all in this space* (S
 sync or import (a delete on another device) is swept the same way; **the phones (S4b-BL-285) have the same two things**: *Delete all in this space* on a What you track card
 (that space only, tombstones in one batch with `deleteHouses`, a question that names the count and the kind, a tick box over 10 entries, *Save a copy first*,
 first focus on Cancel, an *Undo* in the snackbar for 10 s, one bulk action per 10 s per device) and Settings > *Recently deleted* (this space's tombstones under 30 days, newest first, *Restore* =
-`restoreHouse`: `deleted` false, `updatedAt` past the tombstone's, dirty). A phone never removes a house's photos or visits when it deletes it, so a restore on the phone brings them back, unless a sync has already carried the server's purge of them back; the saved walks are swept when the
+`restoreHouse`: `deleted` false, `updatedAt` past the tombstone's, dirty). A phone never removes a house's photos or visits when it deletes it, so a restore on the phone brings them back, unless a sync has already carried another device's deletion of them back; **photos with no bytes left on the device (the website drops them at once) are read back from the person's own Google Drive by *Restore* (S4b-BL-293: the encrypted copy stays there at least 30 days; Drive must be connected on the device and online; the result says how many of how many came back and why the others did not)**; the saved walks are swept when the
 Undo time is over (as for one house) and are not restored. The phones have no *Remove all data* button (the system's *Clear storage* is the way), so its counts are the website's only; Google Drive level 3 says *all kinds* on the phones too; **a saved walk never outlives its house**. *Delete all
 my data* (phones) and *Remove all Doorprints data from this browser* (website) remove saved walks and the trace.
 

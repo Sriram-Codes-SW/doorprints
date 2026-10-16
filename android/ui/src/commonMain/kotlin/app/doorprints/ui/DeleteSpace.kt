@@ -147,13 +147,15 @@ class BinLine(val id: String, val name: String, val deletedOn: String)
 /**
  * Settings > *Recently deleted* (deletion safeguards PR 3, docs/04 tombstone and restore, S4b-BL-285): this space's deleted
  * entries from the last 30 days, newest first, each with *Restore*. A delete is a tombstone that syncs, so *Restore* writes
- * the row back live with a newer `updatedAt` (`Repository.restoreHouse`); the phone does not remove a house's photos or
- * visits when it deletes it, so they are back with it. The twin of the website's *Recently deleted* in *Your data*. Only
+ * the row back live with a newer `updatedAt` (`Repository.restoreHouseFromBin`); the phone does not remove a house's photos or
+ * visits when it deletes it, so they are back with it; photos another device deleted with it are read back from the person's own
+ * Google Drive (30 days), and the words say how many came back and why the others did not. The twin of the website's *Recently deleted* in *Your data*. Only
  * this space's rows are read.
  */
 @Composable
 fun RecentlyDeletedSection() {
-    val repo = LocalAppServices.current.repository
+    val services = LocalAppServices.current
+    val repo = services.repository
     val space = LocalSpace.current
     val snackbar = LocalRootSnackbar.current
     val scope = rememberCoroutineScope()
@@ -169,7 +171,8 @@ fun RecentlyDeletedSection() {
     RecentlyDeletedList(lines, hidden = bin.size - lines.size) { id ->
         scope.launch {
             val name = lines.first { it.id == id }.name
-            if (repo.restoreHouse(id)) snackbar?.showSnackbar(getString(Res.string.delete_restored, name))
+            // The candidate first; its photos are asked of the person's own Google Drive afterwards and cannot undo it (S4b-BL-293).
+            repo.restoreHouseFromBin(id, services.photoRestore::restore)?.let { snackbar?.showSnackbar(binRestoreMessage(name, it)) }
         }
     }
 }

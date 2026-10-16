@@ -57,6 +57,9 @@ import app.doorprints.drive.delete.Refusal
 import app.doorprints.drive.photo.NetworkState
 import app.doorprints.drive.photo.OneOffGrant
 import app.doorprints.drive.photo.PhotoNetworkStatus
+import app.doorprints.drive.photo.PhotoRestoreReport
+import app.doorprints.drive.photo.PhotoRestoreRequest
+import app.doorprints.drive.photo.PhotoRestorer
 import app.doorprints.drive.photo.PhotoSettings
 import app.doorprints.drive.photo.PhotoUploadGate
 import app.doorprints.drive.sync.DriveSyncBackend
@@ -493,6 +496,25 @@ class DriveConnectController(
             }
             lastSync = info
             info
+        }
+    }
+
+    /**
+     * The photos of a restored candidate, read back from the person's own Google Drive (*Recently deleted*, S4b-BL-293): reads
+     * only, under a sync pass's lock and pause; [connectIfClosed] opens the folder first. Never throws; no folder: *not connected*.
+     */
+    suspend fun restorePhotos(req: PhotoRestoreRequest, connectIfClosed: Boolean = false): PhotoRestoreReport {
+        if (session == null && connectIfClosed && connect().state != ConnectState.READY) return PhotoRestoreReport.noConnection(req.known)
+        val s = session ?: return PhotoRestoreReport.noConnection(req.known)
+        return try {
+            ops.withLock {
+                val r = if (rig != null && rigSession === s) rig!! else syncRigs.create(s).also { rig = it; rigSession = s }
+                r.engine?.let { PhotoRestorer(it, r.photos, clock).restore(req) } ?: PhotoRestoreReport.noConnection(req.known)
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            PhotoRestoreReport.noConnection(req.known)
         }
     }
 

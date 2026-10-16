@@ -229,6 +229,7 @@ open class CommonRepository(
     override suspend fun restoreHouse(id: String): Boolean = houseWriter.restoreMany(listOf(id)).isNotEmpty()
 
     override suspend fun restoreHouses(ids: List<String>): List<String> = houseWriter.restoreMany(ids)
+    override suspend fun restoreHouseFromBin(id: String, fetch: suspend (app.doorprints.drive.photo.PhotoRestoreRequest) -> app.doorprints.drive.photo.PhotoRestoreReport): BinRestore? = BinRestorer(db, photoStore, ::now) { restoreHouse(it) }.restore(id, fetch)
 
     override fun observeDeletedHouses(): Flow<List<HouseEntity>> = houseWriter.observeDeleted()
 
@@ -1044,7 +1045,6 @@ open class CommonRepository(
         if (result.rows > 0 || actions.photoMeta.isNotEmpty()) syncSoon()
         result
     }
-
 
     /**
      * [applyImport] for [ImportMode.COPY]: all or nothing.
