@@ -1771,7 +1771,16 @@
     <string name="delete_restored">Restored %1$s</string>
     <string name="delete_bulk_wait">A bulk delete just ran. Wait %1$d seconds and try again.</string>
     <string name="delete_recently_deleted">Recently deleted</string>
-    <string name="delete_bin_body">What you deleted in the last 30 days stays here, and you can bring it back. Saved walks are not kept.</string>
+    <string name="delete_bin_body">What you deleted in the last 30 days stays here, and you can bring it back. Photos come back too while their encrypted copy is still in your own Google Drive: connect Google Drive and be online when you restore. Saved walks are not kept.</string>
+    <!-- S4b-BL-293 (2026-10-16): photos of a restored entry come back from the person's own Google Drive. -->
+    <string name="delete_photos_all_drive">Restored %1$s. Its photos came back from your Google Drive (photos: %2$s).</string>
+    <string name="delete_photos_some">Restored %1$s. Photos that came back: %2$s of %3$s. The others could not be restored: %4$s.</string>
+    <string name="delete_photos_none">Restored %1$s. Its photos could not be restored: %2$s.</string>
+    <string name="delete_why_not_connected">Google Drive is not connected on this device</string>
+    <string name="delete_why_offline">there was no connection to Google Drive</string>
+    <string name="delete_why_past_window">they were deleted more than 30 days ago</string>
+    <string name="delete_why_missing">no copy is left in your Google Drive</string>
+    <string name="delete_why_unreadable">a copy in your Google Drive could not be opened or checked</string>
     <string name="delete_bin_empty">Nothing deleted in the last 30 days.</string>
     <string name="delete_bin_more">%1$d more are kept for 30 days. Restore one to see the next.</string>
     <string name="delete_restore">Restore</string>

@@ -60,7 +60,7 @@ export function connectionOf(e: unknown): Fault | null {
   if (e instanceof SignInError) return e.kind === 'offline' ? 'OFFLINE' : 'NOT_CONNECTED';
   if (e instanceof KeysError && e.kind === 'NOT_PINNED') return 'NOT_CONNECTED';
   if (e instanceof DriveError) {
-    if (e.kind === 'UNAUTHORIZED') return 'NOT_CONNECTED';
+    if (e.kind === 'UNAUTHORIZED' || e.kind === 'CANCELLED') return 'NOT_CONNECTED';
     if (e.kind === 'OFFLINE' || e.kind === 'RATE_LIMITED' || e.kind === 'SERVER') return 'OFFLINE';
   }
   return null;

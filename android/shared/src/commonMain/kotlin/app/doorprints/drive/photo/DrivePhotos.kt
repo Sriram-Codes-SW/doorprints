@@ -273,20 +273,49 @@ class DrivePhotos(
             return null
         }
         return try {
-            val f = try {
-                drive.getFile(ref.driveFileId)
-            } catch (e: DriveException) {
-                if (e.kind != DriveException.Kind.NOT_FOUND) throw e
-                throw Reject(PhotoSkipReason.UNREADABLE, "NOT_FOUND")
-            }
-            if (!isPhotoFile(f, folder.id)) throw Reject(PhotoSkipReason.NOT_OURS)
-            readVerified(f, ref.sha256)
+            fetchRef(ref, folder.id)
         } catch (r: Reject) {
             val cur = store.load()
             store.save(cur.copy(bad = cur.bad + (photoId to PhotoBad(ref.driveFileId, r.reason, clock()))))
             skip(photoId, r.reason, r.detail)
             null
         }
+    }
+
+    /** The outcome of [fetchForRestore]. */
+    sealed interface RestoreFetch {
+        class Bytes(val bytes: ByteArray) : RestoreFetch
+        class Gone(val reason: PhotoSkipReason, val detail: String?) : RestoreFetch
+    }
+
+    /**
+     * One photo's bytes for a restore from *Recently deleted* (S4b-BL-293): the file [ref] names, read and checked like any
+     * download (the folder pin, Drive's checksum, the keys, the plaintext SHA-256 of the row), without the "remembered as
+     * bad" bookkeeping of [download], because the person asked for this one now. A photo that cannot be had is answered with
+     * its reason, never thrown; a network failure is thrown. Nothing is written to Drive or to the state.
+     */
+    suspend fun fetchForRestore(ref: PhotoRef): RestoreFetch {
+        requirePinned()
+        val st = store.load()
+        val folder = drive.ensureFolder(DriveLayout.PHOTOS, session.rootId, create = false, knownId = st.photosFolderId)
+            ?: return RestoreFetch.Gone(PhotoSkipReason.NO_FOLDER, null)
+        return try {
+            RestoreFetch.Bytes(fetchRef(ref, folder.id))
+        } catch (r: Reject) {
+            RestoreFetch.Gone(r.reason, r.detail)
+        }
+    }
+
+    /** The bytes of the file [ref] names when it is a complete photo file of the `Photos` folder that checks out; [Reject] otherwise. */
+    private suspend fun fetchRef(ref: PhotoRef, folderId: String): ByteArray {
+        val f = try {
+            drive.getFile(ref.driveFileId)
+        } catch (e: DriveException) {
+            if (e.kind != DriveException.Kind.NOT_FOUND) throw e
+            throw Reject(PhotoSkipReason.UNREADABLE, "NOT_FOUND")
+        }
+        if (!isPhotoFile(f, folderId)) throw Reject(PhotoSkipReason.NOT_OURS)
+        return readVerified(f, ref.sha256)
     }
 
     // ---- Checks ------------------------------------------------------------------------------------------------------

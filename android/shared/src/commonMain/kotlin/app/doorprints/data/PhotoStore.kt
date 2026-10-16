@@ -128,6 +128,23 @@ internal class PhotoStore(
         }
     }
 
+    /**
+     * Stores a photo that came back from the person's own Google Drive (S4b-BL-293) under the new id [id]: its bytes as the
+     * file, a row not uploaded yet (the next sync sends it like any new photo) with the room, tags and caption it had. The old
+     * id stays a tombstone every device keeps. The file goes first, and goes again if the row cannot be written.
+     */
+    suspend fun addRestored(houseId: String, id: String, bytes: ByteArray, createdAt: Long, meta: PhotoMeta): Unit = withContext(Dispatchers.IO) {
+        val path = pathFor(id)
+        write(path, bytes)
+        try {
+            db.photos().upsert(PhotoEntity(id, houseId, path.toString(), uploaded = false, createdAt = createdAt).withMeta(meta, dirty = meta.metaUpdatedAt > 0))
+        } catch (e: Throwable) {
+            deleteFile(path)
+            throw e
+        }
+        syncSoon()
+    }
+
     /** Saves a photo's room, tags and caption (slice 5); true when something changed. */
     suspend fun saveMeta(photoId: String, meta: PhotoMeta): Boolean {
         val photo = db.photos().get(photoId)?.takeUnless { it.deleted } ?: return false

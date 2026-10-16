@@ -33,6 +33,7 @@ import app.doorprints.export.CopyRecord
 import app.doorprints.export.CopyUndoOutcome
 import app.doorprints.location.HuntState
 import app.doorprints.location.Place
+import app.doorprints.drive.photo.PhotoRestoreReport
 import app.doorprints.drive.wiring.DriveSyncChoice
 import app.doorprints.drive.wiring.FileDrivePrefs
 import app.doorprints.drive.wiring.DriveSyncRoute
@@ -220,6 +221,11 @@ internal class IosAppServices(
     override val copyImports: CopyImportUndoes = NoCopyImportUndoes
 
     override val settingsScreen: SettingsServices = IosSettingsServices(drive)
+
+    /** *Recently deleted* getting photos back from Google Drive (S4b-BL-293): only when Drive is in use on this phone. */
+    override val photoRestore: PhotoRestoreServices = PhotoRestoreServices { req ->
+        if (drive.engaged) drive.controller.restorePhotos(req, connectIfClosed = true) else PhotoRestoreReport.noConnection(req.known)
+    }
 
     override val houseForm: HouseFormServices = IosHouseFormServices(repository)
 

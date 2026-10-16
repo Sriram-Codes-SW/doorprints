@@ -42,6 +42,7 @@ import androidx.work.WorkInfo
 import app.doorprints.data.AndroidRepository
 import app.doorprints.data.Api
 import app.doorprints.data.Repository
+import app.doorprints.drive.photo.PhotoRestoreReport
 import app.doorprints.drive.wiring.DriveSettingsSection
 import app.doorprints.export.AndroidExportServices
 import app.doorprints.export.AndroidImportServices
@@ -65,6 +66,7 @@ import app.doorprints.ui.ExportServices
 import app.doorprints.ui.HouseFormServices
 import app.doorprints.ui.ImportServices
 import app.doorprints.ui.LanguageChange
+import app.doorprints.ui.PhotoRestoreServices
 import app.doorprints.ui.LocationSource
 import app.doorprints.ui.MapServices
 import app.doorprints.ui.OfflineMapsServices
@@ -198,6 +200,12 @@ private class AndroidSettingsServices(private val app: DoorprintsApp) : Settings
 
     override fun settingsVisible(visible: Boolean) {
         ScreenWatch.settingsScreen = visible
+    }
+
+    /** *Recently deleted* getting photos back from Google Drive (S4b-BL-293): only when Drive is in use on this phone, so a phone that never used it never builds it. */
+    override val photoRestore: PhotoRestoreServices = PhotoRestoreServices { req ->
+        val drive = app.container.drive
+        if (drive.engaged) drive.controller.restorePhotos(req, connectIfClosed = true) else PhotoRestoreReport.noConnection(req.known)
     }
 
     /** Settings > Google Drive (docs/15 §2): the Drive screens behind the screen-lock rule ([DriveSettingsSection]). */

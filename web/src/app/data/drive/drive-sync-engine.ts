@@ -169,6 +169,7 @@ export class DriveSyncEngine {
    */
   async ownPhotoRows(): Promise<SyncRow[]> {
     if ((await this.session.guard.watermark()) === null) throw new KeysError('NOT_PINNED', 'no pin for this folder: nothing is opened');
+    if (await this.paused()) throw new DriveError('CANCELLED', 0, null, 'paused');
     const rows = new Map<string, SyncRow>();
     const st = await this.state.load();
     let file: SyncFile | null = null;

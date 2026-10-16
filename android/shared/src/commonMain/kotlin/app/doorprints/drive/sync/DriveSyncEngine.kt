@@ -176,6 +176,41 @@ class DriveSyncEngine(
         }
     }
 
+    /**
+     * The photo rows this device knows of, deleted ones included (S4b-BL-293, *Recently deleted* getting photos back from
+     * Drive): the rows of its own last file (the whole of its state: its photos and the tombstones it took from the
+     * others) and the tombstones staged for the next pass, the newer of a row winning. Read through the pin like any file
+     * and held to the same checks; the file is not downloaded again while it is the one this device wrote last. Nothing is
+     * written. An unreadable or missing file answers the staged rows alone; a network failure is thrown.
+     */
+    suspend fun ownPhotoRows(): List<SyncRow> {
+        if (session.guard.watermark() == null) throw KeysException(KeysException.Kind.NOT_PINNED, "no pin for this folder: nothing is opened")
+        if (paused()) throw DriveException(DriveException.Kind.CANCELLED, reason = "paused")
+        val rows = HashMap<RowId, SyncRow>()
+        val st = state.load()
+        var file: SyncFile? = null
+        val cached = ownCache?.takeIf { st.lastChecksum != null && it.first == st.lastChecksum }?.second
+        if (cached != null) {
+            file = cached.file
+        } else {
+            val syncId = st.syncFolderId
+            if (syncId != null) {
+                val ctx = Ctx(session.refresh())
+                val own = ownCandidates(drive.listAll(DriveQuery(parentId = syncId, appProperties = mapOf(DriveLayout.KIND to KIND_SYNC))))
+                for (f in own) {
+                    try {
+                        val v = verify(ctx, f, session.deviceId)
+                        if (file == null || v.file.seq > file.seq) file = v.file
+                    } catch (_: Skip) {
+                    }
+                }
+            }
+        }
+        for (r in file?.rows(SyncKind.PHOTOS).orEmpty()) putIfNewer(rows, r)
+        for (r in staged.values) if (r.kind == SyncKind.PHOTOS) putIfNewer(rows, r)
+        return rows.values.toList()
+    }
+
     // ---- The pass ---------------------------------------------------------------------------------------------------
 
     private suspend fun pass(initial: DriveSyncState, now: Long, confirmShrink: Boolean): SyncPassResult {

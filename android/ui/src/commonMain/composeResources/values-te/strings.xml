@@ -1773,7 +1773,16 @@
     <string name="delete_restored">%1$s పునరుద్ధరించబడింది</string>
     <string name="delete_bulk_wait">ఇప్పుడే ఒక సామూహిక తొలగింపు జరిగింది. %1$d సెకన్లు ఆగి మళ్లీ ప్రయత్నించండి.</string>
     <string name="delete_recently_deleted">ఇటీవల తొలగించినవి</string>
-    <string name="delete_bin_body">గత 30 రోజుల్లో మీరు తొలగించినవి ఇక్కడ ఉంటాయి, వాటిని పునరుద్ధరించవచ్చు. సేవ్ చేసిన నడకలు ఉంచబడవు.</string>
+    <string name="delete_bin_body">గత 30 రోజుల్లో మీరు తొలగించినవి ఇక్కడ ఉంటాయి, వాటిని పునరుద్ధరించవచ్చు. ఫోటోల గుప్తీకరించిన కాపీ మీ సొంత Google Driveలో ఉన్నంతవరకు అవీ తిరిగి వస్తాయి: పునరుద్ధరించేటప్పుడు Google Drive కనెక్ట్ అయి, ఆన్‌లైన్‌లో ఉండండి. సేవ్ చేసిన నడకలు ఉంచబడవు.</string>
+    <!-- S4b-BL-293 (2026-10-16): photos of a restored entry come back from the person's own Google Drive. Under review (owner rule: hi/ta/te ship marked under review). -->
+    <string name="delete_photos_all_drive">%1$s పునరుద్ధరించబడింది. దీని ఫోటోలు మీ Google Drive నుండి తిరిగి వచ్చాయి (ఫోటోలు: %2$s).</string>
+    <string name="delete_photos_some">%1$s పునరుద్ధరించబడింది. తిరిగి వచ్చిన ఫోటోలు: %3$sలో %2$s. మిగిలినవి పునరుద్ధరించలేకపోయాము: %4$s.</string>
+    <string name="delete_photos_none">%1$s పునరుద్ధరించబడింది. దీని ఫోటోలను పునరుద్ధరించలేకపోయాము: %2$s.</string>
+    <string name="delete_why_not_connected">ఈ పరికరంలో Google Drive కనెక్ట్ కాలేదు</string>
+    <string name="delete_why_offline">Google Driveతో కనెక్షన్ లేదు</string>
+    <string name="delete_why_past_window">అవి 30 రోజుల కంటే ముందే తొలగించబడ్డాయి</string>
+    <string name="delete_why_missing">మీ Google Driveలో కాపీ లేదు</string>
+    <string name="delete_why_unreadable">మీ Google Driveలోని కాపీని తెరవలేకపోయాము లేదా తనిఖీ చేయలేకపోయాము</string>
     <string name="delete_bin_empty">గత 30 రోజుల్లో ఏదీ తొలగించలేదు.</string>
     <string name="delete_bin_more">మరో %1$d 30 రోజుల పాటు ఉంచబడతాయి. తర్వాతిది చూడటానికి ఒకదాన్ని పునరుద్ధరించండి.</string>
     <string name="delete_restore">పునరుద్ధరించు</string>

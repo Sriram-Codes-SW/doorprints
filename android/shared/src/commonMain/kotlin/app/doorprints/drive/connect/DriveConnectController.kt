@@ -57,6 +57,9 @@ import app.doorprints.drive.delete.Refusal
 import app.doorprints.drive.photo.NetworkState
 import app.doorprints.drive.photo.OneOffGrant
 import app.doorprints.drive.photo.PhotoNetworkStatus
+import app.doorprints.drive.photo.PhotoRestoreReport
+import app.doorprints.drive.photo.PhotoRestoreRequest
+import app.doorprints.drive.photo.PhotoRestorer
 import app.doorprints.drive.photo.PhotoSettings
 import app.doorprints.drive.photo.PhotoUploadGate
 import app.doorprints.drive.sync.DriveSyncBackend
@@ -493,6 +496,30 @@ class DriveConnectController(
             }
             lastSync = info
             info
+        }
+    }
+
+    /**
+     * The photos of a restored candidate, read back from the person's own Google Drive (*Recently deleted*, S4b-BL-293; docs/15
+     * §1.4): nothing is uploaded or deleted, and the same pause as a sync pass applies (a removed screen lock, a half-done
+     * deletion), with no prompt of its own, because it only reads the person's own files. Under the same lock as a pass.
+     * Before the folder is open (and [connectIfClosed] is false), or while paused, every known photo answers *not connected*.
+     * Never throws.
+     */
+    suspend fun restorePhotos(req: PhotoRestoreRequest, connectIfClosed: Boolean = false): PhotoRestoreReport {
+        // The person asked, with the app in front: the folder is opened first like a Drive screen does (Google's sheet shows only when its grant is gone).
+        if (session == null && connectIfClosed && connect().state != ConnectState.READY) return PhotoRestoreReport.noConnection(req.known)
+        val s = session ?: return PhotoRestoreReport.noConnection(req.known)
+        return try {
+            ops.withLock {
+                val r = if (rig != null && rigSession === s) rig!! else syncRigs.create(s).also { rig = it; rigSession = s }
+                val engine = r.engine ?: return@withLock PhotoRestoreReport.noConnection(req.known)
+                PhotoRestorer(engine, r.photos, clock).restore(req)
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            PhotoRestoreReport.noConnection(req.known)
         }
     }
 
