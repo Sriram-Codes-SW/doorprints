@@ -13,7 +13,7 @@
   "mutations": [
     {
       "file": "android/app/src/main/java/app/doorprints/Notifications.kt",
-      "find": "if (kind == KindSettingRules.HOUSE) return CHANNEL_ALERTS",
+      "find": "if (KindCapabilities.of(kind).baseline) return CHANNEL_ALERTS",
       "replace": "if (kind.isEmpty()) return CHANNEL_ALERTS",
       "expect": "aHouseWalksStreetAlertIsTheWordsAndTheChannelItAlwaysHad"
     },

@@ -22,13 +22,13 @@
     },
     {
       "file": "android/shared/src/commonMain/kotlin/app/doorprints/location/HuntEngine.kt",
-      "find": "if (kind == KindSettingRules.HOUSE) settingsM else hunt.alertRadiusM",
+      "find": "if (KindCapabilities.of(kind).baseline) settingsM else hunt.alertRadiusM",
       "replace": "settingsM",
       "expect": "aSchoolWalkAlertsWithinTheKindsRadiusAndTheSettingsRadiusIsTheHouses"
     },
     {
       "file": "android/shared/src/commonMain/kotlin/app/doorprints/location/HuntEngine.kt",
-      "find": "if (kind == KindSettingRules.HOUSE) settingsM else hunt.alertRadiusM",
+      "find": "if (KindCapabilities.of(kind).baseline) settingsM else hunt.alertRadiusM",
       "replace": "hunt.alertRadiusM",
       "expect": "theRadiusRuleIsTheSettingForTheHouseAndTheFileForEveryOtherKind"
     },

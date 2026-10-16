@@ -66,7 +66,7 @@
     },
     {
       "file": "web/src/app/data/question-store.ts",
-      "find": "if (kind === 'house' || defaultQuestionsOf(kind).length === 0) return 0;",
+      "find": "if (isBaselineKind(kind) || defaultQuestionsOf(kind).length === 0) return 0;",
       "replace": "if (defaultQuestionsOf(kind).length === 0) return 0;",
       "expect": "has no seed for the house here"
     },
@@ -107,9 +107,9 @@
       "expect": "is headed by the school’s section"
     },
     {
-      "file": "web/src/app/core/space-tool-words.ts",
-      "find": "  'viewings.plan': 'school.viewings.plan',",
-      "replace": "  'viewings.plan': 'viewings.plan',",
+      "file": "web/src/app/core/kind-words.generated.ts",
+      "find": "['viewingPlan', 'viewings.plan', 'school.viewings.plan'],",
+      "replace": "['viewingPlan', 'viewings.plan', 'viewings.plan'],",
       "expect": "is headed by the school’s section"
     }
   ]

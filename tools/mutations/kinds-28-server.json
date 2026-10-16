@@ -61,7 +61,7 @@
     },
     {
       "file": "backend/src/main/java/app/doorprints/server/ai/kind/KindFiles.java",
-      "find": "new KindFile.Hunt((int) integer(h, \"alertRadiusM\", p + \".hunt.alertRadiusM\", 20, 500),",
+      "find": "new KindFile.Hunt((int) integer(h, \"alertRadiusM\", p + \".hunt.alertRadiusM\", 30, 300),",
       "replace": "new KindFile.Hunt((int) integer(h, \"alertRadiusM\", p + \".hunt.alertRadiusM\", 1, 5000),",
       "expect": "everyValidCapabilitiesCaseResolvesToTheVectorsAndEveryInvalidOneIsRefused"
     },
