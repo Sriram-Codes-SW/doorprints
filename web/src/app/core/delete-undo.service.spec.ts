@@ -19,11 +19,12 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { DeleteUndoService, UNDO_MS, nameOfRow } from './delete-undo.service';
+import { DeleteUndoService, retryOffer, UNDO_MS, nameOfRow } from './delete-undo.service';
 import type { PhotoRestorer } from './delete-undo.service';
 import { notConnectedReport } from '../data/drive/photo-restorer';
 import type { PhotoRestoreReport, PhotoRestoreRequest } from '../data/drive/photo-restorer';
-import type { PhotoRestoreReason } from '../data/drive/photo-restore-rules';
+import type { GonePhoto, PhotoRestoreReason } from '../data/drive/photo-restore-rules';
+import { cleanMeta } from '../shared/photo-tags';
 import { Announcer } from './announcer.service';
 import { DEFAULT_KIND_KEY, ENABLED_KINDS_KEY, EXPERIMENTAL_KINDS_KEY } from './kind-setting';
 import type { HouseDto } from './models';
@@ -367,6 +368,19 @@ describe('DeleteUndoService', () => {
       const { restorer } = restorerOf((req) => ({ connection: 'OK', fetched: fetched(req, ['q1']), failed: [] }));
       expect(await service.restore(entry, T0, restorer)).toMatchObject({ photosTotal: 1, photosBack: 0, photosFromDrive: 0, reasons: ['UNREADABLE'] });
       expect(await store.getHouse('h1')).toMatchObject({ deleted: false });
+    });
+  });
+
+  describe('the retry a restore offers (S4b-BL-293)', () => {
+    const gone = (id: string): GonePhoto => ({ id, deletedAt: T0, contentType: null, createdAt: null, meta: cleanMeta({}), ref: null });
+    const ctx = { houseId: 'h1', houseDeletedAt: T0, noted: 2 };
+
+    it('offers nothing when no photo is left to fetch', () => {
+      expect(retryOffer('Blue gate', ctx, [])).toBeNull();
+    });
+
+    it('offers a retry over exactly the photos a second try can still fetch', () => {
+      expect(retryOffer('Blue gate', ctx, [gone('p1')])).toEqual({ name: 'Blue gate', houseId: 'h1', houseDeletedAt: T0, noted: 2, known: [gone('p1')] });
     });
   });
 });
