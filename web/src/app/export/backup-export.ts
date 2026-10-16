@@ -102,6 +102,8 @@ export const BACKUP_APP_VERSION = '1.0.0';
 /** A house as `data.json` holds it. Properties are in the contract's order; unset ones are left out of the file. */
 export interface BackupHouse {
   id: string;
+  /** The candidate's kind when it is not the baseline kind (the house); a house's file has none (door 3). Written since kinds PR 32: a school's backup used to lose it. */
+  kind?: string;
   label: string;
   address?: string;
   street?: string;
@@ -484,6 +486,7 @@ function backupBroker(entry: ExportBroker): BackupBroker {
 function backupHouse({ house }: BundleHouse): BackupHouse {
   return {
     id: house.id,
+    ...(house.kind ? { kind: house.kind } : {}),
     label: house.label,
     address: house.address ?? undefined,
     street: house.street ?? undefined,

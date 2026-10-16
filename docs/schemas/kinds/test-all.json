@@ -298,7 +298,7 @@
  ],
  "extras": [
   {
-   "id": "bedrooms",
+   "id": "seats",
    "type": "number",
    "integer": true,
    "min": 0,
@@ -308,7 +308,8 @@
    "label": {
     "web": "house.bhk",
     "android": "house_bhk"
-   }
+   },
+   "max": 500
   },
   {
    "id": "board",
@@ -378,7 +379,7 @@
   {
    "id": "includesMeals",
    "type": "bool",
-   "section": "cost",
+   "section": "details",
    "order": 75,
    "label": {
     "web": "school.busService",
@@ -386,34 +387,34 @@
    }
   },
   {
-   "id": "deposit",
+   "id": "advance",
    "type": "money",
    "max": 1000000000000,
    "cadences": [
     "once"
    ],
+   "better": "lower",
    "section": "cost",
    "order": 10,
    "label": {
     "web": "cost.deposit",
     "android": "house_deposit"
-   },
-   "better": "lower"
+   }
   },
   {
-   "id": "maintenance",
+   "id": "upkeep",
    "type": "money",
    "max": 1000000000000,
    "cadences": [
     "month"
    ],
+   "better": "lower",
    "section": "cost",
    "order": 20,
    "label": {
     "web": "cost.maintenance",
     "android": "house_maintenance"
-   },
-   "better": "lower"
+   }
   },
   {
    "id": "fees",
@@ -431,7 +432,7 @@
    }
   },
   {
-   "id": "availableFrom",
+   "id": "openedOn",
    "type": "date",
    "section": "cost",
    "order": 90,
@@ -513,7 +514,7 @@
    "contactPhone",
    "listingUrl",
    "notes",
-   "bedrooms",
+   "seats",
    "board",
    "grades"
   ],
@@ -522,23 +523,18 @@
    "address",
    "street",
    "locality",
-   "bedrooms",
+   "seats",
    "board",
    "grades",
    "includesMeals",
-   "deposit",
-   "maintenance",
+   "advance",
+   "upkeep",
    "fees",
-   "availableFrom",
-   "rooms",
-   "questions",
-   "viewings",
+   "openedOn",
    "areaNotes",
    "distances",
-   "moveIn",
    "status",
    "rating",
-   "checklist",
    "visits",
    "notes"
   ],
@@ -548,9 +544,9 @@
    "rating",
    "locality",
    "street",
-   "bedrooms",
+   "seats",
    "board",
-   "deposit"
+   "advance"
   ],
   "never": [
    "contactName",
@@ -560,6 +556,9 @@
    "noun": "Thing",
    "records": "things",
    "extras": {
+    "seats": {
+     "words": "Seats"
+    },
     "board": {
      "words": "Board",
      "options": {
@@ -577,8 +576,17 @@
     "includesMeals": {
      "words": "Meals included"
     },
+    "advance": {
+     "words": "Advance"
+    },
+    "upkeep": {
+     "words": "Upkeep per month"
+    },
     "fees": {
      "words": "Fees per year"
+    },
+    "openedOn": {
+     "words": "Opened on"
     }
    }
   }
@@ -605,8 +613,8 @@
     "water",
     "power",
     "parking",
-    "deposit",
-    "maintenance",
+    "advance",
+    "upkeep",
     "fees"
    ]
   },

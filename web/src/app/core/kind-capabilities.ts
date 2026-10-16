@@ -15,6 +15,7 @@
  *
  * SPDX-License-Identifier: AGPL-3.0-only
  */
+import { isDevMode } from '@angular/core';
 
 /**
  * What a kind can do beyond its fields (docs/03 ADR-36 §18.19): the `capabilities` block of a kind file
@@ -209,9 +210,23 @@ export function isBaselineKind(kindId: string | null | undefined): boolean {
   return capabilitiesOf(kindId).baseline;
 }
 
+/** Capabilities a test registered for a kind of its own (the conformance suite's synthetic kind, docs/03 §18.26): empty in every build. */
+const TEST_CAPABILITIES = new Map<string, KindCapabilities>();
+
+/**
+ * Gives a kind capabilities for a test. Only a development build may: in a production build it throws, so no build has a set this file does not
+ * hold. Returns the call that takes it away again.
+ */
+export function registerTestCapabilities(kindId: string, capabilities: KindCapabilities): () => void {
+  if (!isDevMode()) throw new Error('capabilities are registered only in a development build');
+  TEST_CAPABILITIES.set(kindId, capabilities);
+  return () => void TEST_CAPABILITIES.delete(kindId);
+}
+
 /** The capabilities of a kind by its id: the built-in set, or {@link DEFAULT_CAPABILITIES} for a kind this build does not know. */
 export function capabilitiesOf(kindId: string | null | undefined): KindCapabilities {
-  return typeof kindId === 'string' && Object.hasOwn(BUILT_IN, kindId) ? BUILT_IN[kindId] : DEFAULT_CAPABILITIES;
+  if (typeof kindId !== 'string') return DEFAULT_CAPABILITIES;
+  return Object.hasOwn(BUILT_IN, kindId) ? BUILT_IN[kindId] : (TEST_CAPABILITIES.get(kindId) ?? DEFAULT_CAPABILITIES);
 }
 
 /** The built-in kind ids that have capabilities, for the spec. */

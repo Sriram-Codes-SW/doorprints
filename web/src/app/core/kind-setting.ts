@@ -45,8 +45,8 @@ export const DEFAULT_KIND_KEY = `${STORAGE_PREFIX}kinds.default`;
 
 /** The kinds that need no experimental switch: the owner opens a kind's release gate by adding it here. */
 export const RELEASED_KINDS: readonly string[] = ['house'];
-/** Every built-in kind, the house first. */
-const BUILT_IN: readonly string[] = creatableKinds(true).map((k) => k.id);
+/** Every built-in kind, the house first (and, in a test, the kinds it registered). */
+const builtIn = (): readonly string[] => creatableKinds(true).map((k) => k.id);
 const HOUSE_ONLY: readonly string[] = ['house'];
 
 type Read = Pick<Storage, 'getItem'> | null;
@@ -61,10 +61,10 @@ function buildFlag(): string | null {
 
 /** The kinds this build may offer: the house always, then the built-in kinds the build lists, in their own order. */
 export function availableKinds(devMode: boolean = isDevMode(), flag: string | null = buildFlag()): readonly string[] {
-  if (devMode) return BUILT_IN;
+  if (devMode) return builtIn();
   if (!flag) return HOUSE_ONLY;
   const listed = new Set(flag.split(',').map((s) => s.trim()));
-  return BUILT_IN.filter((id) => id === 'house' || listed.has(id));
+  return builtIn().filter((id) => id === 'house' || listed.has(id));
 }
 
 /** The kinds this build lists that are not released: what *Experimental: more than houses* would show. */
@@ -142,12 +142,12 @@ export function setDefaultKind(id: string, available: readonly string[] = availa
 
 /**
  * What of a backup's `search` object a browser may keep (S4b-BL-307, T-T21): only the built-in kinds this build knows, once
- * each and in their own order, so a hostile file cannot put more than `BUILT_IN.length` ids, or an id nothing knows, in
+ * each and in their own order, so a hostile file cannot put more than `builtIn().length` ids, or an id nothing knows, in
  * the store. The default must be one of them, and the house alone is no hint (null).
  */
 export function knownSpaces(spaces: { kinds: readonly string[]; defaultKind: string } | null | undefined): { kinds: string[]; defaultKind: string } | null {
   if (!spaces || !Array.isArray(spaces.kinds)) return null;
-  const kinds = BUILT_IN.filter((id) => spaces.kinds.includes(id));
+  const kinds = builtIn().filter((id) => spaces.kinds.includes(id));
   if (!kinds.includes(spaces.defaultKind) || (kinds.length === 1 && kinds[0] === 'house')) return null;
   return { kinds, defaultKind: spaces.defaultKind };
 }

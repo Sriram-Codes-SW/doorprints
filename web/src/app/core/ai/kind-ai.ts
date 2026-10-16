@@ -15,6 +15,7 @@
  *
  * SPDX-License-Identifier: AGPL-3.0-only
  */
+import { isDevMode } from '@angular/core';
 import type { HouseDraft } from '../ai.service';
 import {
   type AiHouse, type Built, I_DONT_KNOW, NOTES_MAX, Redactor, SCHOOL_I_DONT_KNOW, abbreviate, areaNoteLines, clean, clipUnits,
@@ -33,7 +34,7 @@ import { NEUTRAL_RULE } from './plan-fallback';
 /** One typed extra a slot names: its type, the range a value must keep to be read, and its English words. */
 export interface AiExtra {
   readonly id: string;
-  readonly type: 'enum' | 'text' | 'number' | 'bool' | 'money';
+  readonly type: 'enum' | 'text' | 'number' | 'bool' | 'money' | 'date';
   readonly words: string;
   /** Option ids and their words, in the kind file's order (an `enum`). */
   readonly options?: Readonly<Record<string, string>>;
@@ -128,14 +129,27 @@ Rules:
 `,
 };
 
-const BUILT_IN: Readonly<Record<string, AiKind>> = { school: SCHOOL_AI };
+const BUILT_IN = new Map<string, AiKind>([['school', SCHOOL_AI]]);
+
+/**
+ * Gives a kind an AI reading for a test (the conformance suite's synthetic kind, docs/03 §18.26). Only a development build may: in a production
+ * build it throws. Returns the call that takes it away again.
+ */
+export function registerTestAiKind(kind: AiKind): () => void {
+  if (!isDevMode()) throw new Error('an AI kind is registered only in a development build');
+  BUILT_IN.set(kind.id, kind);
+  return () => void BUILT_IN.delete(kind.id);
+}
 
 /** The AI kind of a candidate of `kind`, or null: read as a house (the flag off, the house, a kind not built in). */
 export function aiKindOf(kind: string | null | undefined, devKinds: boolean): AiKind | null {
-  return devKinds && kind ? (Object.prototype.hasOwnProperty.call(BUILT_IN, kind) ? BUILT_IN[kind] : null) : null;
+  return devKinds && kind ? (BUILT_IN.get(kind) ?? null) : null;
 }
 
 const allows = (k: AiKind, slot: readonly string[], id: string) => slot.includes(id) && !k.never.includes(id);
+
+/** The bound of a number or an amount no range names, as the server's `AiKind.BOUND` (a file may leave `min` and `max` out). */
+const BOUND = 1e15;
 
 /** A JSON number with no fractional part, else null. */
 function whole(v: unknown): number | null {
@@ -144,8 +158,8 @@ function whole(v: unknown): number | null {
 
 /**
  * An extra's value in a document line, or null when it does not keep to its type and range: an option the kind offers
- * (its words), a text of at most `maxLength` characters (redacted, on one line), a whole number within range, yes or no,
- * money with a whole amount within range and the extra's one cadence (`Rs <amount>`).
+ * (its words), a text of at most `maxLength` characters (redacted, on one line), a whole number within range, yes or no, a
+ * date as `YYYY-MM-DD`, money with a whole amount within range and the extra's one cadence (`Rs <amount>`).
  */
 export function extraValue(e: AiExtra, v: unknown, r: Redactor): string | null {
   switch (e.type) {
@@ -158,15 +172,17 @@ export function extraValue(e: AiExtra, v: unknown, r: Redactor): string | null {
     }
     case 'number': {
       const n = whole(v);
-      return n == null || n < (e.min ?? 0) || n > (e.max ?? 0) ? null : String(n);
+      return n == null || n < (e.min ?? -BOUND) || n > (e.max ?? BOUND) ? null : String(n);
     }
     case 'bool':
       return typeof v === 'boolean' ? (v ? 'yes' : 'no') : null;
+    case 'date':
+      return typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null;
     case 'money': {
       const m = v as { amount?: unknown; cadence?: unknown } | null;
       if (typeof m !== 'object' || m === null || m.cadence !== e.cadence) return null;
       const n = whole(m.amount);
-      return n == null || n < (e.min ?? 0) || n > (e.max ?? 0) ? null : `Rs ${n}`;
+      return n == null || n < (e.min ?? 0) || n > (e.max ?? BOUND) ? null : `Rs ${n}`;
     }
   }
 }
@@ -186,6 +202,14 @@ export function kindText(h: AiHouse, k: AiKind): string {
       case 'street': line('Street', r.place(h.street)); break;
       case 'locality': line('Locality', r.place(h.locality)); break;
       case 'status': line('Status', h.status); break;
+      case 'money':
+        if (h.price != null) line('Price', `Rs ${h.price}${h.priceType == null ? '' : h.priceType === 'RENT' ? ' per month (rent)' : ' (sale)'}`);
+        break;
+      case 'checklist': {
+        const keys = Object.keys(h.checklist ?? {}).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+        if (keys.length) line('Checklist', keys.map((key) => `${r.freeText(key)} ${h.checklist![key]}/5`).join(', '));
+        break;
+      }
       case 'rating': if (h.rating != null) line('My rating', `${h.rating}/5`); break;
       case 'areaNotes': lines.push(...areaNoteLines(h.areaNotes, r)); break;
       case 'distances': lines.push(...distanceLines(h.distances, r)); break;
@@ -287,7 +311,7 @@ function view(h: AiHouse, devKinds: boolean, slot: (k: AiKind) => readonly strin
     label: has('label') ? h.label : '', address: has('address') ? h.address : null, street: has('street') ? h.street : null,
     locality: has('locality') ? h.locality : null, status: has('status') ? h.status : null,
     price: has('money') ? h.price : null, priceType: has('money') ? h.priceType : null, rating: has('rating') ? h.rating : null,
-    notes: has('notes') ? h.notes : null, areaNotes: has('areaNotes') ? h.areaNotes : null,
+    notes: has('notes') ? h.notes : null, areaNotes: has('areaNotes') ? h.areaNotes : null, checklist: has('checklist') ? h.checklist : undefined,
     distances: has('distances') ? h.distances : null, visits: has('visits') ? h.visits : [],
   };
 }
