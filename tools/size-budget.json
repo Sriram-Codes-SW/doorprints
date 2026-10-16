@@ -27,12 +27,12 @@
   "android/shared/src/commonMain/kotlin/app/doorprints/shared/export/ExportStrings.kt": "the readable copies' words in four languages"
  },
  "allow": {
-  "android/shared/src/commonMain/kotlin/app/doorprints/data/CommonRepository.kt": 1295,
+  "android/shared/src/commonMain/kotlin/app/doorprints/data/CommonRepository.kt": 1293,
   "android/ui/src/commonMain/kotlin/app/doorprints/ui/HouseEditScreen.kt": 1422,
   "android/ui/src/commonMain/kotlin/app/doorprints/ui/HouseListScreen.kt": 919,
   "android/ui/src/commonMain/kotlin/app/doorprints/ui/ImportScreen.kt": 923,
   "android/ui/src/commonMain/kotlin/app/doorprints/ui/MapScreen.kt": 1515,
-  "android/ui/src/commonMain/kotlin/app/doorprints/ui/SettingsScreen.kt": 929,
+  "android/ui/src/commonMain/kotlin/app/doorprints/ui/SettingsScreen.kt": 924,
   "backend/src/main/java/app/doorprints/server/backup/BackupService.java": 1241,
   "web/src/app/core/ai/ai-core.ts": 1050,
   "web/src/app/data/sync.service.ts": 1020,

@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.167 |
+| Version | 0.168 |
 | Date | 2026-10-15 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -178,6 +178,7 @@
 | 0.165 | 2026-10-15 | Claude (Code), engineer | **§18.22 The server reads every kind from its kind file** (kinds PR 28; `feat/kinds-28-server-kind-reader`; [06](06-test-plan.md) TC-U-272..277, [ai-design](ai/ai-design.md) 16.13, [schemas README](schemas/README.md) 1.63): one loader and validator in Java (`KindFiles`), the kind files packaged with the server, `ai.words` in the kind file, and the house, the school and any further kind served by the same document, prompt, extract and planner code; the house's AI output byte for byte as before (the house pins). §18.15 and §18.19 say where the server now stands. |
 | 0.166 | 2026-10-15 | Claude (Code), engineer | **New §18.23, contacts, rooms, moving in, viewings and questions as capabilities** (kinds PR 29; `feat/kinds-29-contacts-rooms-viewings`): `KindLabels.isVisible` follows `contacts`, `rooms`, `moveIn` and `viewings`; the school has viewings (visits and open days, a DRAFT) with its own question bank (`school-questions.json`, ids `qd_school_...`, seeded when first opened, no format change), its words (eighteen more `words` ids) and its own reminder channel; the website no longer makes a broker from a school's phone (S4b-BL-260's website half); house literals closed on these paths; §18.18, §18.19 and §18.9's statements that a school has no questions or viewings corrected. |
 | 0.167 | 2026-10-15 | Claude (Code), engineer | **New §18.24, filters, the baseline kind and a school's copy words as capabilities** (kinds PR 30; `feat/kinds-30-copies-filters`): `capabilities.filters` names the extras the list and the map filter by; `capabilities.baseline` (the house) replaces the comparisons with the id `house` in the paths, the AI calls, the copies' file names and the copy voice; a school's copy names its visits and questions in the school's words. |
+| 0.168 | 2026-10-15 | Claude (Code), engineer | **New §18.25, every word comes from the kind file** (kinds PR 31; `feat/kinds-31-words-from-files`; [06](06-test-plan.md) TC-U-280, TC-M-88): `words` names 159 ids; the website's hand-written word tables and the phones' key map are generated from the kind files (`tools/gen-kind-words.mjs`, `--check` in `tools/check.sh` and `security.yml`); the app-wide texts say *entries* once more than the house is in use; the tour gives another kind its own words and one generic sentence; the walk check, the viewing reminder and the calendar file follow the kind. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -3481,6 +3482,54 @@ headings are untouched.
 `kind-copy-voice.spec.ts`; `KindCapabilitiesVectorsTest`, `SchoolCopyVoiceTest`, `KindFilterVectorsTest`; the server's
 `KindCapabilitiesFileTest`; mutation lists `tools/mutations/kinds-30-web.json` and `kinds-30-android.json`; no new screen, so no new baseline
 (the school's list with its filter rows, `school_list_en_light.png`, is unchanged), and zero diff in every house baseline.
+
+### 18.25 Every word comes from the kind file (kinds PR 31)
+
+**What was left.** The kind file's `words` (S4b-BL-278, S4b-BL-316) held the ids, but three stacks still held a copy by hand: the website's
+`space-words.ts` tables and `space-tool-words.ts` (about a hundred house-key to school-key pairs, of which 22 carried an id), and the phones'
+`KindWordKeys` map. A new kind would have needed all three to be edited, and a copy can drift.
+
+**Built.**
+
+- **Every word has an id.** `kind.schema.json` `words` names 159 ids (94 before; additive, `format` stays `doorprints-kind/1`, door 4): the 16 of
+  S4b-BL-278, the phone's other words of S4b-BL-316, the Hunt and viewing words of kinds PR 26 and 29, and now the website's: Compare, Ask,
+  Plan, the copies' cover and options, the Areas and Places pages, the tab titles, the walk-end sheet, the map's offline and on-the-server lines,
+  the calendar file's word and the viewing reminder's line, the iPhone's empty list and map note. Twelve website keys were joined to existing phone
+  ids (the same slot: `compareChoose`, `exportScope`, `aiDisclosure`, ...); a word only one stack has is `null` on the other (`android: null`
+  for the website's words; `web: null` for the phone's). `house.json` holds today's keys, so a house space is word for word what it
+  was; `school.json` holds the school's. A kind with no `words` reads the house's.
+- **No hand-written table.** `tools/gen-kind-words.mjs` writes `web/src/app/core/kind-words.generated.ts` (one row per word, a column per kind file)
+  and `android/shared/.../model/KindWordData.kt` (one map per kind) from `docs/schemas/kinds/*.json`; `--check` (with `tools/gen-kind-words.test.mjs`) is in
+  `tools/check.sh` and the *Commit author emails* job of `security.yml` and fails a stale file. The website's `toolWord` table of a kind is
+  the pairs "the house's key, the key this kind reads" of the rows (`core/kind-word-table.ts`); `spaceWords` reads the 16 ids; the phones'
+  `SpaceWords`, `HuntWords` and `PageWords` are built for every kind in `KindWordKeys.KINDS`. A kind the build has no file for reads the house's. The one table
+  left is the website's `*` table (`ANY`): the words of a thing that acts on every space belong to no kind.
+- **Entries, not houses, once more than the house is in use.** The texts of the whole app that name houses (the website's Connect page, the
+  sync-paused and *remove all data* texts, the first download; the phones' Settings: the alert distance, the GPS note, the server's counts, the
+  AI notes, the Places hint, the privacy note) read *entries* when two or more kinds are on or the default kind is not the baseline
+  (`SpaceService.appWord`, `SpaceUi.neutral` and `appText`), the rule the backup's and the import's words already had (S4b-BL-291). The house
+  app alone keeps today's texts; hi, ta and te are marked *under review*.
+- **The tour.** Owner decision: a generic sentence, not a text per kind. The house tour is word for word what it was. In another kind's space a step
+  reads the kind's own words where it names the Add button, the search, the details, Compare or the viewings, and one generic sentence
+  (`tour.kind.welcome`, `.body`, `.action`, `.doneBody`, `.doneAction`; on the phones `tour_kind_*`) with the kind's plural where the house's text says
+  *house*; Compare opens the space's own address (`/k/<kind>/compare`). A step that names no kind is the same everywhere.
+- **Notifications, the walk check, the reminder.** The viewing reminder's line reads *A visit at ...* for a school (the kind of the viewing's
+  candidate); the walk-end sheet (*Link it to a school*, *Which school was this walk to?*, the empty line and the full-house line) and the
+  calendar file's word follow the kind on both stacks. The notification channels and bodies of Hunt mode and of the viewings were already
+  the kind's (kinds PR 26 and 29); the others (the walk's battery stop, the exports, the area wake-up) name no kind.
+- **Voice.** No Voice text names a house in any language (hints, rationale, statuses), so none needs a kind's word; a test pins it
+  (`school-words.spec.ts`, `KindWordVectorsTest`). **Copy file names** are the kind's plural word since §18.24; **empty states** (the list, the
+  map, the iPhone's) read the kind's words.
+- **The server.** It reads no top-level `words`; its copies of `house.json` and `school.json` (`backend/src/main/resources/kinds/`) are
+  byte-identical (`KindFileResourcesTest`) and `KindFiles` allows at most 200 words (159 now: 41 left before the limit is raised).
+
+**Vectors and tests** ([06](06-test-plan.md) TC-U-280, TC-M-88). `kind-word-vectors.json` now pins 143 words after the sixteen (the website's key
+and English text of each, the phone's key and text in four languages where it has one); web `kind-words.spec.ts`, `tour-text.spec.ts`,
+`space.spec.ts` (*the app-wide texts*), `viewing-reminder.service.spec.ts`, `walk-end-sheet.spec.ts`; `:shared` `KindWordVectorsTest`;
+`:ui` `SpaceUiTest`, `TourTest`; `:app` `SchoolWordsScreenTest`; mutation lists `tools/mutations/kinds-31-web.json` and `kinds-31-android.json`.
+New baselines (English and Hindi, light): `school_walk_end`, `school_walk_end_pick`, `school_tour_add`, `school_tour_compare`; zero diff in every house baseline.
+
+**Not built.** A tour text per kind (owner: generic); a third kind's words (it reads the house's until its file has `words`); a kind chosen by the person.
 
 ## 19. Voice input (ADR-37)
 

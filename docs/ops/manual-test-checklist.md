@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | The complete manual test list for Doorprints before real-system testing starts and before Android/iOS development continues: every check a person redoes on real devices, whether or not an automated suite or a review session already covered it |
-| Version | 0.27 |
+| Version | 0.28 |
 | Date | 2026-10-15 |
 | Author | Claude, senior reviewer |
 | Status | Draft |
@@ -39,6 +39,7 @@
 | 0.25 | 2026-10-15 | Claude (Code), engineer | MT-117: a school's Compare and checklist (kinds PR 27, [06](../06-test-plan.md) TC-M-85). |
 | 0.26 | 2026-10-15 | Claude (Code), engineer | **MT-118** (TC-M-86; kinds PR 29, [03](../03-design.md) §18.23): a school's visits and questions, a visit reminder on its own channel, the iPhone body, no broker from a school's phone. Not run. |
 | 0.27 | 2026-10-15 | Claude (Code), engineer | **MT-119** (TC-M-87; kinds PR 30, [03](../03-design.md) §18.24): a school's filters and copy. Not run. |
+| 0.28 | 2026-10-15 | Claude (Code), engineer | **MT-120** (TC-M-88; kinds PR 31, [03](../03-design.md) §18.25): a school's tour, walk check and Settings. Not run. |
 
 ## 1. How to use this list
 
@@ -1046,6 +1047,13 @@ TC-M-72 and TC-M-81 of [06](../06-test-plan.md); the website's twin is §18.
 - **Automated or reviewed by:** TC-U-279. Reviewer ran it: no.
 - Pass / Fail / Date: ____  by: ____
 
+#### MT-120 A school's tour, walk check and Settings
+- **Area:** website and Android. **Who:** anyone. **Env:** E3 and E4; the experimental kinds on, the school the default and Houses off, then the house alone.
+- **Steps:** (1) Start the tour from Settings or *Your data*: step 2 reads *Add a school on the map* (the school's own words); the Find, Details, Compare and Viewings steps use the school's words and the generic sentences name *schools*; the last step says *add your first one*. (2) Walk 100 m and end the walk: *Link it to a school to keep it* and *Save with a school*; the picker says *Which school was this walk to?*. (3) Open Connect and Your data (website) and Settings (phone): the texts say *entries*, never *houses*. (4) Plan a visit with a reminder: the notification reads *A visit at ...*. (5) Turn the experimental switch off: every text is the house's again. Repeat in Hindi.
+- **Expected:** as described; hi, ta and te are marked under review.
+- **Automated or reviewed by:** TC-U-280. Reviewer ran it: no.
+- Pass / Fail / Date: ____  by: ____
+
 ### 19.1 Summary rows (add to §13 when the owner starts the run)
 
 | Id | Title | Who | Env | Reviewer ran it | Result |
@@ -1058,6 +1066,7 @@ TC-M-72 and TC-M-81 of [06](../06-test-plan.md); the website's twin is §18.
 | MT-117 | A school's Compare and checklist: website and Android | anyone, natives | E3, E4 | no | |
 | MT-118 | A school's visits and questions, and a visit reminder: Android, iPhone, website | owner, natives | E3, E4, E5 | no | |
 | MT-119 | A school's filters and copy: website and Android | anyone | E3, E4 | no | |
+| MT-120 | A school's tour, walk check and Settings: website and Android | anyone | E3, E4 | no | |
 
 ## 20. A school's pages and copies (S4b-BL-256, S4b-BL-259, S4b-BL-266, S4b-BL-277)
 

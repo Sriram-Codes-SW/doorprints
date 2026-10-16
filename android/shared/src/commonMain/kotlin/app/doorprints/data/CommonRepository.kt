@@ -311,13 +311,8 @@ open class CommonRepository(
 
     override suspend fun saveQuestions(questions: List<Question>) = questionStore.saveAll(questions)
 
-    override suspend fun addQuestion(
-        text: String,
-        category: QuestionCategory,
-        appliesTo: QuestionScope,
-        defaultOn: Boolean,
-        kind: String,
-    ): String = questionStore.add(text, category, appliesTo, defaultOn, kind)
+    override suspend fun addQuestion(text: String, category: QuestionCategory, appliesTo: QuestionScope, defaultOn: Boolean, kind: String): String =
+        questionStore.add(text, category, appliesTo, defaultOn, kind)
 
     override suspend fun deleteQuestion(id: String) = questionStore.delete(id)
 

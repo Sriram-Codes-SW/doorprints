@@ -44,6 +44,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -60,6 +61,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.doorprints.data.Repository
 import app.doorprints.shared.model.AnswerStatus
 import app.doorprints.shared.model.AnswerWords
 import app.doorprints.shared.model.HouseAnswer
@@ -301,4 +304,16 @@ private fun QuestionPicker(
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(Res.string.common_cancel)) } },
     )
+}
+
+/**
+ * The question bank of one kind (kinds PR 29, docs/03 section 18.23): the house's questions never reach a school, nor the school's a house. The kind's seed
+ * is added once, in the language on screen, when its first candidate page opens.
+ */
+@Composable
+fun rememberKindQuestionBank(repo: Repository, kindId: String): List<Question> {
+    val whole: List<Question> by remember(repo) { repo.observeQuestions() }.collectAsStateWithLifecycle(emptyList())
+    val language = uiLanguage()
+    LaunchedEffect(kindId) { repo.seedKindQuestionsOnce(kindId, language) }
+    return remember(whole, kindId) { whole.filter { it.kind == kindId } }
 }

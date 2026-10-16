@@ -253,6 +253,12 @@ class SpaceUi(val setting: KindSetting, val kind: String) {
 @Composable
 fun appText(base: StringResource, neutral: StringResource): StringResource = if (LocalSpace.current.neutral) neutral else base
 
+/** Settings' privacy note: the phone's or, where there are no photos taken yet (the iPhone), the iPhone's, each in its neutral reading once more than the house is in use. */
+@Composable
+fun privacyNote(addPhotos: Boolean): StringResource =
+    if (addPhotos) appText(Res.string.settings_privacy_note, Res.string.settings_privacy_note_any)
+    else appText(Res.string.settings_privacy_note_ios, Res.string.settings_privacy_note_ios_any)
+
 /** The space on screen; the house alone unless [DoorprintsRoot] provides another. */
 val LocalSpace = staticCompositionLocalOf { SpaceUi.HOUSE }
 

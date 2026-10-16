@@ -84,7 +84,6 @@ import app.doorprints.shared.model.HouseStatus
 import app.doorprints.shared.model.DuplicateFlat
 import app.doorprints.shared.model.KindFields
 import app.doorprints.shared.model.Candidates
-import app.doorprints.shared.model.CompareCriteria
 import app.doorprints.shared.model.DevKinds
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -373,7 +372,6 @@ fun HouseEditScreen(
                     else -> LocationSource.MAP
                 },
                 createdAt = now, updatedAt = now,
-            // A draft that already is of the space's kind is kept as it is (the house's, byte for byte); another kind's money and price type are its own.
             ).let { if (it.kind == space.creating.id) it else it.forKind(space.creating) }
             draft = fresh
             baseline = fresh
@@ -427,15 +425,11 @@ fun HouseEditScreen(
     val brokers: List<Pair<String, Broker>> by remember(repo) { repo.observeBrokers() }.collectAsStateWithLifecycle(emptyList())
     // Every live house, for the duplicate-flat warning (S4b-BL-85) under the floor.
     val allHouses: List<HouseEntity> by remember(repo) { repo.houses }.collectAsStateWithLifecycle(emptyList())
-    val scoring = remember(kind.id, repo) { repo.observeScoring().map { CompareCriteria.scoringFor(kind, it) } }.collectAsStateWithLifecycle(Scoring.DEFAULT).value
+    val scoring = remember(kind.id, repo) { repo.observeScoring().map { app.doorprints.shared.model.CompareCriteria.scoringFor(kind, it) } }.collectAsStateWithLifecycle(Scoring.DEFAULT).value
     // How the rooms' sizes are shown and typed (slice 1c, this phone's setting).
     val lengthUnit by remember(repo) { repo.settings.lengthUnit }.collectAsStateWithLifecycle(LengthUnit.FT)
-    // The question bank (slice 3a), for *Add the usual questions* and *Add a question*.
-    // The candidate's kind's own bank only (kinds PR 29, docs/03 §18.23): the house's questions never reach a school, nor the school's a house.
-    val wholeBank: List<Question> by remember(repo) { repo.observeQuestions() }.collectAsStateWithLifecycle(emptyList())
-    val questionBank = remember(wholeBank, kind.id) { wholeBank.filter { it.kind == kind.id } }
-    val bankLanguage = uiLanguage()
-    LaunchedEffect(kind.id) { repo.seedKindQuestionsOnce(kind.id, bankLanguage) }
+    // The question bank (slice 3a), for *Add the usual questions* and *Add a question*: the candidate's kind's own only (kinds PR 29).
+    val questionBank = rememberKindQuestionBank(repo, kind.id)
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
     var confirmLeave by rememberSaveable { mutableStateOf(false) }
     var confirmVisitDelete by rememberSaveable { mutableStateOf<String?>(null) }

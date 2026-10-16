@@ -750,13 +750,7 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {},
         SectionHeading(stringResource(Res.string.settings_privacy))
         // iOS has the map (CMP-8c) but no street-name lookup and no photos taken yet (they come in one later step), so
         // its note names the iPhone and the map tiles only.
-        Text(
-            stringResource(
-                if (platformFeatures.addPhotos) appText(Res.string.settings_privacy_note, Res.string.settings_privacy_note_any)
-                else appText(Res.string.settings_privacy_note_ios, Res.string.settings_privacy_note_ios_any),
-            ),
-            style = MaterialTheme.typography.bodySmall,
-        )
+        Text(stringResource(privacyNote(platformFeatures.addPhotos)), style = MaterialTheme.typography.bodySmall)
         // The app lock (docs/11 5.19): the phone's own screen lock when Doorprints opens.
         AppLockSection(settings, modifier = Modifier.tourTarget(TourTargets.SETTINGS_LOCK))
 
