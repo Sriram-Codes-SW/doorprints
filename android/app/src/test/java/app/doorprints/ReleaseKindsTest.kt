@@ -96,6 +96,13 @@ class ReleaseKindsTest {
     }
 
     @Test
+    fun theSyntheticConformanceKindIsInNoReleaseList() {
+        assertFalse(releaseKinds().contains("zz_all"))
+        assertFalse(KindSettingRules.availableOf(releaseKinds()).contains("zz_all"))
+        assertFalse(KindSettingRules.RELEASED.contains("zz_all"))
+    }
+
+    @Test
     fun theDebugBuildListsWhatTheReleaseListsAndOnlyAnExplicitPropertyTurnsTheDeveloperFlagOn() {
         val debug = block("        debug {")
         assertTrue(debug.contains("val kinds = named ?: \"${releaseKinds()}\""))
