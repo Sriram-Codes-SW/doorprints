@@ -59,12 +59,15 @@ const WHY: Record<PhotoRestoreReason, TKey> = {
         @if (note(); as m) {
           <p class="note">{{ m.key | t: m.params }}</p>
         }
-        @if (retry(); as r) {
+      </div>
+      <!-- Outside the live region: a control inside role="status" would be announced as part of its text. -->
+      @if (retry(); as r) {
+        <div class="retry-row">
           <button type="button" class="btn retry" [disabled]="busy()" [attr.aria-label]="'delete.retryAria' | t: { name: r.name || ('delete.unnamed' | t) }" (click)="retryPhotos()">
             {{ 'delete.retryPhotos' | t }}
           </button>
-        }
-      </div>
+        </div>
+      }
       @if (error(); as e) {
         <p class="error" role="alert">{{ e.key | t: e.params }}</p>
       }
@@ -100,6 +103,7 @@ const WHY: Record<PhotoRestoreReason, TKey> = {
     .row { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-2) var(--space-3); padding: var(--space-2) 0; border-top: 1px solid var(--border); }
     .what p { margin: 0; overflow-wrap: anywhere; }
     .note { margin: var(--space-2) 0 0; }
+    .retry-row { margin: var(--space-2) 0 0; }
     .empty { margin-top: var(--space-3); }
     @media (min-width: 40rem) { .row { grid-template-columns: minmax(0, 1fr) auto; align-items: center; } }
   `,

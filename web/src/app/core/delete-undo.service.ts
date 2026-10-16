@@ -89,13 +89,18 @@ export interface PhotoRetry {
   readonly known: readonly GonePhoto[];
 }
 
-/** The retry to offer, when a reason a second try can fix is among the reasons; null otherwise. */
+/**
+ * The retry to offer, or null when there is nothing to try again. `stillGone` is what the next attempt should ask for:
+ * the photos that still have no bytes here and failed for a reason a second try can fix (Drive not connected, or
+ * offline). Narrowing to those is what stops a second retry from re-fetching a photo that already came back — which
+ * would store a duplicate of it.
+ */
 export function retryOffer(
   name: string,
-  ctx: { houseId: string; houseDeletedAt: number; noted: number; known: readonly GonePhoto[] },
-  reasons: readonly PhotoRestoreReason[],
+  ctx: { houseId: string; houseDeletedAt: number; noted: number },
+  stillGone: readonly GonePhoto[],
 ): PhotoRetry | null {
-  return reasons.some((r) => r === 'OFFLINE' || r === 'NOT_CONNECTED') ? { name, ...ctx } : null;
+  return stillGone.length > 0 ? { name, ...ctx, known: stillGone } : null;
 }
 
 /** The name a candidate goes by in the words around a delete: its label, else its address, else ''. */
@@ -213,11 +218,11 @@ export class DeleteUndoService {
     if (!result) return undefined;
     await this.note(entry.id, 0);
     const noted = Math.max(entry.photos, result.photosBack + result.photosGone);
-    const ctx = { houseId: entry.id, houseDeletedAt: result.deletedAt, noted, known: result.gone };
-    const { fromDrive, failed, connection } = await this.bringPhotosBack(ctx, now, restorer);
+    const ctx = { houseId: entry.id, houseDeletedAt: result.deletedAt, noted };
+    const { fromDrive, failed, connection, stillGone } = await this.bringPhotosBack({ ...ctx, known: result.gone }, now, restorer);
     this.sync.syncSoon();
     const summary = summarize(noted, result.photosBack + fromDrive, failed, connection);
-    return { name: entry.name, photosTotal: summary.total, photosBack: summary.restored, photosFromDrive: fromDrive, reasons: summary.reasons, retry: retryOffer(entry.name, ctx, summary.reasons) };
+    return { name: entry.name, photosTotal: summary.total, photosBack: summary.restored, photosFromDrive: fromDrive, reasons: summary.reasons, retry: retryOffer(entry.name, ctx, stillGone) };
   }
 
   /**
@@ -226,10 +231,11 @@ export class DeleteUndoService {
    * for the same files the restore did and puts back each that answers, exactly like {@link restore}. Nothing is deleted.
    */
   async retryPhotos(retry: PhotoRetry, now: number = Date.now(), restorer: PhotoRestorer | null = null): Promise<Restored> {
-    const { fromDrive, failed, connection } = await this.bringPhotosBack(retry, now, restorer);
+    const { fromDrive, failed, connection, stillGone } = await this.bringPhotosBack(retry, now, restorer);
     this.sync.syncSoon();
     const summary = summarize(retry.noted, fromDrive, failed, connection);
-    return { name: retry.name, photosTotal: summary.total, photosBack: summary.restored, photosFromDrive: fromDrive, reasons: summary.reasons, retry: retryOffer(retry.name, retry, summary.reasons) };
+    const ctx = { houseId: retry.houseId, houseDeletedAt: retry.houseDeletedAt, noted: retry.noted };
+    return { name: retry.name, photosTotal: summary.total, photosBack: summary.restored, photosFromDrive: fromDrive, reasons: summary.reasons, retry: retryOffer(retry.name, ctx, stillGone) };
   }
 
   /**
@@ -241,8 +247,8 @@ export class DeleteUndoService {
     ctx: { houseId: string; houseDeletedAt: number; known: readonly GonePhoto[] },
     now: number,
     restorer: PhotoRestorer | null,
-  ): Promise<{ fromDrive: number; failed: PhotoRestoreReason[]; connection: RestoreConnection }> {
-    if (!restorer) return { fromDrive: 0, failed: ctx.known.map(() => 'NOT_CONNECTED'), connection: 'NOT_CONNECTED' };
+  ): Promise<{ fromDrive: number; failed: PhotoRestoreReason[]; connection: RestoreConnection; stillGone: GonePhoto[] }> {
+    if (!restorer) return { fromDrive: 0, failed: ctx.known.map(() => 'NOT_CONNECTED'), connection: 'NOT_CONNECTED', stillGone: [...ctx.known] };
     let report: PhotoRestoreReport;
     try {
       report = await restorer.restorePhotos({ houseId: ctx.houseId, houseDeletedAt: ctx.houseDeletedAt, known: ctx.known });
@@ -251,6 +257,9 @@ export class DeleteUndoService {
     }
     let fromDrive = 0;
     const failed: PhotoRestoreReason[] = report.failed.map((f) => f.reason);
+    // Only the photos a second try can still fetch are carried to the next attempt: a photo past its window or gone from
+    // Drive will not come back, and one that did come back is already stored.
+    const stillGone = report.failed.filter((f) => f.reason === 'OFFLINE' || f.reason === 'NOT_CONNECTED').map((f) => f.photo);
     const stamp = isoNow(now);
     for (const got of report.fetched) {
       try {
@@ -260,7 +269,7 @@ export class DeleteUndoService {
         failed.push('UNREADABLE');
       }
     }
-    return { fromDrive, failed, connection: report.connection };
+    return { fromDrive, failed, connection: report.connection, stillGone };
   }
 
   /** {@link note} for many at once: one read and one write of the notes. */
