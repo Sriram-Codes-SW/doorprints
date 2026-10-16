@@ -61,7 +61,7 @@ describe('ImportService', () => {
     const house = await store.getHouse('h1');
     expect(house?.label).toBe('House h1');
     expect(house?.dirty).toBe(true);
-    const photo = await store.getPhoto('p1');
+    const photo = await store.photos.get('p1');
     expect(photo?.sizeBytes).toBe(300);
     expect(photo?.uploaded).toBe(false);
     expect((await importer.preview(backup, { mode: 'MERGE' })).isEmpty).toBe(true);
@@ -90,11 +90,11 @@ describe('ImportService', () => {
     const [copyId] = [...copy.undo!.houses.keys()];
     expect(copyId).not.toBe('h1');
     expect((await store.liveHouses()).length).toBe(2);
-    expect((await store.photosOf(copyId)).length).toBe(1);
+    expect((await store.photos.ofHouse(copyId)).length).toBe(1);
     const undone = await importer.undoCopy(copy.undo!, NOW + 1000);
     expect(undone).toEqual({ removed: 1, kept: 0 });
     expect((await store.liveHouses()).map((h) => h.id)).toEqual(['h1']);
-    expect(await store.photosOf(copyId)).toEqual([]);
+    expect(await store.photos.ofHouse(copyId)).toEqual([]);
   });
 
   it('a house deleted here stays deleted unless brought back, then it is stamped past the tombstone', async () => {

@@ -122,6 +122,19 @@ class MapRulesTest {
     }
 
     @Test
+    fun theAttributionIsLiftedAboveASnackbarBesideTheRow() {
+        // No snackbar: the legend's place (or nothing) decides, as before.
+        assertEquals(90f, attributionOverlayTopDp(90f, 0f), 0.001f)
+        assertEquals(0f, attributionOverlayTopDp(0f, 0f), 0.001f)
+        // A one-line snackbar, 48 dp tall from the 16 dp margin: the "i" clears 64 dp, 8 dp more for the gap.
+        assertEquals(64f, attributionOverlayTopDp(0f, 48f), 0.001f)
+        assertEquals(72f, attributionBottomDp(attributionOverlayTopDp(0f, 48f)), 0.001f)
+        // A taller legend place stays the higher; a taller snackbar wins.
+        assertEquals(90f, attributionOverlayTopDp(90f, 48f), 0.001f)
+        assertEquals(16f + 120f, attributionOverlayTopDp(90f, 120f), 0.001f)
+    }
+
+    @Test
     fun markersTellStatusBySizeNotOnlyColour() {
         // The web map's circle-radius stops (map-page.ts), zoom 8, 14 and 18, in ascending order.
         assertEquals(listOf(8f, 14f, 18f), MARKER_RADII.map { it.zoom })

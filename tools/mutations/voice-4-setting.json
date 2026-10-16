@@ -1,0 +1,35 @@
+{
+ "spec": "web/src/app/pages/connect/voice-setting.spec.ts",
+ "mutations": [
+  {
+   "file": "web/src/app/pages/connect/voice-setting.ts",
+   "find": "@if (voice.providerOk()) {",
+   "replace": "@if (true) {",
+   "expect": "there is no switch, only the reason"
+  },
+  {
+   "file": "web/src/app/pages/connect/voice-setting.ts",
+   "find": "[checked]=\"voice.enabled()\"",
+   "replace": "[checked]=\"true\"",
+   "expect": "is off by default, with the disclosure"
+  },
+  {
+   "file": "web/src/app/pages/connect/voice-setting.ts",
+   "find": "this.voice.setEnabled((event.target as HTMLInputElement).checked);",
+   "replace": "this.voice.setEnabled(true);",
+   "expect": "turning it on and off is kept in this browser"
+  },
+  {
+   "file": "web/src/app/pages/connect/voice-setting.ts",
+   "find": "@if (ai.optedIn()) {",
+   "replace": "@if (true) {",
+   "expect": "shows nothing until AI features are on"
+  },
+  {
+   "file": "web/src/app/pages/connect/voice-setting.ts",
+   "find": "@if (voice.enabled() && !recordable) {",
+   "replace": "@if (!recordable) {",
+   "expect": "says so when the switch is on but this browser cannot record"
+  }
+ ]
+}

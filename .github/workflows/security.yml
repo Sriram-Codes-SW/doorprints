@@ -71,6 +71,22 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
+      # Docker Hub rate limit (docs/07 section 7.3): optional login with a read-only access token. Without the two secrets
+      # (forks, Dependabot, not yet set, expired) the step is skipped or fails softly and the pulls stay anonymous.
+      - name: Docker Hub secrets present?
+        id: dockerhub
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          if [ -n "$DOCKERHUB_USERNAME" ] && [ -n "$DOCKERHUB_TOKEN" ]; then echo "present=true" >> "$GITHUB_OUTPUT"; fi
+      - name: Log in to Docker Hub (pull rate limit)
+        if: ${{ steps.dockerhub.outputs.present == 'true' }}
+        continue-on-error: true
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
       # --config auto picks rules for the languages found (Java, Kotlin, TypeScript, Dockerfile, YAML). It fetches
       # rules from the Semgrep registry and needs metrics on; no code leaves the runner.
       - name: semgrep scan
@@ -124,17 +140,73 @@ jobs:
       # The FSF's "How to Use GNU Licenses": every source file carries the copyright and licence notice (docs/10 §12.6).
       - name: Every source file has the copyright and licence notice
         run: python3 .github/scripts/licence-headers.py --check
+      # S4b-BL-156: one `| Version |` header row per document, equal to the top change-log row; change-log versions unique
+      # and the latest in order. Parallel pull requests used to collide there and a hand merge kept every side's row.
+      - name: Document versions are consistent (one header row, change log in step)
+        run: |
+          node --test tools/check-docs-versions.test.mjs
+          node tools/check-docs-versions.mjs
+          # docs/14 §7 *Status words*: no docs/10 row says In review without a pull request number (offline)
+          node --test tools/check-sprint-status.test.mjs
+          node tools/check-sprint-status.mjs
+      # docs/03 §18.25: the generated words of the kind files are what the kind files say (offline).
+      - name: Kind words are generated from the kind files
+        run: |
+          node --test tools/gen-kind-words.test.mjs
+          node tools/gen-kind-words.mjs --check
+      # docs/03 §18.26: the kind tripwire. No source names the house kind outside its allow-list, none names the test-only kind zz_all, and the
+      # map rules (style and India boundary lines) read no kind (offline).
+      - name: Kind tripwire (no house literal outside the allow-list, no zz_all, the map rules read no kind)
+        run: |
+          node --test tools/check-kind-literals.test.mjs
+          node tools/check-kind-literals.mjs
+      # S4b-BL-175: the fake AI provider server's own tests (Node built-ins only, no network, no key). The adapters are run
+      # against it by the Web (fake-provider.wire.spec.ts) and Android (FakeProviderWireTest) workflows.
+      - name: Fake AI provider server tests
+        run: node --test tools/fake-ai-provider/server.test.mjs
+      # S4b-BL-227: the scorecard comparison tool of the AI evals (Node built-ins only).
+      - name: AI eval comparison tool tests
+        run: node --test tools/ai-eval-compare.test.mjs
+      # S4b-BL-157: the floor guard. A change must not loosen a gate: a new test skip or focus, a deleted test or spec, a new
+      # suppression or empty catch, a removed mutation entry, a raised bundle budget. Exit 2 = it could not run (no
+      # origin/main), which fails the step too; a skipped guard is never a pass. The allow line `Gate-loosening: <why>` is read
+      # from the pull request's head commit (this checkout is the merge commit, whose message says nothing).
+      - name: The floor is not lowered (no skipped test, suppression or relaxed budget)
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          # fetch-depth 0 above brings origin/main; the fallback is for a shallower checkout
+          { git rev-parse --verify -q origin/main >/dev/null || git fetch --no-tags origin main:refs/remotes/origin/main; }
+          if [ -n "$HEAD_SHA" ]; then FLOOR_GUARD_ALLOW="$(git log -1 --format=%B "$HEAD_SHA")"; export FLOOR_GUARD_ALLOW; fi
+          node --test tools/check-floor.test.mjs
+          node tools/check-floor.mjs
+      # S4b-BL-205 (docs/03 ADR-36 §18.6): the file-size budget. A product source file over 900 lines fails (600 warns);
+      # the files already over 900 are allowlisted at their size of 2026-10-10 in tools/size-budget.json and may not grow.
+      # The floor guard above reports a raised or added allowlist entry.
+      - name: The file-size budget holds (no source file over 900 lines beyond the allowlist)
+        run: |
+          node --test tools/check-size-budget.test.mjs
+          node tools/check-size-budget.mjs
+      # SEC-030: third-party actions pinned to a commit SHA, every workflow with top-level permissions.
+      - name: Third-party actions are pinned to a commit SHA
+        run: |
+          python3 .github/scripts/check_action_pins_test.py
+          python3 .github/scripts/check-action-pins.py
+      # S4b-BL-172 (SEC-024): every FROM in every Dockerfile names its base image by digest (tag@sha256:...).
+      - name: Dockerfile base images are pinned by digest
+        run: |
+          python3 .github/scripts/check_dockerfile_pins_test.py
+          python3 .github/scripts/check-dockerfile-pins.py
       - name: Only allowlisted author and committer emails in the new commits
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          # The owner's ID no-reply address and gmail (not linked to the account until verified in GitHub's email
-          # settings), Claude sessions, GitHub's web-flow committer, Dependabot. Extend here, never with a bare
-          # NAME@users.noreply.github.com address.
+          # The owner's ID no-reply address, Claude sessions, the Cursor cloud agent (its own non-personal identity),
+          # GitHub's web-flow committer, Dependabot. Extend here, never with a bare NAME@users.noreply.github.com address.
           ALLOWED: >-
             329133251+Sriram-Codes-SW@users.noreply.github.com
-            owner-email-removed
             noreply@anthropic.com
+            cursoragent@cursor.com
             noreply@github.com
             49699333+dependabot[bot]@users.noreply.github.com
         run: |
@@ -206,6 +278,22 @@ jobs:
       - name: Prepare Trivy cache directory
         run: mkdir -p "$HOME/.cache/trivy"
 
+      # Docker Hub rate limit (docs/07 section 7.3): optional login with a read-only access token. Without the two secrets
+      # (forks, Dependabot, not yet set, expired) the step is skipped or fails softly and the pulls stay anonymous.
+      - name: Docker Hub secrets present?
+        id: dockerhub
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          if [ -n "$DOCKERHUB_USERNAME" ] && [ -n "$DOCKERHUB_TOKEN" ]; then echo "present=true" >> "$GITHUB_OUTPUT"; fi
+      - name: Log in to Docker Hub (pull rate limit)
+        if: ${{ steps.dockerhub.outputs.present == 'true' }}
+        continue-on-error: true
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
       # Pinned image version (not the moving trivy-action tags). Blocking: npm lock file vulnerabilities and secrets.
       # --offline-scan: never fetch POMs from remote Maven repositories (Java is covered by the SBOM step below);
       # backend/pom.xml is skipped so Java findings are reported once.

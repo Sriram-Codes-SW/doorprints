@@ -18,6 +18,7 @@
 
 package app.doorprints.shared.listing
 
+import app.doorprints.shared.ai.ContactRedactor
 import app.doorprints.shared.ai.DraftSanitizer
 import app.doorprints.shared.ai.RawListing
 import app.doorprints.shared.api.HouseDraftDto
@@ -46,9 +47,10 @@ object ListingText {
 
     private val URL = Regex("""https?://[^\s<>"']+""")
     private val TRACKING = Regex("""^(utm_.*|fbclid|gclid|igshid|ref|src)$""")
-    /** An Indian mobile number, with or without +91, spaces or dashes. */
-    private val PHONE = Regex("""(?:\+91[\s-]?)?(?:0)?[6-9]\d{4}[\s-]?\d{5}\b""")
-    private val BHK = Regex("""\b(\d{1,2})\s*-?\s*(?:BHK|bhk|Bhk|bedroom|bedrooms|BR)\b""")
+    /** An Indian mobile number, with or without +91, spaces or dashes, or a landline with its STD code (011 4155 0101, (022) 2655 0101). */
+    private val PHONE = Regex("""(?:\+91[\s-]?)?(?:0)?[6-9]\d{4}[\s-]?\d{5}\b|(?<!\d)\(?0\d{2,4}\)?[\s-]?\d{3,4}[\s-]?\d{3,4}\b""")
+    /** "2.5 BHK" is 2 (the half is a study), as the sanitiser reads it: never 5, from the digit after the dot. */
+    private val BHK = Regex("""\b(\d{1,2})(?:\.5)?\s*-?\s*(?:BHK|bhk|Bhk|bedroom|bedrooms|BR)\b""")
     private val STUDIO = Regex("""\b(studio|1\s*RK)\b""", RegexOption.IGNORE_CASE)
     /** A price with the rupee sign or Rs, or a bare lakh/crore amount. */
     private val PRICE = Regex(
@@ -57,9 +59,27 @@ object ListingText {
     )
     private val RENT = Regex("""\b(for rent|rent|rental|per month|/\s*month|monthly|lease|pm)\b""", RegexOption.IGNORE_CASE)
     private val SALE = Regex("""\b(for sale|sale|resale|buy|selling)\b""", RegexOption.IGNORE_CASE)
-    /** "in Indiranagar, Bengaluru", "at HSR Layout Sector 2, Bangalore": the place before the city. */
+    /** The cities a locality can be followed by (the same list as the website's CITIES). */
+    private val CITIES = listOf(
+        "Bengaluru", "Bangalore", "Chennai", "Hyderabad", "Mumbai", "Navi Mumbai", "Thane", "Pune",
+        "Delhi", "New Delhi", "Gurgaon", "Gurugram", "Noida", "Kolkata", "Kochi", "Coimbatore",
+        "Mysuru", "Mysore", "Ahmedabad", "Jaipur", "Lucknow", "Chandigarh", "Indore", "Bhopal",
+        "Nagpur", "Surat", "Vadodara", "Visakhapatnam", "Vijayawada", "Thiruvananthapuram", "Trivandrum", "Madurai",
+        "Mangaluru", "Mangalore", "Guwahati", "Shillong", "Imphal", "Agartala", "Itanagar", "Gangtok",
+        "Dehradun", "Shimla", "Manali", "Mussoorie", "Haridwar", "Rishikesh", "Srinagar", "Jammu",
+        "Leh", "Amritsar", "Ludhiana", "Mohali", "Panchkula", "Panaji", "Goa", "Margao",
+        "Ranchi", "Patna", "Bhubaneswar", "Cuttack", "Raipur", "Gandhinagar", "Rajkot", "Nashik",
+        "Aurangabad", "Kolhapur", "Kozhikode", "Calicut", "Thrissur", "Kannur", "Hubballi", "Belagavi",
+        "Udaipur", "Jodhpur", "Kanpur", "Varanasi", "Prayagraj", "Ghaziabad", "Faridabad", "Puducherry",
+        "Pondicherry", "Tiruchirappalli", "Salem", "Port Blair", "Kavaratti",
+    )
+
+    /** The names as written and in capitals (a forward in capitals says "MUMBAI"); the regular expression is case-sensitive on purpose. */
+    private val CITY_ALTERNATIVES = (CITIES + CITIES.map { it.uppercase() }).joinToString("|")
+
+    /** "in Indiranagar, Bengaluru", "at HSR Layout Sector 2, Bangalore", "IN BANDRA WEST, MUMBAI": the place before the city. */
     private val LOCALITY = Regex(
-        """\b(?:in|at|near)\s+([A-Z][\w.'-]*(?:\s+(?:[A-Z0-9][\w.'-]*|of|the)){0,4}?),?\s+(?:Bengaluru|Bangalore|Chennai|Hyderabad|Mumbai|Navi Mumbai|Thane|Pune|Delhi|New Delhi|Gurgaon|Gurugram|Noida|Kolkata|Kochi|Coimbatore|Mysuru|Mysore|Ahmedabad|Jaipur|Lucknow|Chandigarh|Indore|Bhopal|Nagpur|Surat|Vadodara|Visakhapatnam|Vijayawada|Thiruvananthapuram|Trivandrum|Madurai|Mangaluru|Mangalore)\b""",
+        """\b(?:in|at|near|IN|AT|NEAR)\s+([A-Z][\w.'-]*(?:\s+(?:[A-Z0-9][\w.'-]*|of|the)){0,4}?),?\s+(?:$CITY_ALTERNATIVES)\b""",
     )
     private val AREA = Regex("""(\d{3,5})\s*(?:sq\.?\s*ft|sqft|sq\.?\s*feet|square\s*feet|sq\.?\s*m)\b""", RegexOption.IGNORE_CASE)
     private val FURNISHING = Regex("""\b(fully[- ]furnished|semi[- ]furnished|unfurnished|furnished)\b""", RegexOption.IGNORE_CASE)
@@ -73,7 +93,10 @@ object ListingText {
         val url = urlIn(t)
         // The words are read with the links taken out: a portal's address says "rent" or "buy" for its own reasons.
         val words = t.replace(URL, " ")
-        val priceMatch = PRICE.find(words)
+        // The numbers are read in 0-9 whatever script they are written in (S4b-BL-174b; one character for one character, so
+        // the text and its reading line up); the words, the locality and the notes keep what was written.
+        val digits = ContactRedactor.asciiDigits(words)
+        val priceMatch = PRICE.find(digits)
         val priceText = priceMatch?.let { m ->
             if (m.groupValues[1].isNotEmpty()) m.groupValues[1] + " " + m.groupValues[2] else m.groupValues[3] + " " + m.groupValues[4]
         }?.trim()
@@ -84,8 +107,8 @@ object ListingText {
             rupees != null && rupees >= SALE_FROM_RUPEES -> "SALE"
             else -> null
         }
-        val bedrooms = BHK.find(words)?.groupValues?.get(1) ?: STUDIO.find(words)?.let { "studio" }
-        val area = AREA.find(words)?.groupValues?.get(1)
+        val bedrooms = BHK.find(digits)?.groupValues?.get(1) ?: STUDIO.find(words)?.let { "studio" }
+        val area = AREA.find(digits)?.groupValues?.get(1)
         val details = listOfNotNull(
             area?.let { "$it sq ft" },
             FURNISHING.find(words)?.value?.lowercase()?.replaceFirstChar { it.uppercase() },
@@ -98,7 +121,7 @@ object ListingText {
             priceType = priceType,
             bedrooms = bedrooms,
             areaSqft = area,
-            contactPhone = PHONE.find(words)?.value,
+            contactPhone = PHONE.find(digits)?.value,
             listingUrl = url,
             notes = notes,
         )

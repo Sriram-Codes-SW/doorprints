@@ -115,7 +115,7 @@ class BackupParityTest {
         from += start.length();
         int to = source.indexOf("`;", from);
         assertThat(to).as("%s: unterminated template literal", path).isGreaterThan(from);
-        assertThat(templateLiteral(source.substring(from, to), path)).isEqualTo(CanonicalSample.json());
+        assertThat(templateLiteral(source.substring(from, to), path)).isEqualTo(CanonicalSample.text());
     }
 
     /**
@@ -127,7 +127,13 @@ class BackupParityTest {
     @Test
     void theSampleRecordsHaveExactlyTheRecordsComponents() {
         var root = tools.jackson.databind.json.JsonMapper.builder().build().readTree(CanonicalSample.json());
-        assertThat(keysOf(root, "houses")).isEqualTo(components(BackupHouse.class));
+        // Then extrasOther (S4b-BL-248): a newer app's extras, never a key of a file of the family before (they travel in
+        // a candidate's extras), so no sample house carries it.
+        var houseKeys = new java.util.ArrayList<>(keysOf(root, "houses"));
+        houseKeys.add("extrasOther");
+        // Then kind (S4b-BL-209): a kind other than the house, read out of a candidate the same way.
+        houseKeys.add("kind");
+        assertThat(houseKeys).isEqualTo(components(BackupHouse.class));
         // Slice 1c: the rooms nested in the fullest house carry exactly the components of HouseRoom, in order.
         var rooms = new java.util.ArrayList<String>();
         for (var house : root.get("houses")) {

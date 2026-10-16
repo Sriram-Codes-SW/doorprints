@@ -18,6 +18,8 @@
 
 package app.doorprints.shared.export
 
+import app.doorprints.shared.model.KindCapabilities
+import app.doorprints.shared.model.Candidates
 import app.doorprints.shared.model.Broker
 import app.doorprints.shared.model.Criterion
 import app.doorprints.shared.model.Ranking
@@ -38,6 +40,10 @@ import app.doorprints.shared.model.Area
 import app.doorprints.shared.model.AreaNote
 import app.doorprints.shared.model.AreaNotes
 import app.doorprints.shared.model.Distances
+import app.doorprints.shared.model.KindFields
+import app.doorprints.shared.model.KindSettingRules
+import app.doorprints.shared.model.SpaceView
+import kotlinx.serialization.json.JsonObject
 import app.doorprints.shared.model.HousePoint
 import app.doorprints.shared.model.Place
 import app.doorprints.shared.model.PlaceDistance
@@ -129,6 +135,18 @@ data class ExportHouse(
     val checklist: Map<String, Int> = emptyMap(),
     val createdAt: Long,
     val updatedAt: Long,
+    /**
+     * The extras a newer app wrote that this one does not know (S4b-BL-248; `HouseEntity.extrasOther`), kept so a
+     * backup made here holds them: never a key of a file of the family before ([BackupWire] reads them out of a
+     * candidate's `extras` and writes them back there, after the known ones, by id); cleaned on import by the rules of
+     * `Candidates.cleanOtherExtras` (a field id, a value of an extras type, text of at most 2,000 characters, at most 30).
+     */
+    val extrasOther: JsonObject? = null,
+    /**
+     * The candidate's kind when it is not the house (S4b-BL-209: the hidden schools kind), as [BackupWire] reads it out
+     * of a candidate and writes it back there; absent for a house. Never a key of a file of the family before.
+     */
+    val kind: String? = null,
 ) {
     /** The score under [scoring], exactly the one the app screens show ([HouseScore.evaluate]); see [ExportBundle.scoreOf]. */
     fun scoreResult(scoring: Scoring): ScoreResult = HouseScore.evaluate(checklist, rating, scoring)
@@ -433,6 +451,21 @@ data class ExportOptions(
      * (`units.length`), not an export option and not in the manifest. Ignored by a backup's `data.json` (centimetres).
      */
     val lengthUnit: LengthUnit = LengthUnit.FT,
+    /**
+     * Whether the developer flag of the hidden kinds is on (`BuildConfig.DEV_KINDS`, set by `ExportBuilder`; never in a
+     * release, never on the iPhone): only then is a candidate of another kind copied with its typed extras ([KindCopy],
+     * S4b-BL-210); otherwise it is copied as a house is. Not an export option, not in the manifest.
+     */
+    val devKinds: Boolean = false,
+    /**
+     * The space a readable copy holds (kinds PR C, S4b-BL-289; docs/03 §18.13): with two or more kinds on, a copy holds
+     * one space's candidates, its viewings and brokers, and its file name carries the kind's plural before the date. Null
+     * (one kind on, and every backup, which stays whole) is the copy as it always was. Not an export option, not in the manifest.
+     */
+    val space: SpaceView? = null,
+    /** The kinds the phone has on and its default: a backup's `search` object names them ([BackupWire.encodeData]). */
+    val enabledKinds: List<String> = listOf(Candidates.BASELINE_KIND),
+    val defaultKind: String = Candidates.BASELINE_KIND,
 ) {
     /** True for an update file (5.28), whose name is `Doorprints-updates-<date>` and whose manifest says who it is for. */
     val isUpdate: Boolean get() = since != null || sharedTo != null
@@ -495,7 +528,36 @@ data class ExportBundle(
      */
     val deletions: List<ExportDeletion> = emptyList(),
 ) {
-    val strings: ExportStrings = ExportStrings.of(options.language)
+    /**
+     * The kind the copy speaks in (S4b-BL-266; [KindCopy.voice]): that of a copy of one space, or of candidates that are all of
+     * one kind other than the house. Its words, labels and hidden places shape the copy; a copy of houses, or of several
+     * kinds, has none and is written as it always was.
+     */
+    val voice: KindFields? = KindCopy.voice(houses, options)
+
+    /** The copy's words: the voice's own for the keys it names ([KindExportWords]), else the house's. */
+    val strings: ExportStrings = ExportStrings.of(options.language, voice?.kind)
+
+    private val kindStrings = HashMap<String, ExportStrings>()
+
+    /** The kind a candidate is read in: its own when it is not the house, else the copy's [voice] (null: a house's copy). */
+    private fun kindOf(house: ExportHouse?): KindFields? =
+        house?.let { KindCopy.fieldsOfKind(it.kind, options) }?.takeIf { !KindCapabilities.of(it.kind).baseline } ?: voice
+
+    /**
+     * Whether the copy writes the place [ref] (`field.money`, `section.checklist`, ...) of [house], or of the copy when [house]
+     * is null: every place of a house, and only the places its kind shows for another kind (S4b-BL-266). A copy writes the checklist,
+     * its scores and its Scores table of the house only: the school's own checklist (kinds PR 27, docs/03 §18.21) is on the pages
+     * and in Compare, and a copy of it is a later change, so a school's copy is as it was.
+     */
+    fun shows(house: ExportHouse?, ref: String): Boolean =
+        kindOf(house)?.let { ref != "section.checklist" && it.labels.isVisible(ref) } ?: true
+
+    /** The words for [house]: the copy's, or its own kind's where it is a school beside houses (its *Website* and *Fees*). */
+    fun stringsOf(house: ExportHouse): ExportStrings {
+        val kind = kindOf(house)?.kind
+        return if (kind == null || kind == voice?.kind) strings else kindStrings.getOrPut(kind) { ExportStrings.of(options.language, kind) }
+    }
 
     private val liveAreas: List<Area> = areas.mapNotNull { it.toArea() }
     private val areaNames: Map<String, String> = liveAreas.associate { it.id to it.name }
@@ -554,7 +616,8 @@ data class ExportBundle(
         houses.filter { it.brokerId != null }.groupBy { it.brokerId!! }
 
     /** The broker a house names, if it is in this copy (a dangling id reads as none). */
-    fun brokerOf(house: ExportHouse): ExportBroker? = house.brokerId?.let { brokersById[it] }
+    fun brokerOf(house: ExportHouse): ExportBroker? =
+        if (shows(house, "field.brokerId")) house.brokerId?.let { brokersById[it] } else null
 
     /** True when a house of the copy has a room (slice 1c): the copy then has `rooms.csv`, a Rooms sheet and is `/2`. */
     val hasRooms: Boolean get() = houses.any { !it.rooms.isNullOrEmpty() }
@@ -596,6 +659,14 @@ data class ExportBundle(
     /** `Doorprints-2026-09-22`, the stem every file name is built on (local date of the export). */
     val fileStem: String = ExportFormat.stem(options)
 
+    private val extras: Map<String, List<KindCopy.Extra>> = houses.associate { it.id to KindCopy.extrasOf(it, options) }
+
+    /** A candidate's typed extras in the copy (kinds PR 6, S4b-BL-210), in its kind's order; none for a house. */
+    fun extrasOf(house: ExportHouse): List<KindCopy.Extra> = extras[house.id].orEmpty()
+
+    /** The Houses table's columns for typed extras, after the floor; none in a copy of houses only. */
+    val extraColumns: List<KindCopy.Column> = KindCopy.columnsOf(houses, options)
+
     companion object {
         /**
          * Filters, orders and redacts. Callers pass everything they have; this decides what ends up in the copy.
@@ -618,8 +689,9 @@ data class ExportBundle(
             deletedHouses: Map<String, Long> = emptyMap(),
         ): ExportBundle {
             val since = options.since
+            val space = options.space // a space's copy holds that space only (kinds PR C); null: every candidate, as always
             val inScope = houses.filter { house ->
-                when (options.scope) {
+                (space?.holds(house.kind) ?: true) && when (options.scope) {
                     ExportScope.ALL -> options.includeRejected || house.status != "REJECTED"
                     ExportScope.SHORTLISTED -> house.status == "SHORTLISTED"
                     ExportScope.SELECTED -> house.id in options.selectedIds
@@ -653,7 +725,7 @@ data class ExportBundle(
                 // A photo whose meta was edited since (slice 5) is a change too.
                 .filter { since == null || it.createdAt > since || (it.metaUpdatedAt ?: 0L) > since || it.houseId in changedIds }
                 .sortedWith(compareBy({ it.createdAt }, { it.id }))
-            val unlinked = if (options.scope == ExportScope.ALL) {
+            val unlinked = if (options.scope == ExportScope.ALL && space == null) {
                 visits.filter { it.houseId == null && (since == null || it.updatedAt > since) }
                     .sortedWith(compareBy({ it.arrivedAt }, { it.id }))
             } else {
@@ -664,7 +736,7 @@ data class ExportBundle(
             val brokerIds = kept.mapNotNullTo(HashSet()) { it.brokerId }
             val keptBrokers = when {
                 !options.includeContacts -> emptyList()
-                options.scope == ExportScope.ALL -> brokers.filter { since == null || it.updatedAt > since || it.id in brokerIds }
+                options.scope == ExportScope.ALL && space == null -> brokers.filter { since == null || it.updatedAt > since || it.id in brokerIds }
                 else -> brokers.filter { it.id in brokerIds }
             }.sortedWith(compareBy({ it.updatedAt }, { it.id }))
             // Criteria and preferences (slice 2): settings, not contacts, so a copy without contact details keeps them; an
@@ -681,7 +753,7 @@ data class ExportBundle(
             // Viewings (slice 3b-1): all of them for the whole set of houses (one of a house that is gone too), else
             // those of the kept houses; an update carries the ones changed since. `withWhom` is contact data.
             val keptViewings = viewings
-                .filter { options.scope == ExportScope.ALL || it.houseId in keptIds }
+                .filter { (options.scope == ExportScope.ALL && space == null) || it.houseId in keptIds }
                 .filter { since == null || it.updatedAt > since }
                 .map { if (options.includeContacts) it else it.copy(withWhom = null) }
                 .sortedWith(compareBy({ it.updatedAt }, { it.id }))

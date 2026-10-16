@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | Brand and naming: the web address, the app icon, fallbacks, brand screening, custom-domain policy, naming guidelines and the import / backup / copy vocabulary |
-| Version | 0.7 |
-| Date | 2026-10-01 |
+| Version | 0.11 |
+| Date | 2026-10-15 |
 | Author | Claude (Cowork), Docs team, from the brand advisor's naming brief of 2026-09-23 |
 | Status | Draft. The address (section A) and the import vocabulary (section G) are **decided** by the owner; the hi/ta/te wording in section G is a **first draft pending native-speaker review** (I18N-B06) |
 
@@ -19,6 +19,10 @@
 | 0.5 | 2026-09-24 | Claude (Code), engineer | Legacy House Hunt names renamed (owner request of 2026-09-24; [03](03-design.md) ADR-24). **F.1 rule 7** now says internal names follow the brand too, renamed only with a carry-over for what is stored, and names the one kept on purpose (the Android Keystore alias). F.2: the longer store listing example is "Doorprints: House Visit Diary". |
 | 0.6 | 2026-09-30 | Claude (Code), lead | New N-07: the fifth user-facing name, **Share updates with…** (S4b-FR-3, [11](11-feature-parity-and-export-spec.md) 5.28). |
 | 0.7 | 2026-10-01 | Claude (Code), lead | The website reads backups (S4b-BL-75, on a branch of the finishing batch, [10](10-sprint-log.md) §13.34): G's table names the web's `imp.heading` (*Import a backup* in four languages, the same words as Android) and §D says the condition for a custom domain is met in code, once it is deployed. |
+| 0.8 | 2026-10-14 | Claude (Code), engineer | G.1: **the words for kinds** (kinds PR 8, S4b-BL-212, `feat/kinds-10-settings-kind-guide`): never "kind" or "space" on screen; the plural noun, *What are you looking for?*, *What you track*, *Experimental: more than houses*, *Saved: N*. |
+| 0.9 | 2026-10-15 | Claude (Code), docs | New section H: the root README may describe the kinds model; the tagline, the store listing and the meta description stay house-only until a second kind is in `AVAILABLE_KINDS` of a release. |
+| 0.10 | 2026-10-15 | Claude (Code), engineer | H: **"compiled in, off" is not "released"** (owner, 2026-10-15): the website's build lists the school behind *Experimental: more than houses* (off by default); the tagline, store listing and meta description stay house-only until `RELEASED_KINDS` gains a kind. |
+| 0.11 | 2026-10-15 | Claude (Code), engineer | H: the phones too (owner, 2026-10-15; `feat/kinds-24-ship-school-phones`): the Android release and the iPhone list the school behind *Experimental: more than houses* (off by default) and release the house alone; the tagline, the store listing and the phones' About text stay house-only; the switch hint and the school listing tips say *preview*. |
 
 Related: [Design, ADR-21](03-design.md) · [Build and deploy §6.3](07-secure-build-and-deploy.md#63-web-firebase-hosting) · [UX, a11y and i18n](05-ux-accessibility-i18n.md) · [Requirements §6.9](01-requirements.md) · [Backup format](schemas/README.md) · [Sprint log §11.6](10-sprint-log.md)
 
@@ -249,6 +253,11 @@ columns are first drafts pending native-speaker review** ([05](05-ux-accessibili
 - **The AI feature is not an import.** Its visible title was "Import from listing text"; the Web team renamed it
   **"Fill in from listing text"** and moved its keys from `import.*` to `listingFill.*` in all four languages on
   2026-09-23 (`web/README.md` change log), before backup import ships on the web.
+- **Kinds are never named "kind" or "space" on screen** (kinds PR 8, S4b-BL-212, [03](03-design.md) §18.12). The person
+  reads the kind's plural noun (*Houses*, *Schools*: the kind file's `kind.many`), the chooser's **What are you looking
+  for?** (hi आप क्या ढूँढ रहे हैं?, ta நீங்கள் எதைத் தேடுகிறீர்கள்?, te మీరు ఏమి వెతుకుతున్నారు?), the Settings section **What you
+  track** (hi आप क्या ट्रैक करते हैं, ta நீங்கள் கண்காணிப்பவை, te మీరు ట్రాక్ చేసేవి) and its switch **Experimental: more
+  than houses**; counts read *Saved: N*. *Kind* and *space* stay the team's words.
 - **"Share to Doorprints"** stays the team's internal feature name ([11](11-feature-parity-and-export-spec.md)
   §5.9); users see *Add a shared listing*.
 
@@ -296,6 +305,21 @@ the file holds. Neither sentence ships yet; they are for the Sprint 4b import sc
 | [11](11-feature-parity-and-export-spec.md) | §5.9 and G-02 say *add*, not import |
 | [schemas](schemas/README.md) | §0 "What an import is" |
 | [10](10-sprint-log.md) | §12 Sprint 4b: S4b-00 and the renames still to do |
+
+## H. Where the kinds model may be named (2026-10-15)
+
+- The **root README** may describe the kinds model and what exists beyond houses (one `candidate` with a `kind` from a kind
+  file; schools as a preview: compiled into the website, off by default, not released), so a developer or an owner sees what the code can do.
+- The **tagline** ("Remember every house you've seen."), the **store listing** and the **meta description** of the website
+  stay **house-only** until a second kind is *released* (`RELEASED_KINDS` on the website; the phones' released list). Since
+  2026-10-15 the website's build has the school **compiled in but off** (listed in `AVAILABLE_KINDS`, behind the switch
+  *Experimental: more than houses*, off by default): that is not a release, and the words do not change (`seo.spec.ts`). Until then
+  nothing a person installs or finds in a search says "more than houses". The wording for the day it changes is a follow-up to
+  ADR-13 (the rename, [03](03-design.md) §14) and needs the owner's decision.
+- **The phones (2026-10-15).** The Android release and the iPhone list `house,school` (`AVAILABLE_KINDS`, `IOS_AVAILABLE_KINDS`): the school is *compiled in, off*, behind
+  *Experimental: more than houses* in Settings > What you track, and `KindSettingRules.RELEASED` stays the house. That is not a release: the store listing,
+  the app's name and tagline and every string a house hunter meets stay house-only; only the switch's hint and the school's AI help carry a *preview* mark.
+- The apps' strings keep the rule of G.1: never "kind" or "space" in front of a person.
 
 ## Sources
 

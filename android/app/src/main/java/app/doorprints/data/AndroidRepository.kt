@@ -19,6 +19,7 @@
 package app.doorprints.data
 
 import android.content.Context
+import app.doorprints.BuildConfig
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
@@ -45,6 +46,8 @@ class AndroidRepository(
     private val context: Context,
     db: AppDatabase,
     settings: SettingsStore,
+    /** Where sync goes (S4b-BL-70); null for the default, the configured server over [apiFor]. A test's fake backend. */
+    syncBackendFor: (suspend (AppSettings) -> SyncBackend?)? = null,
     /** The API client for a server address and key: the app-wide HTTP stack ([Api.client]); a test's fake engine. */
     apiFor: (serverUrl: String, apiKey: String) -> ApiClient = Api::client,
 ) : CommonRepository(
@@ -53,7 +56,13 @@ class AndroidRepository(
     syncSoon = { SyncWorker.syncSoon(context) },
     apiFor = apiFor,
     geminiFor = Api::gemini,
+    syncBackendFor = syncBackendFor,
+    openAiFor = Api::openAi,
+    anthropicFor = Api::anthropic,
+    emulatorHostAllowed = true,
+    devKinds = BuildConfig.DEV_KINDS,
 ) {
+    /** The folder holding every photo file, for the exporters and the backup. */
     fun photoDir() = File(photoDirPath().toString())
 
     /** The file a photo row's bytes live in, for the exporters. */

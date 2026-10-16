@@ -1,0 +1,65 @@
+{
+  "spec": "android/shared/src/commonTest/kotlin/app/doorprints/shared/voice/ (PcmVoiceRecorderTest, VoiceSessionTest) and androidHostTest PcmDrainTest, pcm/IosCaptureDrainTest (S4b-BL-317, S4b-BL-318)",
+  "gradle": [
+    ":shared:testAndroidHostTest",
+    "--rerun",
+    "--tests",
+    "app.doorprints.shared.voice.*"
+  ],
+  "mutations": [
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/PcmVoiceRecorder.kt",
+      "find": "failed = if (source.endedEarly()) VoiceFailure.ENDED_EARLY else VoiceFailure.FAILED",
+      "replace": "failed = VoiceFailure.FAILED",
+      "expect": "aSourceCutShortFromOutsideIsEndedEarlyNotAFault"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/PcmVoiceRecorder.kt",
+      "find": "withTimeoutOrNull(DRAIN_WAIT) { capturing.join() }",
+      "replace": "{ val t = System.nanoTime(); while (!capturing.isCompleted && System.nanoTime() - t < 300_000_000L) { } }",
+      "expect": "stopWaitsForTheTailWithoutBlockingTheCallingThread"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/PcmVoiceRecorder.kt",
+      "find": "if (state != ENDING) throw VoiceRecorderException(VoiceFailure.FAILED)",
+      "replace": "if (false) throw VoiceRecorderException(VoiceFailure.FAILED)",
+      "expect": "releaseDuringTheWaitDropsTheAudioAndStopHasNoClip"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/PcmVoiceRecorder.kt",
+      "find": "            finish() // the caller gave up: the microphone is let go and the audio dropped",
+      "replace": "            // the caller gave up",
+      "expect": "cancellingTheCallerOfStopStillLetsTheMicrophoneGo"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/VoiceSession.kt",
+      "find": "failure == VoiceFailure.ENDED_EARLY -> finishRecording(mine, null, early = true)",
+      "replace": "failure == VoiceFailure.ENDED_EARLY -> fail(mine, VoiceProblem.FAILED)",
+      "expect": "aRecordingCutShortKeepsTheClipWritesItOut"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/VoiceSession.kt",
+      "find": "early -> VoiceStatus.DONE_EARLY",
+      "replace": "early -> VoiceStatus.DONE",
+      "expect": "aRecordingCutShortKeepsTheClipWritesItOut"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/VoiceSession.kt",
+      "find": "                    if (early) {",
+      "replace": "                    if (false) {",
+      "expect": "aRecordingCutShortWithNothingSaidEndsQuietly"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/VoiceSession.kt",
+      "find": "        state.value = VoiceUi(VoicePhase.TRANSCRIBING, status = VoiceStatus.WORKING)\n        work = scope.launch {",
+      "replace": "        work = scope.launch {",
+      "expect": "theStopTapReturnsAtOnce"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/VoiceSession.kt",
+      "find": "                    cut -> VoiceStatus.DONE_CUT",
+      "replace": "                    false -> VoiceStatus.DONE_CUT",
+      "expect": "aCutShortClipTheBoxCouldNotHoldSaysSoFirst"
+    }
+  ]
+}

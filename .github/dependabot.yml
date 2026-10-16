@@ -153,6 +153,9 @@ updates:
       actions-all:
         patterns: ["*"]
 
+  # 2026-10-08 (S4b-BL-172): every FROM is `tag@sha256:digest` (checked by .github/scripts/check-dockerfile-pins.py in
+  # security.yml). Dependabot reads the tag, and rewrites tag and digest together; a digest-only move of the same tag
+  # (a rebuilt base image with new distribution fixes) is not a semver step, so it comes as its own PR, not in the group.
   - package-ecosystem: docker
     directories: [/backend, /backend/db]
     schedule: { interval: weekly, day: monday, time: "06:00", timezone: Asia/Kolkata }

@@ -22,6 +22,7 @@ import { TranslationService } from '../i18n/translation.service';
 import { dueReminders } from '../shared/viewing-reminders';
 import { Announcer } from './announcer.service';
 import { LocalDataService } from './local-data.service';
+import { toolWord } from './space-tool-words';
 
 /** How often the open app looks for a reminder that has come due (no long timers: a sleeping tab cannot be trusted with one). */
 export const REMINDER_TICK_MS = 60_000;
@@ -30,6 +31,8 @@ export const REMINDER_TICK_MS = 60_000;
 export interface ReminderBanner {
   id: string;
   startsAt: number;
+  /** The kind of the candidate the viewing is for, which words the line ("A viewing at ..." or "A visit at ..."; kinds PR 31). */
+  kind?: string | null;
 }
 
 export type NotificationState = 'default' | 'granted' | 'denied' | 'unsupported';
@@ -99,10 +102,12 @@ export class ViewingReminderService {
     try {
       if (await firstValueFrom(this.api.viewingsRemind())) {
         const viewings = await firstValueFrom(this.api.viewings());
-        for (const { viewing } of dueReminders(viewings, after, nowMs)) {
-          if (this.fired.has(viewing.id)) continue;
+        const due = dueReminders(viewings, after, nowMs).filter(({ viewing }) => !this.fired.has(viewing.id));
+        // The candidate's kind words the line, so the houses are only read when something is due.
+        const kinds = due.length ? new Map((await firstValueFrom(this.api.houses())).map((h) => [h.id, h.kind ?? null])) : new Map<string, string | null>();
+        for (const { viewing } of due) {
           this.fired.add(viewing.id);
-          await this.show(viewing.id, viewing.startsAt);
+          await this.show(viewing.id, viewing.startsAt, kinds.get(viewing.houseId) ?? null);
         }
       }
       this.lastTick = nowMs;
@@ -117,14 +122,14 @@ export class ViewingReminderService {
     return new Intl.DateTimeFormat(this.i18n.locale(), { timeStyle: 'short' }).format(new Date(startsAt));
   }
 
-  private text(startsAt: number): string {
-    return this.i18n.t('viewings.remind.text', { time: this.time(startsAt) });
+  private text(startsAt: number, kind: string | null | undefined): string {
+    return this.i18n.t(toolWord(kind, 'viewings.remind.text'), { time: this.time(startsAt) });
   }
 
-  private async show(id: string, startsAt: number): Promise<void> {
-    if (this.permission() === 'granted' && (await this.notify(id, this.text(startsAt)))) return;
-    this.banners.update((list) => [...list, { id, startsAt }]);
-    this.announcer.announce({ key: 'viewings.remind.text', params: { time: this.time(startsAt) } });
+  private async show(id: string, startsAt: number, kind: string | null): Promise<void> {
+    if (this.permission() === 'granted' && (await this.notify(id, this.text(startsAt, kind)))) return;
+    this.banners.update((list) => [...list, { id, startsAt, kind }]);
+    this.announcer.announce({ key: toolWord(kind, 'viewings.remind.text'), params: { time: this.time(startsAt) } });
   }
 
   /** The browser notification, through the worker (a page-made `Notification` does not work on Android Chrome). */
@@ -141,6 +146,6 @@ export class ViewingReminderService {
 
   /** The banner's words, worked out in the current language. */
   bannerText(b: ReminderBanner): string {
-    return this.text(b.startsAt);
+    return this.text(b.startsAt, b.kind);
   }
 }

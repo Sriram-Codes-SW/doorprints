@@ -26,7 +26,8 @@
 #
 # The key: DOORPRINTS_KEY or APP_API_KEY in the environment, else APP_API_KEY from ./.env. To also test pairing, set
 # OWNER_SETUP to the part after "#setup=" of the link under "Doorprints owner page" in `docker compose logs api`
-# (the link works once: this uses it up, restart the server for a new one).
+# (the link works once: this uses it up, restart the server for a new one; the log holds a link only while no browser
+# is signed in to the owner page, so on a server that has one, skip OWNER_SETUP or use a new server).
 set -u
 BASE="${1:-http://localhost:8080}"; BASE="${BASE%/}"
 HERE="$(cd "$(dirname "$0")/.." && pwd)"
@@ -52,8 +53,8 @@ HOUSE=5a0e5a0e-5a0e-45a0-85a0-5a0e5a0e5a0e
 NOW="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 req "health" 200 "$BASE/actuator/health" && has "health says UP" '"status":"UP"'
-req "no key is refused" 401 "$BASE/api/houses"
-req "wrong key is refused" 401 -H "X-API-Key: not-the-key" "$BASE/api/houses"
+req "no key is refused" 401 "$BASE/api/candidates"
+req "wrong key is refused" 401 -H "X-API-Key: not-the-key" "$BASE/api/candidates"
 
 if [ -n "${OWNER_SETUP:-}" ]; then
   OH='X-Doorprints-Owner: 1'
@@ -70,22 +71,22 @@ if [ -n "${OWNER_SETUP:-}" ]; then
 fi
 A=(-H "X-API-Key: $KEY")
 
-req "key is accepted" 200 "${A[@]}" "$BASE/api/houses?since=0" || { echo "Stopping: the key does not work."; exit 1; }
+req "key is accepted" 200 "${A[@]}" "$BASE/api/candidates?since=0" || { echo "Stopping: the key does not work."; exit 1; }
 if [ "$(tr -d ' \n' < "$TMP/body")" != "[]" ] && [ "${FORCE:-0}" != "1" ]; then
   echo "This server holds, or once held, houses. Not writing test houses (set FORCE=1 to run anyway)."; exit 3
 fi
 
 req "create a house" 200 "${A[@]}" -X PUT -H "$JSON" \
-  -d "{\"label\":\"Smoke test house\",\"lat\":13.0067,\"lon\":80.2573,\"status\":\"NEW\",\"price\":25000,\"priceType\":\"RENT\",\"createdAt\":\"$NOW\",\"updatedAt\":\"$NOW\"}" "$BASE/api/houses/$HOUSE"
-req "read it back" 200 "${A[@]}" "$BASE/api/houses/$HOUSE" && has "house label" 'Smoke test house'
+  -d "{\"kind\":\"house\",\"label\":\"Smoke test house\",\"lat\":13.0067,\"lon\":80.2573,\"status\":\"NEW\",\"money\":{\"amount\":25000,\"cadence\":\"month\"},\"createdAt\":\"$NOW\",\"updatedAt\":\"$NOW\"}" "$BASE/api/candidates/$HOUSE"
+req "read it back" 200 "${A[@]}" "$BASE/api/candidates/$HOUSE" && has "house label" 'Smoke test house'
 req "sync a record" 200 "${A[@]}" -X PUT -H "$JSON" \
   -d "{\"type\":\"smoketest\",\"id\":\"s1\",\"payload\":{\"text\":\"hello\"},\"updatedAt\":\"$NOW\",\"deleted\":false}" "$BASE/api/records/smoketest/s1"
 req "list records" 200 "${A[@]}" "$BASE/api/records?since=0&type=smoketest" && has "record in the list" '"text":"hello"'
 
 req "import, dry run" 200 "${A[@]}" -X POST -H "$JSON" --data-binary @"$SAMPLE" "$BASE/api/import?dryRun=true"
-req "dry run wrote nothing" 404 "${A[@]}" "$BASE/api/houses/11111111-1111-4111-8111-111111111111"
+req "dry run wrote nothing" 404 "${A[@]}" "$BASE/api/candidates/11111111-1111-4111-8111-111111111111"
 req "import for real" 200 "${A[@]}" -X POST -H "$JSON" --data-binary @"$SAMPLE" "$BASE/api/import"
-req "imported house is there" 200 "${A[@]}" "$BASE/api/houses/11111111-1111-4111-8111-111111111111"
+req "imported house is there" 200 "${A[@]}" "$BASE/api/candidates/11111111-1111-4111-8111-111111111111"
 req "export" 200 "${A[@]}" "$BASE/api/export" && {
   has "export is a backup" '"format":"doorprints-backup/'
   has "export holds the imported house" 'Green View 2BHK'
@@ -95,9 +96,9 @@ req "records after the import" 200 "${A[@]}" "$BASE/api/records?since=0" && has 
 
 # clean up what this script made
 for id in $(grep -o '"id":"[0-9a-f-]\{36\}"' "$SAMPLE" | head -50 | sed 's/"id":"\(.*\)"/\1/' | sort -u); do
-  curl -s -o /dev/null "${A[@]}" -X DELETE "$BASE/api/houses/$id"
+  curl -s -o /dev/null "${A[@]}" -X DELETE "$BASE/api/candidates/$id"
 done
-curl -s -o /dev/null "${A[@]}" -X DELETE "$BASE/api/houses/$HOUSE"
+curl -s -o /dev/null "${A[@]}" -X DELETE "$BASE/api/candidates/$HOUSE"
 req "delete the test record" 204 "${A[@]}" -X DELETE "$BASE/api/records/smoketest/s1"
 [ -n "${DEVID:-}" ] && req "revoke the test device" 204 -b "$TMP/jar" -H 'X-Doorprints-Owner: 1' -X POST "$BASE/owner/api/devices/$DEVID/revoke"
 

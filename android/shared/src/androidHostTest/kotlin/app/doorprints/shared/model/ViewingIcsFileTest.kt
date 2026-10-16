@@ -18,8 +18,7 @@
 
 package app.doorprints.shared.model
 
-import app.doorprints.shared.export.BackupData
-import app.doorprints.shared.export.BackupFormat
+import app.doorprints.shared.export.BackupWire
 import org.junit.Assert.assertArrayEquals
 import org.junit.Test
 import java.io.File
@@ -42,7 +41,7 @@ class ViewingIcsFileTest {
 
     @Test
     fun theSamplesSecondViewingIsTheSampleCalendarFileByteForByte() {
-        val data = BackupFormat.json.decodeFromString(BackupData.serializer(), repoFile("docs/schemas/backup-sample.json").readText())
+        val data = BackupWire.decodeData(repoFile("docs/schemas/backup-sample.json").readText())
         val row = data.viewingRows.single { it.id == "v_a1b2c3d4" }
         val house = data.houses.single { it.id == row.houseId }
         val ics = ViewingIcs.build(row.toViewing().coerced()!!, house.label, house.address, "Viewing", row.updatedAt)

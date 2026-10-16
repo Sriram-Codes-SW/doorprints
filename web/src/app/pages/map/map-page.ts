@@ -46,18 +46,17 @@ import {
   HouseDto,
   STATUSES,
   STATUS_ICON,
-  STATUS_KEY,
   StatsDto,
   houseScore,
 } from '../../core/models';
 import { errorMsg } from '../../core/format';
 import { Announcer } from '../../core/announcer.service';
 import { SyncService } from '../../data/sync.service';
-import { createMlMap, localizeMap, watchMapStyle } from '../../shared/map-style';
-import type { MapStyleWatch } from '../../shared/map-style';
+import { type MapStyleWatch, createMlMap, localizeMap, watchMapStyle } from '../../shared/map-style';
+import { statusKeys } from '../../core/kind-labels';
+import { SpaceService } from '../../core/space.service';
 import { round6 } from '../../shared/location-map';
-import { notesReaching } from '../../shared/area';
-import type { Area, AreaNoteRow } from '../../shared/area';
+import { type Area, type AreaNoteRow, notesReaching } from '../../shared/area';
 import { COUNTRY_VIEW, loadMapView, locationErrorKey, saveMapView } from '../../shared/map-center';
 import { locateOnce } from '../../shared/locate-once';
 import { GLYPHS } from '../../shared/glyphs';
@@ -66,6 +65,7 @@ import { TKey } from '../../i18n/en';
 import { Msg, TranslationService } from '../../i18n/translation.service';
 import { TPipe } from '../../i18n/t.pipe';
 import {
+  SORT_OPTIONS,
   SortKey,
   StatusFilter,
   comparePrice,
@@ -77,14 +77,24 @@ import {
 } from './map-list';
 import { ListReturn } from './list-return';
 import { OfflineSave } from './offline-save';
+import { TraceCard } from './trace-card';
+import { TraceLayers } from './trace-layers';
+import { TraceView } from './trace-view';
+import { WalkEndSheet } from './walk-end-sheet';
+import { PlaceCheck } from './place-check';
+import { PlaceCheckMapView } from './place-check-map';
+import { PlaceCheckPanel } from './place-check-panel';
+import { PlaceCheckState } from './place-check-state';
+import type { PlaceKind } from '../../shared/trace-place-text';
+import { TRACK_COLOR, TRACK_REPEAT_COLOR, legendDashArray } from '../../shared/trace-style';
 import type { GeoBounds } from '../../offline/offline-tiles';
-import { NO_COST_FILTER, activeCostFilters, costFilterMatches, type CostFilter } from '../../shared/cost-filter';
-import { listPeek } from './list-peek';
+import { COST_RANGES, NO_COST_FILTER, activeCostFilters, costFilterMatches, type CostFilter } from '../../shared/cost-filter';
+import { ExtraFilterState, ExtraFilters } from './extra-filters';
 import { fitPadding } from './fit-padding';
 import { HOUSE_PAINT, houseFeatures } from './house-markers';
 import { RunResult, nextRunResult, runResult } from '../../shared/run-result';
-import { DEFAULT_SCORING, compareRanked, evaluateScore } from '../../shared/scoring';
-import type { ScoreResult, Scoring } from '../../shared/scoring';
+import { DEFAULT_SCORING, compareRanked, evaluateScore, type ScoreResult, type Scoring } from '../../shared/scoring';
+import { scoringForKind } from '../../shared/compare-criteria';
 
 interface ListItem {
   house: HouseDto;
@@ -98,6 +108,7 @@ function rankedOf(item: ListItem) {
   return { id: item.house.id, result: item.result, price: item.house.price, updatedAt: timeOf(item.house) };
 }
 
+const RING_LABEL: Record<PlaceKind, TKey> = { here: 'trace.here.labelHere', house: 'trace.here.labelHouse', spot: 'trace.here.labelSpot' };
 const SOURCE_ID = 'houses';
 const LAYER_ID = 'houses-circles';
 /** Typing pause before the search goes into the URL and the new count is announced. */
@@ -115,12 +126,24 @@ const BOTTOM_CONTROLS_QUERY = '(max-width: 760px) and (min-height: 501px)';
  */
 let fittedThisSession = false;
 
+/**
+ * The home screen: the saved houses as markers on the map and as a searchable, filterable, sortable list, and where a
+ * new house is started (a tap or the crosshair on the map, "Add at my location", typed coordinates, or a shared
+ * listing).
+ *
+ * Search, status, cost ranges and sort live in the URL so Back from a house returns to the same list. The list works
+ * without the map: when tiles cannot load (offline) or WebGL 2 is missing, the page says so and keeps the list and the
+ * add buttons that need no map. It also hosts the cards for walks and the place check, and the offline-area save
+ * button. States: loading skeleton, error with Retry, empty, no match.
+ */
 @Component({
   selector: 'app-map-page',
-  imports: [RouterLink, TPipe, OfflineSave],
+  imports: [RouterLink, TPipe, OfflineSave, TraceCard, WalkEndSheet, PlaceCheck, PlaceCheckPanel, ExtraFilters],
   templateUrl: './map-page.html',
   styleUrl: './map-page.css',
-  host: { '(document:keydown.escape)': 'onEscape()' },
+  // `drawn` comes with the first update pass: until then the page is the template's bare elements (no text, no @if
+  // blocks), which a slow phone painted for a frame, so everything under the map then jumped (map-page.css).
+  host: { '(document:keydown.escape)': 'onEscape()', '[class.drawn]': 'true' },
 })
 export class MapPage implements AfterViewInit, OnDestroy {
   private readonly api = inject(LocalDataService);
@@ -131,6 +154,20 @@ export class MapPage implements AfterViewInit, OnDestroy {
   private readonly listReturn = inject(ListReturn);
   protected readonly sync = inject(SyncService);
   protected readonly i18n = inject(TranslationService);
+  protected readonly space = inject(SpaceService); // the space on screen (kinds PR 8): its candidates, words, links
+  /** The walks on the map (docs/11 5.27): the page only delegates to it and to {@link TraceLayers}. */
+  protected readonly traceView = inject(TraceView);
+  protected readonly trackColor = TRACK_COLOR;
+  protected readonly repeatColor = TRACK_REPEAT_COLOR;
+  /** The legend samples are this many px wide; the repeat sample's dash is the map's dash scaled by it. */
+  protected readonly legendStrokePx = 3;
+  protected readonly repeatDash = legendDashArray(this.legendStrokePx);
+  private traceLayers: TraceLayers | null = null;
+  /** *Have I been here?* (docs/11 5.27.13): the answer, and the ring and the framing it gets on this map. */
+  protected readonly placeCheck = inject(PlaceCheckState);
+  private placeView: PlaceCheckMapView | null = null;
+  /** The crosshair mode of *A spot on the map* (the same crosshair as add mode, with *Check this spot*). */
+  protected readonly checkMode = signal(false);
 
   protected readonly houses = signal<HouseDto[]>([]);
   /** The words of each broker (id to name, agency and fee terms), so a search also finds a house by its broker. */
@@ -159,17 +196,19 @@ export class MapPage implements AfterViewInit, OnDestroy {
   /** The ranges over the cost numbers (docs/11 5.21, S4b-BL-84), on top of the status and the search; in the URL too. */
   protected readonly costFilter = signal<CostFilter>(NO_COST_FILTER);
   protected readonly costFiltersOn = computed(() => activeCostFilters(this.costFilter()));
-  protected readonly costRanges: readonly { key: keyof CostFilter; labelKey: TKey }[] = [
-    { key: 'monthly', labelKey: 'cost.monthlyCost' },
-    { key: 'moveIn', labelKey: 'cost.moveIn' },
-    { key: 'perSqFt', labelKey: 'cost.perSqFt' },
-  ];
+  protected readonly costRanges = COST_RANGES;
+  /** The rows over the kind's typed extras (S4b-BL-265), in the URL too; none for a house. */
+  protected readonly extras = new ExtraFilterState(() => { this.writeQuery(); this.announceCount(); });
   protected readonly addMode = signal(false);
+  /** Either crosshair mode is on: add a house, or check a spot. */
+  protected readonly picking = computed(() => this.addMode() || this.checkMode());
   /**
    * False while the map style could not be loaded (offline: the tiles are never cached). The page then says so over
    * the map and offers what works without one: the list, "Add at my location" and typed coordinates.
    */
   protected readonly mapAvailable = signal(true);
+  /** True when the map's worker failed to load while online: the message says to reload, not that we are offline. */
+  protected readonly mapWorkerFailed = signal(false);
   /**
    * True when this browser cannot draw a map at all (MapLibre 6 needs WebGL 2; `createMlMap` returned null). Treated
    * like being offline, except that trying again cannot help: the same two ways to add a house are offered, with the
@@ -197,34 +236,31 @@ export class MapPage implements AfterViewInit, OnDestroy {
   protected readonly sharedText = signal<string | null>(null);
 
   protected readonly statuses = STATUSES;
-  protected readonly statusKey = STATUS_KEY;
+  protected readonly statusKey = computed(() => statusKeys(this.space.current().labels));
   protected readonly statusIcon = STATUS_ICON;
   protected readonly filterIcon: Readonly<Record<StatusFilter, string>> = { ALL: '', ...STATUS_ICON };
   protected readonly filters: readonly StatusFilter[] = ['ALL', 'NEW', 'SHORTLISTED', 'REJECTED', 'TAKEN', 'NOT_CHOSEN'];
-  protected readonly sorts: readonly { key: SortKey; labelKey: TKey }[] = [
-    { key: 'recent', labelKey: 'map.sort.recent' },
-    { key: 'score', labelKey: 'map.sort.score' },
-    { key: 'price', labelKey: 'map.sort.price' },
-  ];
+  protected readonly sorts = SORT_OPTIONS;
   protected readonly skeletonRows: readonly number[] = [1, 2, 3, 4];
   /** Empty-state glyphs (Material, as in the navigation bar). */
   protected readonly glyphs = GLYPHS;
 
-  /** The effective scoring (criteria and rating share); the defaults until it is read. */
-  private readonly scoring = signal<Scoring>(DEFAULT_SCORING);
+  /** The person's effective scoring (criteria and rating share), the defaults until it is read; a school has its own checklist (kinds PR 27). */
+  private readonly personScoring = signal<Scoring>(DEFAULT_SCORING);
 
   protected readonly items = computed<ListItem[]>(() => {
     const q = this.search().trim().toLowerCase();
     const status = this.statusFilter();
-    // The floor in the app's language as well as in English (S4b-BL-104 b); reading `t` here tracks the language.
+    // The floor and a kind's extras in the app's language too (S4b-BL-104 b, S4b-BL-210); reading `t` tracks it.
     const t = this.i18n.t.bind(this.i18n);
     const localFloor = this.i18n.lang() === 'en' ? undefined : (floor: number) => floorLocalSearchText(t, floor);
     const list = this.houses()
       .filter((h) => status === 'ALL' || h.status === status)
       .filter((h) => costFilterMatches(this.costFilter(), h))
-      .filter((h) => !q || searchText(h, this.brokerWords().get(h.brokerId ?? ''), this.noteWords().get(h.id), localFloor).includes(q))
+      .filter((h) => this.extras.matches(this.space.current().fields, h))
+      .filter((h) => !q || searchText(h, this.brokerWords().get(h.brokerId ?? ''), this.noteWords().get(h.id), localFloor, t).includes(q))
       .map((house) => {
-        const result = evaluateScore(house.checklist, house.rating, this.scoring());
+        const result = evaluateScore(house.checklist, house.rating, scoringForKind(this.space.current(), this.personScoring()));
         return { house, score: result.overall, result };
       });
     switch (this.sort()) {
@@ -239,15 +275,11 @@ export class MapPage implements AfterViewInit, OnDestroy {
   });
 
   private readonly mapEl = viewChild.required<ElementRef<HTMLDivElement>>('mapEl');
-  private readonly wrap = viewChild.required<ElementRef<HTMLElement>>('wrap');
-  private readonly stack = viewChild.required<ElementRef<HTMLElement>>('stack');
-  private readonly panel = viewChild.required<ElementRef<HTMLElement>>('panel');
   private map: MlMap | null = null;
   private controls: IControl[] = [];
   private controlPosition: ControlPosition = 'top-right';
   private controlsQuery: MediaQueryList | null = null;
   private onControlsQuery: (() => void) | null = null;
-  private stackObserver: ResizeObserver | null = null;
   private popup: Popup | null = null;
   private popupHouse: HouseDto | null = null;
   private resizeObserver: ResizeObserver | null = null;
@@ -271,11 +303,12 @@ export class MapPage implements AfterViewInit, OnDestroy {
   constructor() {
     // The list as the user left it: search, filter and sort live in the URL (Back from a house, a bookmark).
     const params = this.route.snapshot.queryParamMap;
-    const query = parseListQuery((name) => params.get(name));
+    const query = parseListQuery((name) => params.get(name), this.space.current().fields);
     this.search.set(query.q);
     this.statusFilter.set(query.status);
     this.sort.set(query.sort);
     this.costFilter.set(query.cost ?? NO_COST_FILTER);
+    this.extras.value.set(query.extras ?? {});
     // Also for the ways back that are not the browser's Back (a house opened from a bookmark, Delete, Discard).
     this.listReturn.remember(query);
     const handover = sharedHandover(this.router);
@@ -329,15 +362,46 @@ export class MapPage implements AfterViewInit, OnDestroy {
       lastLang = lang;
       untracked(() => this.relocalize());
     });
+    void this.traceView.open();
+    // The walks, the look and the place check's halo go to the map layers whenever they change (and once the map is ready).
+    // One effect each: a look change is only paint and layout, and must not re-send (and so re-tile) the walks' GeoJSON.
+    effect(() => {
+      const walks = this.traceView.walks();
+      if (this.mapReady()) untracked(() => this.traceLayers?.setWalks(walks));
+    });
+    effect(() => {
+      const look = this.traceView.look();
+      if (this.mapReady()) untracked(() => this.traceLayers?.setLook(look));
+    });
+    effect(() => {
+      const check = this.traceView.check();
+      if (this.mapReady()) untracked(() => this.traceLayers?.setCheck(check));
+    });
+    // The ring and the framing of the place check follow its answer, and the app language for the ring's label.
+    effect(() => {
+      const answer = this.placeCheck.answer();
+      this.i18n.lang();
+      if (!this.mapReady()) return;
+      untracked(() => this.placeView?.sync(answer, answer ? this.i18n.t(RING_LABEL[answer.kind]) : ''));
+    });
+    effect(() => {
+      const request = this.placeCheck.showRequest();
+      if (request && this.mapReady()) untracked(() => this.placeView?.fit(request.bounds));
+    });
     // Add mode says "move the map so the cross is on the house": one finger must move the map then, not show "Use
     // two fingers" (see applyGestures).
     effect(() => {
-      const adding = this.addMode();
+      const adding = this.picking();
       if (!this.mapReady()) return;
       untracked(() => this.applyGestures(adding));
     });
   }
 
+  /**
+   * Creates the map at the last view (else over India) and remembers the view on every move. On every `style.load` it
+   * adds the house layer and then the walk layers (a style replaced after an offline start comes without them). A click
+   * on a house opens it; in add mode a click starts a new one. With no WebGL 2 it marks the map unsupported instead.
+   */
   ngAfterViewInit(): void {
     const container = this.mapEl().nativeElement;
     // Start where the user last looked, else over India (not the whole globe, where the first house would be a
@@ -346,7 +410,6 @@ export class MapPage implements AfterViewInit, OnDestroy {
     const saved = loadMapView();
     this.hadSavedView = saved !== null;
     const view = saved ?? COUNTRY_VIEW;
-    this.watchStack();
     // On a phone the map is 55vh of a page that scrolls: createMlMap turns on cooperative gestures there (one finger
     // scrolls the page, two move the map; UX-007), as for every other map in the app.
     const map = createMlMap(this.i18n, {
@@ -361,7 +424,10 @@ export class MapPage implements AfterViewInit, OnDestroy {
       this.mapUnsupported.set(true);
       return;
     }
-    this.styleWatch = watchMapStyle(map, (available) => this.mapAvailable.set(available));
+    this.styleWatch = watchMapStyle(map, (available, key) => {
+      this.mapAvailable.set(available);
+      this.mapWorkerFailed.set(!available && key === 'map.workerFailed');
+    });
     this.cooperative = map.cooperativeGestures.isEnabled();
     if (this.addMode()) map.getCanvas().style.cursor = 'crosshair';
     // Remembered so a new house opened without a position starts here, and so Back from a house returns to it.
@@ -376,6 +442,8 @@ export class MapPage implements AfterViewInit, OnDestroy {
 
     // 'style.load', not the one-off 'load': after an offline start the style is requested again when the connection
     // returns (watchMapStyle), and a new style comes without our source and layer.
+    this.traceLayers = new TraceLayers(map);
+    this.placeView = new PlaceCheckMapView(map, this.traceLayers, () => this.mapPadding());
     map.on('style.load', () => {
       if (!map.getSource(SOURCE_ID)) {
         map.addSource(SOURCE_ID, {
@@ -383,17 +451,16 @@ export class MapPage implements AfterViewInit, OnDestroy {
           data: { type: 'FeatureCollection', features: [] },
         } as unknown as Parameters<MlMap['addSource']>[1]);
       }
-      if (map.getLayer(LAYER_ID)) {
-        this.setMapData(this.items().map((i) => i.house));
-        this.mapReady.set(true);
-        return;
+      if (!map.getLayer(LAYER_ID)) {
+        map.addLayer({
+          id: LAYER_ID,
+          type: 'circle',
+          source: SOURCE_ID,
+          paint: HOUSE_PAINT,
+        } as unknown as Parameters<MlMap['addLayer']>[0]);
       }
-      map.addLayer({
-        id: LAYER_ID,
-        type: 'circle',
-        source: SOURCE_ID,
-        paint: HOUSE_PAINT,
-      } as unknown as Parameters<MlMap['addLayer']>[0]);
+      // The walks go under the houses (beforeId) and above India's boundary layers, so after the house layer exists.
+      this.traceLayers?.attach();
       // mapReady may already be true (a style reloaded after going online): push the houses in either case.
       this.setMapData(this.items().map((i) => i.house));
       this.mapReady.set(true);
@@ -403,7 +470,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
       if (this.addMode()) return;
       const id = e.features?.[0]?.properties?.['id'];
       if (typeof id === 'string') {
-        void this.router.navigate(['/houses', id]);
+        void this.router.navigate(this.space.detailLink(id));
       }
     });
 
@@ -430,18 +497,26 @@ export class MapPage implements AfterViewInit, OnDestroy {
     this.resizeObserver.observe(container);
   }
 
+  /**
+   * Releases the map and its observers and withdraws any place-check answer; also marks the page gone so late location
+   * results are ignored.
+   */
   ngOnDestroy(): void {
     this.destroyed = true;
     clearTimeout(this.searchTimer);
     this.styleWatch?.dispose();
     this.resizeObserver?.disconnect();
-    this.stackObserver?.disconnect();
     if (this.controlsQuery && this.onControlsQuery) {
       this.controlsQuery.removeEventListener('change', this.onControlsQuery);
     }
     this.popup?.remove();
     this.map?.remove();
     this.map = null;
+    this.placeView?.dispose();
+    this.placeView = null;
+    this.traceLayers = null;
+    // The answer is shown only here: leaving the page withdraws it (and the announcement, and any wait for a fix).
+    this.placeCheck.close();
   }
 
   /**
@@ -455,7 +530,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
     if (!this.loadedOnce) this.loading.set(true);
     this.api.houses().subscribe({
       next: (list) => {
-        this.houses.set(list.filter((h) => !h.deleted));
+        this.houses.set(list.filter((h) => !h.deleted && this.space.holds(h)));
         this.error.set(null);
         this.loadedOnce = true;
         this.loading.set(false);
@@ -478,8 +553,8 @@ export class MapPage implements AfterViewInit, OnDestroy {
       error: () => this.areaNotes.set([]),
     });
     this.api.scoring().subscribe({
-      next: (scoring) => this.scoring.set(scoring),
-      error: () => this.scoring.set(DEFAULT_SCORING),
+      next: (scoring) => this.personScoring.set(scoring),
+      error: () => this.personScoring.set(DEFAULT_SCORING),
     });
     this.api.stats().subscribe({
       next: (s) => this.stats.set(s),
@@ -514,6 +589,11 @@ export class MapPage implements AfterViewInit, OnDestroy {
    */
   protected onEscape(): void {
     this.dismissPopup();
+    if (this.checkMode()) {
+      this.cancelCheckPick();
+      afterNextRender(() => document.getElementById('place-check-open')?.focus(), { injector: this.injector });
+      return;
+    }
     if (!this.addMode()) return;
     const active = typeof document === 'undefined' ? null : document.activeElement;
     const fromPlaceHere = active !== null && active.id === 'place-here';
@@ -527,6 +607,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
     );
   }
 
+  /** Updates the search at once; the URL and the spoken count follow once typing pauses. */
   protected onSearch(event: Event): void {
     this.search.set((event.target as HTMLInputElement).value);
     // Once typing pauses: into the URL, and the new count said once, not on every keystroke.
@@ -537,6 +618,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
     }, SEARCH_SETTLE_MS);
   }
 
+  /** Filters the list and the map markers to one status (or all) and writes it to the URL. */
   protected setStatusFilter(filter: StatusFilter): void {
     this.statusFilter.set(filter);
     this.writeQuery();
@@ -554,6 +636,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
     this.announceCount();
   }
 
+  /** Removes the three cost ranges and puts focus on the first cost field. */
   protected clearCostFilters(): void {
     this.costFilter.set(NO_COST_FILTER);
     this.writeQuery();
@@ -561,9 +644,33 @@ export class MapPage implements AfterViewInit, OnDestroy {
     document.getElementById('cost-monthly-min')?.focus();
   }
 
+  /** Changes the list order and writes it to the URL. */
   protected onSort(event: Event): void {
     this.sort.set((event.target as HTMLSelectElement).value as SortKey);
     this.writeQuery();
+  }
+
+  /** *A spot on the map*: the crosshair mode, with *Check this spot* in place of *Place here*. */
+  protected startCheckPick(): void {
+    this.addMode.set(false);
+    this.checkMode.set(true);
+    this.placeCheck.close();
+    if (this.map) this.map.getCanvas().style.cursor = 'crosshair';
+    this.announcer.announce({ key: 'trace.here.pickHint' });
+    afterNextRender(() => document.getElementById('check-this-spot')?.focus(), { injector: this.injector });
+  }
+
+  /** Leaves the crosshair mode of the place check. */
+  protected cancelCheckPick(): void {
+    this.checkMode.set(false);
+    if (this.map) this.map.getCanvas().style.cursor = '';
+  }
+
+  /** *Check this spot*: the map's centre under the cross is the place. Nothing goes in the URL. */
+  protected checkAtCenter(): void {
+    const c = this.map?.getCenter();
+    this.cancelCheckPick();
+    if (c) void this.placeCheck.run('spot', { lat: c.lat, lon: c.lng });
   }
 
   /** Keyboard alternative to clicking the map: places the new house under the centre cross. */
@@ -592,17 +699,20 @@ export class MapPage implements AfterViewInit, OnDestroy {
     );
   }
 
+  /** Clears the search, the status and the cost ranges together. */
   protected clearFilters(): void {
     clearTimeout(this.searchTimer);
     this.search.set('');
     this.statusFilter.set('ALL');
     this.costFilter.set(NO_COST_FILTER);
+    this.extras.value.set({});
     this.writeQuery();
     this.announceCount();
   }
 
+  /** The label key of a status filter chip. */
   protected filterKey(f: StatusFilter): TKey {
-    return f === 'ALL' ? 'status.ALL' : STATUS_KEY[f];
+    return f === 'ALL' ? 'status.ALL' : this.statusKey()[f];
   }
 
   /** Houses per status, tallied once when the houses change, not once per chip on every change detection. */
@@ -628,6 +738,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
     this.popupHouse = null;
   }
 
+  /** Frames every house in the current list. */
   protected fitAll(): void {
     this.fitToHouses(this.items().map((i) => i.house));
   }
@@ -671,7 +782,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
     const shared = this.sharedText();
     this.sharedText.set(null);
     if (shared !== null) forgetHandover();
-    void this.router.navigate(['/houses/new'], { state: shared !== null ? { shared } : undefined });
+    void this.router.navigate([this.space.newLink()], { state: shared !== null ? { shared } : undefined });
   }
 
   /**
@@ -693,7 +804,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
         // The houses could not be read back (an IndexedDB error): the count is not said, but focus still moves on.
       }
       if (this.destroyed) return;
-      if (n !== null) this.announcer.announce({ key: 'data.migrationDone', params: { n } });
+      if (n !== null) this.announcer.announce({ key: this.space.appWord('data.migrationDone'), params: { n } });
     }
     const heading = document.getElementById('houses-heading');
     heading?.setAttribute('tabindex', '-1');
@@ -702,7 +813,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
 
   /** Search, filter and sort into the URL, replacing the entry: Back goes to the previous page, not the last filter. */
   private writeQuery(): void {
-    const query = { q: this.search(), status: this.statusFilter(), sort: this.sort(), cost: this.costFilter() };
+    const query = { q: this.search(), status: this.statusFilter(), sort: this.sort(), cost: this.costFilter(), extras: this.extras.value() };
     this.listReturn.remember(query);
     void this.router.navigate([], {
       relativeTo: this.route,
@@ -719,6 +830,10 @@ export class MapPage implements AfterViewInit, OnDestroy {
     this.announcer.announce({ key: 'map.shown', params: { shown: this.items().length, total: this.houses().length } });
   }
 
+  /**
+   * Opens the new-house form at a position. Shared listing text goes in navigation state, never in the URL, because it
+   * often holds a phone number.
+   */
   private createAt(lat: number, lon: number): void {
     this.addMode.set(false);
     if (this.map) this.map.getCanvas().style.cursor = '';
@@ -726,13 +841,14 @@ export class MapPage implements AfterViewInit, OnDestroy {
     this.sharedText.set(null);
     // This history entry is still the map's: strip the handover so Back from the form shows the plain map.
     if (shared !== null) forgetHandover();
-    void this.router.navigate(['/houses/new'], {
+    void this.router.navigate([this.space.newLink()], {
       queryParams: { lat: round6(lat).toFixed(6), lon: round6(lon).toFixed(6) },
       // Same rule as the share page: the text (often with a phone number) travels in state, never in the URL.
       state: shared !== null ? { shared } : undefined,
     });
   }
 
+  /** Gives the map's house source the houses now in the list. */
   private setMapData(houses: HouseDto[]): void {
     // MapLibre 6: GeoJSONSource.setData returns a Promise<void> (no longer `this`).
     const source = this.map?.getSource(SOURCE_ID) as unknown as { setData(data: unknown): Promise<void> } | undefined;
@@ -743,21 +859,28 @@ export class MapPage implements AfterViewInit, OnDestroy {
     });
   }
 
+  /** Frames the houses (zoom at most 16), kept clear of the controls and actions drawn over the map. */
   private fitToHouses(houses: HouseDto[]): void {
     const map = this.map;
     if (!map || houses.length === 0) return;
     const bounds = new LngLatBounds();
     for (const h of houses) bounds.extend([h.lon, h.lat]);
-    // On a phone the bottom row (legend, actions) and MapLibre's control column are drawn over the map: keep the
-    // houses out from under them. The row is measured the same way watchStack() measures it for --map-stack-h.
-    const container = map.getContainer();
-    const padding = fitPadding(
+    const padding = this.mapPadding();
+    map.fitBounds(bounds, { padding, maxZoom: 16, duration: 0 });
+  }
+
+  /**
+   * On a phone MapLibre's control column is drawn over the map: a framed box is kept out from under it. The bottom row
+   * (legend, actions) is under the map, not over it (map-page.css), so nothing is measured for it.
+   */
+  private mapPadding() {
+    const container = this.map!.getContainer();
+    return fitPadding(
       this.wantedControlPosition() === 'bottom-right',
-      this.stack().nativeElement.getBoundingClientRect().height,
+      0,
       container.clientWidth,
       container.clientHeight,
     );
-    map.fitBounds(bounds, { padding, maxZoom: 16, duration: 0 });
   }
 
   /**
@@ -774,6 +897,7 @@ export class MapPage implements AfterViewInit, OnDestroy {
     else if (!adding && !gestures.isEnabled()) gestures.enable();
   }
 
+  /** The corner for MapLibre's controls: bottom right in the phone layout, top right otherwise. */
   private wantedControlPosition(): ControlPosition {
     return typeof matchMedia !== 'undefined' && matchMedia(BOTTOM_CONTROLS_QUERY).matches ? 'bottom-right' : 'top-right';
   }
@@ -793,31 +917,6 @@ export class MapPage implements AfterViewInit, OnDestroy {
     this.onControlsQuery = onChange;
   }
 
-  /**
-   * The phone layout's bottom row (legend and actions) is measured into `--map-stack-h` on the map region, so
-   * MapLibre's bottom-right controls and the offline message sit above it whatever its height (a two-row legend in
-   * Tamil, two stacked buttons, 200% text). On wider screens the row has no box and measures 0, which nothing uses.
-   * The list's heading and counters are measured into `--map-peek` the same way (used by the phone layout only).
-   */
-  private watchStack(): void {
-    if (typeof ResizeObserver === 'undefined') return;
-    const wrap = this.wrap().nativeElement;
-    const stack = this.stack().nativeElement;
-    const panel = this.panel().nativeElement;
-    const update = () => {
-      wrap.style.setProperty('--map-stack-h', `${Math.ceil(stack.getBoundingClientRect().height)}px`);
-      // The phone map leaves room under it for the list's heading and counters (listPeek, map-page.css).
-      const head = panel.querySelector('.panel-head');
-      const stats = panel.querySelector('.stats');
-      if (head) wrap.style.setProperty('--map-peek', `${listPeek(head.getBoundingClientRect(), stats?.getBoundingClientRect() ?? null)}px`);
-    };
-    this.stackObserver = new ResizeObserver(update);
-    this.stackObserver.observe(stack);
-    // The panel changes size when the counters first appear, and with the text size or the language.
-    this.stackObserver.observe(panel);
-    update();
-  }
-
   /** After a language switch: MapLibre's controls and the open popup in the new language. */
   private relocalize(): void {
     const map = this.map;
@@ -828,6 +927,10 @@ export class MapPage implements AfterViewInit, OnDestroy {
     if (house && this.popup?.isOpen()) this.showPopup(map, house);
   }
 
+  /**
+   * Shows a popup for a house (name, status, price, BHK, score) built from text nodes, so house text is never taken as
+   * HTML.
+   */
   private showPopup(map: MlMap, h: HouseDto): void {
     this.popup?.remove();
     const el = document.createElement('div');
@@ -835,10 +938,10 @@ export class MapPage implements AfterViewInit, OnDestroy {
     title.textContent = h.label || this.i18n.t('common.untitled');
     el.appendChild(title);
     const details = [
-      `${STATUS_ICON[h.status]} ${this.i18n.t(STATUS_KEY[h.status])}`,
+      `${STATUS_ICON[h.status]} ${this.i18n.t(this.statusKey()[h.status])}`,
       h.price != null ? this.i18n.price(h.price, h.priceType) : null,
       h.bedrooms != null ? this.i18n.t('common.bhk', { n: h.bedrooms }) : null,
-      this.i18n.t('common.scoreValue', { score: this.i18n.score(houseScore(h, this.scoring())) }),
+      this.space.current().labels.isVisible('section.checklist') ? this.i18n.t('common.scoreValue', { score: this.i18n.score(houseScore(h, scoringForKind(this.space.current(), this.personScoring()))) }) : null,
     ].filter((x): x is string => !!x);
     const sub = document.createElement('div');
     sub.textContent = details.join(' · ');

@@ -1,0 +1,25 @@
+{
+  "spec": [
+    "web/src/app/data/drive/sync-vectors.spec.ts"
+  ],
+  "mutations": [
+    {
+      "file": "web/src/app/data/drive/drive-photo-seams.ts",
+      "find": "{ ...row.json, driveFileId: ref.driveFileId, sha256: ref.sha256 }",
+      "replace": "{ driveFileId: ref.driveFileId, sha256: ref.sha256, ...row.json }",
+      "expect": "writes the file of a written case byte for byte"
+    },
+    {
+      "file": "web/src/app/data/drive/drive-photo-seams.ts",
+      "find": "{ ...row.json, driveFileId: ref.driveFileId, sha256: ref.sha256 }",
+      "replace": "{ ...row.json, sha256: ref.sha256, driveFileId: ref.driveFileId }",
+      "expect": "writes the file of a written case byte for byte"
+    },
+    {
+      "file": "web/src/app/data/drive/drive-photo-seams.ts",
+      "find": "{ ...row.json, driveFileId: ref.driveFileId, sha256: ref.sha256 }",
+      "replace": "{ ...row.json }",
+      "expect": "writes the file of a written case byte for byte"
+    }
+  ]
+}

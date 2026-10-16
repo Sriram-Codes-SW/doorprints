@@ -16,6 +16,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+import { asciiDigits } from '../core/ai/ai-core';
 import type { HouseDraft } from '../core/ai.service';
 
 /**
@@ -40,17 +41,32 @@ export const LISTING_PORTALS: ReadonlyArray<readonly [string, string]> = [
 
 const URL_RE = /https?:\/\/[^\s<>"']+/;
 const TRACKING = /^(utm_.*|fbclid|gclid|igshid|ref|src)$/;
-const PHONE = /(?:\+91[\s-]?)?(?:0)?[6-9]\d{4}[\s-]?\d{5}\b/;
-const BHK = /\b(\d{1,2})\s*-?\s*(?:BHK|bhk|Bhk|bedroom|bedrooms|BR)\b/;
+// A mobile number (with or without +91 or a 0), or a landline with its STD code (011 4155 0101, (022) 2655 0101).
+const PHONE = /(?:\+91[\s-]?)?(?:0)?[6-9]\d{4}[\s-]?\d{5}\b|(?<!\d)\(?0\d{2,4}\)?[\s-]?\d{3,4}[\s-]?\d{3,4}\b/;
+// "2.5 BHK" is 2 (the half is a study), as the sanitiser reads "2.5 BHK": never 5, from the digit after the dot.
+const BHK = /\b(\d{1,2})(?:\.5)?\s*-?\s*(?:BHK|bhk|Bhk|bedroom|bedrooms|BR)\b/;
 const STUDIO = /\b(studio|1\s*RK)\b/i;
 const PRICE =
   /(?:₹|Rs\.?|INR)\s*([\d,]+(?:\.\d+)?)\s*(k|thousand|lac|lakh|lakhs|lacs|l|cr|crore|crores)?\b|\b(\d+(?:\.\d+)?)\s*(k|thousand|lac|lakh|lakhs|lacs|cr|crore|crores)\b/i;
 const RENT = /\b(for rent|rent|rental|per month|\/\s*month|monthly|lease|pm)\b/i;
 const SALE = /\b(for sale|sale|resale|buy|selling)\b/i;
-const CITIES =
-  'Bengaluru|Bangalore|Chennai|Hyderabad|Mumbai|Navi Mumbai|Thane|Pune|Delhi|New Delhi|Gurgaon|Gurugram|Noida|Kolkata|Kochi|Coimbatore|Mysuru|Mysore|Ahmedabad|Jaipur|Lucknow|Chandigarh|Indore|Bhopal|Nagpur|Surat|Vadodara|Visakhapatnam|Vijayawada|Thiruvananthapuram|Trivandrum|Madurai|Mangaluru|Mangalore';
+const CITIES = [
+  'Bengaluru', 'Bangalore', 'Chennai', 'Hyderabad', 'Mumbai', 'Navi Mumbai', 'Thane', 'Pune',
+  'Delhi', 'New Delhi', 'Gurgaon', 'Gurugram', 'Noida', 'Kolkata', 'Kochi', 'Coimbatore',
+  'Mysuru', 'Mysore', 'Ahmedabad', 'Jaipur', 'Lucknow', 'Chandigarh', 'Indore', 'Bhopal',
+  'Nagpur', 'Surat', 'Vadodara', 'Visakhapatnam', 'Vijayawada', 'Thiruvananthapuram', 'Trivandrum', 'Madurai',
+  'Mangaluru', 'Mangalore', 'Guwahati', 'Shillong', 'Imphal', 'Agartala', 'Itanagar', 'Gangtok',
+  'Dehradun', 'Shimla', 'Manali', 'Mussoorie', 'Haridwar', 'Rishikesh', 'Srinagar', 'Jammu',
+  'Leh', 'Amritsar', 'Ludhiana', 'Mohali', 'Panchkula', 'Panaji', 'Goa', 'Margao',
+  'Ranchi', 'Patna', 'Bhubaneswar', 'Cuttack', 'Raipur', 'Gandhinagar', 'Rajkot', 'Nashik',
+  'Aurangabad', 'Kolhapur', 'Kozhikode', 'Calicut', 'Thrissur', 'Kannur', 'Hubballi', 'Belagavi',
+  'Udaipur', 'Jodhpur', 'Kanpur', 'Varanasi', 'Prayagraj', 'Ghaziabad', 'Faridabad', 'Puducherry',
+  'Pondicherry', 'Tiruchirappalli', 'Salem', 'Port Blair', 'Kavaratti',
+];
+/** The names as written and in capitals (a forward in capitals says "MUMBAI"), the regular expression being case-sensitive on purpose. */
+const CITY_ALTERNATIVES = [...CITIES, ...CITIES.map((c) => c.toUpperCase())].join('|');
 const LOCALITY = new RegExp(
-  `\\b(?:in|at|near)\\s+([A-Z][\\w.'-]*(?:\\s+(?:[A-Z0-9][\\w.'-]*|of|the)){0,4}?),?\\s+(?:${CITIES})\\b`,
+  `\\b(?:in|at|near|IN|AT|NEAR)\\s+([A-Z][\\w.'-]*(?:\\s+(?:[A-Z0-9][\\w.'-]*|of|the)){0,4}?),?\\s+(?:${CITY_ALTERNATIVES})\\b`,
 );
 const AREA = /(\d{3,5})\s*(?:sq\.?\s*ft|sqft|sq\.?\s*feet|square\s*feet|sq\.?\s*m)\b/i;
 const FURNISHING = /\b(fully[- ]furnished|semi[- ]furnished|unfurnished|furnished)\b/i;
@@ -121,14 +137,17 @@ export function parseListingText(text: string): HouseDraft {
   const url = listingUrlIn(t);
   // The words are read with the links taken out: a portal's address says "rent" or "buy" for its own reasons.
   const words = t.replace(new RegExp(URL_RE.source, 'g'), ' ');
-  const priceMatch = PRICE.exec(words);
+  // The numbers are read in 0-9 whatever script they are written in (S4b-BL-174b; one character for one character, so the
+  // text and its reading line up); the words, the locality and the notes keep what was written.
+  const digits = asciiDigits(words);
+  const priceMatch = PRICE.exec(digits);
   const priceText = priceMatch ? (priceMatch[1] ? `${priceMatch[1]} ${priceMatch[2] ?? ''}` : `${priceMatch[3]} ${priceMatch[4]}`).trim() : null;
   const price = priceText ? rupees(priceText) : null;
   const priceType = RENT.test(words) ? 'RENT' : SALE.test(words) ? 'SALE' : price !== null && price >= SALE_FROM_RUPEES ? 'SALE' : null;
-  const bhk = BHK.exec(words);
+  const bhk = BHK.exec(digits);
   const bedroomsRaw = bhk ? Number(bhk[1]) : STUDIO.test(words) ? 0 : null;
   const bedrooms = bedroomsRaw !== null && bedroomsRaw <= BEDROOMS_MAX ? bedroomsRaw : null;
-  const area = AREA.exec(words);
+  const area = AREA.exec(digits);
   // The same match feeds the notes' first line ("1150 sq ft, …") and the carpet area field (slice 1a).
   const areaSqft = area && Number(area[1]) >= 1 && Number(area[1]) <= AREA_MAX ? Number(area[1]) : null;
   const furnishing = FURNISHING.exec(words);
@@ -137,7 +156,7 @@ export function parseListingText(text: string): HouseDraft {
     furnishing ? furnishing[1].toLowerCase().replace(/^./, (c) => c.toUpperCase()) : null,
   ].filter((d): d is string => d !== null);
   const notes = (details.length ? details.join(', ') + '\n\n' + t : t).trim().slice(0, NOTES_MAX);
-  const phone = PHONE.exec(words)?.[0].trim().slice(0, PHONE_MAX) ?? null;
+  const phone = PHONE.exec(digits)?.[0].trim().slice(0, PHONE_MAX) ?? null;
   const locality = LOCALITY.exec(words)?.[1] ?? null;
   const label = firstLabel(t, url) ?? defaultLabel(bedrooms, locality);
   return {

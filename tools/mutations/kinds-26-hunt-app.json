@@ -1,0 +1,57 @@
+{
+  "spec": [
+    "android/app/src/test/java/app/doorprints/HuntKindAlertsTest.kt",
+    "android/app/src/test/java/app/doorprints/SpacesRootTest.kt"
+  ],
+  "gradle": [
+    ":app:testDebugUnitTest",
+    "--tests",
+    "app.doorprints.HuntKindAlertsTest",
+    "--tests",
+    "app.doorprints.SpacesRootTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/app/src/main/java/app/doorprints/Notifications.kt",
+      "find": "if (KindCapabilities.of(kind).baseline) return CHANNEL_ALERTS",
+      "replace": "if (kind.isEmpty()) return CHANNEL_ALERTS",
+      "expect": "aHouseWalksStreetAlertIsTheWordsAndTheChannelItAlwaysHad"
+    },
+    {
+      "file": "android/app/src/main/java/app/doorprints/location/HuntService.kt",
+      "find": "walkKind?.let { putExtra(Notifications.EXTRA_NEW_KIND, it) }",
+      "replace": "",
+      "expect": "aStayAlertIsWordedForTheKindAndCarriesTheWalksKindForTheEntryItMakes"
+    },
+    {
+      "file": "android/app/src/main/java/app/doorprints/location/HuntService.kt",
+      "find": "composeString(words.streetTextSince, houses, visits, Formats.date(it))",
+      "replace": "composeString(HuntWords.HOUSE.streetTextSince, houses, visits, Formats.date(it))",
+      "expect": "aSchoolWalksStreetAlertSaysSchoolsOnAChannelOfItsOwnNamedInTheSchoolsWords"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/Root.kt",
+      "find": "HuntSpace.alertKind(setting, d.kind)",
+      "replace": "HuntSpace.alertKind(setting, null)",
+      "expect": "aSchoolWalksStayAlertMakesASchoolEvenWhenTheHouseIsTheDefault"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/MapScreen.kt",
+      "find": "mapServices.startHunt(huntKind)",
+      "replace": "mapServices.startHunt(\"house\")",
+      "expect": "aSchoolSpaceHasTheHuntCardAndItsSwitchStartsAWalkOfTheSchool"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/Root.kt",
+      "find": "getString(HuntWords.of(wasKind).leftSpace)",
+      "replace": "getString(HuntWords.HOUSE.leftSpace)",
+      "expect": "aSchoolWalkStopsWhenThePersonSwitchesToAnotherSpaceAndSaysWhyInTheSchoolsWords"
+    },
+    {
+      "file": "android/app/src/main/java/app/doorprints/location/HuntService.kt",
+      "find": "?: composeString(words.streetText, houses, visits)",
+      "replace": "?: composeString(HuntWords.HOUSE.streetText, houses, visits)",
+      "expect": "aSchoolWalksStreetAlertWithNoEarlierVisitSaysSchools"
+    }
+  ]
+}

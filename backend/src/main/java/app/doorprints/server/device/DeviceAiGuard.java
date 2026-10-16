@@ -18,6 +18,7 @@
 
 package app.doorprints.server.device;
 
+import app.doorprints.server.common.Problems;
 import app.doorprints.server.config.ApiKeyFilter;
 import app.doorprints.server.config.RequestPaths;
 import jakarta.servlet.FilterChain;
@@ -27,6 +28,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Map;
 
 /**
  * The owner's per-device AI switch (docs/03 §12.1): every AI request runs with the owner's Gemini key, so a device whose
@@ -46,6 +48,9 @@ public class DeviceAiGuard extends OncePerRequestFilter {
         this.paused = paused;
     }
 
+    /**
+     * Applies only to the AI and MCP paths, except the status call and CORS preflights.
+     */
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         var path = RequestPaths.path(request);
@@ -54,24 +59,21 @@ public class DeviceAiGuard extends OncePerRequestFilter {
         return !ai || RequestPaths.isPreflight(request);
     }
 
+    /**
+     * Refuses AI calls with 403 while AI is paused for the server, and for a device whose AI switch is off; everyone
+     * else passes.
+     */
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
         if (paused.getAsBoolean()) {
-            response.setStatus(403);
-            response.setContentType("application/problem+json");
-            response.setCharacterEncoding("UTF-8");
-            response.getWriter().write("{\"status\":403,\"code\":\"" + PAUSED
-                    + "\",\"detail\":\"AI is paused on this server's owner page.\"}");
+            Problems.write(response, 403, PAUSED, "AI is paused on this server's owner page.", Map.of());
             return;
         }
         if (request.getAttribute(ApiKeyFilter.DEVICE_ATTRIBUTE) instanceof DeviceKeyStore.Caller caller
                 && !caller.aiAllowed()) {
-            response.setStatus(403);
-            response.setContentType("application/problem+json");
-            response.setCharacterEncoding("UTF-8");
-            response.getWriter().write("{\"status\":403,\"code\":\"" + CODE
-                    + "\",\"detail\":\"AI is turned off for this device on the server's owner page.\"}");
+            Problems.write(response, 403, CODE, "AI is turned off for this device on the server's owner page.",
+                    Map.of());
             return;
         }
         chain.doFilter(request, response);

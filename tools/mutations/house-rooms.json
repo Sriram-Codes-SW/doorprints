@@ -1,0 +1,191 @@
+{
+ "spec": "web/src/app/pages/house-detail/house-rooms.spec.ts",
+ "mutations": [
+  {
+   "file": "web/src/app/pages/house-detail/house-rooms.ts",
+   "find": "return d.rooms ?? [];",
+   "replace": "return d.rooms!;",
+   "expect": "shows the empty state and an enabled Add room button"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-rooms.ts",
+   "find": "r.name?.trim() || this.deps.i18n.t(",
+   "replace": "r.name || this.deps.i18n.t(",
+   "expect": "names a room by its type when the name is blank"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-rooms.ts",
+   "find": "if (rooms.length >= MAX_ROOMS) return;",
+   "replace": "if (rooms.length > MAX_ROOMS) return;",
+   "expect": "adds no 31st room even when asked directly"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-rooms.ts",
+   "find": "const MAX_ROOMS = 30;",
+   "replace": "const MAX_ROOMS = 31;",
+   "expect": "disables Add room at 30 rooms"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-rooms.ts",
+   "find": "Math.max(max, (r.sort ?? 0) + 1), 0)",
+   "replace": "Math.max(max, (r.sort ?? 0)), 0)",
+   "expect": "adds a room of type BEDROOM with the next sort"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-rooms.ts",
+   "find": "(r.sort ?? 0) + 1",
+   "replace": "(r.sort ?? 20) + 1",
+   "expect": "numbers a new room after the highest sort"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-rooms.ts",
+   "find": "type: 'BEDROOM', sort };",
+   "replace": "type: 'OTHER', sort };",
+   "expect": "adds a room of type BEDROOM with the next sort"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-rooms.ts",
+   "find": "rooms: [...rooms, room]",
+   "replace": "rooms: [room, ...rooms]",
+   "expect": "adds a room of type BEDROOM with the next sort"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-rooms.ts",
+   "find": "document.getElementById('room-type-' + room.id)?.focus()",
+   "replace": "document.getElementById('rooms-add')?.focus()",
+   "expect": "puts the focus on the new room"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-rooms.ts",
+   "find": "(r.id === id ? { ...r, ...changes } : r)",
+   "replace": "(r.id !== id ? { ...r, ...changes } : r)",
+   "expect": "edits a room: type, name, size in feet and inches"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-rooms.ts",
+   "find": "moveRoom(this.list(d), id, by)",
+   "replace": "moveRoom(this.list(d), id, -by)",
+   "expect": "moves a room up and down with buttons"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-rooms.ts",
+   "find": "const button = `room-${by < 0 ? 'up' : 'down'}-${id}`;",
+   "replace": "const button = `room-${by < 0 ? 'down' : 'up'}-${id}`;",
+   "expect": "keeps the focus on the arrow pressed"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-rooms.ts",
+   "find": "(el && !el.disabled ? el : ",
+   "replace": "(el ? el : ",
+   "expect": "puts the focus on the new room"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-rooms.ts",
+   "find": "document.getElementById(`room-${by < 0 ? 'down' : 'up'}-${id}`)",
+   "replace": "document.getElementById(`room-${by < 0 ? 'up' : 'down'}-${id}`)",
+   "expect": "puts the focus on the new room"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-rooms.ts",
+   "find": "this.list(d).filter((r) => r.id !== id)",
+   "replace": "this.list(d).filter((r) => r.id === id)",
+   "expect": "deletes a room and shows the empty state"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-rooms.ts",
+   "find": "document.getElementById('rooms-add')?.focus(), { injector: this.deps.injector });\n  }\n\n  setType",
+   "replace": "document.getElementById('rooms-max')?.focus(), { injector: this.deps.injector });\n  }\n\n  setType",
+   "expect": "puts the focus on the new room"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-rooms.ts",
+   "find": "(type as RoomType) ? (type as RoomType) : 'OTHER'",
+   "replace": "(type as RoomType) ? (type as RoomType) : 'BEDROOM'",
+   "expect": "turns a type the list does not know into Other"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-rooms.ts",
+   "find": "ROOM_TYPES.includes(type as RoomType) ?",
+   "replace": "true ?",
+   "expect": "turns a type the list does not know into Other"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-rooms.ts",
+   "find": "value === '' ? null : Number(value)",
+   "replace": "value === '' ? 0 : Number(value)",
+   "expect": "a cleared condition into none"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-rooms.ts",
+   "find": "feet.trim() === '' && inches.trim() === ''",
+   "replace": "feet.trim() === '' || inches.trim() === ''",
+   "expect": "reads feet with blank inches"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-rooms.ts",
+   "find": "blank ? null : parseFeetInches(feet, inches)",
+   "replace": "blank ? 0 : parseFeetInches(feet, inches)",
+   "expect": "clears a size when both boxes are blank"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-rooms.ts",
+   "find": "[key]: parseMetres(metres)",
+   "replace": "[key]: parseMetres('')",
+   "expect": "takes a size in metres with one decimal number"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-rooms.ts",
+   "find": "cm == null ? '' : cmToFeetInches(cm).feet",
+   "replace": "cm == null ? 0 : cmToFeetInches(cm).feet",
+   "expect": "clears a size when both boxes are blank"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-rooms.ts",
+   "find": "cm == null ? '' : cmToFeetInches(cm).inches",
+   "replace": "cm == null ? 0 : cmToFeetInches(cm).inches",
+   "expect": "shows no feet or inches for an unknown size"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-rooms.ts",
+   "find": "cmToFeetInches(cm).inches",
+   "replace": "cmToFeetInches(cm).feet",
+   "expect": "shows a size as feet and inches"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-rooms.ts",
+   "find": "cm == null ? '' : metresText(cm)",
+   "replace": "cm == null ? '0' : metresText(cm)",
+   "expect": "shows an unknown size as empty"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-rooms.ts",
+   "find": "this.deps.i18n.t('rooms.area'",
+   "replace": "this.deps.i18n.t('rooms.total'",
+   "expect": "shows each room area under its sizes"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-rooms.ts",
+   "find": "sized === 0 ? null :",
+   "replace": "sized < 0 ? null :",
+   "expect": "shows an area only when both sizes are known"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-rooms.ts",
+   "find": "totalAreaSqCm(this.list(d))",
+   "replace": "totalAreaSqCm([])",
+   "expect": "shows each room area under its sizes and the total"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-rooms.ts",
+   "find": "unit === 'M'\n",
+   "replace": "unit !== 'M'\n",
+   "expect": "switching the length unit changes the display only"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-rooms.ts",
+   "find": "i18n.number(Number(areaNumber(sqCm, unit)))",
+   "replace": "String(areaNumber(sqCm, unit))",
+   "expect": "groups thousands of square feet"
+  }
+ ]
+}

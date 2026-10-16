@@ -1,0 +1,38 @@
+{
+  "spec": "backend/src/test/java/app/doorprints/server/ai/config/AiOutputTokensTest.java",
+  "maven": [
+    "-Dtest=AiOutputTokensTest"
+  ],
+  "mutations": [
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/config/AiProperties.java",
+      "find": "positiveOr(maxOutputTokens, 8192)",
+      "replace": "positiveOr(maxOutputTokens, 2048)",
+      "expect": "theRecordDefaultIsEightThousandOneHundredNinetyTwoTokens"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/config/AiProperties.java",
+      "find": "positiveOr(maxOutputTokens, 8192)",
+      "replace": "8192",
+      "expect": "aConfiguredValueWins"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/config/AiProperties.java",
+      "find": "return value == null || value <= 0 ? fallback : value;",
+      "replace": "return value == null ? fallback : value;",
+      "expect": "zeroAndNegativeFallBackToTheDefault"
+    },
+    {
+      "file": "backend/src/main/resources/application.yml",
+      "find": "max-output-tokens: ${AI_MAX_OUTPUT_TOKENS:8192}",
+      "replace": "max-output-tokens: ${AI_MAX_OUTPUT_TOKENS:2048}",
+      "expect": "theApplicationYmlDefaultAgreesWithTheRecordDefault"
+    },
+    {
+      "file": "backend/src/main/resources/application.yml",
+      "find": "max-output-tokens: ${AI_MAX_OUTPUT_TOKENS:8192}",
+      "replace": "max-output-tokens: ${AI_MAX_OUT_TOKENS:8192}",
+      "expect": "theVariableSetsTheValueAndAnEmptyOneLeavesTheDefault"
+    }
+  ]
+}

@@ -1,0 +1,83 @@
+/*
+ * Copyright 2026 Sriram (Sriram-Codes-SW)
+ *
+ * This file is part of Doorprints.
+ *
+ * Doorprints is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+ * Public License as published by the Free Software Foundation, version 3 of the License.
+ *
+ * Doorprints is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+ * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Affero General Public License along with Doorprints (the file LICENSE;
+ * the file NOTICE has additional permissions under section 7). If not, see <https://www.gnu.org/licenses/>.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
+.drive-join-container {
+  display: block;
+}
+
+.input-monospace {
+  font-family: 'Monaco', 'Courier New', monospace;
+  letter-spacing: 0.05em;
+}
+
+.error-region {
+  min-height: 1.5em;
+  margin: 0.5rem 0;
+}
+
+.error-message {
+  color: var(--color-error, #d32f2f);
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.help-text {
+  display: block;
+  margin-top: 0.25rem;
+  color: var(--color-text-secondary, #666);
+  font-size: 0.875rem;
+}
+
+.secondary-text {
+  font-size: 0.875rem;
+  margin-top: 1rem;
+}
+
+.disconnect-link {
+  margin-top: 1rem;
+}
+
+.link-button {
+  background: none;
+  border: none;
+  color: var(--color-link, #1976d2);
+  cursor: pointer;
+  font-size: inherit;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.link-button:hover:not(:disabled) {
+  color: var(--color-link-hover, #1565c0);
+}
+
+.link-button:focus {
+  outline: 2px solid var(--color-focus, #1976d2);
+  outline-offset: 2px;
+}
+
+.link-button:disabled {
+  color: var(--color-text-disabled, #999);
+  cursor: not-allowed;
+}
+
+.actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}

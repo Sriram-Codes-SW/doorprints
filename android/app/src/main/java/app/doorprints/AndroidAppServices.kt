@@ -40,7 +40,9 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.FileProvider
 import androidx.work.WorkInfo
 import app.doorprints.data.AndroidRepository
+import app.doorprints.data.Api
 import app.doorprints.data.Repository
+import app.doorprints.drive.wiring.DriveSettingsSection
 import app.doorprints.export.AndroidExportServices
 import app.doorprints.export.AndroidImportServices
 import app.doorprints.export.AutoBackupWorker
@@ -69,6 +71,10 @@ import app.doorprints.ui.OfflineMapsServices
 import app.doorprints.ui.PhotoSources
 import app.doorprints.ui.PickedPhoto
 import app.doorprints.ui.SettingsServices
+import app.doorprints.ui.VoiceServices
+import app.doorprints.voice.AndroidVoiceServices
+import app.doorprints.ui.PlaceFix
+import app.doorprints.ui.bestLocation
 import app.doorprints.ui.currentLocation
 import app.doorprints.ui.findActivity
 import app.doorprints.ui.hasLocationPermission
@@ -91,9 +97,13 @@ import java.io.File
 class AndroidAppServices(private val app: DoorprintsApp, override val repository: AndroidRepository) : AppServices {
     override val appScope: CoroutineScope get() = app.appScope
 
+    /** *Voice input* (S4b-BL-222): the microphone, its permission and the own-key transcription, on the app-wide HTTP client. */
+    override val voice: VoiceServices = AndroidVoiceServices(app, repository.settings, Api::httpClient)
+
     override val location: LocationSource = object : LocationSource {
         override suspend fun current(): Pair<Double, Double>? = currentLocation(app)
         override fun hasPrecisePermission(): Boolean = hasLocationPermission(app)
+        override suspend fun best(maxWaitMs: Long, goodAccuracyM: Double): PlaceFix? = bestLocation(app, maxWaitMs, goodAccuracyM)
     }
 
     /** The copy imports' undo, one per process as this class is (common since S4b-BL-106); records by [ImportUndo]. */
@@ -190,6 +200,10 @@ private class AndroidSettingsServices(private val app: DoorprintsApp) : Settings
         ScreenWatch.settingsScreen = visible
     }
 
+    /** Settings > Google Drive (docs/15 §2): the Drive screens behind the screen-lock rule ([DriveSettingsSection]). */
+    @Composable
+    override fun DriveSection() = DriveSettingsSection(app.container.drive)
+
     /** The installed version name ("0.1.0"), or null if the package manager cannot say. */
     override fun appVersion(): String? = runCatching {
         val pm = app.packageManager
@@ -258,11 +272,13 @@ private class AndroidHouseFormServices(
 private class AndroidMapServices(private val app: DoorprintsApp) : MapServices {
     override val hunt: StateFlow<HuntState.State> get() = HuntState.state
 
-    override fun startHunt(): Boolean = HuntService.start(app)
+    override fun startHunt(kind: String): Boolean = HuntService.start(app, kind)
 
     override fun stopHunt() {
         HuntService.stop(app)
     }
+
+    override fun finishWalk() = HuntService.finishWalk(app)
 
     override fun clearHuntStopReason() = HuntService.clearStopReason()
 

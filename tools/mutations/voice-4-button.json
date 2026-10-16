@@ -1,0 +1,107 @@
+{
+ "spec": "web/src/app/shared/voice-button.spec.ts",
+ "mutations": [
+  {
+   "file": "web/src/app/shared/voice-button.ts",
+   "find": "if (!this.voice.available()) this.discard();",
+   "replace": "if (false as boolean) this.discard();",
+   "expect": "turning the setting off mid-recording"
+  },
+  {
+   "file": "web/src/app/shared/voice-button.ts",
+   "find": "ngOnDestroy(): void {\n    this.discard();",
+   "replace": "ngOnDestroy(): void {\n    void 0;",
+   "expect": "leaving the page (the component destroyed) mid-recording"
+  },
+  {
+   "file": "web/src/app/shared/voice-button.ts",
+   "find": "if (run !== this.run) return;\n    this.phase.set('idle');\n    if (spoken === '') {",
+   "replace": "this.phase.set('idle');\n    if (spoken === '') {",
+   "expect": "drops the late answer"
+  },
+  {
+   "file": "web/src/app/shared/voice-button.ts",
+   "find": "this.valueChange.emit(inserted.text);",
+   "replace": "this.valueChange.emit(spoken);",
+   "expect": "the words land after what is in the box"
+  },
+  {
+   "file": "web/src/app/shared/voice-button.ts",
+   "find": "afterNextRender(() => document.getElementById(this.fieldId())?.focus(), { injector: this.injector });",
+   "replace": "void 0;",
+   "expect": "the box gets the focus"
+  },
+  {
+   "file": "web/src/app/shared/voice-button.ts",
+   "find": "if (this.phase() === 'recording' || this.phase() === 'transcribing') {\n      event.stopPropagation();",
+   "replace": "if (false as boolean) {\n      event.stopPropagation();",
+   "expect": "Escape cancels a recording"
+  },
+  {
+   "file": "web/src/app/shared/voice-button.ts",
+   "find": "if (err.reason === 'denied') return { key: 'voice.denied' };",
+   "replace": "if (err.reason === 'denied') return { key: 'voice.failed' };",
+   "expect": "a refused microphone says so"
+  },
+  {
+   "file": "web/src/app/shared/voice-button.ts",
+   "find": "      inserted.cut\n        ? 'voice.statusDoneCut'",
+   "replace": "      false\n        ? 'voice.statusDoneCut'",
+   "expect": "words that do not fit the box are cut"
+  },
+  {
+   "file": "web/src/app/shared/voice-button.ts",
+   "find": "        : clip.limit\n",
+   "replace": "        : false\n",
+   "expect": "the one-minute limit ends the recording by itself"
+  },
+  {
+   "file": "web/src/app/shared/voice-button.ts",
+   "find": "[attr.aria-disabled]=\"phase() === 'transcribing' || phase() === 'starting' ? 'true' : null\"",
+   "replace": "[attr.aria-disabled]=\"null\"",
+   "expect": "the button says so, is not pressable twice"
+  },
+  {
+   "file": "web/src/app/shared/voice-button.ts",
+   "find": "else if (this.phase() === 'idle') void this.begin();",
+   "replace": "else void this.begin();",
+   "expect": "the button says so, is not pressable twice"
+  },
+  {
+   "file": "web/src/app/shared/voice-button.ts",
+   "find": "recorder.onEnded = (how) => this.endedByItself(run, how);",
+   "replace": "void run;",
+   "expect": "the one-minute limit ends the recording by itself"
+  },
+  {
+   "file": "web/src/app/shared/voice-button.ts",
+   "find": "this.status.set('voice.statusRecording');",
+   "replace": "this.status.set('voice.statusWorking');",
+   "expect": "one tap asks for the microphone and records"
+  },
+  {
+   "file": "web/src/app/shared/voice-button.ts",
+   "find": "} else if (how.failure === 'cancelled') {\n      this.phase.set('idle');\n      this.status.set('voice.statusCancelled');",
+   "replace": "} else if (how.failure === 'cancelled') {\n      this.phase.set('idle');\n      this.status.set(null);",
+   "expect": "the tab being hidden mid-recording cancels it"
+  },
+  {
+   "file": "web/src/app/shared/voice-button.ts",
+   "find": "@if (voice.available()) {",
+   "replace": "@if (true) {",
+   "expect": "with the setting off draws nothing"
+  },
+  {
+   "file": "web/src/app/shared/voice-button.ts",
+   "find": "[attr.aria-label]=\"micLabel() | t\"",
+   "replace": "[attr.aria-label]=\"null\"",
+   "expect": "is a labelled, keyboard-reachable button"
+  },
+  {
+   "file": "web/src/app/shared/voice-button.ts",
+   "find": "<div class=\"field-hint voice-status\" role=\"status\" aria-live=\"polite\">",
+   "replace": "<div class=\"field-hint voice-status\">",
+   "expect": "is a labelled, keyboard-reachable button"
+  }
+ ]
+}

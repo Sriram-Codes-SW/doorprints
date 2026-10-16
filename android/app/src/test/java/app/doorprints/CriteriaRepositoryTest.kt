@@ -31,6 +31,7 @@ import app.doorprints.data.AndroidRepository
 import app.doorprints.data.AppDatabase
 import app.doorprints.data.DatabaseFile
 import app.doorprints.data.HouseEntity
+import app.doorprints.data.RecordEntity
 import app.doorprints.data.SecretStore
 import app.doorprints.data.SettingsStore
 import app.doorprints.data.create
@@ -256,5 +257,126 @@ class CriteriaRepositoryTest {
         assertEquals("Lift", scoring["c_0000abcd"]!!.label)
         assertEquals(0.75, scoring.ratingShare, 0.0)
         assertTrue(db.records().get(CriterionType.name, "water")!!.dirty)
+        // The file's own stamps are kept (a merge writes the newer ones as they are).
+        assertEquals(Long.MAX_VALUE / 2, db.records().get(CriterionType.name, "water")!!.updatedAt)
+        assertEquals(5L, db.records().get(CriterionType.name, "c_0000abcd")!!.updatedAt)
+    }
+
+    @Test
+    fun aRowThatCannotBeTrustedIsSkippedFromTheScoringAndTheBackupAndAnOutOfRangeValueReadsAsTheDefault(): Unit = runBlocking {
+        db.records().upsert(RecordEntity(CriterionType.name, "bad id", """{"weight":3}""", at))
+        db.records().upsert(RecordEntity(CriterionType.name, "c_0000bad1", "not json", at))
+        db.records().upsert(RecordEntity(PreferenceType.name, Preference.RATING_SHARE, "not json", at))
+        assertEquals(10, repo.scoring().criteria.size)
+        assertEquals(10, repo.observeScoring().first().criteria.size)
+        assertEquals(0.5, repo.scoring().ratingShare, 0.0)
+        // A row from a newer app reads with the nearest value it knows: weight 9 is Medium, minimum 9 is 3, sort -1 the default place.
+        db.records().upsert(RecordEntity(CriterionType.name, "water", """{"weight":9,"minScore":9,"sort":-1}""", at))
+        val water = repo.scoring()["water"]!!
+        assertEquals(listOf(2, 3, 0), listOf(water.weight, water.minScore, water.sort))
+        val data = BackupData.of(repo.localRows().toBundle(ExportOptions(exportedAtMillis = at)))
+        assertEquals(listOf("water"), data.criterionRows.map { it.key })
+        assertEquals(emptyList<String>(), data.preferenceRows.map { it.key })
+        assertThrows(IllegalArgumentException::class.java) { runBlocking { repo.saveCriterion(Criterion("bad id")) } }
+        // What is saved is what a reader keeps: the name trimmed, a weight or minimum out of range the default.
+        repo.saveCriterion(Criterion("c_0000abcd", "  Lift  ", weight = 9, minScore = 0, sort = 30))
+        assertEquals(
+            """{"label":"Lift","weight":2,"mustHave":false,"minScore":3,"sort":30}""",
+            db.records().get(CriterionType.name, "c_0000abcd")!!.payload,
+        )
+    }
+
+    @Test
+    fun savingWhatIsAlreadyThereAtTheCapIsNotRefusedWhileADeletedKeyIs(): Unit = runBlocking {
+        val gone = repo.addCriterion("Lift")
+        assertTrue(repo.deleteCriterion(gone))
+        val keys = (1..30).map { repo.addCriterion("Custom $it") }
+        assertEquals(40, repo.scoring().criteria.size)
+        val first = repo.scoring()[keys.first()]!!
+        val stamp = db.records().get(CriterionType.name, first.key)!!.updatedAt
+        repo.saveCriterion(first)
+        assertEquals(stamp, db.records().get(CriterionType.name, first.key)!!.updatedAt)
+        // A deleted custom key is not a live criterion: bringing it back would be the 41st.
+        assertThrows(RecordLimitException::class.java) { runBlocking { repo.saveCriterion(Criterion(gone, "Lift", sort = 60)) } }
+        assertThrows(RecordLimitException::class.java) { runBlocking { repo.saveCriteria(listOf(first, Criterion(gone, "Lift", sort = 60))) } }
+    }
+
+    @Test
+    fun theRatingShareIsCutToZeroToOneAndHalfDeletesItsRecord(): Unit = runBlocking {
+        repo.saveRatingShare(1.7)
+        assertEquals("""{"value":"1"}""", db.records().get(PreferenceType.name, Preference.RATING_SHARE)!!.payload)
+        assertEquals(1.0, repo.scoring().ratingShare, 0.0)
+        repo.saveRatingShare(-3.0)
+        assertEquals("""{"value":"0"}""", db.records().get(PreferenceType.name, Preference.RATING_SHARE)!!.payload)
+        repo.saveRatingShare(0.5)
+        val row = db.records().get(PreferenceType.name, Preference.RATING_SHARE)!!
+        assertTrue(row.deleted)
+        assertTrue(row.dirty)
+    }
+
+    @Test
+    fun aNewCriterionKeepsItsWeightGoesAfterTheHighestPlaceAndTheLongestNameIsAccepted(): Unit = runBlocking {
+        repo.saveCriterion(Criterion("noise", weight = 0, sort = 25, archived = true))
+        val key = repo.addCriterion("x".repeat(60), weight = 3)
+        val added = repo.scoring()[key]!!
+        assertEquals(listOf(3, 26, 60), listOf(added.weight, added.sort, added.label!!.length))
+        val row = db.records().get(CriterionType.name, key)!!
+        assertTrue(row.dirty)
+        assertFalse(row.deleted)
+    }
+
+    @Test
+    fun deletingACriterionCountsOnlyLiveHousesAndMarksItsRecordDeletedAndDirty(): Unit = runBlocking {
+        val key = repo.addCriterion("Pets allowed")
+        repo.saveHouse(
+            HouseEntity(id = "h1", label = "A", lat = 1.0, lon = 1.0, checklist = mapOf(key to 5), deleted = true, createdAt = at, updatedAt = at),
+        )
+        assertTrue(repo.deleteCriterion(key))
+        val row = db.records().get(CriterionType.name, key)!!
+        assertTrue(row.deleted)
+        assertTrue(row.dirty)
+        // A key nobody ever had is deleted too, as before (nothing is written for it).
+        assertTrue(repo.deleteCriterion("c_00000000"))
+        assertNull(db.records().get(CriterionType.name, "c_00000000"))
+        // A deleted custom criterion saved again comes back, even when it says what a deleted row decodes to.
+        repo.saveCriterion(Criterion(key, sort = 0))
+        assertFalse(db.records().get(CriterionType.name, key)!!.deleted)
+    }
+
+    @Test
+    fun resetMarksEveryDeletedRecordDirty(): Unit = runBlocking {
+        repo.saveCriterion(Criterion("water", weight = 3, sort = 0))
+        repo.saveRatingShare(0.25)
+        db.records().upsert(db.records().get(CriterionType.name, "water")!!.copy(dirty = false))
+        db.records().upsert(db.records().get(PreferenceType.name, Preference.RATING_SHARE)!!.copy(dirty = false))
+        repo.resetScoring()
+        val rows = listOf(db.records().get(CriterionType.name, "water")!!, db.records().get(PreferenceType.name, Preference.RATING_SHARE)!!)
+        assertTrue(rows.all { it.deleted && it.dirty })
+    }
+
+    @Test
+    fun aCopyImportKeepsTheListsKeysCutsFutureStampsToNowAndMarksThemDirty(): Unit = runBlocking {
+        repo.saveCriterion(Criterion("water", weight = 3, sort = 0))
+        repo.saveRatingShare(0.4)
+        val data = BackupData.of(repo.localRows().toBundle(ExportOptions(exportedAtMillis = at)))
+        val future = Long.MAX_VALUE / 2
+        val file = data.copy(
+            criteria = listOf(
+                data.criterionRows.single().copy(updatedAt = future),
+                data.criterionRows.single().copy(key = "c_0000abcd", label = "  Lift  ", updatedAt = future),
+            ),
+            preferences = listOf(data.preferenceRows.single().copy(updatedAt = future)),
+        )
+        val local = repo.localVersions()
+        val before = System.currentTimeMillis()
+        val plan = ImportPlan.plan(file, local.houses, local.visits, local.photoIds, emptySet(), ImportMode.COPY, newId = { "x" })
+        val result = repo.applyImport(plan) { null }
+        assertEquals(listOf(2, 1), listOf(result.criteria, result.preferences))
+        val rows = listOf(db.records().get(CriterionType.name, "water")!!, db.records().get(PreferenceType.name, Preference.RATING_SHARE)!!)
+        assertTrue(rows.all { it.dirty && !it.deleted && it.updatedAt in before..System.currentTimeMillis() })
+        assertEquals("""{"weight":3,"mustHave":false,"minScore":3,"sort":0}""", rows[0].payload)
+        // The copy is cleaned like a read: the padded name is trimmed.
+        assertTrue(db.records().get(CriterionType.name, "c_0000abcd")!!.payload.startsWith("""{"label":"Lift","""))
+        assertEquals("""{"value":"0.4"}""", rows[1].payload)
     }
 }

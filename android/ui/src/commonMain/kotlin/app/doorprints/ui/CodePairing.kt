@@ -31,7 +31,9 @@ import kotlin.time.TimeSource
 sealed interface PairingEnd {
     /** The owner approved: the device key for [serverUrl], handed over once. */
     data class Approved(val serverUrl: String, val deviceKey: String) : PairingEnd
+    /** The owner refused the request. */
     data object Denied : PairingEnd
+    /** The code ran out: the server said so, or the wait here ended first. */
     data object Expired : PairingEnd
     /** The server is older than pairing (404 or 405 on `/api/pair/start`). */
     data object NoPairing : PairingEnd

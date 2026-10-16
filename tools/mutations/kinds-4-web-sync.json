@@ -1,0 +1,15 @@
+{
+  "spec": [
+    "web/src/app/data/drive/sync-vectors.spec.ts",
+    "web/src/app/data/drive/drive-sync-engine.spec.ts",
+    "web/src/app/data/drive/connect/local/local-rows.spec.ts"
+  ],
+  "mutations": [
+    {"file": "web/src/app/data/drive/sync-file.ts", "find": "    if (name === 'candidates' && has(root, 'houses')) return bad('candidates and houses');\n", "replace": "", "expect": "reads and refuses files"},
+    {"file": "web/src/app/data/drive/sync-file.ts", "find": "    const name = kind === 'houses' && has(root, 'candidates') ? 'candidates' : kind;", "replace": "    const name: string = kind;", "expect": "reads and refuses files"},
+    {"file": "web/src/app/data/drive/sync-file.ts", "find": "    bad(`candidateId and houseId of ${key}`);", "replace": "    void key;", "expect": "reads and refuses files"},
+    {"file": "web/src/app/data/drive/sync-file.ts", "find": "  const ref = has(json, HOUSE_REF) ? HOUSE_REF : FORMER_HOUSE_REF;", "replace": "  const ref = FORMER_HOUSE_REF;", "expect": "reads and refuses files"},
+    {"file": "web/src/app/data/drive/sync-file.ts", "find": "  if (row.kind === 'houses') return 'kind' in json ? (houseOf(json as unknown as CandidateDto) as unknown as Record<string, unknown>) : json;", "replace": "  if (row.kind === 'houses') return json;", "expect": "hands out a candidate the phone wrote"},
+    {"file": "web/src/app/data/drive/connect/local/local-rows.ts", "find": "      const json = syncRowAsBefore(row);", "replace": "      const json = row.json as Record<string, unknown>;", "expect": "applyRemote stores a candidate"}
+  ]
+}

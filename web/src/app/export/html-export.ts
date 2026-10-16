@@ -17,22 +17,15 @@
  */
 
 import type { Dict, TKey } from '../i18n/en';
-import { CHECKLIST, COST_FIELDS, STATUS_ICON } from '../core/models';
-import { brokerLine } from '../shared/broker';
-import type { HouseCost, HouseStatus } from '../core/models';
-import { costSummary } from '../shared/house-cost';
-import { floorWords } from '../shared/house-floor';
-import { rupees } from './deterministic';
 import {
   escapeHtml,
-  formatCoord,
-  formatDate,
   formatDateTime,
   formatDecimal,
   formatInt,
   formatPrice,
   tr,
 } from './deterministic';
+import { checklistEntries, checklistLabel, costFacts, costHeading, detailFacts, labelOf, rankingShows, sectionShown, statusText, voiced } from './copy-facts';
 import type { ExportBroker, ExportBundle, ExportHouse } from './export-model';
 import { movingInView, photoNote, answerCells, answerDisplayColumns, areaNoteCells, areaNoteDisplayColumns, distanceCells, distanceDisplayColumns, criteriaTable, customLabels, display, ratingShareLine, roomCells, roomDisplayColumns, stringsOf, viewingCells, viewingDisplayColumns } from './export-rows';
 import { optionSummaryKeys } from './option-summary';
@@ -51,6 +44,7 @@ import { photoFileName } from './photo-names';
 /** Photo bytes, already turned into `data:` URIs by the caller (the builder itself stays synchronous and pure). */
 export type PhotoDataUris = ReadonlyMap<string, string>;
 
+/** How the HTML copy is built. */
 export interface HtmlOptions {
   /**
    * List photos by file name instead of embedding them.
@@ -63,6 +57,10 @@ export interface HtmlOptions {
   readonly photosAsFileNames?: boolean;
 }
 
+/**
+ * Builds the self-contained readable copy as one HTML string: cover, ranking, a section per house, brokers and criteria.
+ * Pure and synchronous: the caller supplies the dictionary and the photos already as `data:` URIs. All text is escaped, and the embedded content policy forbids scripts and network.
+ */
 export function buildHtml(
   bundle: ExportBundle,
   dict: Dict,
@@ -70,7 +68,7 @@ export function buildHtml(
   options: HtmlOptions = {},
 ): string {
   const lang = bundle.options.lang;
-  const title = tr(dict, 'exp.title');
+  const title = tr(dict, voiced(bundle, 'exp.title'));
   return [
     '<!doctype html>',
     `<html lang="${escapeHtml(lang)}">`,
@@ -85,7 +83,7 @@ export function buildHtml(
     cover(bundle, dict),
     ranking(bundle, dict),
     bundle.houses.length === 0
-      ? `<p class="empty">${escapeHtml(tr(dict, 'exp.noHouses'))}</p>`
+      ? `<p class="empty">${escapeHtml(tr(dict, voiced(bundle, 'exp.noHouses')))}</p>`
       : bundle.houses.map((h, index) => houseSection(h, index + 1, bundle, dict, photos, options)).join('\n'),
     brokersSection(bundle, dict),
     criteriaSection(bundle),
@@ -98,14 +96,14 @@ export function buildHtml(
 
 function cover(bundle: ExportBundle, dict: Dict): string {
   const { counts, options } = bundle;
-  const items = optionSummaryKeys(options).map((key) => `<li>${escapeHtml(tr(dict, key))}</li>`);
+  const items = optionSummaryKeys(options).map((key) => `<li>${escapeHtml(tr(dict, voiced(bundle, key)))}</li>`);
   return [
     '<header class="cover">',
-    `<h1>${escapeHtml(tr(dict, 'exp.title'))}</h1>`,
+    `<h1>${escapeHtml(tr(dict, voiced(bundle, 'exp.title')))}</h1>`,
     `<p class="lead">${escapeHtml(tr(dict, 'exp.subtitle'))}</p>`,
     `<p class="meta">${escapeHtml(tr(dict, 'exp.exportedAt', { date: formatDateTime(bundle.exportedAt) }))}</p>`,
     `<p class="meta">${escapeHtml(
-      tr(dict, 'exp.counts', { houses: counts.houses, visits: counts.visits, photos: counts.photos }),
+      tr(dict, voiced(bundle, 'exp.counts'), { houses: counts.houses, visits: counts.visits, photos: counts.photos }),
     )}</p>`,
     ratingShareLine(bundle) ? `<p class="meta">${escapeHtml(ratingShareLine(bundle))}</p>` : '',
     `<h2>${escapeHtml(tr(dict, 'exp.optionsHeading'))}</h2>`,
@@ -122,23 +120,24 @@ function cover(bundle: ExportBundle, dict: Dict): string {
 function ranking(bundle: ExportBundle, dict: Dict): string {
   if (bundle.ranking.length === 0) return '';
   // The Must-haves column is there only when some house of the copy misses one: an empty column says nothing.
-  const anyMissed = bundle.ranking.some((entry) => entry.result.failedMustHave.length > 0);
-  const head = [
+  const show = rankingShows(bundle);
+  const anyMissed = show.score && bundle.ranking.some((entry) => entry.result.failedMustHave.length > 0);
+  const head: TKey[] = [
     'exp.colRank',
-    'exp.colHouse',
-    'common.score',
-    'compare.price',
+    voiced(bundle, 'exp.colHouse'),
+    ...(show.score ? (['common.score'] as const) : []),
+    ...(show.price ? (['compare.price'] as const) : []),
     'house.status',
     ...(anyMissed ? (['exp.colMustHave'] as const) : []),
-  ] as const;
+  ];
   const rows = bundle.ranking.map((entry, index) => {
     const { house, score } = entry;
     return [
       '<tr>',
       `<td>${formatInt(index + 1)}</td>`,
       `<th scope="row">${escapeHtml(labelOf(house.label, dict))}</th>`,
-      `<td>${escapeHtml(score === null ? tr(dict, 'house.notScored') : formatDecimal(score, 1))}</td>`,
-      `<td>${escapeHtml(formatPrice(dict, house.price, house.priceType))}</td>`,
+      ...(show.score ? [`<td>${escapeHtml(score === null ? tr(dict, 'house.notScored') : formatDecimal(score, 1))}</td>`] : []),
+      ...(show.price ? [`<td>${escapeHtml(formatPrice(dict, house.price, house.priceType))}</td>`] : []),
       `<td>${escapeHtml(statusText(house.status, dict))}</td>`,
       // The mark is words, not colour: "Must-have missed" when a must-have is scored below its minimum.
       ...(anyMissed
@@ -166,51 +165,16 @@ function houseSection(
   photos: PhotoDataUris,
   options: HtmlOptions,
 ): string {
-  const { house, score, visits } = entry;
+  const { house, visits } = entry;
   const label = labelOf(house.label, dict);
   const labels = customLabels(bundle);
-  const rows: string[] = [];
-  const add = (labelKey: TKey, value: string) => {
-    if (value && value !== '–') rows.push(`<tr><th scope="row">${escapeHtml(tr(dict, labelKey))}</th><td>${value}</td></tr>`);
-  };
-  add('house.status', escapeHtml(statusText(house.status, dict)));
-  add('compare.overall', escapeHtml(score === null ? tr(dict, 'house.notScored') : formatDecimal(score, 1)));
-  if (entry.result.scored > 0) {
-    add('exp.coverageLabel', escapeHtml(tr(dict, 'exp.coverage', { n: entry.result.scored, total: entry.result.active })));
-  }
-  if (entry.result.failedMustHave.length > 0) {
-    add('exp.mustHaveMissed', escapeHtml(entry.result.failedMustHave.map((key) => checklistLabel(key, dict, labels)).join(', ')));
-  }
-  add('compare.price', escapeHtml(formatPrice(dict, house.price, house.priceType)));
-  const bedrooms = house.bedrooms ?? null;
-  const rating = house.rating ?? null;
-  add('compare.bhk', bedrooms === null ? '' : escapeHtml(tr(dict, 'common.bhk', { n: bedrooms })));
-  const area = house.areaSqft ?? null;
-  add('compare.area', area === null ? '' : escapeHtml(tr(dict, 'common.sqft', { n: area })));
-  // S4b-BL-87: the floor in words (0 the ground floor), after the area.
-  add('house.floor', house.floor == null ? '' : escapeHtml(floorWords((k, p) => tr(dict, k, p), house.floor)));
-  add('compare.rating', rating === null ? '' : escapeHtml(tr(dict, 'common.stars', { n: rating })));
-  add('house.address', escapeHtml(house.address ?? ''));
-  add('house.street', escapeHtml(house.street ?? ''));
-  add('house.locality', escapeHtml(house.locality ?? ''));
-  add('house.location', escapeHtml(`${formatCoord(house.lat)}, ${formatCoord(house.lon)}`));
-  // FR-068: the reader learns the pin is only the locality, as the hollow marker says on the map.
-  if (house.locationSource === 'APPROX') add('house.approx', escapeHtml(tr(dict, 'common.yes')));
-  add('house.listingUrl', house.listingUrl ? escapeHtml(house.listingUrl) : '');
-  if (bundle.options.includeContacts) {
-    add('house.contactName', escapeHtml(house.contactName ?? ''));
-    add('house.contactPhone', escapeHtml(house.contactPhone ?? ''));
-    const broker = bundle.brokers.find((b) => b.id === house.brokerId);
-    add('house.broker', broker ? escapeHtml(brokerLine(broker.broker)) : '');
-  }
-  add('exp.fieldSaved', escapeHtml(formatDate(house.createdAt)));
-
-  const costRows = costEntries(house, dict).map(
-    ([label, value]) => `<tr><th scope="row">${escapeHtml(label)}</th><td>${escapeHtml(value)}</td></tr>`,
-  );
+  const shows = (ref: string) => sectionShown(bundle, ref, entry);
+  const factRow = (name: string, value: string) => `<tr><th scope="row">${escapeHtml(name)}</th><td>${escapeHtml(value)}</td></tr>`;
+  const rows = detailFacts(entry, bundle, dict).map(([name, value]) => factRow(name, value));
+  const costRows = costFacts(entry, bundle, dict).map(([name, value]) => factRow(name, value));
 
   // The rooms (slice 1c), after the cost and before the checklist; the total of their areas as a last row.
-  const roomList = roomCells(entry, bundle.lengthUnit, stringsOf(bundle));
+  const roomList = shows('section.rooms') ? roomCells(entry, bundle.lengthUnit, stringsOf(bundle)) : [];
   const roomsHtml = roomList.length
     ? [
         `<h3>${escapeHtml(stringsOf(bundle).get('table.rooms'))}</h3>`,
@@ -224,7 +188,7 @@ function houseSection(
     : '';
 
   // The questions (slice 3a), after the rooms and before the checklist: question, answer, status; open ones first.
-  const questionList = answerCells(entry, stringsOf(bundle));
+  const questionList = shows('section.questions') ? answerCells(entry, stringsOf(bundle)) : [];
   const questionsHtml = questionList.length
     ? [
         `<h3>${escapeHtml(stringsOf(bundle).get('section.questions'))}</h3>`,
@@ -238,7 +202,7 @@ function houseSection(
     : '';
 
   // The viewings (slice 3b-1), after the questions and before the checklist; upcoming first, then newest first.
-  const viewingList = viewingCells(entry, stringsOf(bundle), bundle.options.includeContacts);
+  const viewingList = shows('section.viewings') ? viewingCells(entry, stringsOf(bundle), bundle.options.includeContacts) : [];
   const viewingsHtml = viewingList.length
     ? [
         `<h3>${escapeHtml(stringsOf(bundle).get('section.viewings'))}</h3>`,
@@ -262,11 +226,11 @@ function houseSection(
           '</table>',
         ].join('')
       : '';
-  const areaNotesHtml = simpleTable(stringsOf(bundle).get('section.areaNotes'), areaNoteDisplayColumns(bundle), areaNoteCells(entry));
-  const distancesHtml = simpleTable(stringsOf(bundle).get('section.distances'), distanceDisplayColumns(bundle), distanceCells(entry));
+  const areaNotesHtml = simpleTable(stringsOf(bundle).get('section.areaNotes'), areaNoteDisplayColumns(bundle), shows('section.areaNotes') ? areaNoteCells(entry) : []);
+  const distancesHtml = simpleTable(stringsOf(bundle).get('section.distances'), distanceDisplayColumns(bundle), shows('section.distances') ? distanceCells(entry) : []);
 
   // Moving in (slice 5), after the distances and before the checklist: date and notes, then the items with a tick.
-  const movingIn = movingInView(entry, stringsOf(bundle));
+  const movingIn = shows('section.moveIn') ? movingInView(entry, stringsOf(bundle)) : { facts: [], items: [] };
   const movingInHtml =
     movingIn.facts.length || movingIn.items.length
       ? [
@@ -284,7 +248,7 @@ function houseSection(
         ].join('')
       : '';
 
-  const checklistRows = checklistEntries(house.checklist).map(
+  const checklistRows = (shows('section.checklist') ? checklistEntries(house.checklist) : []).map(
     ([key, value]) =>
       `<tr><th scope="row">${escapeHtml(checklistLabel(key, dict, labels))}</th><td>${escapeHtml(
         tr(dict, 'exp.scoreOf5', { n: value }),
@@ -318,7 +282,7 @@ function houseSection(
     `<h2>${escapeHtml(`${position}. ${label}`)}</h2>`,
     `<table class="fields">${rows.join('')}</table>`,
     costRows.length
-      ? `<h3>${escapeHtml(tr(dict, 'house.cost'))}</h3><table class="fields">${costRows.join('')}</table>`
+      ? `<h3>${escapeHtml(costHeading(entry, bundle, dict))}</h3><table class="fields">${costRows.join('')}</table>`
       : '',
     roomsHtml,
     questionsHtml,
@@ -361,7 +325,7 @@ function houseSection(
  * copy that use it. Empty when the copy has no brokers (or no contact details).
  */
 function brokersSection(bundle: ExportBundle, dict: Dict): string {
-  if (bundle.brokers.length === 0) return '';
+  if (bundle.brokers.length === 0 || !sectionShown(bundle, 'field.brokerId')) return '';
   const items = bundle.brokers.map((b) => {
     const rows = brokerEntries(b, dict).map(
       ([label, value]) => `<tr><th scope="row">${escapeHtml(label)}</th><td>${escapeHtml(value)}</td></tr>`,
@@ -381,7 +345,7 @@ function brokersSection(bundle: ExportBundle, dict: Dict): string {
  * whether it is archived, in the app's order. Only a copy with criterion records has it.
  */
 function criteriaSection(bundle: ExportBundle): string {
-  if (bundle.criteria.length === 0) return '';
+  if (bundle.criteria.length === 0 || !sectionShown(bundle, 'section.checklist')) return '';
   const table = criteriaTable(bundle);
   const strings = stringsOf(bundle);
   // The key and the order are for the spreadsheet; a reader has the name, the weight, the must-have and the rest.
@@ -411,72 +375,6 @@ export function brokerEntries(b: ExportBroker, dict: Dict): [string, string][] {
     out.push([tr(dict, 'brokers.housesHeading'), b.houses.map((h) => labelOf(h.label, dict)).join(', ')]);
   }
   return out;
-}
-
-/** The label key of each cost field, for the Cost block and the form. */
-export const COST_FIELD_KEY: Readonly<Record<keyof HouseCost, TKey>> = {
-  deposit: 'cost.deposit',
-  depositMonths: 'cost.depositMonths',
-  maintenance: 'cost.maintenance',
-  maintenanceIncluded: 'cost.maintenanceIncluded',
-  brokerage: 'cost.brokerage',
-  brokerageMonths: 'cost.brokerageMonths',
-  lockInMonths: 'cost.lockInMonths',
-  noticeMonths: 'cost.noticeMonths',
-  availableFrom: 'cost.availableFrom',
-  myOffer: 'cost.myOffer',
-  agreedPrice: 'cost.agreedPrice',
-};
-
-/**
- * The **Cost** block of a readable copy (HTML, PDF, Markdown): a row per set cost field in the shared order, then
- * the monthly cost, the money to move in and the cost per sq ft when they compute (`costSummary`). Rupees are
- * written whole with Indian grouping; months as "{n} months".
- */
-export function costEntries(house: ExportHouse['house'], dict: Dict): [string, string][] {
-  const out: [string, string][] = [];
-  const cost = house.cost ?? {};
-  for (const field of COST_FIELDS) {
-    const value = cost[field];
-    if (value === null || value === undefined) continue;
-    const label = tr(dict, COST_FIELD_KEY[field]);
-    if (typeof value === 'boolean') out.push([label, tr(dict, value ? 'common.yes' : 'common.no')]);
-    else if (typeof value === 'string') out.push([label, value]);
-    else if (field.endsWith('Months')) out.push([label, tr(dict, 'common.months', { n: value })]);
-    else out.push([label, rupees(value)]);
-  }
-  const summary = costSummary(house);
-  if (summary.monthlyCost !== null) out.push([tr(dict, 'cost.monthlyCost'), rupees(summary.monthlyCost)]);
-  if (summary.moveIn !== null) out.push([tr(dict, 'cost.moveIn'), rupees(summary.moveIn)]);
-  if (summary.perSqFt !== null) out.push([tr(dict, 'cost.perSqFt'), rupees(summary.perSqFt)]);
-  return out;
-}
-
-/** Checklist items in the app's fixed order first, then any unknown keys alphabetically. */
-export function checklistEntries(checklist: Record<string, number>): [string, number][] {
-  const known = CHECKLIST.filter((item) => typeof checklist[item.key] === 'number').map(
-    (item) => [item.key, checklist[item.key]] as [string, number],
-  );
-  const extra = Object.keys(checklist)
-    .filter((key) => !CHECKLIST.some((item) => item.key === key))
-    .sort()
-    .map((key) => [key, checklist[key]] as [string, number]);
-  return [...known, ...extra];
-}
-
-/** A criterion's name: a built-in's translation, a custom criterion's own label (`labels`, slice 2), else the key. */
-export function checklistLabel(key: string, dict: Dict, labels: ReadonlyMap<string, string> = new Map()): string {
-  const item = CHECKLIST.find((entry) => entry.key === key);
-  return item ? tr(dict, item.labelKey) : (labels.get(key) ?? key);
-}
-
-export function statusText(status: HouseStatus, dict: Dict): string {
-  // The icon repeats the status in a second channel, so the file never relies on colour (WCAG 1.4.1).
-  return `${STATUS_ICON[status]} ${tr(dict, `status.${status}`)}`;
-}
-
-export function labelOf(label: string, dict: Dict): string {
-  return label.trim() === '' ? tr(dict, 'common.untitled') : label;
 }
 
 /**

@@ -1,0 +1,35 @@
+{
+  "spec": "web/src/app/pages/map/walk-end-sheet-houses.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/pages/map/walk-end-sheet-houses.ts",
+      "find": "if (house.locationSource === 'APPROX') continue;",
+      "replace": "",
+      "expect": "never offers a house whose location is only approximate"
+    },
+    {
+      "file": "web/src/app/pages/map/walk-end-sheet-houses.ts",
+      "find": "if (nearest !== null && house.id === nearest.house.id) continue;",
+      "replace": "",
+      "expect": "without the nearest again"
+    },
+    {
+      "file": "web/src/app/pages/map/walk-end-sheet-houses.ts",
+      "find": "smallest = Math.min(smallest, haversineM",
+      "replace": "smallest = Math.max(smallest === Infinity ? 0 : smallest, haversineM",
+      "expect": "measures the distance to the nearest point of the walk"
+    },
+    {
+      "file": "web/src/app/pages/map/walk-end-sheet-houses.ts",
+      "find": "if (d <= NEAREST_HOUSE_M && ",
+      "replace": "if (d <= 2 * NEAREST_HOUSE_M && ",
+      "expect": "offers no nearest house when the closest to the stop is farther than 30 m"
+    },
+    {
+      "file": "web/src/app/pages/map/walk-end-sheet-houses.ts",
+      "find": "if (smallest <= NEAR_HOUSES_M)",
+      "replace": "if (smallest <= 2 * NEAR_HOUSES_M)",
+      "expect": "just inside 150 m"
+    }
+  ]
+}

@@ -32,6 +32,7 @@ export class ListReturn {
   /** Query parameters for `[queryParams]` or `router.navigate`, without the defaults. */
   readonly queryParams = signal<Record<string, string>>(listReturnParams(DEFAULT_LIST_QUERY));
 
+  /** Notes the list's search, filter and sort so a link back to the map can restore them. */
   remember(query: ListQuery): void {
     this.queryParams.set(listReturnParams(query));
   }

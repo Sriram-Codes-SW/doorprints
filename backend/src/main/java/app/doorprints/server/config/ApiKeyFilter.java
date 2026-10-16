@@ -18,7 +18,8 @@
 
 package app.doorprints.server.config;
 
-import app.doorprints.server.ai.web.TokenBucketRateLimiter;
+import app.doorprints.server.common.Problems;
+import app.doorprints.server.common.TokenBucketRateLimiter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -35,6 +36,7 @@ import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 
@@ -77,29 +79,14 @@ public class ApiKeyFilter extends OncePerRequestFilter {
     /** Device keys (ADR-25): the device a presented value belongs to, if it is an active device key. */
     private final Function<String, Optional<DeviceKeyStore.Caller>> devices;
 
-    public ApiKeyFilter(String apiKey) {
-        this(apiKey, null, new TokenBucketRateLimiter(10, 10));
-    }
-
-    /** @param failures bucket per client address for wrong or missing keys */
-    public ApiKeyFilter(String apiKey, TokenBucketRateLimiter failures) {
-        this(apiKey, null, failures);
-    }
-
     /**
      * @param apiKey   the current key ({@code APP_API_KEY}), required
      * @param nextKey  optional second key ({@code APP_API_KEY_NEXT}); blank or {@code null} means none. While it is
      *                 set, both keys are accepted, so clients can be moved to the new key without downtime (SEC-017)
      * @param failures bucket per client address for wrong or missing keys
+     * @param devices  looks a presented value up among the device keys (docs/03 §12.1); the owner key is checked
+     *                 first, in constant time, as before
      * @throws IllegalStateException if a key is missing or shorter than {@link #MIN_KEY_LENGTH}
-     */
-    public ApiKeyFilter(String apiKey, String nextKey, TokenBucketRateLimiter failures) {
-        this(apiKey, nextKey, failures, key -> Optional.empty());
-    }
-
-    /**
-     * @param devices looks a presented value up among the device keys (docs/03 §12.1); the owner key is checked
-     *                first, in constant time, as before
      */
     public ApiKeyFilter(String apiKey, String nextKey, TokenBucketRateLimiter failures,
                         Function<String, Optional<DeviceKeyStore.Caller>> devices) {
@@ -165,13 +152,20 @@ public class ApiKeyFilter extends OncePerRequestFilter {
         return read && (path.equals("/owner") || path.equals("/owner/owner.js") || path.equals("/owner/owner.css"));
     }
 
+    /**
+     * The gate for every API call. In order: a non-canonical path is refused with 400; a public path passes; the
+     * owner key (current or next, compared in constant time) passes; a device key passes and the device is attached
+     * to the request as {@link #DEVICE_ATTRIBUTE}; anything else is a failed attempt, answered 401, or 429 once the
+     * client address has used up its failure allowance.
+     * Failures are logged with a salted hash of the address, never the presented key.
+     */
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
         var path = RequestPaths.path(request);
         if (!RequestPaths.isCanonical(path)) {
             log.warn("auth.reject reason=non-canonical-path client={} path={}", clientTag(request), RequestPaths.forLog(path));
-            write(response, HttpServletResponse.SC_BAD_REQUEST, "Malformed request path");
+            Problems.write(response, HttpServletResponse.SC_BAD_REQUEST, "Malformed request path");
             return;
         }
         if (isPublic(request, path)) {
@@ -194,20 +188,13 @@ public class ApiKeyFilter extends OncePerRequestFilter {
         if (!decision.allowed()) {
             log.warn("auth.throttled client={} path={} retryAfter={}s", client, RequestPaths.forLog(path),
                     decision.retryAfterSeconds());
-            response.setHeader("Retry-After", Long.toString(decision.retryAfterSeconds()));
-            write(response, 429, "Too many failed attempts, retry in " + decision.retryAfterSeconds() + "s");
+            Problems.write(response, 429, "Too many failed attempts, retry in " + decision.retryAfterSeconds() + "s",
+                    Map.of("Retry-After", Long.toString(decision.retryAfterSeconds())));
             return;
         }
         log.warn("auth.fail reason={} client={} method={} path={}", given == null ? "missing-key" : "wrong-key",
                 client, request.getMethod(), RequestPaths.forLog(path));
-        write(response, HttpServletResponse.SC_UNAUTHORIZED, "Missing or wrong X-API-Key");
-    }
-
-    private static void write(HttpServletResponse response, int status, String detail) throws IOException {
-        response.setStatus(status);
-        response.setContentType("application/problem+json");
-        response.setCharacterEncoding("UTF-8");
-        response.getWriter().write("{\"status\":" + status + ",\"detail\":\"" + detail + "\"}");
+        Problems.write(response, HttpServletResponse.SC_UNAUTHORIZED, "Missing or wrong X-API-Key");
     }
 
     /** The key the caller presented: X-API-Key, or else an {@code Authorization: Bearer} token. */

@@ -1,0 +1,90 @@
+{
+  "spec": "MappersTest, SyncVectorsTest, SyncFileTest, DriveSyncEngineTest, CostSummaryTest",
+  "gradle": [
+    ":shared:testAndroidHostTest",
+    "--tests",
+    "app.doorprints.data.MappersTest",
+    "--tests",
+    "app.doorprints.shared.sync.SyncVectorsTest",
+    "--tests",
+    "app.doorprints.shared.sync.SyncFileTest",
+    "--tests",
+    "app.doorprints.drive.sync.DriveSyncEngineTest",
+    "--tests",
+    "app.doorprints.shared.model.CostSummaryTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/Candidates.kt",
+      "find": "        \"SALE\" -> \"once\"\n        else -> null\n    }",
+      "replace": "        \"SALE\" -> \"month\"\n        else -> null\n    }",
+      "expect": "aCandidatesMoneyFollowsThePriceType"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/Candidates.kt",
+      "find": "moneyOrNull(price?.takeIf(::isRupees), cadenceOf(priceType))",
+      "replace": "moneyOrNull(price?.takeIf(::isRupees), cadenceOf(priceType) ?: \"month\")",
+      "expect": "aCandidatesMoneyFollowsThePriceType"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/Candidates.kt",
+      "find": "MONEY_EXTRAS[id] ?: ownCadence ?: \"month\"",
+      "replace": "MONEY_EXTRAS[id] ?: \"month\"",
+      "expect": "aCandidatesMoneyFollowsThePriceType"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/Candidates.kt",
+      "find": "            if (out.size >= MAX_OTHER_EXTRAS) break\n",
+      "replace": "",
+      "expect": "anExtraANewerAppWroteIsKeptAndWrittenBackAfterTheKnownOnes"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/Candidates.kt",
+      "find": "value.isString -> value.content.length <= MAX_EXTRA_TEXT",
+      "replace": "value.isString -> true",
+      "expect": "anExtraANewerAppWroteIsKeptAndWrittenBackAfterTheKnownOnes"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/Mappers.kt",
+      "find": "price = m?.amount, priceType = Candidates.priceTypeOf(m?.cadence),",
+      "replace": "price = m?.amount, priceType = \"RENT\",",
+      "expect": "aCandidatesMoneyFollowsThePriceType"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/Mappers.kt",
+      "find": "?: Candidates.HOUSE_KIND, extrasOther = values.other,",
+      "replace": "?: Candidates.HOUSE_KIND, extrasOther = null,",
+      "expect": "anExtraANewerAppWroteIsKeptAndWrittenBackAfterTheKnownOnes"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/sync/SyncFile.kt",
+      "find": "            if (former != null && kind.fileKey in root) bad(\"${kind.fileKey} and $former\")\n",
+      "replace": "",
+      "expect": "files"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/sync/SyncFile.kt",
+      "find": "                bad(\"candidateId and houseId of $key\")",
+      "replace": "                Unit",
+      "expect": "files"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/sync/SyncFile.kt",
+      "find": "put(kind.fileKey, JsonArray(file.rows(kind).map { it.json }))",
+      "replace": "put(kind.key, JsonArray(file.rows(kind).map { it.json }))",
+      "expect": "theWriterIsCanonicalAndReadsBack"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/drive/sync/DriveSyncBackend.kt",
+      "find": "if (kind == SyncKind.HOUSES && \"kind\" !in row.json) BackupWire.candidateOfHouse(row.json) else row.json",
+      "replace": "row.json",
+      "expect": "aHouseRowFromBeforeTheFormatResetIsReadAsTheCandidateItIs"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/HouseCost.kt",
+      "find": "            val rent = priceType == \"RENT\"",
+      "replace": "            val rent = priceType != \"SALE\"",
+      "expect": "aPriceWithoutATypeIsNotAMonthlyRent"
+    }
+  ]
+}

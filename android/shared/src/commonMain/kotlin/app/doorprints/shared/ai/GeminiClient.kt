@@ -20,13 +20,6 @@ package app.doorprints.shared.ai
 
 import app.doorprints.shared.api.ApiException
 import io.ktor.client.HttpClient
-import io.ktor.client.request.header
-import io.ktor.client.request.post
-import io.ktor.client.request.setBody
-import io.ktor.client.statement.bodyAsText
-import io.ktor.http.ContentType
-import io.ktor.http.contentType
-import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonArray
@@ -41,8 +34,10 @@ import kotlinx.serialization.json.put
  * Gemini called straight from this phone with the person's own key (docs/03 §13.1, ADR-26): the native
  * `generateContent` API with a system instruction, one user message and a JSON response schema. The key goes only in
  * the `x-goog-api-key` header (never in the URL) and only to Google. Failures are [ApiException]s the screens already
- * word: 429 is [ApiException.Kind.RATE_LIMITED] ("out of free quota"), a refused key
- * [ApiException.Kind.AI_KEY_REJECTED], anything else from Google or a timeout [ApiException.Kind.AI_UNAVAILABLE].
+ * word: 429 is [ApiException.Kind.RATE_LIMITED] (a wait of a minute), unless the key's quota or credit is used up
+ * ([ApiException.Kind.AI_QUOTA_EXHAUSTED]: a 402 or a `PerDay` quota id, [AiQuota]), a refused key
+ * [ApiException.Kind.AI_KEY_REJECTED], anything else from Google, a timeout or no connection (code 0, as for the OpenAI-compatible adapter; [postAiJson])
+ * [ApiException.Kind.AI_UNAVAILABLE].
  * Neither prompts nor answers are logged.
  */
 class GeminiClient(
@@ -52,48 +47,69 @@ class GeminiClient(
     private val baseUrl: String = BASE_URL,
     /** Null turns the limit off (tests, whose virtual clock would end it at once). */
     private val timeoutMs: Long? = 60_000,
-) {
+    /** *AI speed and cost*: how long the model may think ([AiQuality.QUALITY] sends nothing, as before the setting existed). */
+    private val quality: AiQuality = AiQuality.DEFAULT,
+) : JsonChatModel {
     companion object {
         const val MODEL = "gemini-3.5-flash"
         const val BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
-        const val MAX_OUTPUT_TOKENS = 2048
+
+        /**
+         * The answer budget. On Gemini 3.x the limit includes the hidden thinking tokens, so 2,048 could be spent before the
+         * JSON began and cut it off (S4b-BL-194); the visible answers use 130 to 350 tokens. As the server's default and the
+         * website's. The OpenAI-compatible and Anthropic limits stay 2,048 (their vectors pin them).
+         */
+        const val MAX_OUTPUT_TOKENS = 8192
         private val json = Json { ignoreUnknownKeys = true }
+
+        /**
+         * The body of one `generateContent` request (the `geminiRequest` vectors). With [AiQuality.QUALITY] there is no
+         * `thinkingConfig`; with Balanced or Economy `generationConfig.thinkingConfig.thinkingLevel` is `MEDIUM` or `LOW`
+         * (Gemini API reference, `GenerationConfig.thinkingConfig`; docs/ai/ai-design.md 13.2). It goes last, so the body for
+         * Quality is what it was before the setting existed, apart from the larger answer budget.
+         */
+        fun requestBody(system: String, user: String, schema: JsonObject, temperature: Double, quality: AiQuality = AiQuality.DEFAULT): JsonObject =
+            buildJsonObject {
+                put("systemInstruction", buildJsonObject { put("parts", buildJsonArray { add(buildJsonObject { put("text", system) }) }) })
+                put("contents", buildJsonArray {
+                    add(buildJsonObject {
+                        put("role", "user")
+                        put("parts", buildJsonArray { add(buildJsonObject { put("text", user) }) })
+                    })
+                })
+                put("generationConfig", buildJsonObject {
+                    put("temperature", temperature)
+                    put("maxOutputTokens", MAX_OUTPUT_TOKENS)
+                    put("responseMimeType", "application/json")
+                    put("responseSchema", schema)
+                    quality.thinkingLevel?.let { level ->
+                        put("thinkingConfig", buildJsonObject { put("thinkingLevel", level) })
+                    }
+                })
+            }
     }
 
     /** The model's JSON answer as text, for [schema] (an OpenAPI-style object schema). */
-    suspend fun generateJson(system: String, user: String, schema: JsonObject, temperature: Double): String {
-        val body = buildJsonObject {
-            put("systemInstruction", buildJsonObject { put("parts", buildJsonArray { add(buildJsonObject { put("text", system) }) }) })
-            put("contents", buildJsonArray {
-                add(buildJsonObject {
-                    put("role", "user")
-                    put("parts", buildJsonArray { add(buildJsonObject { put("text", user) }) })
-                })
-            })
-            put("generationConfig", buildJsonObject {
-                put("temperature", temperature)
-                put("maxOutputTokens", MAX_OUTPUT_TOKENS)
-                put("responseMimeType", "application/json")
-                put("responseSchema", schema)
-            })
-        }
-        suspend fun send() = http.post("$baseUrl/models/$model:generateContent") {
-            header("x-goog-api-key", apiKey)
-            contentType(ContentType.Application.Json)
-            setBody(body.toString())
-        }
-        val response = if (timeoutMs == null) send() else withTimeoutOrNull(timeoutMs) { send() }
-            ?: throw ApiException(ApiException.Kind.AI_UNAVAILABLE, 504)
-        val status = response.status.value
-        val text = response.bodyAsText()
+    override suspend fun generateJson(system: String, user: String, schema: JsonObject, temperature: Double): String {
+        val body = requestBody(system, user, schema, temperature, quality)
+        val response = postAiJson(http, "$baseUrl/models/$model:generateContent", mapOf("x-goog-api-key" to apiKey), body, timeoutMs)
+        val status = response.status
+        val text = response.body
         if (status !in 200..299) throw failure(status, text)
+        if (AiBlocked.gemini(status, text)) throw AiBlocked.failure(status)
         val candidate = runCatching { json.parseToJsonElement(text).jsonObject["candidates"]?.jsonArray?.firstOrNull()?.jsonObject }
             .getOrNull() ?: throw ApiException(ApiException.Kind.AI_UNAVAILABLE, 502)
         val parts = candidate["content"]?.jsonObject?.get("parts")?.jsonArray ?: throw ApiException(ApiException.Kind.AI_UNAVAILABLE, 502)
         return parts.joinToString("") { it.jsonObject["text"]?.jsonPrimitive?.contentOrNull ?: "" }
     }
 
+    /** *Test*: one tiny call that proves Google accepts the key. */
+    override suspend fun ping() {
+        generateJson("Reply with {\"ok\": true}.", "ping", OnDeviceAi.PING_SCHEMA, 0.0)
+    }
+
     private fun failure(status: Int, body: String): ApiException = when {
+        AiQuota.isExhausted(status, body) -> ApiException(ApiException.Kind.AI_QUOTA_EXHAUSTED, status)
         status == 429 -> ApiException(ApiException.Kind.RATE_LIMITED, 429, retryAfterSeconds = 60)
         status == 403 || (status == 400 && ("API_KEY_INVALID" in body || "API key not valid" in body)) ->
             ApiException(ApiException.Kind.AI_KEY_REJECTED, status)

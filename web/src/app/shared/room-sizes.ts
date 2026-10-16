@@ -23,6 +23,7 @@
  * dimension in feet mode and one decimal number in metres mode.
  */
 
+/** A length in whole feet and inches. */
 export interface FeetInches {
   feet: number;
   inches: number;

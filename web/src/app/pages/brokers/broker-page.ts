@@ -92,6 +92,10 @@ export class BrokerPage implements OnInit {
     notes: MAX_BROKER_NOTES,
   };
 
+  /**
+   * Starts a new broker (a fresh id) for `/brokers/new`, or loads the broker, its linked houses and all houses (for the
+   * same-flat hint); an unknown id shows "not found".
+   */
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id') ?? 'new';
     if (id === 'new') {
@@ -136,6 +140,10 @@ export class BrokerPage implements OnInit {
     this.form = { ...this.form, rating: n };
   }
 
+  /**
+   * Saves the broker if it has a valid name (`brokerFromPayload`), then returns to the list; a failure stays on the
+   * form.
+   */
   protected async save(): Promise<void> {
     const broker = toBroker(this.form);
     if (!brokerFromPayload({ ...broker })) {
@@ -157,6 +165,7 @@ export class BrokerPage implements OnInit {
     }
   }
 
+  /** Deletes the broker after asking; its houses keep their contact details and lose the link. */
   protected async remove(): Promise<void> {
     const ok = await this.confirm.ask(
       { key: 'brokers.confirmDelete', params: { name: this.form.name } },
@@ -173,6 +182,7 @@ export class BrokerPage implements OnInit {
   }
 }
 
+/** The form values for a stored broker: missing fields become empty text. */
 function toForm(b: Broker): BrokerForm {
   return {
     name: b.name,
@@ -184,6 +194,7 @@ function toForm(b: Broker): BrokerForm {
   };
 }
 
+/** The broker to store from the form: blank fields are left out, so no empty strings are saved. */
 function toBroker(f: BrokerForm): Broker {
   const out: Broker = { name: f.name };
   if (f.phone.trim()) out.phone = f.phone;

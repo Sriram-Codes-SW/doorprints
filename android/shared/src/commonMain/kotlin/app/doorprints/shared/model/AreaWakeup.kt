@@ -85,6 +85,7 @@ object AreaRegions {
     /** What a registration changes: the identifiers to stop monitoring, then the regions to start. */
     data class Plan(val stop: List<String>, val start: List<Region>)
 
+    /** The Core Location region identifier for [areaId]; [areaId] is the inverse. */
     fun identifier(areaId: String): String = ID_PREFIX + areaId
 
     /** The area id in a region [identifier] (untrusted: Core Location hands it back), or null when it is not one. */

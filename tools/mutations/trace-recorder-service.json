@@ -1,0 +1,113 @@
+{
+  "spec": "web/src/app/core/trace-recorder.service.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/core/trace-recorder.service.ts",
+      "find": "    this.sound.prepare();\n    if (this.geolocation === null)",
+      "replace": "    if (this.geolocation === null)",
+      "expect": "makes the audio context in the same call"
+    },
+    {
+      "file": "web/src/app/core/trace-recorder.service.ts",
+      "find": "maximumAge: 0, timeout: 30_000",
+      "replace": "maximumAge: 60_000, timeout: 30_000",
+      "expect": "calls watchPosition once, with the options"
+    },
+    {
+      "file": "web/src/app/core/trace-recorder.service.ts",
+      "find": "Date.now() - this.hiddenAt > TRACE.pauseSplitMs",
+      "replace": "Date.now() - this.hiddenAt >= TRACE.pauseSplitMs",
+      "expect": "marks the next kept point resumed after MORE than 5 minutes"
+    },
+    {
+      "file": "web/src/app/core/trace-recorder.service.ts",
+      "find": "if (error.code === 1) {",
+      "replace": "if (error.code === 2) {",
+      "expect": "a refused permission says so"
+    },
+    {
+      "file": "web/src/app/core/trace-recorder.service.ts",
+      "find": "      this.endWalk(); // stop instead of looping on a store that refuses\n",
+      "replace": "",
+      "expect": "stops the walk with the \"full\" message"
+    },
+    {
+      "file": "web/src/app/core/trace-recorder.service.ts",
+      "find": "this.problem.set(isQuotaError(err) ? 'full' : 'storage');",
+      "replace": "this.problem.set('storage');",
+      "expect": "stops the walk with the \"full\" message"
+    },
+    {
+      "file": "web/src/app/core/trace-recorder.service.ts",
+      "find": "      this.unwatch(); // a hidden page gets no more fixes; do not keep a stale watch\n",
+      "replace": "",
+      "expect": "pauses when hidden"
+    },
+    {
+      "file": "web/src/app/core/trace-recorder.service.ts",
+      "find": "    if (before !== 0 && before !== point.walkId) {",
+      "replace": "    if (false) {",
+      "expect": "a gap of 30 minutes starts a new walk"
+    },
+    {
+      "file": "web/src/app/core/trace-recorder.service.ts",
+      "find": "      if (this.keepAwake) await this.requestWakeLock();\n",
+      "replace": "",
+      "expect": "asks at the start, releases at the finish"
+    },
+    {
+      "file": "web/src/app/core/trace-recorder.service.ts",
+      "find": "    lock?.release().catch(() => undefined);",
+      "replace": "",
+      "expect": "asks at the start, releases at the finish"
+    },
+    {
+      "file": "web/src/app/core/trace-recorder.service.ts",
+      "find": "    if (this.problem() === 'unavailable') this.problem.set(null);\n",
+      "replace": "",
+      "expect": "a refused permission says so"
+    },
+    {
+      "file": "web/src/app/core/trace-recorder.service.ts",
+      "find": "      win?.addEventListener('pagehide', this.onPageHide);\n",
+      "replace": "",
+      "expect": "closing the page ends the walk"
+    },
+    {
+      "file": "web/src/app/core/trace-recorder.service.ts",
+      "find": "    this.sound.beep();\n    this.alertRaised",
+      "replace": "    this.alertRaised",
+      "expect": "rings once on a path walked before"
+    },
+    {
+      "file": "web/src/app/core/trace-recorder.service.ts",
+      "find": "      if (this.keepAwake) void this.requestWakeLock();\n",
+      "replace": "",
+      "expect": "asks at the start, releases at the finish"
+    },
+    {
+      "file": "web/src/app/core/trace-recorder.service.ts",
+      "find": "    if (this.state() !== 'idle') this.state.set('idle');",
+      "replace": "    this.state.set('recording');",
+      "expect": "Finish walk stops the watch"
+    },
+    {
+      "file": "web/src/app/core/trace-recorder.service.ts",
+      "find": "    this.alertOn = on;\n    if (this.state() === 'idle') return Promise.resolve();",
+      "replace": "    if (this.state() === 'idle') return Promise.resolve();",
+      "expect": "switching the alert ON during a walk"
+    },
+    {
+      "file": "web/src/app/core/trace-recorder.service.ts",
+      "find": "(on ? this.loadOthers() : undefined)",
+      "replace": "undefined",
+      "expect": "switching the alert ON during a walk"
+    },
+    {
+      "file": "web/src/app/core/trace-recorder.service.ts",
+      "find": "if (this.state() === 'idle') return Promise.resolve();",
+      "replace": "",
+      "expect": "switching it on with no walk recording"
+    }
+  ]
+}

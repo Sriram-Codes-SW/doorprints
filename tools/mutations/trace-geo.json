@@ -1,0 +1,53 @@
+{
+  "spec": "web/src/app/shared/trace-geo.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/shared/trace-geo.ts",
+      "find": "const c = Math.cos(q.lat * RAD) * K;",
+      "replace": "const c = K;",
+      "expect": "uses cos(latitude) of the point asked from"
+    },
+    {
+      "file": "web/src/app/shared/trace-geo.ts",
+      "find": "    if (t < 0) t = 0;\n    else if (t > 1) t = 1;\n",
+      "replace": "",
+      "expect": "clamps a point past a segment end"
+    },
+    {
+      "file": "web/src/app/shared/trace-geo.ts",
+      "find": "  if (len2 > 0) {",
+      "replace": "  if (len2 >= 0) {",
+      "expect": "takes t = 0 for a segment of length 0"
+    },
+    {
+      "file": "web/src/app/shared/trace-geo.ts",
+      "find": "Math.floor(t * (b.atMs - a.atMs) + 0.5)",
+      "replace": "Math.floor(t * (b.atMs - a.atMs))",
+      "expect": "interpolates the time at the nearest point"
+    },
+    {
+      "file": "web/src/app/shared/trace-geo.ts",
+      "find": "lat >= -90 && lat <= 90",
+      "replace": "lat >= -90 && lat < 90",
+      "expect": "knows a valid latitude and longitude"
+    },
+    {
+      "file": "web/src/app/shared/trace-geo.ts",
+      "find": "earthRadiusM: 6_371_000,",
+      "replace": "earthRadiusM: 6_378_137,",
+      "expect": "measures a degree of latitude as K metres"
+    },
+    {
+      "file": "web/src/app/shared/trace-geo.ts",
+      "find": "Math.cos(((a.lat + b.lat) / 2) * RAD) * K;",
+      "replace": "Math.cos(a.lat * RAD) * K;",
+      "expect": "uses the mean latitude of the two ends"
+    },
+    {
+      "file": "web/src/app/shared/trace-geo.ts",
+      "find": "(point.lon - place.lon) * Math.cos(place.lat * RAD) * K",
+      "replace": "(point.lon - place.lon) * K",
+      "expect": "puts a point east of the place"
+    }
+  ]
+}

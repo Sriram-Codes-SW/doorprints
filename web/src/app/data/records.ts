@@ -19,6 +19,7 @@
 import { LocalDataError } from '../core/local-error';
 import { cleanMeta } from '../shared/photo-tags';
 import type { PhotoMeta } from '../shared/photo-tags';
+import { HOUSE_KIND, KIND_PATTERN, cleanOtherExtras } from '../core/candidate';
 import { ANSWER_STATUSES, COST_FIELDS, LOCATION_SOURCES, ROOM_TYPES, STATUSES } from '../core/models';
 import type { AnswerStatus, HouseAnswer, HouseCost, HouseDto, HouseRoom, HouseStatus, MoveIn, MoveInItem, PriceType, RecordDto, RoomType, VisitDto, VisitSource } from '../core/models';
 
@@ -115,6 +116,7 @@ export interface SettingRecord {
   value: string;
 }
 
+/** The keys of the `settings` store; all per-browser, none synced or exported. */
 export const SETTING_KEYS = {
   houseCursor: 'cursor.house',
   visitCursor: 'cursor.visit',
@@ -139,6 +141,19 @@ export const SETTING_KEYS = {
   questionsSeeded: 'questions.seeded',
   /** Remind me about viewings (slice 3b-2; default on, stored as '0' when off; local only, not synced). */
   viewingsRemind: 'viewings.remind',
+  /**
+   * The path trace (docs/11 5.27, S4b-FR-17), all local to this browser and never exported, synced or backed up (PRV-028):
+   * the switch (off by default), how repeated paths look (CLEAR, SUBTLE or OFF; CLEAR by default), the repeated-path alert
+   * (off by default), keeping the screen on while a walk records (off by default), and the newest walk the *Save this
+   * walk?* question has handled (a walk id, 0 by default).
+   */
+  traceOn: 'trace.on',
+  traceLook: 'trace.look',
+  traceAlert: 'trace.alert',
+  traceKeepAwake: 'trace.keepAwake',
+  traceAskedUpTo: 'trace.askedUpTo',
+  /** How many photos each deleted candidate had, for *Recently deleted* (JSON `id: count`; this browser only, never synced or exported). */
+  binPhotos: 'bin.photos',
 } as const;
 
 /** Epoch milliseconds of an ISO-8601 instant; 0 when it is missing or unparseable. Mirrors IsoTime.parseMillis. */
@@ -151,6 +166,16 @@ export function millis(iso: string | null | undefined): number {
 /** The ISO-8601 form the API uses (UTC, milliseconds), same as kotlin.time.Instant.toString(). */
 export function isoNow(now: number = Date.now()): string {
   return new Date(now).toISOString();
+}
+
+/** Text order by code unit, so exports are byte-for-byte reproducible whatever the browser's locale. */
+export function compareText(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
+/** Export and display order everywhere: oldest first by createdAt, ties broken by id. */
+export function sortByCreated<T extends { createdAt?: string | null; id: string }>(rows: readonly T[]): T[] {
+  return [...rows].sort((a, b) => compareText(a.createdAt ?? '', b.createdAt ?? '') || compareText(a.id, b.id));
 }
 
 const PRICE_TYPES: readonly PriceType[] = ['RENT', 'SALE'];
@@ -214,8 +239,16 @@ export function tryHouseFromDto(dto: HouseDto | null | undefined, dirty = false)
     updatedAt: nullable(dto.updatedAt),
     deleted: dto.deleted === true,
     syncVersion: finite(dto.syncVersion) ?? 0,
+    // A kind other than house, and the extras a newer app wrote, only when there are any (kinds step 3, S4b-BL-206).
+    ...(typeof dto.kind === 'string' && dto.kind !== HOUSE_KIND && KIND_PATTERN.test(dto.kind) ? { kind: dto.kind } : {}),
+    ...withOtherExtras(dto.extrasOther),
     dirty,
   };
+}
+
+function withOtherExtras(raw: unknown): Pick<HouseRecord, 'extrasOther'> {
+  const other = cleanOtherExtras(raw);
+  return other ? { extrasOther: other } : {};
 }
 
 /** @throws LocalDataError when the row has no usable id; see {@link tryVisitFromDto}. */
@@ -296,11 +329,13 @@ export function houseToDto(record: HouseRecord): HouseDto {
   return dto;
 }
 
+/** The wire form of a stored visit: the local `dirty` flag is stripped. */
 export function visitToDto(record: VisitRecord): VisitDto {
   const { dirty: _dirty, ...dto } = record;
   return dto;
 }
 
+/** The wire form of a stored record: the local `dirty` flag is stripped. */
 export function recordToDto(record: RecordRecord): RecordDto {
   const { dirty: _dirty, ...dto } = record;
   return dto;
@@ -310,13 +345,19 @@ export function recordToDto(record: RecordRecord): RecordDto {
 export const MAX_AREA_SQFT = 100_000;
 /** The floor's range (S4b-BL-87; Kotlin `HouseValues.floor`): 0 the ground floor, down to basement level 5. */
 export const MIN_FLOOR = -5;
+/** Highest floor number a house may hold. */
 export const MAX_FLOOR = 200;
+/** Largest rupee amount a house value may hold. */
 export const MAX_RUPEES = 1_000_000_000_000;
+/** Largest month count a house value may hold. */
 export const MAX_MONTHS = 120;
 /** A room's constraints (slice 1c): at most 30 rooms per house. */
 export const MAX_ROOMS = 30;
+/** Longest room name, in characters. */
 export const MAX_ROOM_NAME = 60;
+/** Longest room notes text, in characters. */
 export const MAX_ROOM_NOTES = 2000;
+/** Largest room length or width the store accepts. */
 export const MAX_ROOM_DIMENSION = 5000;
 /** A room id pattern (same as the general record id, but not `.`/`..`). */
 const ROOM_ID_PATTERN = /^[A-Za-z0-9._-]{1,64}$/;
@@ -411,7 +452,9 @@ export function cleanRooms(raw: HouseRoom[] | null | undefined): HouseRoom[] | n
 
 /** A house's viewing answers (slice 3a): at most 60, one text of at most 300 characters and one answer of 2000. */
 export const MAX_ANSWERS = 60;
+/** Longest text of a viewing-answer row, in characters. */
 export const MAX_ANSWER_TEXT = 300;
+/** Longest viewing answer, in characters. */
 export const MAX_ANSWER = 2000;
 
 /**
@@ -454,7 +497,9 @@ export function cleanAnswers(raw: HouseAnswer[] | null | undefined): HouseAnswer
 
 /** Moving in (slice 5): at most 30 items of 1..200 characters, notes of at most 2000. */
 export const MAX_MOVE_IN_ITEMS = 30;
+/** Longest moving-in item, in characters. */
 export const MAX_MOVE_IN_TEXT = 200;
+/** Longest moving-in notes text, in characters. */
 export const MAX_MOVE_IN_NOTES = 2000;
 
 /**

@@ -50,6 +50,7 @@ sealed interface ConnectLinkEnd {
     data class Connected(val houses: Long?) : ConnectLinkEnd
     /** The invite was already used or has expired (410). */
     data object Used : ConnectLinkEnd
+    /** Any failure other than a used or expired invite; [error] says why. */
     data class Failed(val error: Throwable) : ConnectLinkEnd
 }
 
@@ -96,7 +97,7 @@ fun ConnectLinkDialog(link: ConnectLink, repo: Repository, deviceName: String, o
                 if (connected != null) {
                     Text(
                         if (connected.houses != null) {
-                            stringResource(Res.string.settings_connected, connected.houses)
+                            stringResource(appText(Res.string.settings_connected, Res.string.settings_connected_any), connected.houses)
                         } else {
                             stringResource(Res.string.connect_link_saved)
                         },

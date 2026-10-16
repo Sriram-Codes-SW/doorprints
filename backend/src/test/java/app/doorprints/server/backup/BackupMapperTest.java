@@ -199,7 +199,7 @@ class BackupMapperTest {
     @Test
     void aFloorMakesTheCopyVersionTwo() {
         var h = house(FIRST, EXPORTED_AT, false);
-        h.setFloor(0);
+        h.setExtras("{\"floor\":0}");
         var data = BackupMapper.toBackup(List.of(h), List.of(), List.of(), EXPORTED_AT);
         assertThat(data.format()).isEqualTo("doorprints-backup/2");
         assertThat(data.houses().getFirst().floor()).isZero();
@@ -276,7 +276,7 @@ class BackupMapperTest {
     void roomsMakeItVersionTwoAndAreWrittenOnlyWhenThereAreSome() {
         var withRooms = house(FIRST, EXPORTED_AT, false);
         withRooms.setRooms(roomsJson());
-        withRooms.setCost("{\"deposit\":64000}");
+        withRooms.setExtras("{\"deposit\":{\"amount\":64000,\"cadence\":\"once\"}}");
         withRooms.setBrokerId("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
         var withEmpty = house(SECOND, EXPORTED_AT.plusSeconds(1), false);
         withEmpty.setRooms("[]");
@@ -448,7 +448,7 @@ class BackupMapperTest {
     void viewingsAreOrderedByUpdatedAtThenIdAndOptionalKeysOnlyWhenSet() {
         var early = EXPORTED_AT.minusSeconds(60);
         var data = withViewings(
-                viewing("v_b", "{\"houseId\":\"h1\",\"startsAt\":2000,\"durationMin\":45,\"kind\":\"SECOND\","
+                viewing("v_b", "{\"candidateId\":\"h1\",\"startsAt\":2000,\"durationMin\":45,\"kind\":\"SECOND\","
                         + "\"status\":\"DONE\",\"remindMin\":30,\"huntReminder\":true,\"withWhom\":\"Ravi\","
                         + "\"notes\":\"Tape\",\"visitId\":\"vis\"}", EXPORTED_AT, false),
                 viewing("v_a", "{\"houseId\":\"h1\",\"startsAt\":1000,\"durationMin\":30,\"kind\":\"FIRST\","

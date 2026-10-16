@@ -67,6 +67,13 @@ class RoomSchemaTest {
             9 to "680c57fd1f6c668e1169c9014a9b2a66",
             // v10 (S4b-BL-87, 2026-10-01): houses.floor.
             10 to "0365b6bdbbacce16395d044cf2c0100c",
+            // v11 (S4b-FR-14, 2026-10-06): saved_walks and track_points.walkId, the path trace's saved walks.
+            11 to "f79bbff581ad89370fefc1879b175615",
+            // v12 (kinds step 4, S4b-BL-206): every house a candidate, houses.kind, money_amount, money_cadence and
+            // extras in place of price, priceType, bedrooms, areaSqft, floor and the cost_* columns.
+            12 to "a3a45fa452d35b5397c9255e96f24816",
+            // v13 (S4b-BL-303, 2026-10-15): index_houses_kind on houses.kind, no column changes.
+            13 to "71cf6f1d4190491691b73989cab3e4f9",
         )
         const val SCHEMA_DIR = "schemas/app.doorprints.data.AppDatabase"
     }

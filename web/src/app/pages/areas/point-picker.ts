@@ -127,12 +127,17 @@ export class PointPicker implements OnDestroy {
     this.destroyed = true;
   }
 
+  /** Reports a chosen point to the parent, rounded to 6 decimals, and clears any earlier problem. */
   protected pick(point: LatLon): void {
     this.invalid.set(false);
     this.failure.set(null);
     this.picked.emit({ lat: round6(point.lat), lon: round6(point.lon) });
   }
 
+  /**
+   * A typed latitude or longitude. An invalid value is kept in the field and marked; a valid one is reported, using the
+   * map's starting view for the other axis until both are known.
+   */
   protected typed(axis: 'lat' | 'lon', event: Event): void {
     const value = parseCoordinate((event.target as HTMLInputElement).value, axis === 'lat' ? 90 : 180);
     if (value === null) {
@@ -146,6 +151,10 @@ export class PointPicker implements OnDestroy {
     this.pick({ lat, lon });
   }
 
+  /**
+   * Asks the device for its location, only when the person presses the button; a result after the picker is gone is
+   * dropped.
+   */
   protected useMyLocation(): void {
     if (!this.canLocate || this.locating()) return;
     this.locating.set(true);

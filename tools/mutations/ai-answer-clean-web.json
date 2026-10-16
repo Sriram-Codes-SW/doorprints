@@ -1,0 +1,101 @@
+{
+  "spec": "web/src/app/core/ai/ai-core.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/core/ai/ai-core.ts",
+      "find": "const MD_LINK = /!?\\[((?:[^[\\]\\n]|\\[[^[\\]\\n]*\\]){0,500})\\]\\([ \\t\\r\\n]{0,3}[^() \\t\\r\\n]{0,2000}(?:[ \\t\\r\\n]+\"[^\"\\n]{0,200}\")?[ \\t\\r\\n]{0,3}\\)/g;",
+      "replace": "const MD_LINK = /\\[((?:[^[\\]\\n]|\\[[^[\\]\\n]*\\]){0,500})\\]\\([ \\t\\r\\n]{0,3}[^() \\t\\r\\n]{0,2000}(?:[ \\t\\r\\n]+\"[^\"\\n]{0,200}\")?[ \\t\\r\\n]{0,3}\\)/g;",
+      "expect": "cleans a model answer as the server does"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-core.ts",
+      "find": ".replace(MD_LINK, '$1')",
+      "replace": ".replace(MD_LINK, '')",
+      "expect": "cleans a model answer as the server does"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-core.ts",
+      "find": "const MD_LINK = /!?\\[((?:[^[\\]\\n]|\\[[^[\\]\\n]*\\]){0,500})\\]\\([ \\t\\r\\n]{0,3}[^() \\t\\r\\n]{0,2000}(?:[ \\t\\r\\n]+\"[^\"\\n]{0,200}\")?[ \\t\\r\\n]{0,3}\\)/g;",
+      "replace": "const MD_LINK = /!?\\[((?:[^[\\]\\n]){0,500})\\]\\([ \\t\\r\\n]{0,3}[^() \\t\\r\\n]{0,2000}(?:[ \\t\\r\\n]+\"[^\"\\n]{0,200}\")?[ \\t\\r\\n]{0,3}\\)/g;",
+      "expect": "cleans a model answer as the server does"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-core.ts",
+      "find": "const MD_LINK = /!?\\[((?:[^[\\]\\n]|\\[[^[\\]\\n]*\\]){0,500})\\]\\([ \\t\\r\\n]{0,3}[^() \\t\\r\\n]{0,2000}(?:[ \\t\\r\\n]+\"[^\"\\n]{0,200}\")?[ \\t\\r\\n]{0,3}\\)/g;",
+      "replace": "const MD_LINK = /!?\\[((?:[^[\\]\\n]|\\[[^[\\]\\n]*\\]){0,500})\\]\\([ \\t\\r\\n]{0,3}[^() \\t\\r\\n]{0,2000}[ \\t\\r\\n]{0,3}\\)/g;",
+      "expect": "cleans a model answer as the server does"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-core.ts",
+      "find": "const URL_TAIL = '.,;:!?';",
+      "replace": "const URL_TAIL = '';",
+      "expect": "cleans a model answer as the server does"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-core.ts",
+      "find": "return known.has(url.toLowerCase()) ? m : LINK_REMOVED + tail;",
+      "replace": "return LINK_REMOVED + tail;",
+      "expect": "cleans a model answer as the server does"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-core.ts",
+      "find": "return known.has(url.toLowerCase()) ? m : LINK_REMOVED + tail;",
+      "replace": "return known.has(url) ? m : LINK_REMOVED + tail;",
+      "expect": "cleans a model answer as the server does"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-core.ts",
+      "find": "known.add(splitUrl(m[0])[0].toLowerCase())",
+      "replace": "known.add(splitUrl(m[0])[0])",
+      "expect": "cleans a model answer as the server does"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-core.ts",
+      "find": "return known.has(url.toLowerCase()) ? m : LINK_REMOVED + tail;",
+      "replace": "return context.toLowerCase().includes(url.toLowerCase()) ? m : LINK_REMOVED + tail;",
+      "expect": "cleans a model answer as the server does"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-core.ts",
+      "find": "const URL_TEXT = /https?:\\/\\/[A-Za-z0-9\\-._~:/?#@!$&*+,;=%]+/gi;",
+      "replace": "const URL_TEXT = /https?:\\/\\/[^\\s\\\"'<>()]+/gi;",
+      "expect": "cleans a model answer as the server does"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-core.ts",
+      "find": "const URL_TEXT = /https?:\\/\\/[A-Za-z0-9\\-._~:/?#@!$&*+,;=%]+/gi;",
+      "replace": "const URL_TEXT = /https?:\\/\\/[A-Za-z0-9\\-._~:/?#@!$&*+,;=%]+/g;",
+      "expect": "cleans a model answer as the server does"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-core.ts",
+      "find": "const URL_TEXT = /https?:\\/\\/[A-Za-z0-9\\-._~:/?#@!$&*+,;=%]+/gi;",
+      "replace": "const URL_TEXT = /http:\\/\\/[A-Za-z0-9\\-._~:/?#@!$&*+,;=%]+/gi;",
+      "expect": "cleans a model answer as the server does"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-core.ts",
+      "find": "return known.has(url.toLowerCase()) ? m : LINK_REMOVED + tail;",
+      "replace": "return known.has(url.toLowerCase()) ? m : LINK_REMOVED;",
+      "expect": "cleans a model answer as the server does"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-core.ts",
+      "find": "let summary = plan?.summary ? cleanAnswer(plan.summary.trim(), context) : null;",
+      "replace": "let summary = plan?.summary?.trim() ?? null;",
+      "expect": "cleans the summary and the reasons of a plan"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-core.ts",
+      "find": "reasons.push(cleanAnswer(stop.reason?.trim() ?? '', context));",
+      "replace": "reasons.push(stop.reason?.trim() ?? '');",
+      "expect": "cleans the summary and the reasons of a plan"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-core.ts",
+      "find": "`${h.label}\\n${h.locality ?? ''}\\n${h.street ?? ''}`",
+      "replace": "''",
+      "expect": "cleans the summary and the reasons of a plan"
+    }
+  ]
+}

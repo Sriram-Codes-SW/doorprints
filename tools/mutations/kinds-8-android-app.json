@@ -1,0 +1,24 @@
+{
+  "spec": "android/app/src/test/java/app/doorprints/SchoolFormTest.kt",
+  "gradle": [
+    ":app:testDebugUnitTest",
+    "--tests",
+    "app.doorprints.SchoolFormTest",
+    "--tests",
+    "app.doorprints.ExportDefaultsTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/HouseListScreen.kt",
+      "find": "            HouseSearch.matches(query, it.searchFields(it.brokerId?.let(brokerText::get), language, noteTexts, devKinds))",
+      "replace": "            HouseSearch.matches(query, it.searchFields(it.brokerId?.let(brokerText::get), language, noteTexts))",
+      "expect": "theListSearchFindsASchoolByItsBoardOnlyWithTheFlagOn"
+    },
+    {
+      "file": "android/app/src/main/java/app/doorprints/export/ExportBuilder.kt",
+      "find": "        rows.toBundle(options.copy(devKinds = BuildConfig.DEV_KINDS))",
+      "replace": "        rows.toBundle(options)",
+      "expect": "aSchoolIsCopiedAsAHouseInABuildWithTheFlagOff"
+    }
+  ]
+}

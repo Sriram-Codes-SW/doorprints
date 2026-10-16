@@ -52,6 +52,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = {
                 "app.ai.enabled=true",
+                // The fake stands in for Gemini on a loopback address, so say the key is required (S4b-BL-149: unset,
+                // only the Gemini host needs one).
+                "app.ai.key-required=true",
                 "spring.ai.openai.api-key=",
                 "app.rate-limit.auth-failures-per-minute=10000",
                 "app.rate-limit.auth-failure-burst=10000"})

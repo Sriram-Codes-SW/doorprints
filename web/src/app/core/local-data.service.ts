@@ -26,12 +26,14 @@ import { StorageService } from '../data/storage.service';
 import { houseToDto, photoMetaOf, visitToDto } from '../data/records';
 import type { PhotoRecord } from '../data/records';
 import type { PhotoMeta } from '../shared/photo-tags';
+import type { PhotoMetaInput } from '../data/photo-store';
 import { LocalDataError } from './local-error';
 import type { Broker, BrokerRow } from '../shared/broker';
 import type { Criterion, CriterionRow, Scoring, Weight } from '../shared/scoring';
 import type { Question, QuestionCategory, QuestionRow, QuestionScope } from '../shared/question';
 import type { Viewing, ViewingRow } from '../shared/viewing';
 import type { Area, AreaNote, AreaNoteRow, AreaRow, Place, PlaceRow } from '../shared/area';
+import { baselineKindId } from './candidate';
 
 /**
  * What the screens talk to (S4-01). The method names and shapes are the ones `HouseApiService` had, so the pages
@@ -106,13 +108,13 @@ export class LocalDataService {
 
   /** The live brokers, oldest edit first (slice 1b). */
   brokers(): Observable<BrokerRow[]> {
-    return defer(() => from(this.store.brokers()));
+    return defer(() => from(this.store.brokers.rows()));
   }
 
   saveBroker(id: string, broker: Broker): Observable<BrokerRow> {
     return defer(() =>
       from(
-        this.store.saveBroker(id, broker).then((saved) => {
+        this.store.brokers.save(id, broker).then((saved) => {
           this.sync.syncSoon();
           return saved;
         }),
@@ -124,7 +126,7 @@ export class LocalDataService {
   deleteBroker(id: string): Observable<void> {
     return defer(() =>
       from(
-        this.store.deleteBroker(id).then(() => {
+        this.store.brokers.delete(id).then(() => {
           this.sync.syncSoon();
         }),
       ),
@@ -133,7 +135,7 @@ export class LocalDataService {
 
   /** The live houses linked to a broker. */
   brokerHouses(id: string): Observable<HouseDto[]> {
-    return defer(() => from(this.store.brokerHouses(id).then((list) => list.map(houseToDto))));
+    return defer(() => from(this.store.brokers.housesOf(id).then((list) => list.map(houseToDto))));
   }
 
   /**
@@ -141,23 +143,23 @@ export class LocalDataService {
    * read it again after `settled` moves, like every stored value.
    */
   scoring(): Observable<Scoring> {
-    return defer(() => from(this.store.scoring()));
+    return defer(() => from(this.store.criteria.scoring()));
   }
 
   /** The criterion records that exist (what differs from the defaults), for the Criteria screen and the copies. */
   criterionRows(): Observable<CriterionRow[]> {
-    return defer(() => from(this.store.criterionRows()));
+    return defer(() => from(this.store.criteria.rows()));
   }
 
-  /** Saves criteria (each writes a record only when it differs from the default); see `LocalStore.saveCriterion`. */
+  /** Saves criteria (each writes a record only when it differs from the default); see `CriteriaStore.save`. */
   saveCriteria(list: readonly Criterion[]): Observable<void> {
-    return this.writing(() => this.store.saveCriteria(list));
+    return this.writing(() => this.store.criteria.saveMany(list));
   }
 
   addCriterion(label: string, weight: Weight = 2): Observable<Criterion> {
     return defer(() =>
       from(
-        this.store.addCriterion(label, weight).then((saved) => {
+        this.store.criteria.add(label, weight).then((saved) => {
           this.sync.syncSoon();
           return saved;
         }),
@@ -167,43 +169,44 @@ export class LocalDataService {
 
   /** Deletes a custom criterion that no house has scored. */
   deleteCriterion(key: string): Observable<void> {
-    return this.writing(() => this.store.deleteCriterion(key));
+    return this.writing(() => this.store.criteria.delete(key));
   }
 
   /** Stores the share of the star rating in the overall score, 0..1. */
   setRatingShare(share: number): Observable<void> {
-    return this.writing(() => this.store.setRatingShare(share));
+    return this.writing(() => this.store.criteria.setRatingShare(share));
   }
 
   /** Deletes every criterion and preference record: back to the defaults. */
   resetCriteria(): Observable<void> {
-    return this.writing(() => this.store.resetCriteria());
+    return this.writing(() => this.store.criteria.reset());
   }
 
   /** True when a live house has a score under this criterion key (a custom one can then only be archived). */
   criterionInUse(key: string): Observable<boolean> {
-    return defer(() => from(this.store.criterionInUse(key)));
+    return defer(() => from(this.store.criteria.inUse(key)));
   }
 
   /** The question bank, archived questions included, by `sort` then id (slice 3a). */
   questions(): Observable<Question[]> {
-    return defer(() => from(this.store.questions()));
+    return defer(() => from(this.store.questions.all()));
   }
 
   /** The question records that exist, for the copies. */
   questionRows(): Observable<QuestionRow[]> {
-    return defer(() => from(this.store.questionRows()));
+    return defer(() => from(this.store.questions.rows()));
   }
 
   /** Saves questions (an edit, an archive, a move); only these records are written. */
   saveQuestions(list: readonly Question[]): Observable<void> {
-    return this.writing(() => this.store.saveQuestions(list));
+    return this.writing(() => this.store.questions.saveMany(list));
   }
 
-  addQuestion(text: string, category: QuestionCategory = 'OTHER', appliesTo: QuestionScope = 'BOTH'): Observable<Question> {
+  /** Adds a question to a kind's bank (the house's unless a space says otherwise, kinds PR 29). */
+  addQuestion(text: string, category: QuestionCategory = 'OTHER', appliesTo: QuestionScope = 'BOTH', kind = baselineKindId()): Observable<Question> {
     return defer(() =>
       from(
-        this.store.addQuestion(text, category, appliesTo).then((saved) => {
+        this.store.questions.add(text, category, appliesTo, Date.now(), undefined, kind).then((saved) => {
           this.sync.syncSoon();
           return saved;
         }),
@@ -213,17 +216,22 @@ export class LocalDataService {
 
   /** Deletes a question, a seeded one too; it stays deleted until the bank is reset. */
   deleteQuestion(id: string): Observable<void> {
-    return this.writing(() => this.store.deleteQuestion(id));
+    return this.writing(() => this.store.questions.delete(id));
   }
 
   /** *Reset to defaults*: the standard questions come back in [language]; the person's own stay. */
-  resetQuestions(language: string): Observable<void> {
-    return this.writing(() => this.store.resetQuestions(language).then(() => undefined));
+  resetQuestions(language: string, kind = baselineKindId()): Observable<void> {
+    return this.writing(() => this.store.questions.reset(language, Date.now(), kind).then(() => undefined));
+  }
+
+  /** Seeds a kind's own question bank the first time it is opened (kinds PR 29); nothing for the house. */
+  seedKindQuestions(kind: string, language: string): Observable<void> {
+    return this.writing(() => this.store.questions.seedKindOnce(kind, language).then(() => undefined));
   }
 
   /** Every live viewing, by start then id (slice 3b-1). */
   viewings(): Observable<Viewing[]> {
-    return defer(() => from(this.store.viewings()));
+    return defer(() => from(this.store.viewings.all()));
   }
 
   /** *Notify me while Doorprints is open* (slice 3b-2): on unless turned off; this browser only. */
@@ -237,27 +245,27 @@ export class LocalDataService {
 
   /** The viewing records that exist, for the copies. */
   viewingRows(): Observable<ViewingRow[]> {
-    return defer(() => from(this.store.viewingRows()));
+    return defer(() => from(this.store.viewings.rows()));
   }
 
   viewingsOf(houseId: string): Observable<Viewing[]> {
-    return defer(() => from(this.store.viewingsOf(houseId)));
+    return defer(() => from(this.store.viewings.ofHouse(houseId)));
   }
 
   /** The earliest PLANNED viewing of the house at or after now, or null. */
   nextViewing(houseId: string, nowMs: number = Date.now()): Observable<Viewing | null> {
-    return defer(() => from(this.store.nextViewing(houseId, nowMs)));
+    return defer(() => from(this.store.viewings.next(houseId, nowMs)));
   }
 
   /** A fresh `v_` id that no viewing record, a deleted one included, has. */
   newViewingId(): Observable<string> {
-    return defer(() => from(this.store.newViewingId()));
+    return defer(() => from(this.store.viewings.newId()));
   }
 
   saveViewing(viewing: Viewing): Observable<Viewing> {
     return defer(() =>
       from(
-        this.store.saveViewing(viewing).then((saved) => {
+        this.store.viewings.save(viewing).then((saved) => {
           this.sync.syncSoon();
           return saved;
         }),
@@ -266,14 +274,14 @@ export class LocalDataService {
   }
 
   deleteViewing(id: string): Observable<void> {
-    return this.writing(() => this.store.deleteViewing(id));
+    return this.writing(() => this.store.viewings.delete(id));
   }
 
   /** *It happened* / *Mark viewing done*: DONE, with the visit that shows it happened when there is one. */
   markViewingDone(id: string, visitId?: string | null): Observable<Viewing> {
     return defer(() =>
       from(
-        this.store.markViewingDone(id, visitId).then((saved) => {
+        this.store.viewings.markDone(id, visitId).then((saved) => {
           this.sync.syncSoon();
           return saved;
         }),
@@ -283,61 +291,61 @@ export class LocalDataService {
 
   /** Every live area, by name (slice 4a). */
   areas(): Observable<Area[]> {
-    return defer(() => from(this.store.areas()));
+    return defer(() => from(this.store.areas.all()));
   }
 
   areaRows(): Observable<AreaRow[]> {
-    return defer(() => from(this.store.areaRows()));
+    return defer(() => from(this.store.areas.rows()));
   }
 
   newAreaId(): Observable<string> {
-    return defer(() => from(this.store.newAreaId()));
+    return defer(() => from(this.store.areas.newId()));
   }
 
   saveArea(area: Area): Observable<Area> {
-    return this.saving(() => this.store.saveArea(area));
+    return this.saving(() => this.store.areas.save(area));
   }
 
   deleteArea(id: string): Observable<void> {
-    return this.writing(() => this.store.deleteArea(id));
+    return this.writing(() => this.store.areas.delete(id));
   }
 
   /** Every live place, by name (slice 4a). */
   places(): Observable<Place[]> {
-    return defer(() => from(this.store.places()));
+    return defer(() => from(this.store.places.all()));
   }
 
   placeRows(): Observable<PlaceRow[]> {
-    return defer(() => from(this.store.placeRows()));
+    return defer(() => from(this.store.places.rows()));
   }
 
   newPlaceId(): Observable<string> {
-    return defer(() => from(this.store.newPlaceId()));
+    return defer(() => from(this.store.places.newId()));
   }
 
   savePlace(place: Place): Observable<Place> {
-    return this.saving(() => this.store.savePlace(place));
+    return this.saving(() => this.store.places.save(place));
   }
 
   deletePlace(id: string): Observable<void> {
-    return this.writing(() => this.store.deletePlace(id));
+    return this.writing(() => this.store.places.delete(id));
   }
 
   /** Every live area note, newest first (slice 4a). */
   areaNotes(): Observable<AreaNoteRow[]> {
-    return defer(() => from(this.store.areaNotes()));
+    return defer(() => from(this.store.areaNotes.all()));
   }
 
   newAreaNoteId(): Observable<string> {
-    return defer(() => from(this.store.newAreaNoteId()));
+    return defer(() => from(this.store.areaNotes.newId()));
   }
 
   saveAreaNote(note: AreaNote): Observable<AreaNote> {
-    return this.saving(() => this.store.saveAreaNote(note));
+    return this.saving(() => this.store.areaNotes.save(note));
   }
 
   deleteAreaNote(id: string): Observable<void> {
-    return this.writing(() => this.store.deleteAreaNote(id));
+    return this.writing(() => this.store.areaNotes.delete(id));
   }
 
   private saving<T>(run: () => Promise<T>): Observable<T> {
@@ -387,19 +395,19 @@ export class LocalDataService {
 
   /** A house's live photos with their meta (slice 5), oldest first: the photos list and the condition record. */
   photos(houseId: string): Observable<PhotoSummary[]> {
-    return defer(() => from(this.store.photosOf(houseId).then((list) => list.map(summary))));
+    return defer(() => from(this.store.photos.ofHouse(houseId).then((list) => list.map(summary))));
   }
 
   /** The photos of a house tagged MOVE_IN, oldest first (docs/11 5.24). */
   conditionPhotos(houseId: string): Observable<PhotoSummary[]> {
-    return defer(() => from(this.store.conditionPhotos(houseId).then((list) => list.map(summary))));
+    return defer(() => from(this.store.photos.conditionOf(houseId).then((list) => list.map(summary))));
   }
 
   /** Saves a photo's room, tags and caption; false when nothing changed. */
-  setPhotoMeta(id: string, meta: Pick<PhotoMeta, 'roomId' | 'tags' | 'caption'>): Observable<boolean> {
+  setPhotoMeta(id: string, meta: PhotoMetaInput): Observable<boolean> {
     return defer(() =>
       from(
-        this.store.setPhotoMeta(id, meta).then((changed) => {
+        this.store.photos.setMeta(id, meta).then((changed) => {
           if (changed) this.sync.syncSoon();
           return changed;
         }),
@@ -426,10 +434,10 @@ export class LocalDataService {
     houseId: string,
     file: Blob,
     id: string = uuid(),
-    meta?: Pick<PhotoMeta, 'roomId' | 'tags' | 'caption'>,
+    meta?: PhotoMetaInput,
   ): Observable<{ id: string }> {
     return defer(() =>
-      from(this.store.addPhoto(houseId, file, id, Date.now(), meta)).pipe(
+      from(this.store.photos.add(houseId, file, id, Date.now(), meta)).pipe(
         map((result) => {
           if (!result.ok) throw photoLimit();
           this.sync.syncSoon();
@@ -441,7 +449,7 @@ export class LocalDataService {
 
   photo(id: string): Observable<Blob> {
     return defer(() =>
-      from(this.store.getPhoto(id)).pipe(
+      from(this.store.photos.get(id)).pipe(
         map((record) => {
           // A photo that only exists on the server (not downloaded yet) reads as missing until the next sync.
           if (!record || record.deleted || !record.blob) throw notFound();
@@ -454,7 +462,7 @@ export class LocalDataService {
   deletePhoto(id: string): Observable<void> {
     return defer(() =>
       from(
-        this.store.deletePhoto(id).then(() => {
+        this.store.photos.delete(id).then(() => {
           this.sync.syncSoon();
         }),
       ),

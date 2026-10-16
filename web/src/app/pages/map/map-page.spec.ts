@@ -19,16 +19,18 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
-import { of } from 'rxjs';
+import { NEVER, of } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { LocalDataService } from '../../core/local-data.service';
 import { newHouse } from '../../core/models';
 import type { HouseDto } from '../../core/models';
 import { SyncService } from '../../data/sync.service';
+import { en } from '../../i18n/en';
 import { TranslationService } from '../../i18n/translation.service';
 import { scoringOf } from '../../shared/scoring';
 import type { CriterionRow } from '../../shared/scoring';
 import { MapPage } from './map-page';
+import mapCss from './map-page.css' with { loader: 'text' };
 
 /**
  * The house list of the map page under the person's criteria (slice 2, docs/11 5.4): "Best score" is the ranking
@@ -79,9 +81,9 @@ async function render(query: Record<string, string>, extra: Record<string, unkno
           brokers: () => of([]),
           areas: () => of([]),
           areaNotes: () => of([]),
-          ...extra,
           scoring: () => of(scoringOf([SECURITY_MUST], [])),
           stats: () => of({ houses: 3, shortlisted: 0, rejected: 0, visits: 0, streets: 0 }),
+          ...extra,
         },
       },
       { provide: SyncService, useValue: { migration: signal('done'), enabled: signal(false), downloadToThisBrowser: vi.fn() } },
@@ -150,6 +152,21 @@ describe('MapPage: searching the text of area notes (slice 4a)', () => {
   });
 });
 
+/** Kinds PR 6 (S4b-BL-210): the list search reads a kind's typed extras, only while the developer flag allows the kind. */
+describe('MapPage: searching a school’s extras (S4b-BL-210)', () => {
+  const school = house('k', 'Pine Hill School', { kind: 'school', extrasOther: { board: 'CBSE', busService: true } });
+  const stub = { houses: () => of([school, PLAIN]) };
+
+  it('finds a stored school by its board and its bus in the app’s words, with the flag and the switch off too (S4b-BL-212)', async () => {
+    expect(rows(await render({ q: 'cbse' }, stub))).toHaveLength(1);
+    TestBed.resetTestingModule();
+    localStorage.setItem('doorprints.dev.kinds', 'school');
+    const found = rows(await render({ q: 'school bus' }, stub));
+    expect(found).toHaveLength(1);
+    expect(found[0]).toContain('Pine Hill School');
+  });
+});
+
 /** S4b-BL-84: the filters over the cost numbers, on top of the status and the search, read from and kept in the URL. */
 describe('MapPage: the cost filters', () => {
   it('keeps only the houses whose monthly cost is in the range, and says how many ranges are set', async () => {
@@ -178,5 +195,162 @@ describe('MapPage: the cost filters', () => {
     lastFixture!.detectChanges();
     expect(rows(host)).toHaveLength(3);
     expect(clear.disabled).toBe(true);
+  });
+});
+
+describe('MapPage: the panel shown when the map has no tiles', () => {
+  type Panel = { mapAvailable: { set(v: boolean): void }; mapWorkerFailed: { set(v: boolean): void } };
+  const retryButton = (host: HTMLElement) => [...host.querySelectorAll('.map-offline button')].find((b) => b.textContent?.trim() === 'Try again');
+
+  it('offers Try again while offline: the map can try again when the connection is back', async () => {
+    const host = await render({});
+    (lastFixture!.componentInstance as unknown as Panel).mapAvailable.set(false);
+    lastFixture!.detectChanges();
+    expect(host.querySelector('.map-offline')?.textContent).toContain('The map needs an internet connection');
+    expect(retryButton(host)).toBeTruthy();
+  });
+
+  it('says the map helper failed and offers no Try again, which could not bring it back', async () => {
+    const host = await render({});
+    const panel = lastFixture!.componentInstance as unknown as Panel;
+    panel.mapAvailable.set(false);
+    panel.mapWorkerFailed.set(true);
+    lastFixture!.detectChanges();
+    expect(host.querySelector('.map-offline')?.textContent).toContain('The map could not start its helper');
+    expect(retryButton(host)).toBeUndefined();
+  });
+});
+
+/**
+ * The phone layout of the Map page (S4b-BL-49, 2026-10-13). #258 and #269 sized the map from heights a script measured
+ * (`--map-stack-h`, `--map-peek`) and the map ran away to 14,000-21,000px on phones under 700px tall; the layout they
+ * reverted to still made the map taller than the screen in landscape and at 200% text, and jumped after the first
+ * paint. These pin what keeps it right: every size comes from CSS, and the page is not painted half made.
+ */
+describe('MapPage: the phone layout is sized in CSS (S4b-BL-49)', () => {
+  const phone = mapCss.slice(mapCss.indexOf('@media (max-width: 760px) {'));
+
+  it('reads no map size a script writes: every --map-* property it uses is defined in the stylesheet', () => {
+    const used = new Set([...mapCss.matchAll(/var\((--map-[a-z-]+)/g)].map((m) => m[1]));
+    expect(used.size).toBeGreaterThan(0);
+    for (const name of used) expect(mapCss, name).toContain(`${name}: `);
+    expect(mapCss).not.toContain('--map-stack-h');
+  });
+
+  it('fills the visible page area less the list heading and counters, and never goes under the control column', () => {
+    expect(phone).toContain('--map-floor: calc(216px + var(--space-2));');
+    expect(phone).toContain('min-height: max(var(--map-floor), calc(100cqh - var(--map-peek)));');
+    expect(phone).toContain('grid-template-rows: minmax(var(--map-floor), 1fr) auto auto;');
+  });
+
+  it('reserves in Hindi, Tamil and Telugu one more caption line, as a Tamil caption wraps under its number', () => {
+    // Tamil, 360x740 (S4b-BL-245, 2026-10-13): the strip is 117px, not 96px; without the line the counters ended 10px under the bar.
+    expect(phone).toMatch(/\.map-wrap:is\(:lang\(hi\), :lang\(ta\), :lang\(te\)\) \{\s*--map-peek: calc\([^;]*\* 1\.7\) \+ 0\.75rem \* 1\.7 \+ 3px\);/);
+  });
+
+  it('reserves the control corner, credits open, from the first frame (no shift when the style\'s credits arrive)', () => {
+    expect(phone).toMatch(/\.maplibregl-ctrl-bottom-right\s*\{\s*left: 0;\s*\}/);
+    expect(phone).toMatch(/@media \(min-height: 501px\) \{\s*:host ::ng-deep \.maplibregl-ctrl-bottom-right\s*\{\s*min-height: 216px;/);
+    // The floor holds the corner: 216px is zoom in, zoom out and my location (44px each), their margins, and 44px of credits, with --space-2 above.
+    expect(phone).toContain('--map-floor: calc(216px + var(--space-2));');
+  });
+
+  it('hides the legend card while the credits are open over it, so it does not show as a second popup', () => {
+    expect(phone).toMatch(/\.map-wrap:has\(\.maplibregl-compact-show\) \.legend\s*\{\s*visibility: hidden;/);
+  });
+
+  it('places the map and its overlays in the map row, so the crosshair stays on the map centre', () => {
+    expect(phone).toMatch(/\.map,\s*\.map-offline,\s*\.crosshair,\s*\.add-hint\s*\{\s*grid-area: 1 \/ 1 \/ 2 \/ 2;/);
+  });
+
+  it('never positions the bottom row: the legend and the actions are grid items, not placed over the map', () => {
+    expect(phone).not.toMatch(/\.map-stack[^{,]*\{[^}]*position/);
+    expect(phone).toMatch(/\.map-actions\s*\{[^}]*grid-area: 3 \/ 1;/);
+  });
+
+  it('is not painted before its first update pass, and is drawn after it', async () => {
+    expect(mapCss).toMatch(/:host:not\(\.drawn\)\s*\{\s*visibility: hidden;/);
+    const host = await render({});
+    expect(host.classList.contains('drawn')).toBe(true);
+  });
+
+  it('keeps the counters place while they are read, and gives it to the counters when they come', async () => {
+    const waiting = await render({}, { stats: () => NEVER });
+    expect(waiting.querySelector('.stats-pending')?.getAttribute('aria-hidden')).toBe('true');
+    expect(waiting.querySelector('dl.stats:not(.stats-pending)')).toBeNull();
+    // the same five cells and captions as the counters, so it is as tall as they are in any language (S4b-BL-258)
+    expect(waiting.querySelectorAll('.stats-pending dt')).toHaveLength(5);
+    expect(waiting.querySelector('.stats-pending')?.textContent).toContain(en['map.stats.shortlisted']);
+    TestBed.resetTestingModule();
+    const read = await render({});
+    expect(read.querySelector('dl.stats:not(.stats-pending)')).not.toBeNull();
+    expect(read.querySelector('.stats-pending')).toBeNull();
+  });
+});
+
+/** Spaces (kinds PR 8, S4b-BL-212; docs/06 TC-U-214): the list, the counters, the search and the words are the space's. */
+describe('MapPage: a space shows its own candidates in its own words (S4b-BL-212)', () => {
+  const SCHOOL = house('k', 'Pine Hill School', { kind: 'school', status: 'SHORTLISTED' });
+  const stub = { houses: () => of([SCHOOL, PLAIN, CHEAP]) };
+  const text = (el: Element | null) => el?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
+  function twoKinds(dflt: string): void {
+    localStorage.setItem('doorprints.kinds.experimental', '1');
+    localStorage.setItem('doorprints.kinds.enabled', '["house","school"]');
+    localStorage.setItem('doorprints.kinds.default', dflt);
+  }
+
+  it('the school space: only the school, its heading, counters, search, Add button and link; no cost filter or price sort', async () => {
+    twoKinds('school');
+    const host = await render({}, stub);
+    expect(rows(host)).toHaveLength(1);
+    expect(rows(host)[0]).toContain('Pine Hill School');
+    expect(text(host.querySelector('#houses-heading'))).toBe('Your schools');
+    const stats = [...host.querySelectorAll('dl.stats div')].map((d) => text(d));
+    expect(stats.slice(0, 3)).toEqual(['Schools1', 'Shortlisted1', 'Rejected0']);
+    expect(text(host.querySelector('label[for="house-search"]'))).toBe('Search schools');
+    expect(host.querySelector('ul.list')!.getAttribute('aria-label')).toBe('School list');
+    expect(host.textContent).toContain('Schools shown: 1 of 1');
+    expect(host.textContent).toContain('Add school');
+    expect(host.textContent).not.toContain('Add house');
+    expect(host.querySelector('details.cost-filters')).toBeNull();
+    expect([...host.querySelectorAll<HTMLOptionElement>('#house-sort option')].map((o) => o.value)).toEqual(['recent']);
+    expect(host.querySelector('ul.list a')!.getAttribute('href')).toBe('/k/school/k');
+  });
+
+  it('the house space of two: the houses only, in today’s words', async () => {
+    twoKinds('house');
+    const host = await render({}, stub);
+    expect(rows(host)).toHaveLength(2);
+    expect(text(host.querySelector('#houses-heading'))).toBe('Your houses');
+    expect([...host.querySelectorAll('dl.stats div')].map((d) => text(d))[0]).toBe('Houses2');
+    expect(host.querySelector('details.cost-filters')).not.toBeNull();
+    expect(host.querySelector('ul.list a')!.getAttribute('href')).toMatch(/^\/houses\//);
+  });
+
+  it('a school space with no schools says so in its words', async () => {
+    twoKinds('school');
+    const host = await render({}, { houses: () => of([PLAIN]) });
+    expect(host.textContent).toContain('No schools yet');
+    expect(host.textContent).toContain('Choose “Add school”, then pick the spot on the map to add your first school.');
+  });
+
+  it('the school alone (the house turned off): the kept houses are still listed and counted, in the school’s words; Add makes a school (docs/03 §18.18)', async () => {
+    localStorage.setItem('doorprints.kinds.experimental', '1');
+    localStorage.setItem('doorprints.kinds.enabled', '["school"]');
+    localStorage.setItem('doorprints.kinds.default', 'school');
+    const host = await render({}, stub);
+    expect(rows(host)).toHaveLength(3);
+    expect(text(host.querySelector('#houses-heading'))).toBe('Your schools');
+    expect([...host.querySelectorAll('dl.stats div')].map((d) => text(d))[0]).toBe('Schools3');
+    expect(host.textContent).toContain('Add school');
+    expect(host.textContent).not.toContain('Add house');
+    expect([...host.querySelectorAll('ul.list a')].every((a) => /^\/houses\//.test(a.getAttribute('href') ?? ''))).toBe(true);
+  });
+
+  it('with one kind enabled every candidate is listed, as before, in the house’s words', async () => {
+    const host = await render({}, stub);
+    expect(rows(host)).toHaveLength(3);
+    expect(text(host.querySelector('#houses-heading'))).toBe('Your houses');
+    expect([...host.querySelectorAll('dl.stats div')].map((d) => text(d))[0]).toBe('Houses3');
   });
 });

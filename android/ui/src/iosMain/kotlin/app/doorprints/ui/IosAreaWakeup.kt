@@ -88,6 +88,11 @@ internal interface RegionMonitor {
  * Main thread, like the monitor.
  */
 internal class AreaRegionSync(private val monitor: RegionMonitor) {
+    /**
+     * Brings the registered regions to those wanted for [areas] when [wakeupOn] and the monitor is available, and
+     * returns the plan it carried out (what it stopped and started). [alwaysGranted] says whether the "Always" location
+     * permission is granted ([AreaRegions.wanted] decides what that means for the regions).
+     */
     fun apply(areas: List<Area>, wakeupOn: Boolean, alwaysGranted: Boolean): AreaRegions.Plan {
         val on = wakeupOn && monitor.available
         val wanted = AreaRegions.wanted(areas, on, alwaysGranted, if (on) monitor.lastPosition() else null, monitor.maxRadiusM)
@@ -331,6 +336,7 @@ internal class AlwaysPrompt(private val onAnswered: () -> Unit) {
         return true
     }
 
+    /** Lets go of the prompt's location manager and its delegate. */
     fun release() {
         manager?.delegate = null
         manager = null

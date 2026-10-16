@@ -1,0 +1,18 @@
+{
+  "spec": [
+    "android/app/src/test/java/app/doorprints/AppDatabaseMigrationTest.kt"
+  ],
+  "gradle": [
+    ":app:testDebugUnitTest",
+    "--tests",
+    "app.doorprints.AppDatabaseMigrationTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AppDatabase.kt",
+      "find": "CREATE INDEX IF NOT EXISTS `index_houses_kind` ON `houses` (`kind`)",
+      "replace": "CREATE INDEX IF NOT EXISTS `index_houses_kind` ON `houses` (`status`)",
+      "expect": "migration12To13AddsTheKindIndexAndKeepsEveryRow"
+    }
+  ]
+}

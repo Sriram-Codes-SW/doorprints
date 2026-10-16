@@ -29,6 +29,7 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.core.content.FileProvider
@@ -97,6 +98,9 @@ class RootNavigationTest {
                 }
             }
         }
+        // The shipped lists (house, school) make the root wait one read of the settings store before it draws anything (the switch
+        // decides the start destination); a link is handled by the first screen, so wait for it, as the user's first frame does.
+        compose.waitUntil(10_000) { compose.onRoot().fetchSemanticsNode().children.isNotEmpty() }
         compose.waitForIdle()
     }
 
@@ -201,7 +205,7 @@ class RootNavigationTest {
         // asked (5.18), as the shared-listing link opens it.
         start(DeepLink.OpenScreen(Routes.SETTINGS))
         compose.onNodeWithText("Server (optional)").assertExists()
-        links.value = DeepLink.StartHunt
+        links.value = DeepLink.StartHunt()
         compose.waitForIdle()
         assertEquals(2, handled)
         shows(MAP)
@@ -212,7 +216,7 @@ class RootNavigationTest {
         // S4b-BL-94a: a form open over the Map is closed, not brought back by the tab's restored stack.
         start(DeepLink.NewHouse(12.9716, 77.5946, null))
         shows("Save a house")
-        links.value = DeepLink.StartHunt
+        links.value = DeepLink.StartHunt()
         compose.waitForIdle()
         assertEquals(2, handled)
         shows(MAP)
@@ -225,7 +229,7 @@ class RootNavigationTest {
     fun anIphoneReminderTapOffersHuntModeOnTheMap() {
         // S4b-BL-94c: the tap opened only the app, so the Map asks with *Start Hunt mode*; nothing is started yet.
         start(DeepLink.OpenScreen(Routes.SETTINGS))
-        links.value = DeepLink.OfferHunt
+        links.value = DeepLink.OfferHunt()
         compose.waitForIdle()
         assertEquals(2, handled)
         shows(MAP)
@@ -277,6 +281,7 @@ class RootNavigationTest {
     fun settingsViewingsPlansANewViewingAndTheFormsBackReturnsToTheHistory() {
         start(DeepLink.OpenScreen(Routes.SETTINGS))
         openSettingsViewings()
+        waitFor(NO_VIEWINGS) // the empty state arrives after the intro (async), so wait for it
         compose.onNodeWithText(NO_VIEWINGS).assertExists()
         compose.onNodeWithText("Plan a viewing").performClick()
         compose.waitForIdle()
@@ -287,6 +292,7 @@ class RootNavigationTest {
         compose.onNodeWithContentDescription("Back").performClick()
         compose.waitForIdle()
         waitFor(VIEWINGS_INTRO)
+        waitFor(NO_VIEWINGS)
         compose.onNodeWithText(NO_VIEWINGS).assertExists()
     }
 

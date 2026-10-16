@@ -24,12 +24,14 @@
 # What is checked (every problem is reported before the script fails):
 #   /  and the deep link /compare (answered by the "**" -> /index.html rewrite): HTTP 200, HTML, the app shell, a
 #     Content-Security-Policy with frame-ancestors 'none', X-Frame-Options DENY, X-Content-Type-Options nosniff,
-#     Referrer-Policy, Permissions-Policy, Cross-Origin-Opener-Policy, and a Cache-Control with no-cache (Firebase's
+#     Referrer-Policy, Permissions-Policy (with microphone=(self) for voice input, S4b-BL-221, and no "*"),
+#     Cross-Origin-Opener-Policy, and a Cache-Control with no-cache (Firebase's
 #     own default would be max-age=3600, which would keep an old app shell in browsers for an hour).
 #   /sw.js and /manifest.webmanifest: HTTP 200, Cache-Control with no-cache and without immutable, and the right
 #     Content-Type (JavaScript; application/manifest+json). The Content-Type also proves that the file itself was
 #     served: a missing file would be answered by the rewrite with index.html and HTTP 200.
-#   The hashed main-*.js that this build's index.html loads: HTTP 200 and a JavaScript Content-Type. The live "/"
+#   The hashed main-*.js that this build's index.html loads: HTTP 200, a JavaScript Content-Type and an immutable
+#     Cache-Control (Z4). The live "/"
 #     must reference that same file, which proves that this deploy, not the previous release, is being served.
 #   /geo/in-boundaries.geojson (India's boundary on the map, 2026-09-24) and /geo/in-boundaries-soi.json (the Survey of
 #     India's lines, 2026-10-01, S4b-BL-114): HTTP 200, Content-Type application/geo+json
@@ -49,6 +51,7 @@
 #   deadline and the printed curl error (coordinator review of the Cloudflare job).
 # 2026-09-24 (DevSecOps): section 4, India's boundary file /geo/in-boundaries.geojson (owner issue P0, branch
 #   fix/india-boundaries): type, nosniff, revalidation and byte identity with the deployed build.
+# 2026-10-10 (Web, Z4): the hashed main-*.js must be served with an immutable Cache-Control.
 set -uo pipefail # no errexit: every problem is collected before the script fails
 
 base="${1:?usage: check-live-headers.sh <site URL> <build dir>}"
@@ -156,6 +159,11 @@ for path in / /compare; do
   for hname in referrer-policy permissions-policy cross-origin-opener-policy; do
     [ -n "$(header "$h" "$hname")" ] || fail "${path}: no ${hname} header (web/firebase.json sets it)"
   done
+  # Voice input (S4b-BL-221, ADR-37): the microphone is allowed for this origin only, the camera and location likewise;
+  # a "*" for any feature would hand it to every frame.
+  pp=$(header "$h" permissions-policy)
+  printf '%s' "$pp" | grep -q 'microphone=(self)' || fail "${path}: Permissions-Policy is '${pp:-missing}', expected microphone=(self) (voice input)"
+  ! printf '%s' "$pp" | grep -qF '*' || fail "${path}: Permissions-Policy '${pp}' contains '*'; features are allowed for this origin only"
   expect_no_cache "$name" "$path"
   hsts=$(header "$h" strict-transport-security)
   if ! printf '%s' "$hsts" | grep -qi 'max-age=[1-9]'; then
@@ -194,6 +202,9 @@ if [ -n "$main_js" ]; then
     fail "/${main_js} answered HTTP ${status}, expected 200$(last_error hashed)"
   else
     printf '%s' "$ctype" | grep -qi 'javascript' || fail "/${main_js}: Content-Type is '${ctype:-missing}', expected JavaScript"
+    # Content-hashed, so it may be cached for a year (docs/14 Z4; the rule in web/firebase.json).
+    hcache=$(header "${work}/hashed.h" cache-control)
+    printf '%s' "$hcache" | grep -qi 'immutable' || fail "/${main_js}: Cache-Control is '${hcache:-missing}', expected max-age=31536000, immutable"
   fi
 else
   fail "no content-hashed .js file found in ${build}; cannot check that assets are served as files"
@@ -223,6 +234,39 @@ for boundary in /geo/in-boundaries.geojson /geo/in-boundaries-soi.json; do
     fi
   fi
 done
+
+# 5. MapLibre GL worker file (S4b-BL-54; maplibre-gl 6.13 made it self-contained and left maplibre-gl-shared.mjs an empty,
+#    uncopied stub): deployed to /maplibre-gl-worker.mjs per angular.json assets output "/". The "**" rewrite would
+#    answer a missing file with index.html and HTTP 200, so content-type proves the file itself is served (not the app shell).
+path=/maplibre-gl-worker.mjs
+name=maplibre_gl_worker_mjs
+status=$(fetch "$path" "$name")
+ctype=$(header "${work}/${name}.h" content-type)
+echo "--- ${base}${path} (HTTP ${status}): Content-Type: ${ctype:-(none)}"
+if [ "$status" != "200" ]; then
+  fail "${path} answered HTTP ${status}, expected 200$(last_error "$name")"
+else
+  printf '%s' "$ctype" | grep -qi 'javascript' || fail "${path}: Content-Type is '${ctype:-missing}', expected JavaScript (a missing file is answered with index.html)"
+fi
+
+# 6. The live worker is this build's worker (S4b-BL-55, stricter than the old pair-of-versions check): same bytes as the
+#    build's copy, so a stale worker from an older release cannot sit next to a newer page, and it names a version and
+#    imports no sibling file (a sibling is not deployed). Section 5 fetched it (with its retries until the deadline) and left
+#    the body in ${work}. A worker that did not arrive was reported in section 5.
+worker_body="${work}/${name}.b"
+if [ -s "$worker_body" ]; then
+  worker_version=$(head -c 400 "$worker_body" | grep -oE 'maplibre-gl-js/blob/v[^/]+' | head -n 1 || true)
+  echo "--- MapLibre worker version: ${worker_version#maplibre-gl-js/blob/}"
+  [ -n "$worker_version" ] || fail "maplibre-gl-worker.mjs: no version found in header"
+  if grep -qE "(from|import)[[:space:]]*\(?[[:space:]]*[\"'](\./|\.\./)" "$worker_body"; then
+    fail "maplibre-gl-worker.mjs imports a sibling file, which is not deployed (it must be self-contained)"
+  fi
+  if [ -f "${build}${path}" ]; then
+    cmp -s "$worker_body" "${build}${path}" || fail "${path}: the live bytes differ from this build's copy"
+  else
+    fail "${path} is not in ${build}"
+  fi
+fi
 
 rm -rf "$work"
 if [ "$errors" -gt 0 ]; then

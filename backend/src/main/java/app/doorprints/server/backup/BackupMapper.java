@@ -19,14 +19,12 @@
 package app.doorprints.server.backup;
 
 import app.doorprints.server.house.House;
-import app.doorprints.server.house.HouseAnswer;
-import app.doorprints.server.house.HouseMoveIn;
+import app.doorprints.server.house.HouseDto;
 import app.doorprints.server.house.HouseStatus;
-import app.doorprints.server.house.HouseCost;
-import app.doorprints.server.house.HouseRoom;
 import app.doorprints.server.photo.PhotoDto;
 import app.doorprints.server.photo.PhotoMeta;
 import app.doorprints.server.record.Record;
+import app.doorprints.server.record.ViewingPayload;
 import app.doorprints.server.visit.Visit;
 
 import java.time.Instant;
@@ -58,9 +56,8 @@ import tools.jackson.databind.ObjectMapper;
  *   <li>rows whose house is not in the export (a visit unlinked by a house delete) come last, in the same order.
  *       The device writers walk visits through their house and so have nothing to put here.</li>
  *   <li>checklist keys alphabetically ({@link TreeMap});</li>
- *   <li>brokers by {@code updatedAt}, then {@code id}; the format id is {@code /2} only when the copy has a broker, a
- *       room, a criterion, a preference, a question or a house with answers.</li>
- *   <li>questions by {@code updatedAt}, then {@code id}; viewings the same, and a live viewing makes the copy {@code /2}.</li>
+ *   <li>brokers, questions, viewings and the other record lists by {@code updatedAt}, then {@code id}; the format id
+ *       is {@code /2} when the copy holds anything listed at {@link BackupFormat#ID_WITH_BROKERS}.</li>
  * </ul>
  *
  * <p>Tombstones are never exported; callers pass live rows only.
@@ -168,7 +165,7 @@ final class BackupMapper {
         var backupHouses = liveHouses.stream().map(BackupMapper::house).toList();
         var backupPhotos = groupByHouse(livePhotos, PhotoDto::houseId, PHOTO_ORDER, houseOrder).stream()
                 .map(BackupMapper::photo).toList();
-        // The lowest number that holds the copy: /2 once there is a broker, a room, a criterion, a preference, a question, a viewing, or a house with answers, a move-in, a floor or the status TAKEN or NOT_CHOSEN, or a photo with a room, tags, a caption or an edit time; else /1.
+        // The lowest number that holds the copy: /2 once there is a broker, a room, a criterion, a preference, a question, a viewing, an area, a place, an area note, or a house with answers, a move-in, a floor or the status TAKEN or NOT_CHOSEN, or a photo with a room, tags, a caption or an edit time; else /1.
         var needsV2 = !brokers.isEmpty() || backupHouses.stream().anyMatch(h -> h.rooms() != null)
                 || !criteria.isEmpty() || !preferences.isEmpty() || !questions.isEmpty() || !viewings.isEmpty()
                 || !areas.isEmpty() || !places.isEmpty() || !areaNotes.isEmpty()
@@ -306,20 +303,21 @@ final class BackupMapper {
 
     /**
      * A viewing record as a backup row. The server never reads inside a record, so a client may have stored anything:
-     * a payload without a usable house or start time is left out, and a field of the wrong type or outside its range
+     * a payload without a usable house (its {@code candidateId}, or {@code houseId} before S4b-BL-247, never both:
+     * {@link ViewingPayload}) or start time is left out, and a field of the wrong type or outside its range
      * is read as the clients read it (duration 30, kind FIRST, status PLANNED, reminder 60; a text past its limit is
      * dropped), so that the export always imports again.
      */
-    private static BackupViewing viewing(Record r, ObjectMapper json) {
+    static BackupViewing viewing(Record r, ObjectMapper json) {
         JsonNode p;
         try {
             p = json.readTree(r.getPayload());
         } catch (RuntimeException e) {
             return null;
         }
-        var houseId = text(p, "houseId", BackupViewing.MAX_REF);
+        var houseId = ViewingPayload.candidateOf(p);
         var startsAt = p.path("startsAt");
-        if (houseId == null || houseId.isBlank() || !startsAt.isIntegralNumber() || startsAt.asLong() <= 0) return null;
+        if (houseId == null || !startsAt.isIntegralNumber() || startsAt.asLong() <= 0) return null;
         var duration = p.path("durationMin");
         var kind = p.path("kind");
         var status = p.path("status");
@@ -355,6 +353,10 @@ final class BackupMapper {
                 enabled.isBoolean() && !enabled.asBoolean() ? false : null, r.getUpdatedAt().toEpochMilli());
     }
 
+    /**
+     * A place record as a backup row. A payload without a usable name or point is left out, so the export always
+     * imports again.
+     */
     private static BackupPlace place(Record r, ObjectMapper json) {
         JsonNode p = payload(r, json);
         if (p == null) return null;
@@ -380,6 +382,9 @@ final class BackupMapper {
         return new BackupAreaNote(r.getKey().id(), areaId, street, text, r.getUpdatedAt().toEpochMilli());
     }
 
+    /**
+     * The record's JSON payload, or null when it cannot be parsed (such records are left out of the export).
+     */
     private static JsonNode payload(Record r, ObjectMapper json) {
         try {
             return json.readTree(r.getPayload());
@@ -398,6 +403,9 @@ final class BackupMapper {
         return value == null || value.isBlank() ? null : value;
     }
 
+    /**
+     * A numeric coordinate within +-limit, or null when absent, not a number or out of range.
+     */
     private static Double coordinate(JsonNode payload, String key, double limit) {
         var node = payload.path(key);
         if (!node.isNumber()) return null;
@@ -437,13 +445,22 @@ final class BackupMapper {
         return out;
     }
 
+    /**
+     * The house as a backup row: the stored JSON parts parsed, the checklist sorted, times in epoch milliseconds. The
+     * backup format is still today's (S4b-BL-206 resets it with the apps), so the money and the house's extras are
+     * written back as {@code price}, {@code priceType}, {@code bedrooms}, {@code areaSqft}, {@code floor} and
+     * {@code cost} through {@link HouseDto}'s readers, and an extra this server keeps but does not know as
+     * {@code extrasOther} (S4b-BL-248), which {@link BackupWire} writes back into the candidate's {@code extras}.
+     */
     private static BackupHouse house(House h) {
+        var d = HouseDto.from(h);
         return new BackupHouse(h.getId(), h.getLabel(), h.getAddress(), h.getStreet(), h.getLocality(),
-                h.getLat(), h.getLon(), h.getStatus(), h.getPrice(), h.getPriceType(), h.getBedrooms(),
+                h.getLat(), h.getLon(), h.getStatus(), d.price(), d.priceType(), d.bedrooms(),
                 h.getRating(), h.getContactName(), h.getContactPhone(), h.getListingUrl(), h.getNotes(),
-                h.getAreaSqft(), h.getLocationSource(), HouseCost.parse(h.getCost()), HouseRoom.parse(h.getRooms()),
-                HouseAnswer.parse(h.getAnswers()), HouseMoveIn.parse(h.getMoveIn()), h.getFloor(), h.getBrokerId(),
-                sortedChecklist(h.getChecklist()), millis(h.getCreatedAt()), millis(h.getUpdatedAt()));
+                d.areaSqft(), h.getLocationSource(), d.cost(), d.rooms(), d.answers(), d.moveIn(), d.floor(),
+                h.getBrokerId(), sortedChecklist(h.getChecklist()), millis(h.getCreatedAt()), millis(h.getUpdatedAt()),
+                d.extras() == null || d.extras().other().isEmpty() ? null : new TreeMap<>(d.extras().other()),
+                House.HOUSE_KIND.equals(h.getKind()) ? null : h.getKind());
     }
 
     private static BackupVisit visit(Visit v) {
@@ -451,6 +468,9 @@ final class BackupMapper {
                 millis(v.getArrivedAt()), millis(v.getLeftAt()), v.getSource(), millis(v.getUpdatedAt()));
     }
 
+    /**
+     * The photo's metadata as a backup row; the room, tags, caption and edit time are written only when set.
+     */
     private static BackupPhoto photo(PhotoDto p) {
         // The meta keys are written only when set, so a photo nobody described is the row it always was.
         return new BackupPhoto(p.id(), p.houseId(), BackupFormat.photoFileName(p.id()), millis(p.createdAt()),

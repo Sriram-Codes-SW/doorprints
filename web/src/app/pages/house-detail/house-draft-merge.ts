@@ -19,6 +19,7 @@
 import type { HouseDraft } from '../../core/ai.service';
 import type { HouseDto } from '../../core/models';
 import type { TKey } from '../../i18n/en';
+import { HOUSE_LABELS, type KindLabels } from '../../core/kind-labels';
 
 /** The form fields "Fill in from listing text" and "Fill address from map" may write, with their label keys. */
 export type FillField =
@@ -48,6 +49,29 @@ export const FIELD_LABEL: Readonly<Record<FillField, TKey>> = {
   listingUrl: 'house.listingUrl',
 };
 
+/** The kind ref of each fill field (`field.<id>`): the price and its type are the candidate's money. */
+const FIELD_REF: Readonly<Record<FillField, string>> = {
+  label: 'field.label',
+  address: 'field.address',
+  street: 'field.street',
+  locality: 'field.locality',
+  price: 'field.money',
+  priceType: 'field.money',
+  bedrooms: 'field.bedrooms',
+  areaSqft: 'field.areaSqft',
+  contactName: 'field.contactName',
+  contactPhone: 'field.contactPhone',
+  listingUrl: 'field.listingUrl',
+};
+
+/**
+ * The label key of a fill field in a kind (S4b-BL-256): the kind's own (a school's *School name* and *Website*), else the
+ * house's {@link FIELD_LABEL}; the price type has no ref of its own, so it keeps the house's.
+ */
+export function fillLabel(field: FillField, labels: KindLabels): TKey {
+  return field === 'priceType' ? FIELD_LABEL[field] : (labels.field(FIELD_REF[field].slice('field.'.length))?.key ?? FIELD_LABEL[field]);
+}
+
 type FieldValue = string | number | null | undefined;
 
 /** A value the fill did not write because the user had already typed something else there. */
@@ -57,6 +81,10 @@ export interface KeptValue {
   incoming: string | number;
 }
 
+/**
+ * What a listing fill wants to change: the field values to write, the fields that were empty and are now filled, and
+ * the values it kept out.
+ */
 export interface FillResult {
   changes: Partial<HouseDto>;
   /** Fields that were empty and are now filled, in form order. */
@@ -68,9 +96,33 @@ function isEmpty(v: FieldValue): boolean {
   return v === null || v === undefined || (typeof v === 'string' && v.trim() === '');
 }
 
-function same(a: FieldValue, b: FieldValue): boolean {
+/** Whether two values are equal; text ignores case and surrounding spaces. */
+export function same(a: FieldValue, b: FieldValue): boolean {
   if (typeof a === 'string' && typeof b === 'string') return a.trim().toLowerCase() === b.trim().toLowerCase();
   return a === b;
+}
+
+/**
+ * The lines that bracket what a listing fill wrote into the notes (S4b-BL-238): a second fill replaces that block instead
+ * of appending another, and the person's own notes around it are never touched. The same two lines on the phones
+ * (`HouseFormRules.kt`), so a house synced between them keeps one block.
+ */
+export const LISTING_NOTES_START = '--- from listing ---';
+export const LISTING_NOTES_END = '--- end of listing ---';
+
+/**
+ * `current` notes with the listing block set to `block`: an existing block (from the start line to the end line, or to
+ * the end of the notes when the end line is missing) is replaced, otherwise the block is appended after the person's
+ * notes. An empty `block` removes the block. Idempotent: the same block twice gives the same notes.
+ */
+export function withListingBlock(current: string | null | undefined, block: string): string {
+  const notes = current ?? '';
+  const start = notes.indexOf(LISTING_NOTES_START);
+  const wrapped = block.trim() ? `${LISTING_NOTES_START}\n${block.trim()}\n${LISTING_NOTES_END}` : '';
+  if (start < 0) return [notes.trim(), wrapped].filter((x) => x).join('\n');
+  const endAt = notes.indexOf(LISTING_NOTES_END, start);
+  const after = endAt < 0 ? '' : notes.slice(endAt + LISTING_NOTES_END.length);
+  return [notes.slice(0, start).trim(), wrapped, after.trim()].filter((x) => x).join('\n');
 }
 
 /**
@@ -79,14 +131,17 @@ function same(a: FieldValue, b: FieldValue): boolean {
  * value is reported in `kept`, so the page can say "Kept your Name; the listing says …".
  *
  * `priceType` counts as empty while there is no price yet: a new form starts on "Rent", which is a default, not a
- * choice. The listing's description and amenities are appended to the notes, never replacing them.
+ * choice. The listing's description and amenities go into the notes as one marked block ({@link withListingBlock}),
+ * after the person's own notes; a second fill replaces that block, so running Extract twice never duplicates text. A place
+ * the candidate's kind hides is left alone (S4b-BL-256).
  */
-export function mergeListingDraft(current: HouseDto, draft: HouseDraft): FillResult {
+export function mergeListingDraft(current: HouseDto, draft: HouseDraft, labels: KindLabels = HOUSE_LABELS): FillResult {
   const changes: Partial<HouseDto> = {};
   const filled: FillField[] = [];
   const kept: KeptValue[] = [];
   const consider = (field: FillField, incoming: FieldValue, emptyNow: boolean) => {
-    if (isEmpty(incoming)) return;
+    // A place the kind hides (a school's price, rooms, BHK) takes nothing from a listing: the person never sees it.
+    if (isEmpty(incoming) || !labels.isVisible(FIELD_REF[field])) return;
     const value = incoming as string | number;
     if (emptyNow) {
       (changes as Record<string, unknown>)[field] = value;
@@ -106,11 +161,12 @@ export function mergeListingDraft(current: HouseDto, draft: HouseDraft): FillRes
   consider('contactName', draft.contactName, isEmpty(current.contactName));
   consider('contactPhone', draft.contactPhone, isEmpty(current.contactPhone));
   consider('listingUrl', draft.listingUrl, isEmpty(current.listingUrl));
-  const extra = [draft.notes, draft.amenities?.length ? draft.amenities.join(', ') : null].filter(
-    (x): x is string => !!x && !!x.trim() && !(current.notes ?? '').includes(x.trim()),
-  );
-  if (extra.length > 0) {
-    changes.notes = [current.notes, ...extra].filter((x): x is string => !!x && !!x.trim()).join('\n');
+  const block = [draft.notes, draft.amenities?.length ? draft.amenities.join(', ') : null]
+    .filter((x): x is string => !!x && !!x.trim())
+    .join('\n');
+  if (block) {
+    const notes = withListingBlock(current.notes, block);
+    if (notes !== (current.notes ?? '')) changes.notes = notes;
   }
   return { changes, filled, kept };
 }
@@ -122,12 +178,14 @@ export interface AddressLookup {
   locality?: string | null;
 }
 
+/** A typed address part the lookup would change: shown to the person, who decides. */
 export interface AddressConflict {
   field: 'address' | 'street' | 'locality';
   old: string;
   incoming: string;
 }
 
+/** What "Fill address from map" would write: empty fields are filled at once, typed ones are listed as conflicts. */
 export interface AddressFill {
   /** Writes into empty fields only (and the name, when it is empty, from the street). */
   emptyOnly: Partial<HouseDto>;

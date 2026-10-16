@@ -25,10 +25,13 @@ import { LocalDataService } from '../../core/local-data.service';
 import type { VisitDto } from '../../core/models';
 import type { TKey } from '../../i18n/en';
 import { TPipe } from '../../i18n/t.pipe';
+import { drawnKind } from '../../core/kind-setting';
+import { toolWord } from '../../core/space-tool-words';
 import { Msg, TranslationService } from '../../i18n/translation.service';
 import { markableViewing, nextViewingOf } from '../../shared/viewing';
 import type { Viewing } from '../../shared/viewing';
 import { SecondViewingPrompt } from './second-viewing-prompt';
+import { baselineKindId } from '../../core/candidate';
 
 /**
  * The *Viewings* card of the house page (slice 3b-1, docs/11 5.8): the next PLANNED viewing (date and kind) or "No
@@ -41,9 +44,9 @@ import { SecondViewingPrompt } from './second-viewing-prompt';
   imports: [RouterLink, TPipe, SecondViewingPrompt],
   template: `
     <section class="card" aria-labelledby="house-viewings-heading">
-      <h2 id="house-viewings-heading">{{ 'viewings.cardHeading' | t }}</h2>
+      <h2 id="house-viewings-heading">{{ L().section('viewings') | t }}</h2>
       @if (isNew()) {
-        <p class="muted small">{{ 'viewings.saveFirst' | t }}</p>
+        <p class="muted small">{{ w('viewings.saveFirst') | t }}</p>
       } @else {
         @if (failure(); as f) {
           <p class="error small" role="alert">{{ f.key | t: f.params }}</p>
@@ -51,7 +54,7 @@ import { SecondViewingPrompt } from './second-viewing-prompt';
         @if (next(); as v) {
           <p id="house-viewings-next">{{ 'viewings.next' | t: { when: when(v), kind: (kindKey(v) | t) } }}</p>
         } @else {
-          <p id="house-viewings-next" class="muted">{{ 'viewings.none' | t }}</p>
+          <p id="house-viewings-next" class="muted">{{ w('viewings.none') | t }}</p>
         }
         @if (markable(); as m) {
           <p class="muted small">{{ 'viewings.markDoneHint' | t: { when: visitWhen(m.visit) } }}</p>
@@ -60,8 +63,8 @@ import { SecondViewingPrompt } from './second-viewing-prompt';
           </p>
         }
         <div class="actions">
-          <a class="btn" [routerLink]="['/viewings/new']" [queryParams]="{ houseId: houseId() }">{{ 'viewings.plan' | t }}</a>
-          <a [routerLink]="['/viewings']" [queryParams]="{ houseId: houseId() }">{{ 'viewings.allOfHouse' | t }}</a>
+          <a class="btn" [routerLink]="['/viewings/new']" [queryParams]="{ houseId: houseId() }">{{ w('viewings.plan') | t }}</a>
+          <a [routerLink]="['/viewings']" [queryParams]="{ houseId: houseId() }">{{ w('viewings.allOfHouse') | t }}</a>
         </div>
       }
     </section>
@@ -80,6 +83,12 @@ import { SecondViewingPrompt } from './second-viewing-prompt';
   `,
 })
 export class HouseViewingsCard {
+  /** The kind's section heading (S4b-BL-255) and words (kinds PR 29, docs/03 §18.23): the candidate's kind, the house's unless it says. */
+  readonly kindId = input<string>(baselineKindId());
+  protected readonly L = computed(() => drawnKind(this.kindId()).keys);
+  protected w(key: TKey): TKey {
+    return toolWord(this.kindId(), key);
+  }
   private readonly api = inject(LocalDataService);
   private readonly announcer = inject(Announcer);
   private readonly i18n = inject(TranslationService);
@@ -106,6 +115,7 @@ export class HouseViewingsCard {
     });
   }
 
+  /** Reads this house's viewings and visits; read again after every write to the local store. */
   private reload(): void {
     if (this.isNew() || this.houseId() === '') return;
     forkJoin({ viewings: this.api.viewingsOf(this.houseId()), visits: this.api.visits(this.houseId()) }).subscribe({
@@ -133,6 +143,7 @@ export class HouseViewingsCard {
     return `viewings.kind.${v.kind}` as TKey;
   }
 
+  /** Marks the viewing done and linked to the visit, then offers *Book a second viewing?*. */
   protected async markDone(viewing: Viewing, visit: VisitDto): Promise<void> {
     try {
       await firstValueFrom(this.api.markViewingDone(viewing.id, visit.id));

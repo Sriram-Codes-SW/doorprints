@@ -40,6 +40,7 @@ export type BackKey = 'house.back' | 'house.backGeneric';
 /** Navigation-state key under which the new-house form hands its Back decision to the saved house's page. */
 export const HOUSE_BACK_STATE = 'houseBack';
 
+/** How the house page was reached; the input to {@link backTarget}. */
 export interface BackArrival {
   /** How the navigation to this house started: `imperative` (a link, code), `popstate` (Back, Forward), … */
   trigger: string;
@@ -49,6 +50,7 @@ export interface BackArrival {
   handedBackKey: unknown;
 }
 
+/** Where the house page's Back button goes. */
 export interface BackTarget {
   /** True: "Back" is `Location.back()`. False: it is a link to the list. */
   toPrevious: boolean;
@@ -58,6 +60,10 @@ export interface BackTarget {
 
 const TO_MAP: BackTarget = { toPrevious: false, key: 'house.back' };
 
+/**
+ * Decides what Back does from how the page was reached: back in history when an in-app page is certainly behind it,
+ * otherwise the map link.
+ */
 export function backTarget(arrival: BackArrival): BackTarget {
   const previous = arrival.previousPath;
   if (arrival.trigger === 'popstate' || previous === null) return TO_MAP;
@@ -85,6 +91,10 @@ function isBackKey(value: unknown): value is BackKey {
  */
 export type RemovalExit = 'back' | 'replace';
 
+/**
+ * Whether to leave a deleted or discarded house by going back or by replacing the entry: back only when the page behind
+ * is the list.
+ */
 export function exitAfterRemoval(target: BackTarget): RemovalExit {
   return target.toPrevious && target.key === 'house.back' ? 'back' : 'replace';
 }

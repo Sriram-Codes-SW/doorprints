@@ -25,9 +25,10 @@ import { MAX_QUESTIONS, MAX_QUESTION_TEXT } from '../shared/question';
 import { BUILT_IN_KEYS, MAX_CRITERIA, MAX_CRITERION_LABEL, MAX_PREFERENCE_VALUE } from '../shared/scoring';
 import { MAX_DURATION_MIN, MAX_ID_LENGTH, MAX_VIEWINGS, MAX_VIEWING_NOTES, MAX_WITH_WHOM, MIN_DURATION_MIN, REMIND_OPTIONS, VIEWING_KINDS, VIEWING_STATUSES } from '../shared/viewing';
 import { BACKUP_FORMATS_READ } from './backup-export';
+import { BrokenFamily, isCurrentFamily, legacyOf } from './backup-family';
 import type { BackupData } from './backup-export';
 
-/**
+/*
  * The checks of a `data.json` before anything is written (docs/schemas/README.md section 6 rule 1; S4b-BL-75): the
  * website's copy of Kotlin's `BackupValidation.checkData` and of the strict decoding in front of it, rule for rule, so a
  * file one app refuses the other refuses too. `docs/schemas/import-vectors.json` holds the shared cases
@@ -37,6 +38,7 @@ import type { BackupData } from './backup-export';
  * value of the wrong type is `BROKEN_DATA`. Then the format (`UNSUPPORTED_VERSION` above the newest number this reader
  * knows), then the rows: ids, repeats, ranges and caps. An unknown key is ignored; an unknown deletion kind too.
  */
+/** Why a file is not accepted as a backup, in the terms the import screen words; the same set of answers as the Android reader. */
 export type BackupProblem =
   | 'NOT_A_BACKUP'
   | 'UNSUPPORTED_VERSION'
@@ -48,6 +50,7 @@ export type BackupProblem =
   | 'READ_FAILED'
   | 'WRITE_FAILED';
 
+/** The result of checking `data.json`: the data (the file's own objects, unchanged), or the problem. */
 export type CheckedData = { ok: true; data: BackupData } | { ok: false; problem: BackupProblem };
 
 /** Thrown inside the decoder: the shape is not one any writer of the format produces. */
@@ -62,7 +65,9 @@ const RECORD_ID = /^[A-Za-z0-9._-]{1,64}$/;
 const INT_MIN = -2_147_483_648;
 const INT_MAX = 2_147_483_647;
 
+/** Whether [id] is a valid house, visit, photo or broker id (letters, digits, `_` and `-`, up to 64). */
 export const isRowId = (id: unknown): boolean => typeof id === 'string' && ROW_ID.test(id);
+/** Whether [id] is a valid id for a record, room or answer: dots allowed, but not `.` or `..` alone. */
 export const isRecordId = (id: unknown): boolean => typeof id === 'string' && RECORD_ID.test(id) && id !== '.' && id !== '..';
 
 function object(value: unknown): Obj {
@@ -139,9 +144,11 @@ const validPoint = (lat: number, lon: number): boolean => lat >= -90 && lat <= 9
 /** Checks a parsed `data.json` the way every reader does; on success the rows are the file's own objects. */
 export function checkData(raw: unknown): CheckedData {
   try {
-    return check(object(raw));
+    // The new family (kinds step 3, `backup-family.ts`) is checked for what only it has and read as the family before;
+    // a file of the family before is read as it always was.
+    return check(isCurrentFamily(raw) ? legacyOf(raw as Obj) : object(raw));
   } catch (e) {
-    if (e instanceof Broken) return { ok: false, problem: 'BROKEN_DATA' };
+    if (e instanceof Broken || e instanceof BrokenFamily) return { ok: false, problem: 'BROKEN_DATA' };
     throw e;
   }
 }

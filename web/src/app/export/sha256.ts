@@ -24,6 +24,10 @@
  * checks inside the user's own backup (docs/11 §5.2: "SHA-256 per file"), not a security boundary — they tell the
  * import step that a ZIP has been truncated or edited. Nothing depends on this being constant-time.
  *
+ * The Drive encryption (`data/crypto`, S4b-BL-125) uses the incremental `Sha256` too, for public values only: the
+ * checksums of a whole `dpx/1` file and of its plaintext (compared with Drive's `sha256Checksum` and the photo rows'
+ * SHA-256) and a public key's `kid`. Every keyed hash there (HMAC, HKDF) is WebCrypto's.
+ *
  * Verified against the FIPS 180-4 test vectors in sha256.spec.ts.
  */
 
@@ -42,25 +46,60 @@ function rotr(value: number, bits: number): number {
   return ((value >>> bits) | (value << (32 - bits))) >>> 0;
 }
 
-/** Lowercase hex digest of the bytes. */
-export function sha256Hex(bytes: Uint8Array): string {
-  const h = new Uint32Array([
+/**
+ * Incremental SHA-256 (the Drive encryption hashes files chunk by chunk, S4b-BL-125): `update` any number of times,
+ * then `digest` once.
+ */
+export class Sha256 {
+  private readonly h = new Uint32Array([
     0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19,
   ]);
+  private readonly block = new Uint8Array(64);
+  private readonly w = new Uint32Array(64);
+  private filled = 0;
+  private length = 0;
+  private done = false;
 
-  // Padding: 0x80, then zeros, then the 64-bit big-endian bit length.
-  const bitLength = bytes.length * 8;
-  const withPadding = new Uint8Array(((bytes.length + 9 + 63) >> 6) << 6);
-  withPadding.set(bytes, 0);
-  withPadding[bytes.length] = 0x80;
-  const view = new DataView(withPadding.buffer);
-  // Lengths above 2^53 bits cannot occur here, so the high word is derived by division rather than BigInt.
-  view.setUint32(withPadding.length - 8, Math.floor(bitLength / 0x100000000), false);
-  view.setUint32(withPadding.length - 4, bitLength >>> 0, false);
+  update(bytes: Uint8Array): this {
+    if (this.done) throw new Error('Sha256: digest already taken');
+    let at = 0;
+    this.length += bytes.length;
+    while (at < bytes.length) {
+      const n = Math.min(64 - this.filled, bytes.length - at);
+      this.block.set(bytes.subarray(at, at + n), this.filled);
+      this.filled += n;
+      at += n;
+      if (this.filled === 64) {
+        this.compress();
+        this.filled = 0;
+      }
+    }
+    return this;
+  }
 
-  const w = new Uint32Array(64);
-  for (let base = 0; base < withPadding.length; base += 64) {
-    for (let i = 0; i < 16; i++) w[i] = view.getUint32(base + i * 4, false);
+  /** The 32-byte digest; the hasher is used up. */
+  digest(): Uint8Array {
+    if (this.done) throw new Error('Sha256: digest already taken');
+    // Padding: 0x80, then zeros, then the 64-bit big-endian bit length.
+    const bitLength = this.length * 8;
+    const pad = new Uint8Array(((this.filled + 9 + 63) >> 6) * 64 - this.filled);
+    pad[0] = 0x80;
+    const view = new DataView(pad.buffer);
+    // Lengths above 2^53 bits cannot occur here, so the high word is derived by division rather than BigInt.
+    view.setUint32(pad.length - 8, Math.floor(bitLength / 0x100000000), false);
+    view.setUint32(pad.length - 4, bitLength >>> 0, false);
+    this.update(pad);
+    this.done = true;
+    const out = new Uint8Array(32);
+    const ov = new DataView(out.buffer);
+    for (let i = 0; i < 8; i++) ov.setUint32(i * 4, this.h[i], false);
+    return out;
+  }
+
+  private compress(): void {
+    const { h, w } = this;
+    const view = new DataView(this.block.buffer);
+    for (let i = 0; i < 16; i++) w[i] = view.getUint32(i * 4, false);
     for (let i = 16; i < 64; i++) {
       const s0 = rotr(w[i - 15], 7) ^ rotr(w[i - 15], 18) ^ (w[i - 15] >>> 3);
       const s1 = rotr(w[i - 2], 17) ^ rotr(w[i - 2], 19) ^ (w[i - 2] >>> 10);
@@ -92,8 +131,12 @@ export function sha256Hex(bytes: Uint8Array): string {
     h[6] = (h[6] + g) >>> 0;
     h[7] = (h[7] + hh) >>> 0;
   }
+}
 
+/** Lowercase hex digest of the bytes. */
+export function sha256Hex(bytes: Uint8Array): string {
+  const d = new Sha256().update(bytes).digest();
   let hex = '';
-  for (let i = 0; i < 8; i++) hex += h[i].toString(16).padStart(8, '0');
+  for (const b of d) hex += b.toString(16).padStart(2, '0');
   return hex;
 }

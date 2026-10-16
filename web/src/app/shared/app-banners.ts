@@ -24,6 +24,7 @@ import { StorageService } from '../data/storage.service';
 import { SyncService } from '../data/sync.service';
 import type { SyncProgress } from '../data/sync.service';
 import { PwaService } from '../core/pwa.service';
+import { SpaceService } from '../core/space.service';
 import { TPipe } from '../i18n/t.pipe';
 import type { TKey } from '../i18n/en';
 
@@ -99,14 +100,14 @@ const PROGRESS_KEY: Readonly<Record<SyncProgress['phase'], TKey>> = {
           <div class="body">
             <strong id="migration-title" class="title">
               <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path [attr.d]="icons.info" /></svg>
-              {{ 'data.migrationTitle' | t }}
+              {{ space.appWord('data.migrationTitle') | t }}
             </strong>
             <p>{{ 'data.migrationBody' | t }}</p>
             @if (sync.running()) {
               <!-- Deliberately not a live region: it changes once per row, which would flood a screen reader. -->
               <p class="progress">
                 @if (sync.progress(); as p) {
-                  {{ progressKey[p.phase] | t: { done: p.done, total: p.total } }}
+                  {{ (p.phase === 'houses' ? space.appWord(progressKey[p.phase]) : progressKey[p.phase]) | t: { done: p.done, total: p.total } }}
                 } @else {
                   {{ 'data.migrationRunning' | t }}
                 }
@@ -313,6 +314,7 @@ export class AppBanners {
   protected readonly pwa = inject(PwaService);
   private readonly storage = inject(StorageService);
   private readonly announcer = inject(Announcer);
+  protected readonly space = inject(SpaceService);
   private readonly injector = inject(Injector);
   private readonly downloadBtn = viewChild<ElementRef<HTMLButtonElement>>('downloadBtn');
   private readonly stopBtn = viewChild<ElementRef<HTMLButtonElement>>('stopBtn');
@@ -371,6 +373,10 @@ export class AppBanners {
     });
   }
 
+  /**
+   * Notes whether this browser holds any house, which the install offer waits for. Overlapping calls are merged into
+   * one more pass.
+   */
   private async countHouses(): Promise<void> {
     if (this.counting) {
       this.recount = true;
@@ -402,7 +408,7 @@ export class AppBanners {
     const state = this.sync.migration();
     if (state === 'done') {
       const houses = (await this.store.liveHouses()).length;
-      this.announcer.announce({ key: 'data.migrationDone', params: { n: houses } });
+      this.announcer.announce({ key: this.space.appWord('data.migrationDone'), params: { n: houses } });
       focusMainHeading();
     } else if (state === 'skipped') {
       // Stopped from the banner: say where to carry on.
@@ -428,6 +434,7 @@ export class AppBanners {
     focusMainHeading();
   }
 
+  /** "Not now" on the first-run download offer: the download is skipped and focus moves to the page heading. */
   protected async skip(): Promise<void> {
     await this.sync.skipMigration();
     focusMainHeading();
@@ -455,6 +462,7 @@ export class AppBanners {
     focusMainHeading();
   }
 
+  /** Applies the waiting update and reloads, asking first if the screen holds unsaved edits. */
   protected reload(): void {
     void this.pwa.applyUpdate();
   }

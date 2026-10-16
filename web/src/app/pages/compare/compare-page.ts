@@ -23,16 +23,22 @@ import type { Place } from '../../shared/area';
 import { LocalDataService } from '../../core/local-data.service';
 import { brokerLine } from '../../shared/broker';
 import { Announcer } from '../../core/announcer.service';
-import { HouseDto, STATUS_ICON, STATUS_KEY } from '../../core/models';
+import { HouseDto, STATUS_ICON } from '../../core/models';
+import { labelKey, statusKeys } from '../../core/kind-labels';
 import { errorMsg, telHref } from '../../core/format';
 import { Msg, TranslationService } from '../../i18n/translation.service';
 import { TPipe } from '../../i18n/t.pipe';
 import { MAX_SELECTED, MIN_SELECTED, idsFromQuery } from './compare-selection';
+import { SpaceService } from '../../core/space.service';
+import { comparePick } from '../../core/space-scope';
+import { toolWord } from '../../core/space-tool-words';
+import { kindValues, type KindValue } from '../../shared/kind-values';
+import type { TKey } from '../../i18n/en';
 import { GLYPHS } from '../../shared/glyphs';
 import { RunResult, nextRunResult } from '../../shared/run-result';
 import { costSummary } from '../../shared/house-cost';
 import { LocalStore } from '../../data/local-store.service';
-import { criterionName } from '../../shared/criterion-name';
+import { bestOf, bestOfExtra, compareCriteria, comparedRows, extraFigure, kindCriterionName, scoringForKind } from '../../shared/compare-criteria';
 import { DEFAULT_SCORING, compareRanked, evaluateScore } from '../../shared/scoring';
 import type { Scoring } from '../../shared/scoring';
 import { timeOf } from '../map/map-list';
@@ -63,6 +69,14 @@ interface Row {
   best: Set<number>;
 }
 
+/**
+ * Puts two to four houses side by side in a table, one row per fact (score, price, size, cost, rooms, rating, visits,
+ * street, distances to my places and the checklist), and highlights the best value in each scored row. It helps the
+ * person decide between the houses still in the running.
+ *
+ * The chosen houses are kept in the URL (`?ids=`), so Back from a house returns here; with no choice it starts with the
+ * shortlisted houses. States: loading, error, too few houses to compare.
+ */
 @Component({
   selector: 'app-compare-page',
   imports: [RouterLink, TPipe],
@@ -76,6 +90,10 @@ export class ComparePage {
   private readonly announcer = inject(Announcer);
   protected readonly i18n = inject(TranslationService);
   private readonly store = inject(LocalStore);
+  /** The space on screen (kinds PR B, S4b-BL-279): Compare puts the candidates of that space side by side. */
+  protected readonly space = inject(SpaceService);
+  /** Picks from another space that the address asked for; said in one sentence, never silently. */
+  protected readonly refused = signal(false);
   /** The Length units preference (a local setting): the total area of the rooms is shown in it. */
   private readonly lengthUnit = signal<LengthUnit>('FT');
 
@@ -98,15 +116,20 @@ export class ComparePage {
   /** The picker's search text (only offered above {@link SEARCH_ABOVE} candidates). */
   protected readonly pickerQuery = signal('');
 
-  protected readonly statusKey = STATUS_KEY;
+  protected readonly statusKey = computed(() => statusKeys(this.space.current().labels));
   protected readonly statusIcon = STATUS_ICON;
   protected readonly telHref = telHref;
   protected readonly glyphs = GLYPHS;
   protected readonly maxSelected = MAX_SELECTED;
   protected readonly minSelected = MIN_SELECTED;
 
-  /** The effective scoring (criteria and rating share); the defaults until it is read. */
-  private readonly scoring = signal<Scoring>(DEFAULT_SCORING);
+  /** The person's effective scoring (criteria and rating share); the defaults until it is read. */
+  private readonly personScoring = signal<Scoring>(DEFAULT_SCORING);
+  /**
+   * What the space's candidates are scored under (kinds PR 27, docs/03 §18.21): the person's own for the house, the kind's
+   * checklist and what its Compare capability names for another kind.
+   */
+  private readonly scoring = computed(() => scoringForKind(this.space.current(), this.personScoring()));
 
   /**
    * The houses in the running (not Rejected, not Not chosen, `inTheRunning`, S4b-BL-99 a), shortlisted first, then by
@@ -114,7 +137,7 @@ export class ComparePage {
    */
   protected readonly candidates = computed(() =>
     this.houses()
-      .filter((h) => inTheRunning(h.status) && !h.deleted)
+      .filter((h) => inTheRunning(h.status) && !h.deleted && this.space.holds(h))
       .map((h) => {
         const result = evaluateScore(h.checklist, h.rating, this.scoring());
         return { house: h, score: result.overall, result };
@@ -124,6 +147,14 @@ export class ComparePage {
         return s !== 0 ? s : compareRanked(rankedOf(a), rankedOf(b));
       }),
   );
+
+  /** The kind's words where it has its own; the house's keys otherwise. */
+  protected w(key: TKey): TKey {
+    return toolWord(this.space.kind(), key);
+  }
+
+  /** The kind scores by a checklist (the house); a kind that hides it ranks by the rating alone. */
+  protected readonly scored = computed(() => this.space.current().labels.isVisible('section.checklist'));
 
   protected readonly showPickerSearch = computed(() => this.candidates().length > SEARCH_ABOVE);
 
@@ -158,18 +189,23 @@ export class ComparePage {
     const scoring = this.scoring();
     const results = houses.map((h) => evaluateScore(h.checklist, h.rating, scoring));
     const scores = results.map((r) => r.overall);
-    rows.push({
+    const kind = this.space.current();
+    const shows = (ref: string) => kind.labels.isVisible(ref);
+    /** A row’s heading: Compare’s own word for the house, the kind’s label for another kind (S4b-BL-256). */
+    const heading = (ref: string, house: TKey) => i18n.t(labelKey(kind.labels, ref, house));
+    const scored = shows('section.checklist');
+    if (scored) rows.push({
       id: 'score',
-      label: i18n.t('compare.overall'),
+      label: heading('section.checklist', 'compare.overall'),
       cells: scores.map((s) => (s === null ? none : { text: i18n.score(s) })),
       best: bestOf(scores),
     });
     // Slice 2: the must-haves the person set, house by house: "Missed: Water", "Not checked yet" or "All met".
-    const named = (keys: string[]) => keys.map((k) => criterionName(scoring.criteria.find((c) => c.key === k) ?? { key: k }, (key) => i18n.t(key))).join(', ');
-    if (scoring.criteria.some((c) => c.mustHave && c.archived !== true)) {
+    const named = (keys: string[]) => keys.map((k) => kindCriterionName(kind, scoring.criteria.find((c) => c.key === k) ?? { key: k }, (key) => i18n.t(key))).join(', ');
+    if (scored && scoring.criteria.some((c) => c.mustHave && c.archived !== true)) {
       rows.push({
         id: 'mustHaves',
-        label: i18n.t('compare.mustHaves'),
+        label: heading('section.checklist', 'compare.mustHaves'),
         cells: results.map((r) =>
           r.failedMustHave.length > 0
             ? { text: '✕ ' + i18n.t('compare.mustHaveMissed', { names: named(r.failedMustHave) }) }
@@ -180,42 +216,42 @@ export class ComparePage {
         best: new Set<number>(),
       });
     }
-    rows.push({
+    if (shows('field.money')) rows.push({
       id: 'price',
-      label: i18n.t('compare.price'),
+      label: heading('field.money', 'compare.price'),
       cells: houses.map((h) => plain(h.price != null ? i18n.price(h.price, h.priceType) : null)),
       best: new Set<number>(),
     });
-    rows.push({
+    if (shows('field.bedrooms')) rows.push({
       id: 'bhk',
-      label: i18n.t('compare.bhk'),
+      label: heading('field.bedrooms', 'compare.bhk'),
       cells: houses.map((h) => plain(h.bedrooms != null ? i18n.number(h.bedrooms) : null)),
       best: new Set<number>(),
     });
     // Slice 1a: the carpet area and what the house really costs (docs/11 5.21), the same arithmetic as the form.
-    rows.push({
+    if (shows('field.areaSqft')) rows.push({
       id: 'area',
-      label: i18n.t('compare.area'),
+      label: heading('field.areaSqft', 'compare.area'),
       cells: houses.map((h) => plain(h.areaSqft != null ? i18n.t('common.sqft', { n: i18n.number(h.areaSqft) }) : null)),
       best: new Set<number>(),
     });
     const summaries = houses.map((h) => costSummary(h));
     const money = (v: number | null) => plain(v !== null ? i18n.price(v, null) : null);
-    rows.push({ id: 'monthlyCost', label: i18n.t('cost.monthlyCost'), cells: summaries.map((s) => money(s.monthlyCost)), best: new Set<number>() });
-    rows.push({ id: 'moveIn', label: i18n.t('cost.moveIn'), cells: summaries.map((s) => money(s.moveIn)), best: new Set<number>() });
-    rows.push({
+    if (shows('field.money')) rows.push({ id: 'monthlyCost', label: i18n.t('cost.monthlyCost'), cells: summaries.map((s) => money(s.monthlyCost)), best: new Set<number>() });
+    if (shows('field.money')) rows.push({ id: 'moveIn', label: i18n.t('cost.moveIn'), cells: summaries.map((s) => money(s.moveIn)), best: new Set<number>() });
+    if (shows('field.money')) rows.push({
       id: 'perSqFt',
       label: i18n.t('cost.perSqFt'),
       cells: summaries.map((s) => money(s.perSqFt !== null ? Math.round(s.perSqFt) : null)),
       best: new Set<number>(),
     });
-    rows.push({
+    if (shows('field.money')) rows.push({
       id: 'availableFrom',
       label: i18n.t('cost.availableFrom'),
       cells: houses.map((h) => plain(h.cost?.availableFrom ?? null)),
       best: new Set<number>(),
     });
-    rows.push({
+    if (shows('field.money')) rows.push({
       id: 'agreedPrice',
       label: i18n.t('cost.agreedPrice'),
       cells: houses.map((h) => money(h.cost?.agreedPrice ?? null)),
@@ -223,9 +259,9 @@ export class ComparePage {
     });
     // Slice 1c: the number of rooms, and their total area when at least one has both sizes (the unit is the setting).
     const unit = this.lengthUnit();
-    rows.push({
+    if (shows('section.rooms')) rows.push({
       id: 'rooms',
-      label: i18n.t('compare.rooms'),
+      label: heading('section.rooms', 'compare.rooms'),
       cells: houses.map((h) => {
         const list = h.rooms ?? [];
         if (list.length === 0) return none;
@@ -239,9 +275,23 @@ export class ComparePage {
       }),
       best: new Set<number>(),
     });
+    // The kind's own extras (a school's board, medium, grades, commute, bus, fees), in the kind file's order. The best value is
+    // marked only for those the kind's Compare capability names, in the direction the kind file gives (kinds PR 27, §18.21).
+    const criteria = compareCriteria(kind);
+    for (const f of kind.fields.others().filter((x) => shows(`field.${x.id}`))) {
+      const criterion = criteria.find((c) => c.source === 'extra' && c.id === f.id);
+      rows.push({
+        id: 'extra-' + f.id,
+        label: i18n.t(kind.fields.label(f)),
+        cells: houses.map((h) => extraCell(kindValues(kind.fields, h).find((v) => v.field.id === f.id), i18n, none)),
+        best: bestOfExtra(houses.map((h) => extraFigure(kind.fields, h, f.id)), criterion?.better ?? null),
+      });
+    }
+    // Without a checklist the rating is what is scored: the best one is marked.
+    const ratings = houses.map((h) => h.rating || null);
     rows.push({
       id: 'rating',
-      label: i18n.t('compare.rating'),
+      label: heading('field.rating', 'compare.rating'),
       cells: houses.map((h) =>
         h.rating
           ? {
@@ -250,11 +300,11 @@ export class ComparePage {
             }
           : none,
       ),
-      best: new Set<number>(),
+      best: scored ? new Set<number>() : bestOf(ratings),
     });
     rows.push({
       id: 'visits',
-      label: i18n.t('compare.visits'),
+      label: heading('section.visits', 'compare.visits'),
       cells: houses.map((h) =>
         visits[h.id] === undefined ? { text: '…', srText: i18n.t('common.loading') } : { text: i18n.number(visits[h.id]) },
       ),
@@ -262,7 +312,7 @@ export class ComparePage {
     });
     rows.push({
       id: 'street',
-      label: i18n.t('compare.street'),
+      label: heading('field.street', 'compare.street'),
       cells: houses.map((h) => plain([h.street, h.locality].filter((x) => !!x).join(', ') || null)),
       best: new Set<number>(),
     });
@@ -278,15 +328,15 @@ export class ComparePage {
         best: new Set<number>(),
       });
     }
-    // The criteria that are not archived, in the person's order (custom ones by their label).
-    for (const item of scoring.criteria.filter((c) => c.archived !== true)) {
+    // The criteria that are not archived, in the person's order (custom ones by their label); another kind's, the ones its Compare names.
+    for (const item of scored ? comparedRows(kind, scoring) : []) {
       const values = houses.map((h) => {
         const v = h.checklist[item.key];
         return typeof v === 'number' ? v : null;
       });
       rows.push({
         id: 'check-' + item.key,
-        label: criterionName(item, (key) => i18n.t(key)),
+        label: kindCriterionName(kind, item, (key) => i18n.t(key)),
         cells: values.map((v) => (v === null ? none : { text: i18n.number(v) })),
         best: bestOf(values),
       });
@@ -303,8 +353,8 @@ export class ComparePage {
     effect(() => {
       this.api.settled();
       this.api.scoring().subscribe({
-        next: (scoring) => this.scoring.set(scoring),
-        error: () => this.scoring.set(DEFAULT_SCORING),
+        next: (scoring) => this.personScoring.set(scoring),
+        error: () => this.personScoring.set(DEFAULT_SCORING),
       });
     });
     effect(() => {
@@ -348,6 +398,10 @@ export class ComparePage {
     return (h.brokerId ? this.brokerLines().get(h.brokerId) : undefined) ?? h.contactName ?? null;
   }
 
+  /**
+   * Reads the houses and, the first time only, picks the selection: the houses in `?ids=`, else up to three shortlisted
+   * ones (or the best-ranked if fewer than two are shortlisted).
+   */
   protected reload(userAsked = false): void {
     this.api.houses().subscribe({
       next: (list) => {
@@ -357,10 +411,13 @@ export class ComparePage {
         if (this.selectionChosen) return;
         this.selectionChosen = true;
         const cands = this.candidates();
-        const fromUrl = idsFromQuery(
-          this.route.snapshot.queryParamMap.get('ids'),
-          new Set(cands.map((c) => c.house.id)),
-        );
+        const raw = this.route.snapshot.queryParamMap.get('ids');
+        const fromUrl = idsFromQuery(raw, new Set(cands.map((c) => c.house.id)));
+        // A pick of a candidate of another space is refused with a sentence (space-scope-vectors.json `compare`).
+        if (raw !== null && this.space.multi()) {
+          const pick = comparePick(raw.split(','), list, this.space.holds, (h) => inTheRunning(h.status as string));
+          this.refused.set(pick.refused.length > 0);
+        }
         if (fromUrl !== null) {
           this.selectedIds.set(fromUrl);
           return;
@@ -419,14 +476,19 @@ export class ComparePage {
   }
 }
 
-/** Indices holding the highest value, when at least one value exists and not every value ties. */
-function bestOf(values: (number | null)[]): Set<number> {
-  const present = values.filter((v): v is number => v !== null);
-  if (present.length === 0) return new Set<number>();
-  const max = Math.max(...present);
-  const best = new Set<number>();
-  values.forEach((v, i) => {
-    if (v === max) best.add(i);
-  });
-  return best.size === values.length && values.length > 1 ? new Set<number>() : best;
+/** One cell of a kind's extra: a dash, or the value in the app's words. */
+function extraCell(v: KindValue | undefined, i18n: TranslationService, none: Cell): Cell {
+  if (!v) return none;
+  switch (v.type) {
+    case 'money':
+      return { text: i18n.price(v.amount, null) };
+    case 'number':
+      return { text: i18n.number(v.value) };
+    case 'bool':
+      return { text: i18n.t(v.value ? 'common.yes' : 'common.no') };
+    case 'enum':
+      return { text: i18n.t(v.label) };
+    default:
+      return { text: v.value };
+  }
 }

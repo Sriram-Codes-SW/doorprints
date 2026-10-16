@@ -19,6 +19,22 @@
 package app.doorprints.screenshots
 
 import android.app.KeyguardManager
+import app.doorprints.SchoolSample
+import app.doorprints.TwoKinds
+import app.doorprints.shared.model.KindSetting
+import app.doorprints.ui.ChooserScreen
+import app.doorprints.ui.BinLine
+import app.doorprints.ui.DeleteSpaceDialogCard
+import app.doorprints.ui.KindsSettingsSection
+import app.doorprints.ui.RecentlyDeletedList
+import app.doorprints.ui.LocalSpace
+import app.doorprints.ui.SpaceUi
+import app.doorprints.ui.res.chooser_heading
+import app.doorprints.ui.res.chooser_hidden_heading
+import app.doorprints.ui.res.kinds_heading
+import app.doorprints.ui.res.delete_restore
+import app.doorprints.ui.res.delete_space_do
+import app.doorprints.ui.res.schools_title
 import android.graphics.Bitmap
 import androidx.arch.core.executor.ArchTaskExecutor
 import androidx.arch.core.executor.DefaultTaskExecutor
@@ -26,14 +42,35 @@ import androidx.arch.core.executor.TaskExecutor
 import java.util.concurrent.atomic.AtomicInteger
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
+import app.doorprints.ui.res.count_houses
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.isHeading
 import app.doorprints.ui.res.Res
 import app.doorprints.ui.res.house_checklist
 import app.doorprints.ui.res.house_contact
 import app.doorprints.ui.res.house_cost
 import app.doorprints.ui.res.house_questions
+import app.doorprints.ui.res.common_try_again
+import app.doorprints.ui.res.compare_empty
+import app.doorprints.ui.res.houses_empty
+import app.doorprints.ui.res.settings_ai_use_own_key
+import app.doorprints.ui.res.settings_ai_service
+import app.doorprints.ui.res.settings_ai_service_openai
+import app.doorprints.ui.res.settings_ai_service_custom
+import app.doorprints.ui.res.settings_ai_save
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.performClick
+import app.doorprints.ui.res.settings_app_lock
+import app.doorprints.ui.res.settings_path_trace_clear
+import app.doorprints.shared.model.DefaultQuestions
 import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.getString
+import org.jetbrains.compose.resources.getPluralString
 import org.jetbrains.compose.resources.stringResource
 import android.os.LocaleList
 import android.os.Looper
@@ -44,6 +81,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -102,12 +140,24 @@ import app.doorprints.ui.ImportScreen
 import app.doorprints.ui.LocalAppServices
 import app.doorprints.ui.LocalPlatformFeatures
 import app.doorprints.ui.MapScreen
+import app.doorprints.location.HuntState
 import app.doorprints.ui.PlatformFeatures
 import app.doorprints.ui.ProvideAppServices
 import app.doorprints.ui.SettingsScreen
 import app.doorprints.shared.model.Criterion
 import app.doorprints.shared.model.HouseStatus
+import kotlinx.coroutines.flow.first
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.cancelAndJoin
+import app.doorprints.FakeVoiceRepository
+import app.doorprints.FakeVoiceServices
+import app.doorprints.ui.res.school_trace_end_save
+import app.doorprints.ui.res.school_trace_pick_title
+import app.doorprints.ui.res.voice_mic
+import app.doorprints.ui.res.voice_mic_desc
+import app.doorprints.ui.res.voice_status_recording
 import kotlinx.coroutines.test.StandardTestDispatcher
 import org.junit.After
 import org.junit.Before
@@ -163,8 +213,8 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
         AppLocale.applyDefault(ApplicationProvider.getApplicationContext())
         val repo = ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository
         runBlocking {
-            repo.saveHouse(house("a", "Green View 2BHK", HouseStatus.SHORTLISTED, 28_000, 2, mapOf("water" to 5, "light" to 4), 1_760_000_000_000))
-            repo.saveHouse(house("b", "Lake Road flat", HouseStatus.NEW, 22_500, 1, mapOf("water" to 3), 1_760_000_100_000))
+            saveAtFixedTime(repo, house("a", "Green View 2BHK", HouseStatus.SHORTLISTED, 28_000, 2, mapOf("water" to 5, "light" to 4), 1_760_000_000_000), 1_760_000_000_000)
+            saveAtFixedTime(repo, house("b", "Lake Road flat", HouseStatus.NEW, 22_500, 1, mapOf("water" to 3), 1_760_000_100_000), 1_760_000_100_000)
         }
     }
 
@@ -177,6 +227,16 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
         LocaleList.setDefault(locales)
     }
 
+    /**
+     * Saves [house], then puts its stamp back to [CHOOSER_FIXED_AT]: the repository stamps every save with the real clock, and the
+     * chooser shows "Last change: <date>", so a baseline recorded on one day failed from the next (S4b-BL-312).
+     */
+    private suspend fun saveAtFixedTime(repo: app.doorprints.data.CommonRepository, house: HouseEntity, at: Long = CHOOSER_FIXED_AT) {
+        repo.saveHouse(house)
+        val db = ApplicationProvider.getApplicationContext<DoorprintsApp>().container.db
+        db.houses().get(house.id)?.let { db.houses().upsert(it.copy(updatedAt = at)) }
+    }
+
     private fun house(id: String, label: String, status: HouseStatus, price: Long, bhk: Int, checklist: Map<String, Int>, at: Long) =
         HouseEntity(
             id = id, label = label, lat = 12.9716, lon = 77.5946, status = status, price = price, bedrooms = bhk,
@@ -185,7 +245,14 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
 
     private fun file(screen: String) = "src/test/screenshots/${screen}_${lang}_${if (dark) "dark" else "light"}.png"
 
-    private fun show(content: @Composable () -> Unit) {
+    /**
+     * [readyText] is required at every call, so that a screen fed by Room or DataStore cannot be shot without saying what
+     * shows when its data is in (S4b-BL-138): a Room-backed screen draws only its heading (Compare) or nothing (the house
+     * list) until the first answer, and that frame is as stable as the final one, so [awaitStableFrame] alone accepted it
+     * when the answer was late (reproduced under load: `houses[ta-dark=true]`, `iosCompareEmpty[ta-dark=*]`). [STATIC]
+     * is the explicit "this screen shows no stored data, or its defaults are what the shot shows".
+     */
+    private fun show(readyText: String?, alsoReady: String? = null, content: @Composable () -> Unit) {
         // Surface in the theme's background, as Root's Scaffold draws it around every screen.
         compose.setContent {
             // As MainActivity does: the screens read the platform's and the app's seams (ADR-23 CMP-3, CMP-5).
@@ -193,13 +260,30 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
                 DoorprintsTheme(dark = dark) { Surface(color = MaterialTheme.colorScheme.background) { content() } }
             }
         }
+        // Wait for the screen's own text, in Text or in a contentDescription (Export's counts are the latter), so a shot
+        // never captures the table before its rows (S4b-BL-100, S4b-BL-138). The wait pumps the effects dispatcher too:
+        // the screens' coroutines run on [effects], which only [settle] advances.
+        if (readyText != null) {
+            // [alsoReady]: a screen fed by two flows (My areas: the areas and the notes) is ready when the last of them has answered.
+            for (text in listOfNotNull(readyText, alsoReady)) {
+                val ready = hasText(text, substring = true) or hasContentDescription(text, substring = true)
+                val deadline = System.nanoTime() + 20_000_000_000L
+                while (compose.onAllNodes(ready).fetchSemanticsNodes().isEmpty()) {
+                    check(System.nanoTime() < deadline) { "'$text' did not show in 20 s" }
+                    settle()
+                }
+            }
+        }
         awaitStableFrame()
     }
 
-    private fun shoot(screen: String, content: @Composable () -> Unit) {
-        show(content)
+    private fun shoot(screen: String, readyText: String?, alsoReady: String? = null, content: @Composable () -> Unit) {
+        show(readyText, alsoReady, content)
         compose.onRoot().captureRoboImage(file(screen))
     }
+
+    /** A string of the app in the shot's language (the default locale is set in [setUp]). */
+    private fun text(res: StringResource): String = runBlocking { getString(res) }
 
     /**
      * Room and DataStore answer on their own threads, which Compose's idling does not wait for (the Export screen's
@@ -278,17 +362,17 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
      * tall enough for the whole form (the test fails when the form scrolls), and the shots are English in both themes
      * and Hindi light only, to keep the image set small; [only] keeps the bands named (the iPhone's differ in one).
      */
-    private fun shootForm(screen: String, only: Set<String>? = null, content: @Composable () -> Unit) {
+    private fun shootForm(screen: String, readyText: String?, only: Set<String>? = null, content: @Composable () -> Unit) {
         assumeTrue(lang == "en" || (lang == "hi" && !dark))
-        RuntimeEnvironment.setQualifiers("+h4800dp")
+        RuntimeEnvironment.setQualifiers("+h5200dp")
         val headings = mutableMapOf<String, String>()
-        show {
+        show(readyText) {
             bands.forEach { (name, res) -> if (res != null) headings[name] = stringResource(res) }
             content()
         }
         val scroll = compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.VerticalScrollAxisRange))
             .fetchSemanticsNodes().maxOf { it.config[SemanticsProperties.VerticalScrollAxisRange].maxValue() }
-        check(scroll == 0f) { "The house form scrolls by $scroll px in the shot: make the window taller (h4800dp)" }
+        check(scroll == 0f) { "The house form scrolls by $scroll px in the shot: make the window taller (h5200dp)" }
         val image = compose.onRoot().captureToImage().asAndroidBitmap()
         val density = RuntimeEnvironment.getApplication().resources.displayMetrics.density
         // The form ends at its lowest node (the Save button, then its 24 dp spacer), not at the bottom of the window.
@@ -319,8 +403,8 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
         "contact" to Res.string.house_contact,
     )
 
-    @Test fun houses() = shoot("houses") { HouseListScreen(onOpenHouse = {}) }
-    @Test fun compare() = shoot("compare") {
+    @Test fun houses() = shoot("houses", readyText = "Green View 2BHK") { HouseListScreen(onOpenHouse = {}) }
+    @Test fun compare() = shoot("compare", readyText = "Green View 2BHK") {
         // As the root's Compare destination does (CMP-5): the houses (null until Room answers) and the visit counts.
         val repo = LocalAppServices.current.repository
         val houses by repo.houses.collectAsState(initial = null)
@@ -328,7 +412,7 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
         CompareScreen(houses, counts, onOpenHouse = {})
     }
     /** The form of a saved house, in its bands (see [shootForm]). */
-    @Test fun houseEdit() = shootForm("house_edit") { HouseEditScreen(houseId = "a", newLat = null, newLon = null, visitId = null, onDone = {}) }
+    @Test fun houseEdit() = shootForm("house_edit", readyText = "Green View 2BHK") { HouseEditScreen(houseId = "a", newLat = null, newLon = null, visitId = null, onDone = {}) }
 
     /**
      * A new house's form as it opens, one screen high (its title and the top of the form; the rest is the edit form's,
@@ -336,21 +420,264 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
      */
     @Test fun houseNew() {
         assumeTrue(lang == "en" || (lang == "hi" && !dark))
-        shoot("house_new") { HouseEditScreen(houseId = null, newLat = 12.9716, newLon = 77.5946, visitId = null, onDone = {}) }
+        shoot("house_new", STATIC) { HouseEditScreen(houseId = null, newLat = 12.9716, newLon = 77.5946, visitId = null, onDone = {}) }
     }
-    @Test fun settings() = shoot("settings") { SettingsScreen() }
+    /**
+     * The hidden schools kind's form (kinds PR 5, S4b-BL-209), with its developer flag on: the saved school of
+     * `docs/schemas/kinds/school-vectors.json`, its Details and Fees down to the location, in one shot. English light
+     * and Tamil dark only (the longest words, the other theme), to keep the image set small; no house baseline changes.
+     */
+    @Test fun schoolEdit() {
+        assumeTrue((lang == "en" && !dark) || (lang == "ta" && dark))
+        RuntimeEnvironment.setQualifiers("+h1500dp")
+        val repo = ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository
+        runBlocking { repo.saveHouse(SchoolSample.entity()) }
+        shoot("school_edit", readyText = "Pine Hill School") {
+            CompositionLocalProvider(app.doorprints.ui.LocalDevKinds provides true) {
+                HouseEditScreen(houseId = SchoolSample.ID, newLat = null, newLon = null, visitId = null, onDone = {})
+            }
+        }
+    }
+    /**
+     * The chooser (kinds PR C, S4b-BL-274; docs/03 §18.12) with the school on: its heading, the one hint and two cards (the
+     * default first, *Saved: N*, *Last change*), and with the school turned off but still holding an entry, the muted card
+     * under *Turned off in Settings*. English light and Tamil dark only (the longest words, the other theme); only these new
+     * screens have baselines, no house screen's changes.
+     */
+    @Test fun chooser() {
+        assumeTrue((lang == "en" && !dark) || (lang == "ta" && dark))
+        val repo = ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository
+        runBlocking { saveAtFixedTime(repo, SchoolSample.entity()) }
+        val on = KindSetting(listOf("house", "school"), experimental = "1", enabledText = "[\"house\",\"school\"]")
+        shoot("chooser", readyText = text(Res.string.chooser_heading)) {
+            CompositionLocalProvider(LocalSpace provides SpaceUi(on, "house")) { ChooserScreen(onOpen = {}, onOpenSettings = {}) }
+        }
+    }
 
-    /** Settings → AI features turned on with "Use my own Gemini key on this phone" chosen (docs/03 §13.1, ADR-26). */
-    @Test fun settingsAiOwnKey() {
+    /**
+     * A school's list (kinds PR 21, S4b-BL-265; docs/03 §18.16): under the status chips, one chip row for the school's board,
+     * its medium and its bus, each with *Any* chosen. The one baseline of the filter: English light only, and no house list's
+     * changes (a house has no such row).
+     */
+    @Test fun schoolList() {
+        englishLightOnly()
+        val repo = ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository
+        runBlocking { saveAtFixedTime(repo, SchoolSample.entity()) }
+        val on = KindSetting(listOf("house", "school"), experimental = "1", enabledText = "[\"house\",\"school\"]")
+        shoot("school_list", readyText = "Pine Hill School") {
+            CompositionLocalProvider(LocalSpace provides SpaceUi(on, "school"), app.doorprints.ui.LocalDevKinds provides true) {
+                HouseListScreen(onOpenHouse = {})
+            }
+        }
+    }
+
+    /**
+     * The school space's Hunt card with a walk running (kinds PR 26, S4b-BL-304; docs/03 section 18.20): the switch on, the street
+     * line in the school's words (*Been here: schools 2, visits 3*), the nearest saved school and *Finish walk*. The map view is an
+     * empty box here, as in every Map shot (MapLibre cannot run under Robolectric). English and Hindi, light only; the house's Hunt card
+     * has no shot of its own and is unchanged.
+     */
+    @Test fun schoolMapHunt() {
+        assumeTrue(!dark && (lang == "en" || lang == "hi"))
+        val on = KindSetting(listOf("house", "school"), experimental = "1", enabledText = "[\"house\",\"school\"]")
+        HuntState.update {
+            it.copy(
+                active = true, kind = "school", lat = 26.1433, lon = 91.7898, accuracyM = 8f, lastFixAt = System.currentTimeMillis() + 3_600_000L,
+                street = "GS Road", streetHouses = 2, streetVisits = 3, nearestHouse = SchoolSample.entity(), nearestDistanceM = 80.0,
+                startedAt = 1L,
+            )
+        }
+        try {
+            shoot("school_map_hunt", STATIC) {
+                CompositionLocalProvider(
+                    LocalInspectionMode provides true, LocalSpace provides SpaceUi(on, "school"), app.doorprints.ui.LocalDevKinds provides true,
+                ) { MapScreen(onOpenHouse = {}, onNewHouse = { _, _ -> }) }
+            }
+        } finally {
+            HuntState.update { HuntState.State() }
+        }
+    }
+
+    /**
+     * A school's Compare (kinds PR 27, docs/03 §18.21; DRAFT for the owner's review): two schools side by side with the Checklist
+     * score, the school's own rows (the lower fees and commute are marked, the admission fee is not) and the eight checklist
+     * items. English light only; no house baseline changes (the house's Compare is `compare`).
+     */
+    @Test fun schoolCompare() {
+        englishLightOnly()
+        val repo = ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository
+        val pine = SchoolSample.entity().copy(checklist = mapOf("safety" to 5, "teachers" to 4, "classsize" to 3))
+        val oak = pine.copy(
+            id = "55555555-5555-4555-8555-000000000210", label = "Oak Valley", checklist = mapOf("safety" to 3, "teachers" to 4),
+            extrasOther = buildJsonObject {
+                put("board", "ICSE")
+                put("commuteMinutes", 35)
+                put("fees", buildJsonObject { put("amount", 72000); put("cadence", "year") })
+            },
+        )
+        runBlocking { saveAtFixedTime(repo, pine); saveAtFixedTime(repo, oak) }
+        val on = KindSetting(listOf("house", "school"), experimental = "1", enabledText = "[\"house\",\"school\"]")
+        shoot("school_compare", readyText = "Pine Hill School") {
+            CompositionLocalProvider(LocalSpace provides SpaceUi(on, "school"), app.doorprints.ui.LocalDevKinds provides true) {
+                val houses by LocalAppServices.current.repository.houses.collectAsState(initial = null)
+                val counts by LocalAppServices.current.repository.visitCounts.collectAsState(initial = emptyList())
+                CompareScreen(houses?.filter { it.kind == "school" }, counts, onOpenHouse = {})
+            }
+        }
+    }
+
+    /**
+     * A school's visits (kinds PR 29, docs/03 §18.23): the viewings screen in the school space, headed and worded by the school's
+     * file (*School visits*, *Plan a visit*), one planned visit of the sample school. A DRAFT for the owner's review. English and
+     * Hindi light only, to keep the image set small; no house baseline changes.
+     */
+    @Test fun schoolViewings() {
+        assumeTrue(!dark && (lang == "en" || lang == "hi"))
+        val repo = ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository
+        val now = 1_760_100_000_000
+        runBlocking {
+            saveAtFixedTime(repo, SchoolSample.entity())
+            repo.saveViewing(Viewing("v_00000011", SchoolSample.ID, now + 26 * 3_600_000L, kind = "FIRST", withWhom = "Principal", notes = "Ask about the bus route."))
+        }
+        val on = KindSetting(listOf("house", "school"), experimental = "1", enabledText = "[\"house\",\"school\"]")
+        shoot("school_viewings", readyText = "Ask about the bus route.") {
+            CompositionLocalProvider(LocalSpace provides SpaceUi(on, "school"), app.doorprints.ui.LocalDevKinds provides true) {
+                Column(Modifier.verticalScroll(rememberScrollState())) { ViewingsHistory(null, onOpenViewing = {}, onPlan = { _, _ -> }, nowMs = now) }
+            }
+        }
+    }
+    /**
+     * The school's questions (kinds PR 29): Settings > Questions in the school space, its six seeded questions and its own
+     * intro. A DRAFT for the owner's review; English and Hindi light only.
+     */
+    @Test fun schoolQuestions() {
+        assumeTrue(!dark && (lang == "en" || lang == "hi"))
+        val repo = ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository
+        runBlocking { repo.seedKindQuestionsOnce("school", lang) }
+        val on = KindSetting(listOf("house", "school"), experimental = "1", enabledText = "[\"house\",\"school\"]")
+        shoot("school_questions", readyText = DefaultQuestions.SCHOOL.first().question(lang).text) {
+            CompositionLocalProvider(LocalSpace provides SpaceUi(on, "school"), app.doorprints.ui.LocalDevKinds provides true) { QuestionsEditor() }
+        }
+    }
+
+    @Test fun chooserHidden() {
+        assumeTrue((lang == "en" && !dark) || (lang == "ta" && dark))
+        val repo = ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository
+        runBlocking { saveAtFixedTime(repo, SchoolSample.entity()) }
+        val off = KindSetting(listOf("house", "school"), experimental = "1", enabledText = "[\"house\"]")
+        shoot("chooser_hidden", readyText = text(Res.string.chooser_hidden_heading)) {
+            CompositionLocalProvider(LocalSpace provides SpaceUi(off, "house")) { ChooserScreen(onOpen = {}, onOpenSettings = {}) }
+        }
+    }
+
+    /** Settings > What you track (kinds PR C): the section only, cropped to its own node, in a build that ships the school with the switch on. */
+    @Test fun settingsKinds() {
+        assumeTrue((lang == "en" && !dark) || (lang == "ta" && dark))
+        RuntimeEnvironment.setQualifiers("+h1200dp")
+        val repo = ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository
+        runBlocking { repo.saveHouse(SchoolSample.entity()) }
+        val kinds = TwoKinds(ApplicationProvider.getApplicationContext<DoorprintsApp>()).also { it.enableSchool() }
+        try {
+            show(readyText = text(Res.string.kinds_heading)) {
+                kinds.Provide { Column(Modifier.padding(16.dp).testTag("kinds-shot")) { KindsSettingsSection() } }
+            }
+            compose.onNodeWithTag("kinds-shot").captureRoboImage(file("settings_kinds"))
+        } finally {
+            kinds.close()
+        }
+    }
+
+    /**
+     * Settings > What you track as the shipped app has it, the school compiled in and off (owner, 2026-10-15): the heading, the line
+     * under it and the switch, off, with its preview hint and no kind rows. English light only; the section drawn with the switch on is
+     * `settings_kinds`. This is the one new section of the Settings screen in a release.
+     */
+    @Test fun settingsKindsOff() {
+        englishLightOnly()
+        RuntimeEnvironment.setQualifiers("+h600dp")
+        val kinds = TwoKinds(ApplicationProvider.getApplicationContext<DoorprintsApp>())
+        try {
+            show(readyText = text(Res.string.kinds_heading)) {
+                kinds.Provide { Column(Modifier.padding(16.dp).testTag("kinds-off-shot")) { KindsSettingsSection() } }
+            }
+            compose.onNodeWithTag("kinds-off-shot").captureRoboImage(file("settings_kinds_off"))
+        } finally {
+            kinds.close()
+        }
+    }
+
+    /** *Delete all in this space* (deletion safeguards PR 3): the question for 12 schools, with the tick box and the three buttons. */
+    @Test fun deleteSpaceDialog() {
+        assumeTrue((lang == "en" && !dark) || (lang == "ta" && dark))
+        val kind = text(Res.string.schools_title)
+        shoot("delete_space_dialog", text(Res.string.delete_space_do)) {
+            Box(Modifier.padding(16.dp)) { DeleteSpaceDialogCard(kind, 12, ticked = true, onTicked = {}, onCancel = {}, onSaveCopy = {}, onConfirm = {}) }
+        }
+    }
+
+    /** *Recently deleted* (deletion safeguards PR 3): two entries and their dates (fixed words, so the shot does not move with the clock). */
+    @Test fun recentlyDeleted() {
+        assumeTrue((lang == "en" && !dark) || (lang == "ta" && dark))
+        shoot("recently_deleted", text(Res.string.delete_restore)) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                RecentlyDeletedList(
+                    listOf(BinLine("a", "Green View", "14 Oct 2026, 11:30"), BinLine("b", "Lake Road flat", "9 Oct 2026, 18:05")),
+                    hidden = 0, onRestore = {},
+                )
+            }
+        }
+    }
+
+    @Test fun settings() = shoot("settings", STATIC) { SettingsScreen() }
+
+    /**
+     * Settings > AI features with the person's own AI chosen (S4b-BL-150, docs/03 §13.2): the section only, cropped to
+     * its own node to keep the image small. [steps] pick the service and press what the shot needs. Only the two shots
+     * the ticket lists are taken (English light with OpenAI; Tamil dark with the errors Save finds), not all eight.
+     */
+    private fun shootAi(screen: String, steps: () -> Unit) {
+        // Tall enough for the whole section, with the errors and the host sentence under the fields.
+        RuntimeEnvironment.setQualifiers("+h1700dp")
         val repo = ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository
         runBlocking {
             repo.setAiFeatures(true)
             repo.setAiProvider(AiProviderChoice.DEVICE)
         }
-        shoot("settings_ai_own_key") {
+        show(readyText = text(Res.string.settings_ai_use_own_key)) {
             val settings by repo.settings.settings.collectAsState(AppSettings())
             val off by repo.aiOff.collectAsState()
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) { AiSettingsSection(settings, off) }
+            Column(Modifier.padding(16.dp).testTag("ai-shot"), verticalArrangement = Arrangement.spacedBy(12.dp)) { AiSettingsSection(settings, off) }
+        }
+        steps()
+        awaitStableFrame()
+        compose.onNodeWithTag("ai-shot").captureRoboImage(file(screen))
+    }
+
+    private fun pickService(service: StringResource) {
+        compose.onNodeWithContentDescription(text(Res.string.settings_ai_service)).performClick()
+        compose.onNodeWithText(text(service)).performClick()
+        settle()
+    }
+
+    /** OpenAI chosen: its address filled in, the model and key still to type, the host named below. */
+    @Test fun settingsAiOpenAi() {
+        assumeTrue(lang == "en" && !dark)
+        shootAi("settings_ai_openai") { pickService(Res.string.settings_ai_service_openai) }
+    }
+
+    /** Google Gemini, the default service: the key field and its buttons and, under them, *AI speed and cost* (S4b-BL-198 step 2). */
+    @Test fun settingsAiGemini() {
+        assumeTrue(lang == "en" && !dark)
+        shootAi("settings_ai_gemini") {}
+    }
+
+    /** Custom chosen and Save pressed with nothing typed: the three errors, in Tamil, dark. */
+    @Test fun settingsAiErrors() {
+        assumeTrue(lang == "ta" && dark)
+        shootAi("settings_ai_errors") {
+            pickService(Res.string.settings_ai_service_custom)
+            compose.onNodeWithText(text(Res.string.settings_ai_save)).performClick()
+            settle()
         }
     }
     /**
@@ -362,7 +689,7 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
         shadowOf(context.getSystemService(KeyguardManager::class.java)).setIsDeviceSecure(true)
         val repo = context.container.repository
         runBlocking { repo.settings.saveAppLock(true) }
-        shoot("app_lock") {
+        shoot("app_lock", readyText = text(Res.string.settings_app_lock)) {
             val settings by repo.settings.settings.collectAsState(AppSettings())
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 AppLockSection(settings)
@@ -378,17 +705,149 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
             repo.settings.savePathTrace(true)
             repo.saveTrackPoint(TrackPointEntity(at = System.currentTimeMillis(), lat = 12.97, lon = 77.64, accuracyM = 8f))
         }
-        shoot("hunt_trace") {
+        shoot("hunt_trace", readyText = text(Res.string.settings_path_trace_clear)) {
             val settings by repo.settings.settings.collectAsState(AppSettings())
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) { PathTraceSection(settings) }
         }
     }
     /**
+     * Path trace v2 (docs/11 5.27; S4b-FR-15, S4b-FR-24), English and the light theme only (the repository keeps few, small
+     * pictures): the Map's trace legend with both looks, *Save this walk?* and its house picker, the house page's *Saved
+     * walks*, and *Have I been here?* with a walked and an imprecise answer. The sheets are shown as content: a sheet's own
+     * window is not captured.
+     */
+    private fun englishLightOnly() = assumeTrue(lang == "en" && !dark)
+
+    private val shotWalk = (0..5).map { k ->
+        app.doorprints.shared.trace.TracePoint(12.969 + k * 0.00054, 77.5946, 1_760_000_000_000L + k * 60_000L, 1_760_000_000_000L)
+    }
+    private val shotHouses get() = runBlocking { ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository.houses.first() }
+
+    @Test fun traceLegend() {
+        englishLightOnly()
+        shoot("trace_legend", STATIC) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                app.doorprints.ui.TraceLegend(app.doorprints.shared.trace.RepeatLook.CLEAR)
+                app.doorprints.ui.TraceLegend(app.doorprints.shared.trace.RepeatLook.SUBTLE)
+            }
+        }
+    }
+
+    @Test fun walkEnd() {
+        englishLightOnly()
+        shoot("walk_end", "Save this walk?") {
+            app.doorprints.ui.WalkEndSheetContent(app.doorprints.ui.WalkSummary(1_760_000_000_000L, shotWalk), shotHouses, 30, null, {}, {}, {})
+        }
+    }
+
+    @Test fun walkEndPick() {
+        englishLightOnly()
+        shoot("walk_end_pick", "Which house was this walk to?") {
+            app.doorprints.ui.WalkEndSheetContent(
+                app.doorprints.ui.WalkSummary(1_760_000_000_000L, shotWalk), shotHouses, 30, null, {}, {}, {}, initiallyPicking = true,
+            )
+        }
+    }
+
+    /**
+     * The walk check's Save sheet in a school space (kinds PR 31, docs/03 section 18.25): *Link it to a school to keep it*, *Save with a school*, and the picker
+     * (*Which school was this walk to?*, the search, the school). English and Hindi, light only; the house's are `walk_end` and `walk_end_pick`, unchanged.
+     */
+    /** The sample school, put where the shot walk ends (as the house shots' houses are). */
+    private val nearSchool get() = SchoolSample.entity().copy(lat = 12.9692, lon = 77.5946)
+
+    @Test fun schoolWalkEnd() {
+        assumeTrue(!dark && (lang == "en" || lang == "hi"))
+        val on = KindSetting(listOf("house", "school"), experimental = "1", enabledText = "[\"house\",\"school\"]")
+        shoot("school_walk_end", text(Res.string.school_trace_end_save)) {
+            CompositionLocalProvider(LocalSpace provides SpaceUi(on, "school")) {
+                app.doorprints.ui.WalkEndSheetContent(app.doorprints.ui.WalkSummary(1_760_000_000_000L, shotWalk), listOf(nearSchool), 30, null, {}, {}, {})
+            }
+        }
+    }
+
+    @Test fun schoolWalkEndPick() {
+        assumeTrue(!dark && (lang == "en" || lang == "hi"))
+        val on = KindSetting(listOf("house", "school"), experimental = "1", enabledText = "[\"house\",\"school\"]")
+        shoot("school_walk_end_pick", text(Res.string.school_trace_pick_title)) {
+            CompositionLocalProvider(LocalSpace provides SpaceUi(on, "school")) {
+                app.doorprints.ui.WalkEndSheetContent(
+                    app.doorprints.ui.WalkSummary(1_760_000_000_000L, shotWalk), listOf(nearSchool), 30, null, {}, {}, {}, initiallyPicking = true,
+                )
+            }
+        }
+    }
+
+    /**
+     * Two steps of the guided tour in a school space (kinds PR 31): *Add*, in the school's own words for the button, the hint and the action, and *Compare*, whose
+     * title and sentences are the tour's generic ones naming the kind's plural. English and Hindi, light only; the house tour is `tour_criteria` and `tour_help`, unchanged.
+     */
+    @Test fun schoolTourAdd() = schoolTour("add", 1)
+
+    @Test fun schoolTourCompare() = schoolTour("compare", 7)
+
+    private fun schoolTour(id: String, position: Int) {
+        assumeTrue(!dark && (lang == "en" || lang == "hi"))
+        val on = KindSetting(listOf("house", "school"), experimental = "1", enabledText = "[\"house\",\"school\"]")
+        val step = app.doorprints.ui.TourSteps.ALL.first { it.id == id }
+        shoot("school_tour_$id", STATIC) {
+            CompositionLocalProvider(LocalSpace provides SpaceUi(on, "school")) {
+                Box(Modifier.padding(16.dp)) { app.doorprints.ui.TourStepCard(step, position, 25, false, false, false, {}, {}, {}) }
+            }
+        }
+    }
+
+    @Test fun savedWalks() {
+        englishLightOnly()
+        val repo = ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository
+        runBlocking {
+            listOf(1_760_000_000_000L, 1_759_000_000_000L).forEach { id ->
+                shotWalk.forEach { p -> repo.saveTrackPoint(TrackPointEntity(at = id + (p.atMs - 1_760_000_000_000L), lat = p.lat, lon = p.lon, accuracyM = 5f, walkId = id)) }
+                repo.saveWalk("a", id)
+            }
+        }
+        shoot("saved_walks", "Saved walks") {
+            Column(Modifier.padding(16.dp)) { app.doorprints.ui.SavedWalksCard("a") {} }
+        }
+    }
+
+    private fun checkAnswer(status: app.doorprints.shared.trace.PlaceCheckStatus, rows: List<app.doorprints.shared.trace.PlaceRow>, fuzzy: Boolean = false) =
+        app.doorprints.ui.PlaceCheckState.Answer(
+            app.doorprints.ui.PlaceKind.HOUSE, 12.97, 77.6,
+            app.doorprints.shared.trace.PlaceCheckResult(status, fuzzy, rows.minOfOrNull { it.distanceM }, rows),
+            listOf(app.doorprints.shared.trace.TraceWalk(shotWalk)),
+        )
+
+    @Test fun placeCheckWalked() {
+        englishLightOnly()
+        val rows = listOf(
+            app.doorprints.shared.trace.PlaceRow(0, 6.0, 1_760_000_100_000L, app.doorprints.shared.trace.PlaceBand.WALKED, app.doorprints.shared.trace.WalkSource.TRACE),
+            app.doorprints.shared.trace.PlaceRow(0, 18.0, 1_759_000_100_000L, app.doorprints.shared.trace.PlaceBand.WALKED, app.doorprints.shared.trace.WalkSource.SAVED),
+        )
+        shoot("place_check_walked", "Did I walk past this house?") {
+            app.doorprints.ui.PlaceCheckSheetContent(checkAnswer(app.doorprints.shared.trace.PlaceCheckStatus.WALKED, rows), {}, {}, {})
+        }
+    }
+
+    @Test fun placeCheckImprecise() {
+        englishLightOnly()
+        shoot("place_check_imprecise", "Location not precise enough.") {
+            app.doorprints.ui.PlaceCheckSheetContent(
+                app.doorprints.ui.PlaceCheckState.Answer(
+                    app.doorprints.ui.PlaceKind.HERE, 12.97, 77.6,
+                    app.doorprints.shared.trace.PlaceCheckResult(app.doorprints.shared.trace.PlaceCheckStatus.IMPRECISE, false, null, emptyList()), emptyList(), 70.0,
+                ),
+                {}, {}, {},
+            )
+        }
+    }
+
+    /**
      * Offline maps (docs/11 5.20): Settings' section with one saved area and one still saving, and the *Save this area
      * for offline* dialog's body with its estimate and the mobile-data note, over a fake store (the real one is
      * MapLibre's; a dialog window is not captured, so the body is shown as content).
      */
-    @Test fun offlineMaps() = shoot("offline_maps") {
+    @Test fun offlineMaps() = shoot("offline_maps", readyText = "Koramangala") {
         val fake = object : OfflineMapsServices {
             override val supported = true
             override val areas = MutableStateFlow(
@@ -417,7 +876,7 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
             repo.settings.markShared(priya.id, 1_759_900_000_000)
             repo.settings.addShareContact("Amma")
         }
-        shoot("share_updates") { ShareUpdatesScreen(onBack = {}) }
+        shoot("share_updates", readyText = "Priya") { ShareUpdatesScreen(onBack = {}) }
     }
     /**
      * Brokers (docs/11 5.25, slice 1b): Settings > Brokers with two brokers (one with a house, stars and an agency), and
@@ -435,7 +894,7 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
             repo.saveBroker(Broker(name = "Meena Iyer", agency = "Beach Road Realty"))
             id
         }
-        shoot("brokers") {
+        shoot("brokers", readyText = "Meena Iyer") {
             val brokers by repo.observeBrokers().collectAsState(initial = null)
             val houses by repo.brokerHouses(raviId).collectAsState(initial = emptyList())
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -456,7 +915,7 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
             HouseRoom("r1", "BEDROOM", "Master bedroom", 396, 366, 4, "Damp patch near the window", 0),
             HouseRoom("r2", "KITCHEN", null, 300, 244, null, null, 1),
         )
-        shoot("house_rooms") {
+        shoot("house_rooms", STATIC) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) { RoomsSection(rooms, LengthUnit.FT) {} }
         }
     }
@@ -473,7 +932,7 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
             repo.addCriterion("Pets allowed")
             repo.saveRatingShare(0.25)
         }
-        shoot("criteria") { CriteriaEditor() }
+        shoot("criteria", readyText = "Pets allowed") { CriteriaEditor() }
     }
     /**
      * Settings > Questions (docs/11 5.5, slice 3a): the bank seeded in the shot's language with the first defaults of
@@ -483,7 +942,7 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
         assumeTrue(lang == "en" || (lang == "hi" && !dark))
         val repo = ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository
         runBlocking { repo.seedQuestions(lang) }
-        shoot("questions") { QuestionsEditor() }
+        shoot("questions", readyText = DefaultQuestions.ALL.first().question(lang).text) { QuestionsEditor() }
     }
     /**
      * Settings > Viewings (docs/11 5.8, slice 3b-1): an upcoming, a missed and a done viewing at a fixed clock, English
@@ -498,7 +957,7 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
             repo.saveViewing(Viewing("v_00000002", "b", now - 20 * 3_600_000L))
             repo.saveViewing(Viewing("v_00000003", "a", now - 72 * 3_600_000L, status = "DONE", visitId = "x"))
         }
-        shoot("viewings") {
+        shoot("viewings", readyText = "Ask for the water bill.") {
             Column(Modifier.verticalScroll(rememberScrollState())) { ViewingsHistory(null, onOpenViewing = {}, onPlan = { _, _ -> }, nowMs = now) }
         }
     }
@@ -515,11 +974,52 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
             repo.saveAreaNote(AreaNote("n_11223344", areaId = "a_1f2e3d4c", text = "Water tanker every morning; the low streets flood in the monsoon."))
             repo.saveAreaNote(AreaNote("n_55667788", street = "MG Road", text = "Noisy after 9 pm: the bus depot is on the corner."))
         }
-        shoot("areas") { Column(Modifier.verticalScroll(rememberScrollState())) { AreasEditor(onOpenArea = {}) } }
+        shoot("areas", readyText = "Noisy after 9 pm", alsoReady = "Indiranagar 2nd stage") { Column(Modifier.verticalScroll(rememberScrollState())) { AreasEditor(onOpenArea = {}) } }
     }
-    @Test fun assistant() = shoot("assistant") { AssistantScreen(onOpenHouse = {}) }
-    @Test fun export() = shoot("export") { ExportScreen(onBack = {}) }
-    @Test fun import() = shoot("import") { ImportScreen(onBack = {}) }
+    @Test fun assistant() = shoot("assistant", readyText = text(Res.string.common_try_again)) { AssistantScreen(onOpenHouse = {}) }
+
+    /**
+     * Voice input (S4b-BL-222): Ask with the microphone while it records, at 130 % text, English light: the Stop button, Cancel,
+     * the clock, the host line and the polite status. A fake microphone and a fake permission; the repository says the person's
+     * own AI answers and the *Voice input* switch is on. The existing Assistant shot (AI off) is untouched.
+     */
+    @Test fun assistantVoice() {
+        englishLightOnly()
+        RuntimeEnvironment.setFontScale(1.3f)
+        val job = kotlinx.coroutines.SupervisorJob()
+        val file = java.io.File.createTempFile("voice-shot", ".preferences_pb").also { it.delete() }
+        val seal: (String) -> String = { "v1:" + it.reversed() }
+        val open: (String?) -> String? = { v -> v?.takeIf { it.startsWith("v1:") }?.removePrefix("v1:")?.reversed() }
+        val store = app.doorprints.data.SettingsStore(
+            androidx.datastore.preferences.core.PreferenceDataStoreFactory.create(scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO + job)) { file },
+            app.doorprints.data.KeystoreSecretStore(seal, open = open),
+            geminiSecrets = app.doorprints.data.KeystoreSecretStore(seal, app.doorprints.data.KeystoreSecretStore.GEMINI_ENTRY, open),
+        )
+        runBlocking { store.saveVoiceInput(true) }
+        val real = ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository
+        val fake = FakeVoiceRepository(real, store)
+        val voice = FakeVoiceServices(granted = true)
+        try {
+            show(readyText = text(Res.string.voice_mic)) {
+                val services = LocalAppServices.current
+                val wrapped = object : app.doorprints.ui.AppServices by services {
+                    override val repository: app.doorprints.data.Repository = fake
+                    override val voice = voice
+                }
+                CompositionLocalProvider(LocalAppServices provides wrapped) { AssistantScreen(onOpenHouse = {}) }
+            }
+            compose.onNodeWithContentDescription(text(Res.string.voice_mic_desc)).performClick()
+            settle()
+            awaitStableFrame()
+            compose.onNodeWithText(text(Res.string.voice_status_recording), substring = true).assertExists()
+            compose.onRoot().captureRoboImage(file("assistant_voice"))
+        } finally {
+            runBlocking { job.cancelAndJoin() }
+            file.delete()
+        }
+    }
+    @Test fun export() = shoot("export", readyText = countHouses(2)) { ExportScreen(onBack = {}) }
+    @Test fun import() = shoot("import", STATIC) { ImportScreen(onBack = {}) }
 
     /**
      * The screens that hide what the iPhone app does not have yet ([PlatformFeatures.Ios]), as the iOS shell provides
@@ -529,42 +1029,51 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
      * photos without its Photos section; the empty list, Compare's empty state and the Assistant's "off" state as on
      * Android, pointing to the map. Android provides nothing, so the screens above are unchanged.
      */
-    private fun shootIos(screen: String, content: @Composable () -> Unit) = shoot("ios_$screen") {
+    private fun shootIos(screen: String, readyText: String?, content: @Composable () -> Unit) = shoot("ios_$screen", readyText) {
         CompositionLocalProvider(LocalPlatformFeatures provides PlatformFeatures.Ios, content = content)
     }
 
-    @Test fun iosMap() = shootIos("map") {
+    @Test fun iosMap() = shootIos("map", STATIC) {
         CompositionLocalProvider(LocalInspectionMode provides true) { MapScreen(onOpenHouse = {}, onNewHouse = { _, _ -> }) }
     }
-    @Test fun iosSettings() = shootIos("settings") { SettingsScreen() }
+    @Test fun iosSettings() = shootIos("settings", STATIC) { SettingsScreen() }
     @Test fun iosHousesEmpty() {
         val repo = ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository
         runBlocking { listOf("a", "b").forEach { repo.deleteHouse(it) } }
-        shootIos("houses_empty") { HouseListScreen(onOpenHouse = {}) }
+        shootIos("houses_empty", readyText = text(Res.string.houses_empty)) { HouseListScreen(onOpenHouse = {}) }
     }
     // One house: fewer than Compare needs, so its empty state, without "Add a house on the map".
     @Test fun iosCompareEmpty() {
         val repo = ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository
         runBlocking { repo.deleteHouse("b") }
-        shootIos("compare_empty") {
+        shootIos("compare_empty", readyText = text(Res.string.compare_empty)) {
             val houses by LocalAppServices.current.repository.houses.collectAsState(initial = null)
             val counts by LocalAppServices.current.repository.visitCounts.collectAsState(initial = emptyList())
             CompareScreen(houses, counts, onOpenHouse = {})
         }
     }
     // The Assistant with AI off (as in the Android shot): Try again, without "Go to the map".
-    @Test fun iosAssistant() = shootIos("assistant") { AssistantScreen(onOpenHouse = {}) }
+    @Test fun iosAssistant() = shootIos("assistant", readyText = text(Res.string.common_try_again)) { AssistantScreen(onOpenHouse = {}) }
     // The form's last band, from Contact to the end: the listing and Visits with no Photos section between them (the
     // house has no photos). The bands above it are the same as Android's.
-    @Test fun iosHouseEdit() = shootForm("ios_house_edit", only = setOf("contact")) {
+    @Test fun iosHouseEdit() = shootForm("ios_house_edit", readyText = "Green View 2BHK", only = setOf("contact")) {
         CompositionLocalProvider(LocalPlatformFeatures provides PlatformFeatures.Ios) {
             HouseEditScreen(houseId = "a", newLat = null, newLon = null, visitId = null, onDone = {})
         }
     }
 
+    /** Export's count of houses as it reads in the shot's language (two houses are saved in [setUp]). */
+    private fun countHouses(n: Int): String = runBlocking { getPluralString(Res.plurals.count_houses, n, n) }
+
     companion object {
+        /** No stored data on this screen (or its defaults are the shot): nothing to wait for but the stable frame. */
+        private val STATIC: String? = null
+
         @JvmStatic
         @ParameterizedRobolectricTestRunner.Parameters(name = "{0}-dark={1}")
         fun params(): List<Array<Any>> = listOf("en", "hi", "ta", "te").flatMap { l -> listOf(false, true).map { arrayOf<Any>(l, it) } }
     }
 }
+
+/** 2026-10-14 12:00 IST (06:30 UTC): the day the chooser baselines were recorded. */
+private const val CHOOSER_FIXED_AT = 1_791_959_400_000L

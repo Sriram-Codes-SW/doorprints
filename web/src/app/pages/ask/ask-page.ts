@@ -30,13 +30,19 @@ import {
   splitCitations,
 } from '../../core/ai.service';
 import { AiSessionState } from '../../core/ai-session.state';
+import { SpaceService } from '../../core/space.service';
+import { toolWord } from '../../core/space-tool-words';
+import type { TKey } from '../../i18n/en';
 import { Announcer } from '../../core/announcer.service';
 import { ConfigService } from '../../core/config.service';
-import { HouseStatus, STATUSES, STATUS_KEY } from '../../core/models';
+import { HouseStatus, STATUSES } from '../../core/models';
+import { statusKeys } from '../../core/kind-labels';
 import { Msg } from '../../i18n/translation.service';
 import { TPipe } from '../../i18n/t.pipe';
 import { RunResult, runResult } from '../../shared/run-result';
 import { focusIfLost } from '../../shared/focus';
+import { VoiceButton } from '../../shared/voice-button';
+import { isBaselineKind } from '../../core/kind-capabilities';
 
 /**
  * "Ask about my houses": RAG answers over the user's own houses, with every cited house linked (docs/ai 5.2).
@@ -52,7 +58,7 @@ import { focusIfLost } from '../../shared/focus';
  */
 @Component({
   selector: 'app-ask-page',
-  imports: [FormsModule, RouterLink, TPipe],
+  imports: [FormsModule, RouterLink, TPipe, VoiceButton],
   templateUrl: './ask-page.html',
   styleUrl: './ask-page.css',
 })
@@ -62,11 +68,21 @@ export class AskPage implements OnDestroy {
   protected readonly aiOffMsg = aiOffMsg;
   private readonly announcer = inject(Announcer);
   private readonly session = inject(AiSessionState);
+  /** Ask reads the space on screen only (kinds PR B, S4b-BL-279). */
+  protected readonly space = inject(SpaceService);
+  protected readonly kind = this.space.kind();
+  /** The assistant is on and reads this space (the house whenever AI is on; another space on the person's own AI). */
+  protected readonly on = computed(() => this.ai.enabledFor(this.kind));
+  /** The price and BHK filters are the house's: a kind that hides its money has none. */
+  protected readonly moneyFilters = this.space.current().labels.isVisible('field.money');
+  protected w(key: TKey): TKey {
+    return toolWord(this.kind, key);
+  }
   private readonly injector = inject(Injector);
 
   protected readonly maxChars = AI_MAX_QUESTION_CHARS;
   protected readonly statuses = STATUSES;
-  protected readonly statusKey = STATUS_KEY;
+  protected readonly statusKey = statusKeys(this.space.current().labels);
 
   protected question = '';
   protected status: HouseStatus | '' = '';
@@ -92,7 +108,7 @@ export class AskPage implements OnDestroy {
   protected readonly parts = computed(() => splitCitations(this.result()?.answer ?? ''));
 
   constructor() {
-    const saved = this.session.ask;
+    const saved = this.session.askOf(this.kind);
     if (saved) {
       this.question = saved.question;
       this.status = saved.status;
@@ -102,15 +118,19 @@ export class AskPage implements OnDestroy {
     }
   }
 
+  /**
+   * Stops a request still running and keeps the question, filters and answer in {@link AiSessionState}, so Back from a
+   * cited house shows them again without another AI call.
+   */
   ngOnDestroy(): void {
     this.request?.unsubscribe();
-    this.session.ask = {
+    this.session.setAsk(this.kind, {
       question: this.question,
       status: this.status,
       maxPrice: this.maxPrice,
       minBedrooms: this.minBedrooms,
       result: this.result(),
-    };
+    });
   }
 
   protected labelOf(houseId: string): string {
@@ -121,11 +141,21 @@ export class AskPage implements OnDestroy {
     return this.citeNumbers().get(houseId) ?? 0;
   }
 
+  /** The words spoken into the question (voice input, ADR-37): they join the box for the person to read and edit; nothing is sent. */
+  protected onVoice(text: string): void {
+    this.question = text;
+    this.onQuestion(text);
+  }
+
   /** Typing a question clears "Type your question first". */
   protected onQuestion(value: string): void {
     if (this.questionMissing() && value.trim()) this.questionMissing.set(false);
   }
 
+  /**
+   * Sends the question with the chosen filters. An empty question only shows why; an earlier error stays on screen,
+   * marked as updating, until this run ends. The answer is announced once and focus moves to its heading.
+   */
   protected submit(): void {
     if (this.busy()) return;
     const q = this.question.trim();
@@ -142,7 +172,8 @@ export class AskPage implements OnDestroy {
     if (this.minBedrooms != null && this.minBedrooms > 0) filters.minBedrooms = Math.round(this.minBedrooms);
     // An earlier error stays in place while this run is busy (drawn as being updated); the run's end replaces it.
     this.busy.set(true);
-    this.request = this.ai.ask(q, Object.keys(filters).length ? filters : undefined).subscribe({
+    const f = Object.keys(filters).length ? filters : undefined;
+    this.request = (isBaselineKind(this.kind) ? this.ai.ask(q, f) : this.ai.ask(q, f, this.kind)).subscribe({
       next: (r) => {
         this.request = null;
         this.error.set(null);

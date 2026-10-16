@@ -1,0 +1,168 @@
+/*
+ * Copyright 2026 Sriram (Sriram-Codes-SW)
+ *
+ * This file is part of Doorprints.
+ *
+ * Doorprints is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+ * Public License as published by the Free Software Foundation, version 3 of the License.
+ *
+ * Doorprints is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+ * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Affero General Public License along with Doorprints (the file LICENSE;
+ * the file NOTICE has additional permissions under section 7). If not, see <https://www.gnu.org/licenses/>.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
+package app.doorprints.shared.trace
+
+import kotlin.math.cos
+
+/** The answer of the on-demand *Have I been here?* check (docs/11 5.27.13 step 5). */
+enum class PlaceCheckStatus { WALKED, CLOSE, NONE, EMPTY, IMPRECISE, INVALID_PLACE }
+
+/** The band of one row: within the tolerance (inclusive) is WALKED, up to the near band is CLOSE. */
+enum class PlaceBand { WALKED, CLOSE }
+
+/** One walk's row: the walk's index in the input, its nearest distance, the interpolated time there, its band and source. */
+data class PlaceRow(
+    val walkIndex: Int,
+    val distanceM: Double,
+    val atMs: Long,
+    val band: PlaceBand,
+    val source: WalkSource,
+)
+
+/** [fuzzy]: an accepted fix looser than the tolerance (the accuracy is never added to the tolerance, it only warns). */
+data class PlaceCheckResult(
+    val status: PlaceCheckStatus,
+    val fuzzy: Boolean,
+    val nearestM: Double?,
+    val rows: List<PlaceRow>,
+)
+
+/**
+ * *Have I been here?* (docs/11 5.27.13): the distance from a place to each walk's polyline, on the local plane
+ * centred on the place. Pure: no clock, no I/O, no network, nothing stored.
+ */
+object PlaceCheck {
+    /**
+      * Checks one place against [walks]: the status, the nearest distance and one row per walk that passed within the
+      * near band, newest first. [fixAccuracyM] is the place fix's accuracy, if known; a poor one is refused.
+     */
+    fun check(
+        placeLat: Double,
+        placeLon: Double,
+        walks: List<TraceWalk>,
+        fixAccuracyM: Double? = null,
+    ): PlaceCheckResult = check(placeLat, placeLon, walks, fixAccuracyM, boxRejection = true)
+
+    /**
+     * The check with its test knobs: [boxRejection] only skips segments that cannot be near, so turning it off must not
+     * change a result; [toleranceM] replaces the walked tolerance (tests only).
+     */
+    internal fun check(
+        placeLat: Double,
+        placeLon: Double,
+        walks: List<TraceWalk>,
+        fixAccuracyM: Double?,
+        boxRejection: Boolean,
+        toleranceM: Double = TraceConstants.TOLERANCE_M,
+    ): PlaceCheckResult {
+        val run = PlaceCheckRun(placeLat, placeLon, fixAccuracyM, boxRejection, toleranceM)
+        for ((wi, walk) in walks.withIndex()) run.add(walk, wi)
+        return run.result()
+    }
+}
+
+/**
+ * The same check, one walk at a time (docs/11 5.27.13: the walks are read one at a time and each is discarded once it has
+ * been compared): [add] each walk in input order, keep it only when [add] says it produced a row, then ask for [result].
+ * [PlaceCheck.check] is this class run over a list, so the two cannot differ.
+ */
+class PlaceCheckRun internal constructor(
+    private val placeLat: Double,
+    private val placeLon: Double,
+    fixAccuracyM: Double?,
+    private val boxRejection: Boolean,
+    private val toleranceM: Double,
+) {
+    constructor(placeLat: Double, placeLon: Double, fixAccuracyM: Double? = null) :
+        this(placeLat, placeLon, fixAccuracyM, true, TraceConstants.TOLERANCE_M)
+
+    // 1. Gate.
+    private val gate: PlaceCheckResult? = when {
+        !placeLat.isFinite() || !placeLon.isFinite() || placeLat !in -90.0..90.0 || placeLon !in -180.0..180.0 ->
+            PlaceCheckResult(PlaceCheckStatus.INVALID_PLACE, false, null, emptyList())
+        fixAccuracyM != null && (!fixAccuracyM.isFinite() || fixAccuracyM < 0 || fixAccuracyM > TraceConstants.MAX_FIX_ACCURACY_M) ->
+            PlaceCheckResult(PlaceCheckStatus.IMPRECISE, false, null, emptyList())
+        else -> null
+    }
+    private val fuzzy = fixAccuracyM != null && fixAccuracyM > toleranceM // the tolerance the walked test uses (an override exists in tests only)
+
+    // The place's box grown by the near band, in degrees: a segment wholly outside it cannot be within 50 m.
+    private val c = cos(TraceGeo.rad(placeLat))
+    private val dLat = TraceConstants.NEAR_BAND_M * 1.0001 / TraceGeo.K + 1e-12
+    private val dLon = if (c > 1e-6) TraceConstants.NEAR_BAND_M * 1.0001 / (TraceGeo.K * c) + 1e-12 else Double.POSITIVE_INFINITY
+
+    private var anyWalk = false
+    private val rows = ArrayList<PlaceRow>()
+
+    /**
+     * Compares the next walk, whose index in the caller's list is [walkIndex] (the row's [PlaceRow.walkIndex]). True when
+     * it produced a row: only then does the caller need the walk again (the matched stretch).
+     */
+    fun add(walk: TraceWalk, walkIndex: Int): Boolean {
+        if (gate != null) return false
+        val pts = walk.points
+        var hasSegment = false
+        var bestD = Double.POSITIVE_INFINITY
+        var bestSeg = -1
+        for (i in 1 until pts.size) {
+            val b = pts[i]
+            if (b.resumed) continue // no segment into a resumed point
+            hasSegment = true
+            val a = pts[i - 1]
+            if (boxRejection &&
+                (maxOf(a.lat, b.lat) < placeLat - dLat || minOf(a.lat, b.lat) > placeLat + dLat ||
+                    maxOf(a.lon, b.lon) < placeLon - dLon || minOf(a.lon, b.lon) > placeLon + dLon)
+            ) continue
+            val d = TraceGeo.distanceToSegmentM(placeLat, placeLon, a.lat, a.lon, b.lat, b.lon)
+            if (d < bestD) { // ties keep the first segment found
+                bestD = d; bestSeg = i
+            }
+        }
+        if (!hasSegment) return false // a fragment is no walk
+        anyWalk = true
+        if (bestSeg < 0 || bestD > TraceConstants.NEAR_BAND_M) return false
+        val a = pts[bestSeg - 1]
+        val b = pts[bestSeg]
+        val t = TraceGeo.fractionOnSegment(placeLat, placeLon, a.lat, a.lon, b.lat, b.lon)
+        rows.add(
+            PlaceRow(
+                walkIndex, bestD, TraceGeo.interpolatedAtMs(a.atMs, b.atMs, t),
+                if (bestD <= toleranceM) PlaceBand.WALKED else PlaceBand.CLOSE, walk.source,
+            ),
+        )
+        return true
+    }
+
+    /**
+      * The answer so far: rows newest first, WALKED if any row is within the tolerance, CLOSE if only near ones, NONE
+      * or EMPTY (no walk had a segment) otherwise.
+     */
+    fun result(): PlaceCheckResult {
+        gate?.let { return it }
+        // 6. Newest first by time; a tie by the later input index. Never by distance.
+        val ordered = rows.sortedWith(compareByDescending<PlaceRow> { it.atMs }.thenByDescending { it.walkIndex })
+        val status = when {
+            !anyWalk -> PlaceCheckStatus.EMPTY
+            ordered.any { it.band == PlaceBand.WALKED } -> PlaceCheckStatus.WALKED
+            ordered.isNotEmpty() -> PlaceCheckStatus.CLOSE
+            else -> PlaceCheckStatus.NONE
+        }
+        return PlaceCheckResult(status, fuzzy, ordered.minOfOrNull { it.distanceM }, ordered)
+    }
+}

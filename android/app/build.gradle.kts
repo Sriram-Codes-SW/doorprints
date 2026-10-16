@@ -56,6 +56,21 @@ android {
         versionName = "0.1.0"
         // Instrumented smoke tests on an emulator (android-emulator.yml) and in Firebase Test Lab. The test storage
         // service keeps their screenshots; AGP pulls them into build/outputs/connected_android_test_additional_output.
+        // The Android OAuth client id of the system-browser sign-in (docs/15 §2.4, a fallback for phones without Google Play
+        // services). An id is not a secret but it is the owner's, so none is in the repository: the owner puts
+        // GOOGLE_ANDROID_CLIENT_ID in ~/.gradle/gradle.properties (or -P, or the environment). Empty by default: a blank id
+        // makes the browser path unavailable and it opens nothing. Only the characters of a Google client id are kept.
+        val googleClientId = (providers.gradleProperty("GOOGLE_ANDROID_CLIENT_ID").orElse(providers.environmentVariable("GOOGLE_ANDROID_CLIENT_ID")).orNull ?: "")
+            .trim().takeIf { Regex("[A-Za-z0-9._-]+").matches(it) } ?: ""
+        buildConfigField("String", "GOOGLE_ANDROID_CLIENT_ID", "\"$googleClientId\"")
+        // The hidden schools kind (kinds PR 5, S4b-BL-209; docs/03 §18.9): off in every build; only the debug build
+        // below turns it on, and only when made with -Pdoorprints.devKinds=true. A release never has it.
+        buildConfigField("boolean", "DEV_KINDS", "false")
+        // The kinds the build lists (kinds PR C, S4b-BL-274; docs/03 §18.12): a comma list, the house always. Since 2026-10-15
+        // (owner) the release lists the school too, compiled in but off: it is available, not released (KindSettingRules.RELEASED
+        // stays the house), so the person sees the house app, with no chooser, until Settings > What you track turns on
+        // *Experimental: more than houses*. The iPhone lists the same (IOS_AVAILABLE_KINDS; ReleaseKindsTest holds them equal).
+        buildConfigField("String", "AVAILABLE_KINDS", "\"house,school\"")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         testInstrumentationRunnerArguments["useTestStorageService"] = "true"
     }
@@ -73,6 +88,18 @@ android {
     }
 
     buildTypes {
+        debug {
+            // The debug build lists what the release lists (house, school: compiled in, off), so the tests and the screenshots run the
+            // list that ships. -Pdoorprints.devKinds=true is the developer flag (the school is drawn as a school whatever the switch
+            // says) and -Pdoorprints.kinds=house names the list itself. DEV_KINDS is true exactly when one of those two asks for it,
+            // never for the shipped list alone, so the debug build is the release plus the developer's own choice.
+            val named = providers.gradleProperty("doorprints.kinds").orNull
+            val kinds = named ?: "house,school"
+            val shipsMore = named != null && named.split(',').map { it.trim() }.any { it.isNotEmpty() && it != "house" }
+            val devKinds = shipsMore || providers.gradleProperty("doorprints.devKinds").orNull == "true"
+            buildConfigField("boolean", "DEV_KINDS", devKinds.toString())
+            buildConfigField("String", "AVAILABLE_KINDS", "\"" + kinds.filter { it.isLetter() || it == ',' || it == '_' } + "\"")
+        }
         release {
             // R8 stays off for now: kotlinx.serialization, Room (KSP-generated code), MapLibre (JNI) and
             // WorkManager (reflective worker creation) need keep rules that are not written or tested yet, and
@@ -90,6 +117,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     packaging {
@@ -157,6 +185,14 @@ dependencies {
     implementation(libs.androidx.exifinterface)
 
     implementation(libs.play.services.location)
+    // Drive access token on Android (drive/auth, S4b-BL-117): AuthorizationClient, scope drive.file only.
+    // Only the Authorization API (Drive token) is used: its SMS-retriever (auth-api-phone) and FIDO transitive libraries are not.
+    implementation(libs.play.services.auth) {
+        exclude(group = "com.google.android.gms", module = "play-services-fido")
+        exclude(group = "com.google.android.gms", module = "play-services-auth-api-phone")
+    }
+    // QR scan of the enrolment offer: Google's code scanner screen (no CAMERA permission), behind QrScanBackend.
+    implementation(libs.play.services.code.scanner)
     implementation(libs.kotlinx.coroutines.play.services)
     // JSON in the export, import and Assistant code (the Room checklist converter moved to :shared in CMP-4 P4a).
     implementation(libs.kotlinx.serialization.json)

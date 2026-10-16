@@ -1,0 +1,53 @@
+{
+  "spec": "web/src/app/core/kind-labels.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/core/kind-labels.ts",
+      "find": "    if (!has(this.table.keys, ref)) return undefined;",
+      "replace": "",
+      "expect": "nothing where the kind has no such place"
+    },
+    {
+      "file": "web/src/app/core/kind-labels.ts",
+      "find": "    const key = alt && has(this.table.byCadence, alt) ? this.table.byCadence[alt] : this.table.keys[ref];",
+      "replace": "    const key = this.table.keys[ref];",
+      "expect": "a cadence key wins only for its cadence"
+    },
+    {
+      "file": "web/src/app/core/kind-labels.ts",
+      "find": "    if (!has(this.table.keys, ref) || this.hidden.has(ref)) return false;",
+      "replace": "    if (!has(this.table.keys, ref)) return false;",
+      "expect": "a hidden section hides its fields"
+    },
+    {
+      "file": "web/src/app/core/kind-labels.ts",
+      "find": "    return !id || !has(this.table.sections, id) || this.isVisible(`section.${this.table.sections[id]}`);",
+      "replace": "    return true;",
+      "expect": "a hidden section hides its fields"
+    },
+    {
+      "file": "web/src/app/core/kind-labels.ts",
+      "find": "'field.money': 'house.price',",
+      "replace": "'field.money': 'price.sale',",
+      "expect": "every case resolves to the pinned web key"
+    },
+    {
+      "file": "web/src/app/core/kind-labels.ts",
+      "find": "  return kind === HOUSE_LABELS.kind ? HOUSE_LABELS : undefined;",
+      "replace": "  return HOUSE_LABELS;",
+      "expect": "nothing where the kind has no such place"
+    },
+    {
+      "file": "web/src/app/core/models.ts",
+      "find": "  STATUSES.map((s) => [s, HOUSE_LABELS.status(s)]),",
+      "replace": "  STATUSES.map((s) => [s, HOUSE_LABELS.status('NEW')]),",
+      "expect": "the status and checklist tables the screens read are the pinned keys"
+    },
+    {
+      "file": "web/src/app/core/models.ts",
+      "find": ").map((key) => ({ key, labelKey: HOUSE_LABELS.check(key)! }));",
+      "replace": ").map((key) => ({ key, labelKey: HOUSE_LABELS.check('water')! }));",
+      "expect": "the status and checklist tables the screens read are the pinned keys"
+    }
+  ]
+}

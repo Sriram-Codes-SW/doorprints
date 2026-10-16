@@ -1,0 +1,801 @@
+{
+ "format": "doorprints-delete-vectors/1",
+ "note": "Shared by android/shared DeletionVectorsTest and web drive-deletion-rules.spec.ts (S4b-BL-119, docs/schemas/README.md section 6.3): which Drive files count as Doorprints' own, the deletion order, which backups go and at what level, the operation id, the authorization check and which failures stop a run. Pure rules; no Drive calls.",
+ "classifyFile": [
+  {
+   "name": "backup in its folder",
+   "props": {
+    "kind": "backup"
+   },
+   "container": "backups",
+   "item": "backup"
+  },
+  {
+   "name": "sync in its folder",
+   "props": {
+    "kind": "sync"
+   },
+   "container": "sync",
+   "item": "sync"
+  },
+  {
+   "name": "photo in its folder",
+   "props": {
+    "kind": "photo"
+   },
+   "container": "photos",
+   "item": "photo"
+  },
+  {
+   "name": "shared in its folder",
+   "props": {
+    "kind": "shared"
+   },
+   "container": "shared",
+   "item": "shared"
+  },
+  {
+   "name": "readme in its folder",
+   "props": {
+    "kind": "readme"
+   },
+   "container": "root",
+   "item": "readme"
+  },
+  {
+   "name": "control in its folder",
+   "props": {
+    "kind": "control"
+   },
+   "container": "root",
+   "item": "control"
+  },
+  {
+   "name": "keys in its folder",
+   "props": {
+    "kind": "keys"
+   },
+   "container": "root",
+   "item": "keys"
+  },
+  {
+   "name": "backup in the sync folder is foreign",
+   "props": {
+    "kind": "backup"
+   },
+   "container": "sync",
+   "item": null
+  },
+  {
+   "name": "keys.json in Backups is foreign",
+   "props": {
+    "kind": "keys"
+   },
+   "container": "backups",
+   "item": null
+  },
+  {
+   "name": "no app properties",
+   "props": {},
+   "container": "root",
+   "item": null
+  },
+  {
+   "name": "unknown kind",
+   "props": {
+    "kind": "notes"
+   },
+   "container": "root",
+   "item": null
+  },
+  {
+   "name": "kind in the wrong case",
+   "props": {
+    "kind": "Keys"
+   },
+   "container": "root",
+   "item": null
+  },
+  {
+   "name": "only a role property is not a file",
+   "props": {
+    "doorprints": "backups"
+   },
+   "container": "root",
+   "item": null
+  },
+  {
+   "name": "photo with a random id only is foreign",
+   "props": {
+    "id": "abc"
+   },
+   "container": "photos",
+   "item": null
+  }
+ ],
+ "classifyFolder": [
+  {
+   "name": "backups under the root",
+   "props": {
+    "doorprints": "backups"
+   },
+   "container": "root",
+   "role": "backups"
+  },
+  {
+   "name": "sync under the root",
+   "props": {
+    "doorprints": "sync"
+   },
+   "container": "root",
+   "role": "sync"
+  },
+  {
+   "name": "photos under the root",
+   "props": {
+    "doorprints": "photos"
+   },
+   "container": "root",
+   "role": "photos"
+  },
+  {
+   "name": "shared under the root",
+   "props": {
+    "doorprints": "shared"
+   },
+   "container": "root",
+   "role": "shared"
+  },
+  {
+   "name": "a second root inside the root is foreign",
+   "props": {
+    "doorprints": "root"
+   },
+   "container": "root",
+   "role": null
+  },
+  {
+   "name": "unknown role",
+   "props": {
+    "doorprints": "trash"
+   },
+   "container": "root",
+   "role": null
+  },
+  {
+   "name": "a role folder nested in Backups is foreign",
+   "props": {
+    "doorprints": "sync"
+   },
+   "container": "backups",
+   "role": null
+  },
+  {
+   "name": "no properties",
+   "props": {},
+   "container": "root",
+   "role": null
+  }
+ ],
+ "phases": [
+  {
+   "kind": "backup",
+   "folderRole": null,
+   "phase": 0
+  },
+  {
+   "kind": "sync",
+   "folderRole": null,
+   "phase": 1
+  },
+  {
+   "kind": "photo",
+   "folderRole": null,
+   "phase": 2
+  },
+  {
+   "kind": "shared",
+   "folderRole": null,
+   "phase": 3
+  },
+  {
+   "kind": "readme",
+   "folderRole": null,
+   "phase": 4
+  },
+  {
+   "kind": "control",
+   "folderRole": null,
+   "phase": 5
+  },
+  {
+   "kind": "keys",
+   "folderRole": null,
+   "phase": 6
+  },
+  {
+   "kind": "folder",
+   "folderRole": "backups",
+   "phase": 7
+  },
+  {
+   "kind": "folder",
+   "folderRole": "photos",
+   "phase": 7
+  },
+  {
+   "kind": "folder",
+   "folderRole": "root",
+   "phase": 8
+  }
+ ],
+ "selectBackups": [
+  {
+   "name": "one of three",
+   "action": {
+    "type": "oneBackup",
+    "fileId": "b2"
+   },
+   "backups": [
+    {
+     "id": "b3",
+     "complete": true,
+     "createdAt": 300
+    },
+    {
+     "id": "b1",
+     "complete": true,
+     "createdAt": 100
+    },
+    {
+     "id": "b2",
+     "complete": true,
+     "createdAt": 200
+    }
+   ],
+   "ids": [
+    "b2"
+   ],
+   "level": "L1"
+  },
+  {
+   "name": "the only complete backup is L2",
+   "action": {
+    "type": "oneBackup",
+    "fileId": "b1"
+   },
+   "backups": [
+    {
+     "id": "b1",
+     "complete": true,
+     "createdAt": 100
+    }
+   ],
+   "ids": [
+    "b1"
+   ],
+   "level": "L2"
+  },
+  {
+   "name": "a partial one next to the only complete is L1",
+   "action": {
+    "type": "oneBackup",
+    "fileId": "p1"
+   },
+   "backups": [
+    {
+     "id": "b1",
+     "complete": true,
+     "createdAt": 100
+    },
+    {
+     "id": "p1",
+     "complete": false,
+     "createdAt": 150
+    }
+   ],
+   "ids": [
+    "p1"
+   ],
+   "level": "L1"
+  },
+  {
+   "name": "the only complete one with a partial beside it is still the last",
+   "action": {
+    "type": "oneBackup",
+    "fileId": "b1"
+   },
+   "backups": [
+    {
+     "id": "b1",
+     "complete": true,
+     "createdAt": 100
+    },
+    {
+     "id": "p1",
+     "complete": false,
+     "createdAt": 150
+    }
+   ],
+   "ids": [
+    "b1"
+   ],
+   "level": "L2"
+  },
+  {
+   "name": "not a backup of the folder",
+   "action": {
+    "type": "oneBackup",
+    "fileId": "zz"
+   },
+   "backups": [
+    {
+     "id": "b3",
+     "complete": true,
+     "createdAt": 300
+    },
+    {
+     "id": "b1",
+     "complete": true,
+     "createdAt": 100
+    },
+    {
+     "id": "b2",
+     "complete": true,
+     "createdAt": 200
+    }
+   ],
+   "ids": null,
+   "level": "L1"
+  },
+  {
+   "name": "all, oldest first",
+   "action": {
+    "type": "allBackups"
+   },
+   "backups": [
+    {
+     "id": "b3",
+     "complete": true,
+     "createdAt": 300
+    },
+    {
+     "id": "b1",
+     "complete": true,
+     "createdAt": 100
+    },
+    {
+     "id": "b2",
+     "complete": true,
+     "createdAt": 200
+    },
+    {
+     "id": "p1",
+     "complete": false,
+     "createdAt": 250
+    }
+   ],
+   "ids": [
+    "b1",
+    "b2",
+    "p1",
+    "b3"
+   ],
+   "level": "L2"
+  },
+  {
+   "name": "all of none",
+   "action": {
+    "type": "allBackups"
+   },
+   "backups": [],
+   "ids": [],
+   "level": "L2"
+  },
+  {
+   "name": "older keeps the newest complete",
+   "action": {
+    "type": "olderBackups"
+   },
+   "backups": [
+    {
+     "id": "b3",
+     "complete": true,
+     "createdAt": 300
+    },
+    {
+     "id": "b1",
+     "complete": true,
+     "createdAt": 100
+    },
+    {
+     "id": "b2",
+     "complete": true,
+     "createdAt": 200
+    }
+   ],
+   "ids": [
+    "b1",
+    "b2"
+   ],
+   "level": "L2"
+  },
+  {
+   "name": "older keeps a newer partial upload",
+   "action": {
+    "type": "olderBackups"
+   },
+   "backups": [
+    {
+     "id": "b3",
+     "complete": true,
+     "createdAt": 300
+    },
+    {
+     "id": "b1",
+     "complete": true,
+     "createdAt": 100
+    },
+    {
+     "id": "b2",
+     "complete": true,
+     "createdAt": 200
+    },
+    {
+     "id": "p9",
+     "complete": false,
+     "createdAt": 400
+    }
+   ],
+   "ids": [
+    "b1",
+    "b2"
+   ],
+   "level": "L2"
+  },
+  {
+   "name": "older removes an old partial",
+   "action": {
+    "type": "olderBackups"
+   },
+   "backups": [
+    {
+     "id": "b3",
+     "complete": true,
+     "createdAt": 300
+    },
+    {
+     "id": "b1",
+     "complete": true,
+     "createdAt": 100
+    },
+    {
+     "id": "b2",
+     "complete": true,
+     "createdAt": 200
+    },
+    {
+     "id": "p0",
+     "complete": false,
+     "createdAt": 50
+    }
+   ],
+   "ids": [
+    "p0",
+    "b1",
+    "b2"
+   ],
+   "level": "L2"
+  },
+  {
+   "name": "older with one complete backup removes nothing",
+   "action": {
+    "type": "olderBackups"
+   },
+   "backups": [
+    {
+     "id": "b1",
+     "complete": true,
+     "createdAt": 100
+    }
+   ],
+   "ids": [],
+   "level": "L2"
+  },
+  {
+   "name": "older with no complete backup removes nothing",
+   "action": {
+    "type": "olderBackups"
+   },
+   "backups": [
+    {
+     "id": "p1",
+     "complete": false,
+     "createdAt": 100
+    }
+   ],
+   "ids": [],
+   "level": "L2"
+  },
+  {
+   "name": "equal times break by id",
+   "action": {
+    "type": "olderBackups"
+   },
+   "backups": [
+    {
+     "id": "a",
+     "complete": true,
+     "createdAt": 100
+    },
+    {
+     "id": "b",
+     "complete": true,
+     "createdAt": 100
+    }
+   ],
+   "ids": [
+    "a"
+   ],
+   "level": "L2"
+  }
+ ],
+ "operationIds": [
+  {
+   "level": "L1",
+   "rootId": "r1",
+   "ids": [
+    "b1"
+   ],
+   "operationId": "del-f670a14fa2d6218992ab512a"
+  },
+  {
+   "level": "L2",
+   "rootId": "r1",
+   "ids": [
+    "b1",
+    "b2"
+   ],
+   "operationId": "del-082c195b30f20a678e084623"
+  },
+  {
+   "level": "L2",
+   "rootId": "r1",
+   "ids": [
+    "b2",
+    "b1"
+   ],
+   "operationId": "del-90bfa1c73a098038c41615bb"
+  },
+  {
+   "level": "L3",
+   "rootId": "r1",
+   "ids": [
+    "x",
+    "y",
+    "z"
+   ],
+   "operationId": "del-cd5a332a6a918f4486a2f12b"
+  },
+  {
+   "level": "L3",
+   "rootId": "r2",
+   "ids": [
+    "x",
+    "y",
+    "z"
+   ],
+   "operationId": "del-6065b77af373a7c5c746f0b3"
+  },
+  {
+   "level": "L3",
+   "rootId": "r1",
+   "ids": [],
+   "operationId": "del-114dc98dbaf2d7536403f2fa"
+  }
+ ],
+ "authorization": [
+  {
+   "name": "L1 needs no token",
+   "required": "L1",
+   "token": null,
+   "operationId": "op1",
+   "nowMs": 1790000100000,
+   "problem": null
+  },
+  {
+   "name": "L2 without a token",
+   "required": "L2",
+   "token": null,
+   "operationId": "op1",
+   "nowMs": 1790000100000,
+   "problem": "NOT_AUTHORIZED"
+  },
+  {
+   "name": "L3 without a token",
+   "required": "L3",
+   "token": null,
+   "operationId": "op1",
+   "nowMs": 1790000100000,
+   "problem": "NOT_AUTHORIZED"
+  },
+  {
+   "name": "L2 fresh",
+   "required": "L2",
+   "token": {
+    "level": "L2",
+    "issuedAtMs": 1790000099000,
+    "operationId": "op1"
+   },
+   "operationId": "op1",
+   "nowMs": 1790000100000,
+   "problem": null
+  },
+  {
+   "name": "L2 exactly 60 s old",
+   "required": "L2",
+   "token": {
+    "level": "L2",
+    "issuedAtMs": 1790000040000,
+    "operationId": "op1"
+   },
+   "operationId": "op1",
+   "nowMs": 1790000100000,
+   "problem": null
+  },
+  {
+   "name": "L2 60.001 s old",
+   "required": "L2",
+   "token": {
+    "level": "L2",
+    "issuedAtMs": 1790000039999,
+    "operationId": "op1"
+   },
+   "operationId": "op1",
+   "nowMs": 1790000100000,
+   "problem": "AUTHORIZATION_STALE"
+  },
+  {
+   "name": "L2 issued in the future",
+   "required": "L2",
+   "token": {
+    "level": "L2",
+    "issuedAtMs": 1790000100001,
+    "operationId": "op1"
+   },
+   "operationId": "op1",
+   "nowMs": 1790000100000,
+   "problem": "AUTHORIZATION_STALE"
+  },
+  {
+   "name": "L2 granted just now",
+   "required": "L2",
+   "token": {
+    "level": "L2",
+    "issuedAtMs": 1790000100000,
+    "operationId": "op1"
+   },
+   "operationId": "op1",
+   "nowMs": 1790000100000,
+   "problem": null
+  },
+  {
+   "name": "L3 with an L2 token",
+   "required": "L3",
+   "token": {
+    "level": "L2",
+    "issuedAtMs": 1790000099000,
+    "operationId": "op1"
+   },
+   "operationId": "op1",
+   "nowMs": 1790000100000,
+   "problem": "AUTHORIZATION_TOO_WEAK"
+  },
+  {
+   "name": "L2 with an L3 token",
+   "required": "L2",
+   "token": {
+    "level": "L3",
+    "issuedAtMs": 1790000099000,
+    "operationId": "op1"
+   },
+   "operationId": "op1",
+   "nowMs": 1790000100000,
+   "problem": null
+  },
+  {
+   "name": "L3 with an L3 token",
+   "required": "L3",
+   "token": {
+    "level": "L3",
+    "issuedAtMs": 1790000099000,
+    "operationId": "op1"
+   },
+   "operationId": "op1",
+   "nowMs": 1790000100000,
+   "problem": null
+  },
+  {
+   "name": "another operation's token",
+   "required": "L2",
+   "token": {
+    "level": "L2",
+    "issuedAtMs": 1790000099000,
+    "operationId": "op2"
+   },
+   "operationId": "op1",
+   "nowMs": 1790000100000,
+   "problem": "AUTHORIZATION_OTHER_OPERATION"
+  },
+  {
+   "name": "too weak is reported before the operation",
+   "required": "L3",
+   "token": {
+    "level": "L2",
+    "issuedAtMs": 1790000099000,
+    "operationId": "op2"
+   },
+   "operationId": "op1",
+   "nowMs": 1790000100000,
+   "problem": "AUTHORIZATION_TOO_WEAK"
+  },
+  {
+   "name": "the operation is reported before the age",
+   "required": "L2",
+   "token": {
+    "level": "L2",
+    "issuedAtMs": 1790000010000,
+    "operationId": "op2"
+   },
+   "operationId": "op1",
+   "nowMs": 1790000100000,
+   "problem": "AUTHORIZATION_OTHER_OPERATION"
+  }
+ ],
+ "stopsRun": [
+  {
+   "kind": "UNAUTHORIZED",
+   "stops": true
+  },
+  {
+   "kind": "FORBIDDEN",
+   "stops": false
+  },
+  {
+   "kind": "QUOTA_EXCEEDED",
+   "stops": true
+  },
+  {
+   "kind": "RATE_LIMITED",
+   "stops": true
+  },
+  {
+   "kind": "NOT_FOUND",
+   "stops": false
+  },
+  {
+   "kind": "CONFLICT",
+   "stops": false
+  },
+  {
+   "kind": "BAD_REQUEST",
+   "stops": false
+  },
+  {
+   "kind": "SERVER",
+   "stops": true
+  },
+  {
+   "kind": "OFFLINE",
+   "stops": true
+  },
+  {
+   "kind": "CANCELLED",
+   "stops": true
+  },
+  {
+   "kind": "CORRUPT",
+   "stops": false
+  }
+ ]
+}

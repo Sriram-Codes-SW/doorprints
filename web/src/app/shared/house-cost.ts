@@ -35,8 +35,15 @@ export interface CostSummary {
   effectivePrice: number | null;
 }
 
+/** The house values the cost rules read. */
 export type CostInput = Pick<HouseDto, 'price' | 'priceType' | 'areaSqft' | 'cost'>;
 
+/**
+ * Works out the monthly cost, the cost to move in and the cost per square foot of a house. For a rent, the monthly cost
+ * is the rent plus the maintenance unless the rent includes it, and the move-in cost is deposit, brokerage and one
+ * month's rent; an amount in rupees wins over the same item given in months. Nothing is guessed: what cannot be
+ * computed is null.
+ */
 export function costSummary(house: CostInput): CostSummary {
   const price = number(house.price);
   const cost: HouseCost = house.cost ?? {};
@@ -57,6 +64,7 @@ export function costSummary(house: CostInput): CostSummary {
   };
 }
 
+/** The value if it is a finite number, else null. */
 function number(value: number | null | undefined): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }

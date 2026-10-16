@@ -110,6 +110,8 @@ class ImportWorker(context: Context, params: WorkerParameters) : CoroutineWorker
                     } finally {
                         reporter.cancel()
                     }
+                    // The file's kinds and default are a hint for a phone that never chose what it tracks (kinds PR C, S4b-BL-274).
+                    ArchiveImports.adoptKinds(repository, reader.archive)
                     staged.delete()
                     // A copy can be undone for a day (UX review, round 16): its new ids go to a small private file,
                     // not to the output Data, which is capped at 10 KB. If the file cannot be written the import
@@ -128,13 +130,16 @@ class ImportWorker(context: Context, params: WorkerParameters) : CoroutineWorker
                                 records = result.copiedRecords,
                             ),
                         )
+                    // With two or more kinds on the sentence says entries, as the Import screen does (S4b-BL-316); a store that
+                    // cannot be read counts as the house alone, as every doubt does.
+                    val neutral = runCatching { repository.settings.kindSetting().first().spaces }.getOrDefault(false)
                     // Told = seen on the Import screen, or a notification that was really posted.
                     val notified = ScreenWatch.importScreen || Notifications.result(
                         localised, Notifications.IMPORT_DONE_ID,
                         localised.getString(R.string.import_notif_done),
                         importedSentence(
                             result.houses, result.visits, result.photos,
-                            result.updatedHouses, result.updatedVisits, result.restoredHouses,
+                            result.updatedHouses, result.updatedVisits, result.restoredHouses, neutral,
                         ),
                         Notifications.openScreenIntent(localised, Notifications.SCREEN_IMPORT),
                     )

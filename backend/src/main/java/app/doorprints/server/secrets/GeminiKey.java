@@ -35,12 +35,18 @@ public class GeminiKey {
     /** Stands in for {@code spring.ai.openai.api-key} when AI is on but no key is set yet; never sent to Google. */
     public static final String PLACEHOLDER = "doorprints-no-key-set";
 
+    /**
+     * Where the key in use comes from, for the owner page.
+     */
     public enum Source { OWNER_PAGE, SETTINGS_FILE, NONE }
 
     private final ServerSecrets secrets;
     private final String fromSettings;
     private volatile Optional<String> stored;
 
+    /**
+     * Reads the key from the settings file ({@code spring.ai.openai.api-key}), treating the placeholder as no key.
+     */
     public GeminiKey(ServerSecrets secrets, Environment env) {
         this.secrets = secrets;
         var configured = env.getProperty("spring.ai.openai.api-key", "").strip();
@@ -57,6 +63,9 @@ public class GeminiKey {
         return s.isPresent() ? s : fromSettings.isEmpty() ? Optional.empty() : Optional.of(fromSettings);
     }
 
+    /**
+     * Whether the key in use was set on the owner page, comes from the settings file, or is absent.
+     */
     public Source source() {
         return current().isEmpty() ? Source.NONE : secrets.describe(SECRET).isPresent() ? Source.OWNER_PAGE
                 : Source.SETTINGS_FILE;
@@ -67,11 +76,17 @@ public class GeminiKey {
         return current().map(k -> k.substring(Math.max(0, k.length() - 4)));
     }
 
+    /**
+     * Saves a key from the owner page and uses it from the next request.
+     */
     public void set(String key) {
         secrets.put(SECRET, key);
         stored = Optional.of(key);
     }
 
+    /**
+     * Deletes the owner page's key; the settings file key, if any, applies again.
+     */
     public void remove() {
         secrets.remove(SECRET);
         stored = Optional.empty();

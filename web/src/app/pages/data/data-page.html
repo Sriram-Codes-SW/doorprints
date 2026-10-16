@@ -16,7 +16,7 @@
    SPDX-License-Identifier: AGPL-3.0-only
 -->
 
-<div class="page">
+<div class="page" [class.loading]="!started()">
   <header class="page-head">
     <h1>{{ 'data.title' | t }}</h1>
     <!-- With a server connected, what is saved does not only stay in this browser. -->
@@ -24,7 +24,8 @@
   </header>
 
   <section class="card" aria-labelledby="export-heading">
-    <h2 id="export-heading">{{ 'data.exportHeading' | t }}</h2>
+    <h2 id="export-heading" tabindex="-1">{{ 'data.exportHeading' | t }}</h2>
+    <app-space-pick [disabled]="busy()" />
 
     @if (!started()) {
       <!-- Until the saved options are read and counted: a placeholder, not a form that flips to an empty state. -->
@@ -41,8 +42,8 @@
         <span class="empty-glyph" aria-hidden="true">
           <svg viewBox="0 0 24 24" width="40" height="40"><path [attr.d]="icons.home" /></svg>
         </span>
-        <p>{{ 'data.empty' | t }}</p>
-        <a class="btn btn-primary" routerLink="/" [queryParams]="{ add: 1 }">{{ 'data.emptyAction' | t }}</a>
+        <p>{{ w('data.empty') | t }}</p>
+        <a class="btn btn-primary" [routerLink]="space.home()" [queryParams]="{ add: 1 }">{{ w('data.emptyAction') | t }}</a>
       </div>
     } @else {
       <!-- Disabled while a file is built: an option changed mid-build would leave a file that no longer matches the
@@ -77,12 +78,12 @@
 
         <!-- Segmented radios, like the status picker on the house page and Android's radio rows. -->
         <fieldset class="sub">
-          <legend>{{ 'data.scope' | t }}</legend>
+          <legend>{{ w('data.scope') | t }}</legend>
           <div class="options">
             @for (c of scopes; track c.id) {
               <label class="option">
                 <input type="radio" name="scope" [value]="c.id" [checked]="options().scope === c.id" (change)="setScope(c.id)" />
-                <span>{{ c.key | t }}</span>
+                <span>{{ w(c.key) | t }}</span>
               </label>
             }
           </div>
@@ -96,7 +97,7 @@
               @for (c of photoChoices; track c.id) {
                 <label class="option">
                   <input type="radio" name="photos" [value]="c.id" [checked]="options().photos === c.id" (change)="setPhotos(c.id)" />
-                  <span>{{ c.key | t }}</span>
+                  <span>{{ w(c.key) | t }}</span>
                 </label>
               }
             </div>
@@ -111,7 +112,7 @@
             [ngModel]="options().includeRejected"
             (ngModelChange)="setIncludeRejected($event)"
           />
-          <label for="includeRejected">{{ 'data.includeRejected' | t }}</label>
+          <label for="includeRejected">{{ w('data.includeRejected') | t }}</label>
         </div>
 
         <div class="field checkbox">
@@ -152,24 +153,27 @@
       <!-- The live region for what the file will contain (throttled chips, one sentence for screen readers). -->
       <div class="preview" role="status">
         @if (emptyReason() === 'shortlisted') {
-          <p class="muted">{{ 'data.noShortlisted' | t }}</p>
+          <p class="muted">{{ w('data.noShortlisted') | t }}</p>
         } @else if (emptyReason() === 'filtered') {
-          <p class="muted">{{ 'data.noneMatch' | t }}</p>
+          <p class="muted">{{ w('data.noneMatch') | t }}</p>
         } @else {
           @if (counts(); as c) {
-            <span class="sr-only">{{ 'data.preview' | t: { houses: c.houses, visits: c.visits, photos: c.photos } }}</span>
+            <span class="sr-only">{{ w('data.preview') | t: { houses: c.houses, visits: c.visits, photos: c.photos, many: many() } }}</span>
             <ul class="stats" aria-hidden="true">
-              <li>{{ 'data.countHouses' | t: { n: c.houses } }}</li>
+              <li>{{ w('data.countHouses') | t: { n: c.houses, many: many() } }}</li>
               <li>{{ 'data.countVisits' | t: { n: c.visits } }}</li>
               <li>{{ 'data.countPhotos' | t: { n: c.photos } }}</li>
             </ul>
           }
         }
       </div>
+      @if (scopeNote(); as note) {
+        <p class="muted small">{{ note.key | t: note.params }}</p>
+      }
       @if (emptyReason() === 'shortlisted') {
-        <button type="button" class="btn" (click)="setScope('all')">{{ 'data.scopeAll' | t }}</button>
+        <button type="button" class="btn" (click)="setScope('all')">{{ w('data.scopeAll') | t }}</button>
       } @else if (emptyReason() === 'filtered' && !options().includeRejected) {
-        <button type="button" class="btn" (click)="includeRejected()">{{ 'data.includeRejected' | t }}</button>
+        <button type="button" class="btn" (click)="includeRejected()">{{ w('data.includeRejected') | t }}</button>
       }
 
       <!-- Keyed on its run: the same failure twice in a row is a new node, so it is read again. -->
@@ -231,6 +235,9 @@
   <!-- S4b-BL-75: read a Full backup or an update file back into this browser. -->
   <app-import-backup />
 
+  <!-- S4b-BL-117: Google Drive connect, backups, sync and deletion. -->
+  <app-drive-connect (importFile)="onDriveImport($event)" />
+
   <section class="card" aria-labelledby="storage-heading">
     <h2 id="storage-heading" tabindex="-1">{{ 'data.storageHeading' | t }}</h2>
     <p>
@@ -238,6 +245,13 @@
     </p>
     @if (usageText(); as usage) {
       <p class="muted small">{{ usage }}</p>
+    }
+    <!-- Saved walks (docs/11 5.27.6): only the count and the delete; the walks themselves are on the Map and the house pages. -->
+    <p id="saved-walks" class="muted small">{{ 'trace.settings.saved' | t: { n: i18n.number(savedWalks()) } }}</p>
+    @if (savedWalks() > 0) {
+      <div class="actions">
+        <button type="button" id="delete-saved-walks" class="btn" (click)="deleteSavedWalks()">{{ 'trace.settings.deleteAll' | t }}</button>
+      </div>
     }
     @if (storage.persisted() !== true) {
       @if (persistDenied()) {
@@ -294,7 +308,7 @@
     @if (sync.enabled()) {
       <!-- After "Not now" or "Stop" nothing is sent or fetched; say so, and offer the download here, which is the
            only way back (the banner does not return). -->
-      <p class="muted">{{ (sync.paused() ? 'data.syncPaused' : 'data.syncOn') | t }}</p>
+      <p class="muted">{{ (sync.paused() ? space.appWord('data.syncPaused') : 'data.syncOn') | t }}</p>
       <div role="status">
         @if (!sync.online()) {
           <!-- Offline is a normal state here, not a failure: a neutral line, never an alert. -->
@@ -341,7 +355,7 @@
           </div>
         }
       }
-      @if (sync.serverResetAt()) {
+      @if (sync.remoteResetAt()) {
         <!-- Not a live region: SyncService said it through the app's announcer when it happened, on whatever page was
              open. Here it stays for the rest of the visit, so the reason for a long sync is on the sync card. -->
         <p class="small">{{ 'data.serverReset' | t }}</p>
@@ -409,33 +423,41 @@
     </div>
   </section>
 
-  <section class="card" aria-labelledby="criteria-heading">
-    <h2 id="criteria-heading">{{ 'criteria.dataHeading' | t }}</h2>
-    <p class="muted">{{ 'criteria.dataBody' | t }}</p>
-    <div class="actions">
-      <a class="btn" routerLink="/criteria">{{ 'criteria.open' | t }}</a>
-    </div>
-  </section>
+  <!-- Criteria, questions and viewings belong to the kinds that have them (S4b-BL-277): a school space is without them. The school's
+       checklist (kinds PR 27, docs/03 §18.21) has fixed weights, so the Criteria page (the person's weights for houses) stays the house's. -->
+  @if (space.current().labels.isVisible('section.checklist') && isBaseline()) {
+    <section class="card" aria-labelledby="criteria-heading">
+      <h2 id="criteria-heading">{{ 'criteria.dataHeading' | t }}</h2>
+      <p class="muted">{{ 'criteria.dataBody' | t }}</p>
+      <div class="actions">
+        <a class="btn" routerLink="/criteria">{{ 'criteria.open' | t }}</a>
+      </div>
+    </section>
+  }
 
-  <section class="card" aria-labelledby="questions-heading">
-    <h2 id="questions-heading">{{ 'questions.dataHeading' | t }}</h2>
-    <p class="muted">{{ 'questions.dataBody' | t }}</p>
-    <div class="actions">
-      <a class="btn" routerLink="/questions">{{ 'questions.open' | t }}</a>
-    </div>
-  </section>
+  @if (space.current().labels.isVisible('section.questions')) {
+    <section class="card" aria-labelledby="questions-heading">
+      <h2 id="questions-heading">{{ 'questions.dataHeading' | t }}</h2>
+      <p class="muted">{{ space.kindWord('questions.dataBody') | t }}</p>
+      <div class="actions">
+        <a class="btn" routerLink="/questions">{{ 'questions.open' | t }}</a>
+      </div>
+    </section>
+  }
 
-  <section class="card" aria-labelledby="viewings-heading">
-    <h2 id="viewings-heading">{{ 'viewings.dataHeading' | t }}</h2>
-    <p class="muted">{{ 'viewings.dataBody' | t }}</p>
-    <div class="actions">
-      <a class="btn" routerLink="/viewings">{{ 'viewings.open' | t }}</a>
-    </div>
-  </section>
+  @if (space.current().labels.isVisible('section.viewings')) {
+    <section class="card" aria-labelledby="viewings-heading">
+      <h2 id="viewings-heading">{{ 'viewings.dataHeading' | t }}</h2>
+      <p class="muted">{{ space.kindWord('viewings.dataBody') | t }}</p>
+      <div class="actions">
+        <a class="btn" routerLink="/viewings">{{ 'viewings.open' | t }}</a>
+      </div>
+    </section>
+  }
 
   <section class="card" aria-labelledby="areas-heading">
     <h2 id="areas-heading">{{ 'areas.dataHeading' | t }}</h2>
-    <p class="muted">{{ 'areas.dataBody' | t }}</p>
+    <p class="muted">{{ space.kindWord('areas.dataBody') | t }}</p>
     <div class="actions">
       <a class="btn" routerLink="/areas">{{ 'areas.open' | t }}</a>
     </div>
@@ -443,7 +465,7 @@
 
   <section class="card" aria-labelledby="places-heading">
     <h2 id="places-heading">{{ 'places.dataHeading' | t }}</h2>
-    <p class="muted">{{ 'places.dataBody' | t }}</p>
+    <p class="muted">{{ space.kindWord('places.dataBody') | t }}</p>
     <div class="actions">
       <a class="btn" routerLink="/places">{{ 'places.open' | t }}</a>
     </div>
@@ -467,9 +489,17 @@
     </fieldset>
   </section>
 
+  <!-- Settings > Kinds (S4b-BL-212): drawn only in a build that offers more than the house; never in production. -->
+  <app-kinds-settings />
+
+  <app-recently-deleted />
+
   <section class="card danger" aria-labelledby="clear-heading">
     <h2 id="clear-heading">{{ 'data.clearHeading' | t }}</h2>
-    <p class="muted">{{ 'data.clearBody' | t }}</p>
+    <p class="muted">{{ space.appWord('data.clearBody') | t }}</p>
+    @if (deviceSentence(); as list) {
+      <p id="clear-counts" class="muted">{{ list }}</p>
+    }
     <div class="actions">
       <button
         type="button"
@@ -493,11 +523,22 @@
       <a class="btn" [href]="guideHref()" target="_blank" rel="noopener noreferrer" [attr.aria-label]="'help.linkAria' | t">
         {{ 'help.open' | t }} <span aria-hidden="true">↗</span>
       </a>
+      <button type="button" class="btn" id="tour-replay" (click)="tour.start()">{{ 'tour.replay' | t }}</button>
     </div>
   </section>
 
   <!-- The AGPL's legal notices and the source offer (FSF, "How to Use GNU Licenses"; docs/10 S4b-BL-65). "Copyright"
        stays English in every language, as the FSF asks. -->
+  <section class="card" aria-labelledby="privacy-heading">
+    <h2 id="privacy-heading">{{ 'data.privacyHeading' | t }}</h2>
+    <p class="muted">{{ 'data.privacyBody' | t }}</p>
+    <div class="actions">
+      <a class="btn" href="/privacy.html" [attr.aria-label]="'data.privacyAria' | t">
+        {{ 'data.privacyLink' | t }}
+      </a>
+    </div>
+  </section>
+
   <section class="card" aria-labelledby="about-heading">
     <h2 id="about-heading">{{ 'data.aboutHeading' | t }}</h2>
     <p lang="en" translate="no">{{ legal.copyright }}</p>

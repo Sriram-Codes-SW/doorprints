@@ -28,6 +28,7 @@ import { ROOM_TYPE_KEY, uuid } from '../../core/models';
 import type { HouseDto, MoveIn, MoveInItem } from '../../core/models';
 import { MAX_MOVE_IN_ITEMS, MAX_MOVE_IN_NOTES, MAX_MOVE_IN_TEXT } from '../../data/records';
 import { TPipe } from '../../i18n/t.pipe';
+import { HOUSE_KEYS } from '../../core/kind-labels';
 import { TranslationService } from '../../i18n/translation.service';
 import type { Msg } from '../../i18n/translation.service';
 import { AuthImage } from '../../shared/auth-image';
@@ -55,7 +56,7 @@ export interface OpenedPhoto {
   host: { '(change)': 'onHostChange($event)' },
   template: `
     <section class="card" aria-labelledby="movein-heading">
-      <h2 id="movein-heading">{{ 'movein.heading' | t }}</h2>
+      <h2 id="movein-heading">{{ L.section('moveIn') | t }}</h2>
       <p class="muted small">{{ 'movein.intro' | t }}</p>
 
       <h3 id="movein-checklist-heading">{{ 'movein.checklist' | t }}</h3>
@@ -285,6 +286,8 @@ export interface OpenedPhoto {
   `,
 })
 export class HouseMoveInCard {
+  /** The kind's section heading (S4b-BL-255). */
+  protected readonly L = HOUSE_KEYS;
   private readonly api = inject(LocalDataService);
   private readonly announcer = inject(Announcer);
   private readonly confirm = inject(ConfirmService);

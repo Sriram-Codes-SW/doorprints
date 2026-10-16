@@ -57,15 +57,15 @@ class IosPlatformServices : PlatformServices {
         NSURL.URLWithString("tel:$digits")?.let(::open)
     }
 
+    /** "iPhone (Doorprints app)" or "iPad (Doorprints app)": the model, as iOS names it without extra permission. */
+    override fun deviceName(): String = "${platform.UIKit.UIDevice.currentDevice.model} (Doorprints app)"
+
     /**
      * Web links only (http, https): the house's listing link is typed or pasted by the user. False when the text is not
      * such a URL; otherwise true once the link is handed to iOS. `openURL` answers later, in its completion handler, so
      * a refusal then cannot be reported here. No `canOpenURL` check first: the scheme is already checked, and http and
      * https always have a browser (Safari, or the one the user chose).
      */
-    /** "iPhone (Doorprints app)" or "iPad (Doorprints app)": the model, as iOS names it without extra permission. */
-    override fun deviceName(): String = "${platform.UIKit.UIDevice.currentDevice.model} (Doorprints app)"
-
     override fun openUrl(url: String): Boolean {
         val link = NSURL.URLWithString(url.trim()) ?: return false
         val scheme = link.scheme?.lowercase()

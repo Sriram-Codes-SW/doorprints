@@ -2,8 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!--
   The Doorprints iOS app's Info.plist (CMP-8b), written by hand; project.yml points INFOPLIST_FILE here and turns
-  Xcode's generated plist off. The $(...) values are build settings from project.yml. No NSAppTransportSecurity
-  exceptions: ATS refuses plain http:// to a domain name; a server on a LAN IP address or a .local name is not covered
+  Xcode's generated plist off. The $(...) values are build settings from project.yml. The only
+  NSAppTransportSecurity exception is NSAllowsLocalNetworking (S4b-BL-150, a local AI model). ATS refuses plain http:// to a domain name; a server on a LAN IP address or a .local name is not covered
   by ATS, so it connects without TLS, as on Android, and iOS first asks for local network access (the purpose string
   below). The purpose strings are localised in <lang>.lproj/InfoPlist.strings.
 -->
@@ -20,7 +20,21 @@
 				<string>doorprints</string>
 			</array>
 		</dict>
+		<!-- Google's sign-in for Drive (S4b-BL-117, docs/15 §5.5): the iOS client's reversed id, the redirect of
+		     ASWebAuthenticationSession. The build setting is empty (and the scheme a placeholder) until the owner's
+		     Config/Drive.local.xcconfig sets it; nothing is committed. -->
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>app.doorprints.google-signin</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>$(GOOGLE_IOS_URL_SCHEME)</string>
+			</array>
+		</dict>
 	</array>
+	<!-- The iOS OAuth client id for Google Drive, from the GOOGLE_IOS_CLIENT_ID build setting (empty: Drive is "not available"). -->
+	<key>GoogleIOSClientId</key>
+	<string>$(GOOGLE_IOS_CLIENT_ID)</string>
 	<!-- Import a backup from another app (S4b-BL-81, docs/11 5.28): "Open in Doorprints" for a backup or update ZIP, or
 	     the bare data.json of a server's export. Alternate: Doorprints is not the app for every ZIP. Not in place: iOS
 	     hands over a copy in Documents/Inbox, which the Import screen stages and then deletes. -->
@@ -77,6 +91,21 @@
 	<!-- A plain launch screen (the system background); Compose draws the first frame. -->
 	<key>UILaunchScreen</key>
 	<dict/>
+	<!-- A model on this device (Ollama, LM Studio) over http://localhost, as the AI settings allow (S4b-BL-150): ATS's
+	     local-networking exception only, so every other http:// address stays refused. Not run on a device here. -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
+	<!-- The enrolment QR scanner (S4b-BL-136): AVFoundation, asked only when the person taps Scan a QR code. -->
+	<key>NSCameraUsageDescription</key>
+	<string>Doorprints uses the camera to scan a Doorprints enrolment code from your other device. Nothing is stored or sent.</string>
+	<!-- Voice input (S4b-BL-223, docs/03 ADR-37): the microphone, asked only when the person taps Speak and has read the
+	     rationale, never at install or start-up. The recording stays in memory and goes to the person's own AI service; no
+	     background mode for audio is declared, so recording is foreground only. Keep the four InfoPlist.strings the same. -->
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Doorprints uses the microphone only when you tap Speak, to write out what you say for the AI boxes. The recording is sent to the AI service you chose, with your own key, and is not saved on this iPhone.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Doorprints uses Face ID to unlock the app when the app lock is on.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>

@@ -30,6 +30,7 @@ import { hi } from './i18n/hi';
 import { ta } from './i18n/ta';
 import { te } from './i18n/te';
 import { App } from './app';
+import { ChooserPage } from './pages/chooser/chooser-page';
 import { Announcer } from './core/announcer.service';
 import { AiService } from './core/ai.service';
 import { ConfirmDialog } from './shared/confirm-dialog';
@@ -54,6 +55,8 @@ import { ComparePage } from './pages/compare/compare-page';
 import { ConnectPage } from './pages/connect/connect-page';
 import { CriteriaPage } from './pages/criteria/criteria-page';
 import { DataPage } from './pages/data/data-page';
+import { DriveConnectComponent } from './pages/data/drive-connect';
+import { DriveConnectService, type ConnectState } from './data/drive/connect/drive-connect.service';
 import { ImportBackupCard } from './pages/data/import-backup';
 import { OfflineAreasCard } from './pages/data/offline-areas';
 import { HouseDetailPage } from './pages/house-detail/house-detail-page';
@@ -108,6 +111,13 @@ const HOUSE: HouseDto = {
   updatedAt: '2026-09-20T10:00:00.000Z',
 };
 const OTHER: HouseDto = { ...newHouse(12.95, 77.6), id: 'h2', label: 'Lake view', price: 5200000, priceType: 'SALE', areaSqft: 1450, createdAt: '2026-09-21T10:00:00.000Z' };
+/** Two schools for the cases of a school space (kinds PR 16, S4b-BL-256, S4b-BL-259, S4b-BL-277). */
+const SCHOOL: HouseDto = {
+  ...newHouse(26.1433, 91.7898), id: 's1', kind: 'school', label: 'Pine Hill School', status: 'SHORTLISTED', rating: 4, priceType: null,
+  street: 'GS Road', locality: 'Dispur', createdAt: '2026-09-20T10:00:00.000Z', updatedAt: '2026-09-20T10:00:00.000Z',
+  checklist: { safety: 5, teachers: 3, classsize: 4 }, extrasOther: { board: 'CBSE', busService: true, commuteMinutes: 20, fees: { amount: 96000, cadence: 'year' } },
+};
+const SCHOOL2: HouseDto = { ...SCHOOL, id: 's2', label: 'Oak Valley', checklist: { safety: 2, teachers: 3 }, extrasOther: { board: 'ICSE', commuteMinutes: 35, fees: { amount: 72000, cadence: 'year' } } };
 const PHOTO: PhotoSummary = { id: 'p1', createdAt: '2026-10-01T06:00:00.000Z', roomId: 'r1', tags: ['MOVE_IN', 'DAMP'], caption: 'Corner', metaUpdatedAt: 5 };
 const VIEWING = { id: 'v1', houseId: 'h1', startsAt: Date.now() + 3_600_000, durationMin: 30, kind: 'FIRST', status: 'PLANNED', remindMin: 60 };
 
@@ -141,12 +151,17 @@ function fakeApi(over: Record<string, unknown> = {}) {
 function fakeAi(on: boolean) {
   return {
     enabled: signal(on),
+    enabledFor: () => on,
     optedIn: signal(on),
     serverEnabled: signal(on),
     provider: signal('server'),
     geminiKeyHint: signal(''),
     hasGeminiKey: signal(false),
     usesOwnKey: signal(false),
+    ownHost: signal(''),
+    aiConfig: signal({ kind: 'gemini', baseUrl: '', model: '' }),
+    aiQuality: signal('quality'),
+    setAiQuality: () => undefined,
     offReason: signal(on ? null : 'optOut'),
     refresh: () => undefined,
   };
@@ -247,11 +262,129 @@ const confirmOpen: Case['render'] = async (lang) => {
   return { fixture: fixture as ComponentFixture<unknown>, page: false };
 };
 
+/** The confirm dialog of *Delete all in this space* over ten rows: the tick box, *Save a copy first*, Cancel and the danger button. */
+const confirmSpaceOpen: Case['render'] = async (lang) => {
+  TestBed.resetTestingModule();
+  TestBed.configureTestingModule({ imports: [ConfirmDialog], providers: [provideRouter([])] });
+  await TestBed.inject(TranslationService).setLang(lang);
+  const fixture = TestBed.createComponent(ConfirmDialog);
+  await settle(fixture as ComponentFixture<unknown>);
+  void TestBed.inject(ConfirmService).choose(
+    { key: 'delete.spaceConfirm', params: { n: '12', kind: 'Houses' } },
+    { confirmKey: 'delete.spaceDo', altKey: 'driveDelete.saveCopyFirst', danger: true, focusCancel: true, tickKey: 'driveDelete.confirmCheckbox' },
+  );
+  await settle(fixture as ComponentFixture<unknown>);
+  return { fixture: fixture as ComponentFixture<unknown>, page: false };
+};
+
 const boom = () => throwError(() => new Error('boom'));
 const EMPTY = fakeApi({ houses: () => of([]), brokers: () => of([]), viewings: () => of([]), viewingRows: () => of([]), viewingsOf: () => of([]) });
 const BROKEN = fakeApi({ houses: boom, brokers: boom, viewings: boom, scoring: boom, questions: boom, questionRows: boom, criterionRows: boom, stats: boom });
 
+function driveCard(state: ConnectState, theme: 'light' | 'dark', after?: (c: DriveConnectComponent) => void): Case['render'] {
+  return async (lang) => {
+    TestBed.resetTestingModule();
+    document.documentElement.style.colorScheme = theme;
+    const svc = {
+      getState: () => state,
+      enrolmentNotice: () => null,
+      listBackups: async () => ({ ok: true, backups: [], missingNewer: false }),
+      autoBackupEnabled: () => false,
+      setAutoBackup: () => undefined,
+      runDueBackup: async () => ({ ran: false, reason: 'DISABLED' }),
+      syncNow: async () => ({ state: 'synced', lastSyncAt: Date.now(), skipped: [], needsConfirmation: false }),
+      photoSettings: async () => ({ uploadOnMobileData: false }),
+      pendingPhotoBytes: async () => 0,
+      passkeyStatus: async () => 'none',
+      confirmRecoveryKeySaved: () => undefined,
+      skipRecoveryKeyWithWarning: () => undefined,
+      disconnect: async () => undefined,
+      connect: async () => ({ state }),
+      createFolder: async () => ({ state, recoveryKey: 'AAAA-BBBB-CCCC-DDDD-EEEE-FFFF' }),
+      openWithRecoveryKey: async () => ({ state: 'Ready' }),
+      listedDevices: async () => [],
+      accountEmail: async () => null,
+    };
+    TestBed.configureTestingModule({
+      imports: [DriveConnectComponent],
+      providers: [
+        provideRouter([]),
+        { provide: DriveConnectService, useValue: svc },
+        { provide: Announcer, useValue: { announce: () => undefined } },
+        { provide: ConfirmService, useValue: { ask: async () => true, choose: async () => 'confirm' } },
+      ],
+    });
+    await TestBed.inject(TranslationService).setLang(lang);
+    const fixture = TestBed.createComponent(DriveConnectComponent);
+    after?.(fixture.componentInstance);
+    await settle(fixture as ComponentFixture<unknown>);
+    return { fixture: fixture as ComponentFixture<unknown>, page: false };
+  };
+}
+
+/** The Connect page's AI card with another service chosen and *Save* pressed on an empty form (every field error shown). */
+function connectService(service: string, theme: 'light' | 'dark'): Case['render'] {
+  return async (lang) => {
+    document.documentElement.style.colorScheme = theme;
+    const rendered = await page(ConnectPage)(lang);
+    const root = rendered.fixture.nativeElement as HTMLElement;
+    const select = root.querySelector<HTMLSelectElement>('#ai-service')!;
+    select.value = service;
+    select.dispatchEvent(new Event('change'));
+    await settle(rendered.fixture);
+    root.querySelector<HTMLButtonElement>('#ai-save')!.click();
+    await settle(rendered.fixture);
+    return rendered;
+  };
+}
+
+/** The Connect page's AI card on Google Gemini, with the *AI speed and cost* group (S4b-BL-198): it must be there, or this case proves nothing. */
+function connectGemini(theme: 'light' | 'dark'): Case['render'] {
+  return async (lang) => {
+    document.documentElement.style.colorScheme = theme;
+    const rendered = await page(ConnectPage)(lang);
+    if (!(rendered.fixture.nativeElement as HTMLElement).querySelector('fieldset#ai-quality input[type="radio"]')) {
+      throw new Error('the AI speed and cost group is not on the page');
+    }
+    return rendered;
+  };
+}
+
+/** Settings > Kinds with the school shown too (kinds PR 8, S4b-BL-212), then `render`. */
+function withKinds(render: Case['render'], dflt = 'house'): Case['render'] {
+  return async (lang) => {
+    localStorage.setItem('doorprints.kinds.experimental', '1');
+    localStorage.setItem('doorprints.kinds.enabled', '["house","school"]');
+    localStorage.setItem('doorprints.kinds.default', dflt);
+    return render(lang);
+  };
+}
+
+/** The build lists the school and the person has not turned the switch on: Your data must show the switch, off, and no kind rows. */
+function experimentalOff(render: Case['render']): Case['render'] {
+  return async (lang) => {
+    const rendered = await render(lang);
+    const host = rendered.fixture.nativeElement as HTMLElement;
+    const sw = host.querySelector<HTMLInputElement>('#kinds-experimental');
+    if (!sw || sw.checked || host.querySelector('#kind-rows')) throw new Error('Your data does not show Experimental: more than houses, off, with no kind rows');
+    return rendered;
+  };
+}
+
 const CASES: Case[] = [
+  { name: 'Chooser (two kinds)', render: withKinds(page(ChooserPage)) },
+  { name: 'Map (a school space)', render: withKinds(async (lang) => {
+    vi.spyOn(MapPage.prototype, 'ngAfterViewInit').mockImplementation(() => undefined);
+    return page(MapPage, { api: EMPTY })(lang);
+  }, 'school') },
+  { name: 'Your data (Settings > Kinds on)', render: withKinds(plain(DataPage)) },
+  { name: 'Your data (a school space)', render: withKinds(plain(DataPage), 'school') },
+  { name: 'House detail (a school)', render: withKinds(page(HouseDetailPage, { api: fakeApi({ house: () => of(SCHOOL), houses: () => of([SCHOOL, SCHOOL2]) }), params: { id: 's1' } }), 'school') },
+  { name: 'House detail (a new school)', render: withKinds(page(HouseDetailPage, { query: { lat: '26.14', lon: '91.79' } }), 'school') },
+  { name: 'Compare (schools)', render: withKinds(page(ComparePage, { api: fakeApi({ houses: () => of([SCHOOL, SCHOOL2]) }), query: { ids: 's1,s2' } }), 'school') },
+  { name: 'Ask (a school space)', render: withKinds(page(AskPage, { api: fakeApi({ houses: () => of([SCHOOL, SCHOOL2]) }) }), 'school') },
+  { name: 'Areas (a school space)', render: withKinds(page(AreasPage), 'school') },
+  { name: 'Places (a school space)', render: withKinds(page(PlacesPage), 'school') },
   { name: 'Map (empty)', render: async (lang) => {
     vi.spyOn(MapPage.prototype, 'ngAfterViewInit').mockImplementation(() => undefined);
     return page(MapPage, { api: EMPTY })(lang);
@@ -268,11 +401,28 @@ const CASES: Case[] = [
   { name: 'Criteria (error)', render: page(CriteriaPage, { api: BROKEN }) },
   { name: 'Questions (error)', render: page(QuestionsPage, { api: BROKEN }) },
   { name: 'App shell', render: plain(App, false) },
-  { name: 'Your data', render: plain(DataPage) },
+  { name: 'Your data', render: experimentalOff(plain(DataPage)) },
+  { name: 'Drive card (disconnected, light)', render: driveCard('Disconnected', 'light') },
+  { name: 'Drive card (disconnected, dark)', render: driveCard('Disconnected', 'dark') },
+  { name: 'Drive card (recovery key, light)', render: driveCard('FirstConnectShowRecoveryKey', 'light', (c) => c['recoveryKey'].set('AAAA-BBBB-CCCC-DDDD-EEEE-FFFF')) },
+  { name: 'Drive card (recovery key, dark)', render: driveCard('FirstConnectShowRecoveryKey', 'dark', (c) => c['recoveryKey'].set('AAAA-BBBB-CCCC-DDDD-EEEE-FFFF')) },
+  { name: 'Drive card (ready, light)', render: driveCard('Ready', 'light') },
+  { name: 'Drive card (ready, dark)', render: driveCard('Ready', 'dark') },
+  { name: 'Drive card (unavailable, light)', render: driveCard('Unavailable', 'light') },
+  { name: 'Drive card (unavailable, dark)', render: driveCard('Unavailable', 'dark') },
+  { name: 'Drive card (connecting, light)', render: driveCard('Connecting', 'light') },
+  { name: 'Drive card (connecting, dark)', render: driveCard('Connecting', 'dark') },
+  { name: 'Drive card (connection in progress, light)', render: driveCard('Disconnected', 'light', (c) => c['connectWork'].set(true)) },
+  { name: 'Drive card (connection in progress, dark)', render: driveCard('Disconnected', 'dark', (c) => c['connectWork'].set(true)) },
+  { name: 'Drive card (needs enrolment, light)', render: driveCard('NeedsEnrolment', 'light') },
+  { name: 'Drive card (needs enrolment, dark)', render: driveCard('NeedsEnrolment', 'dark') },
+  { name: 'Drive card (error, light)', render: driveCard('Error', 'light', (c) => c['error'].set('driveConnect.failed')) },
+  { name: 'Drive card (error, dark)', render: driveCard('Error', 'dark', (c) => c['error'].set('driveConnect.failed')) },
   { name: 'Import a backup card', render: plain(ImportBackupCard, false) },
   { name: 'Offline maps card (areas saved)', render: offline(OfflineAreasCard, false) },
   { name: 'Offline maps dialog (open)', render: offline(OfflineSave, true) },
   { name: 'Confirm dialog (open)', render: confirmOpen },
+  { name: 'Confirm dialog (Delete all in this space, tick box)', render: confirmSpaceOpen },
   { name: 'Plan', render: page(PlanPage) },
   { name: 'Broker', render: page(BrokerPage, { params: { id: 'b1' } }) },
   { name: 'Map (list, filters)', render: async (lang) => {
@@ -289,6 +439,12 @@ const CASES: Case[] = [
   { name: 'Viewing form', render: page(ViewingPage, { query: { houseId: 'h1' } }) },
   { name: 'Connect (assistant on)', render: page(ConnectPage) },
   { name: 'Connect (assistant off)', render: page(ConnectPage, { extra: [{ provide: AiService, useValue: fakeAi(false) }] }) },
+  { name: 'Connect (Custom service, errors, light)', render: connectService('custom', 'light') },
+  { name: 'Connect (Custom service, errors, dark)', render: connectService('custom', 'dark') },
+  { name: 'Connect (Ollama, errors, light)', render: connectService('ollama', 'light') },
+  { name: 'Connect (Ollama, errors, dark)', render: connectService('ollama', 'dark') },
+  { name: 'Connect (Gemini, AI speed and cost, light)', render: connectGemini('light') },
+  { name: 'Connect (Gemini, AI speed and cost, dark)', render: connectGemini('dark') },
   { name: 'Ask', render: page(AskPage) },
   { name: 'House detail (existing)', render: page(HouseDetailPage, { params: { id: 'h1' } }) },
   { name: 'House detail (new)', render: page(HouseDetailPage, { query: { lat: '12.9', lon: '77.6' } }) },
@@ -327,6 +483,15 @@ afterEach(() => {
 
 const fmt = (v: Violation[]) => v.map((x) => `[${x.rule}] ${x.message}`);
 
+describe('Drive a11y sweep coverage', () => {
+  it('includes Unavailable, Connecting, NeedsEnrolment and Error', () => {
+    const names = CASES.map((c) => c.name).join('\n').toLowerCase();
+    for (const state of ['unavailable', 'connecting', 'needs enrolment', 'error']) {
+      expect(names, state).toContain(`drive card (${state}`);
+    }
+  });
+});
+
 describe('accessibility sweep of the pages (TC-U-WEB-A11Y-3)', () => {
   for (const lang of ['en', 'hi', 'ta', 'te'] as const) {
     for (const c of CASES) {
@@ -340,7 +505,9 @@ describe('accessibility sweep of the pages (TC-U-WEB-A11Y-3)', () => {
           mouseOnly = watch.stop();
           const root = fixture.nativeElement as HTMLElement;
           found = audit(root, { page: isPage });
-          controls = root.querySelectorAll('button, a[href], input, select, textarea, dialog').length;
+          controls = root.querySelectorAll(
+            'button, a[href], input, select, textarea, dialog, [aria-labelledby], [role="status"]',
+          ).length;
         } catch (e) {
           watch.stop();
           throw e;
@@ -501,6 +668,32 @@ describe('focus, language, announcements and the page shell (TC-U-WEB-A11Y-6)', 
     opener.remove();
   });
 
+  it('the dialog of Delete all in this space starts on Cancel, and Delete all waits for the tick box', async () => {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({ imports: [ConfirmDialog], providers: [provideRouter([])] });
+    await TestBed.inject(TranslationService).setLang('en');
+    const fixture = TestBed.createComponent(ConfirmDialog);
+    await settle(fixture as ComponentFixture<unknown>);
+    const answer = TestBed.inject(ConfirmService).choose(
+      { key: 'delete.spaceConfirm', params: { n: '12', kind: 'Houses' } },
+      { confirmKey: 'delete.spaceDo', altKey: 'driveDelete.saveCopyFirst', danger: true, focusCancel: true, tickKey: 'driveDelete.confirmCheckbox' },
+    );
+    await settle(fixture as ComponentFixture<unknown>);
+    const root = fixture.nativeElement as HTMLElement;
+    // With a safer button present, focus still starts on Cancel.
+    expect(document.activeElement?.textContent?.trim()).toBe('Cancel');
+    const buttons = [...root.querySelectorAll('button')];
+    expect(buttons.map((b) => b.textContent?.trim())).toEqual(['Cancel', 'Save a copy first', 'Delete all']);
+    const del = buttons[2];
+    const tick = q<HTMLInputElement>(root, 'input[type="checkbox"]');
+    expect(del.disabled).toBe(true);
+    tick.click();
+    await settle(fixture as ComponentFixture<unknown>);
+    expect(del.disabled).toBe(false);
+    del.click();
+    expect(await answer).toBe('confirm');
+  });
+
   it('saving a house with a floor out of range keeps the page, shows the message and puts focus in the field', async () => {
     const { fixture } = await page(HouseDetailPage, { params: { id: 'h1' } })('en');
     const root = fixture.nativeElement as HTMLElement;
@@ -539,7 +732,9 @@ describe('the page shell and the stylesheet (TC-U-WEB-A11Y-7)', () => {
     expect(indexHtml).toMatch(/name="viewport"/);
     const viewport = new DOMParser().parseFromString(indexHtml, 'text/html').querySelector('meta[name="viewport"]')?.getAttribute('content') ?? '';
     expect(viewport).not.toMatch(/user-scalable\s*=\s*(no|0)|maximum-scale/);
-    for (const font of ['Noto+Sans+Devanagari', 'Noto+Sans+Tamil', 'Noto+Sans+Telugu']) expect(indexHtml).toContain(font);
+    // Self-hosted fonts: @font-face rules in styles.css, no external Google Fonts links (S4b-BL-73)
+    expect(indexHtml).not.toContain('fonts.googleapis.com');
+    expect(indexHtml).not.toContain('fonts.gstatic.com');
   });
 
   it('the font stack ends in the Indic fonts and Indic text gets more line height', () => {

@@ -1,0 +1,148 @@
+{
+  "spec": "android/shared/src/androidHostTest/kotlin/app/doorprints/shared/model/SpaceScopeVectorsTest.kt",
+  "gradle": [
+    ":shared:testAndroidHostTest",
+    "--tests",
+    "app.doorprints.shared.model.SpaceScopeVectorsTest",
+    "--tests",
+    "app.doorprints.shared.model.KindSettingVectorsTest",
+    "--tests",
+    "app.doorprints.shared.model.SpaceCardsTest",
+    "--tests",
+    "app.doorprints.shared.export.SpaceCopiesTest",
+    "--tests",
+    "app.doorprints.shared.ai.OnDeviceAiSpaceTest",
+    "--tests",
+    "app.doorprints.shared.export.KindSearchHintTest",
+    "--tests",
+    "app.doorprints.data.SpacesRepositoryTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/SpaceScope.kt",
+      "find": "            (if (kind in available) kind else default) == space",
+      "replace": "            kind == space",
+      "expect": "aSpaceHoldsTheCandidatesOfItsKindAndAKindWithNoSpaceIsInTheDefaultSpace"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/SpaceScope.kt",
+      "find": "            if (!holds(c.kind)) refused += id else if",
+      "replace": "            if (false) refused += id else if",
+      "expect": "comparePicksAreKeptInOrderAndAnotherSpacesAreRefused"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/SpaceScope.kt",
+      "find": "HouseStatusRules.inTheRunning(c.status) && kept.size < COMPARE_MAX) kept += id",
+      "replace": "kept.size < COMPARE_MAX + 1) kept += id",
+      "expect": "comparePicksAreKeptInOrderAndAnotherSpacesAreRefused"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/SpaceScope.kt",
+      "find": "        if (space == null || space == KindSettingRules.HOUSE || slug.isEmpty()) return name",
+      "replace": "        if (space == null || slug.isEmpty()) return name",
+      "expect": "aSpacesCopyPutsTheEnglishPluralBeforeTheDate"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/SpaceScope.kt",
+      "find": "        on && (kind == KindSettingRules.HOUSE || (kind in available && ownKey))",
+      "replace": "        on && (kind == KindSettingRules.HOUSE || ownKey)",
+      "expect": "theAssistantIsShownInTheHouseWhenOnAndInAnotherKindOnlyOnThePersonsOwn"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/SpaceScope.kt",
+      "find": "        if (chosen != null && chosen in enabled) chosen else default",
+      "replace": "        if (chosen != null) chosen else default",
+      "expect": "aSharedListingLandsInTheChosenKindWhenItIsEnabledElseTheDefault"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/KindSetting.kt",
+      "find": "            return offered.filter { it in ids }.ifEmpty { listOf(KindSettingRules.HOUSE) }",
+      "replace": "            return offered.filter { it in ids }",
+      "expect": "whatTheResolverAnswersForTheBuildsKindsAndTheStoredValues"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/KindSetting.kt",
+      "find": "        if (next.isEmpty()) return this",
+      "replace": "",
+      "expect": "theSettersFollowTheWebsitesRules"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/KindSetting.kt",
+      "find": "        return if (!ok || kinds == listOf(HOUSE)) HOUSE_SEARCH else",
+      "replace": "        return if (!ok) HOUSE_SEARCH else",
+      "expect": "theBackupsSearchObjectIsWrittenByteForByte"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/SpaceCards.kt",
+      "find": "        hidden = available.filter { it !in enabled && (count[it] ?: 0) > 0 }.map(::card),",
+      "replace": "        hidden = available.filter { it !in enabled }.map(::card),",
+      "expect": "aKindThatIsOffButHasEntriesIsAHiddenCardAndOneWithNoneIsNot"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/export/ExportModel.kt",
+      "find": "                (space?.holds(house.kind) ?: true) && when (options.scope) {",
+      "replace": "                true && when (options.scope) {",
+      "expect": "aSchoolSpaceCopyHoldsTheSchoolsOnlyWithTheirVisitsAndNoOneElsesBroker"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/export/ExportModel.kt",
+      "find": "                options.scope == ExportScope.ALL && space == null -> brokers.filter",
+      "replace": "                options.scope == ExportScope.ALL -> brokers.filter",
+      "expect": "aSchoolSpaceCopyHoldsTheSchoolsOnlyWithTheirVisitsAndNoOneElsesBroker"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/export/ExportModel.kt",
+      "find": "            val unlinked = if (options.scope == ExportScope.ALL && space == null) {",
+      "replace": "            val unlinked = if (options.scope == ExportScope.ALL) {",
+      "expect": "theHouseSpaceCopyHoldsTheHousesAndTheirBroker"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/export/ExportFormat.kt",
+      "find": "            options.space?.kind, options.space?.let { KindSettingRules.pluralOf(it.kind) }.orEmpty(),",
+      "replace": "            null, \"\",",
+      "expect": "theFileNameCarriesTheEnglishPluralBeforeTheDate"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/OnDeviceAi.kt",
+      "find": "houses().filter { holds(it.kind) }.map { KindAi.askView(it, devKinds) }",
+      "replace": "houses().map { KindAi.askView(it, devKinds) }",
+      "expect": "askSendsOnlyTheSpacesCandidates"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/OnDeviceAi.kt",
+      "find": "houses().filter { holds(it.kind) }.map { KindAi.planView(it, devKinds) }",
+      "replace": "houses().map { KindAi.planView(it, devKinds) }",
+      "expect": "planStopsAreOnlyTheSpacesCandidates"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BrokerStore.kt",
+      "find": "        if (!hasBroker(house)) return house",
+      "replace": "",
+      "expect": "aSchoolsPhoneMakesNoBrokerAndAHousesDoes"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/BrokerStore.kt",
+      "find": " && hasBroker(it) }",
+      "replace": " }",
+      "expect": "aSchoolsPhoneMakesNoBrokerAndAHousesDoes"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/Settings.kt",
+      "find": "            if (it[Keys.kindsEnabled] == null && it[Keys.kindsDefault] == null) {",
+      "replace": "            if (true) {",
+      "expect": "aFilesKindsAreAHintTakenOnlyByAPhoneThatNeverChose"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
+      "find": "        _ownKey.value = usesOwnKey(s)",
+      "replace": "        _ownKey.value = false",
+      "expect": "theOwnKeyFlagIsFalseWithTheServersAiAndTrueWithTheDevicesKey"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/export/BackupWire.kt",
+      "find": "        val default = (search[\"defaultKind\"] as? JsonPrimitive)?.takeIf { it.isString }?.content",
+      "replace": "        val default = \"house\"",
+      "expect": "theKindsAFileNamesAreAHintOnlyWhenTheSearchObjectNamesWellFormedKinds"
+    }
+  ]
+}

@@ -1,0 +1,74 @@
+{
+  "spec": "android/shared/src/androidHostTest/kotlin/app/doorprints/data/AiStatusRepositoryTest.kt",
+  "gradle": [
+    ":shared:testAndroidHostTest",
+    "--tests",
+    "app.doorprints.data.AiStatusRepositoryTest",
+    "--tests",
+    "app.doorprints.shared.model.SpaceScopeVectorsTest",
+    "--tests",
+    "app.doorprints.shared.api.ApiClientContractTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/SpaceScope.kt",
+      "find": "(kind in available && (ownKey || kind in serverKinds))",
+      "replace": "(kind in available && ownKey)",
+      "expect": "theAssistantIsShownInTheHouseWhenOnAndInAnotherKindOnlyOnThePersonsOwnOrWhereTheServerNamesTheKind"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
+      "find": "                    _serverKinds.value = status.kinds\n",
+      "replace": "",
+      "expect": "aSpaceOtherThanTheHouseGoesToTheServerOnlyWhenItsStatusNamesTheKind"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
+      "find": "            _serverKinds.value = emptyList()\n            AiOff.NO_SERVER",
+      "replace": "            AiOff.NO_SERVER",
+      "expect": "aSpaceOtherThanTheHouseGoesToTheServerOnlyWhenItsStatusNamesTheKind"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
+      "find": "        if (kind !in _serverKinds.value) throw ApiException(ApiException.Kind.AI_OFF)\n",
+      "replace": "",
+      "expect": "aSpaceOtherThanTheHouseGoesToTheServerOnlyWhenItsStatusNamesTheKind"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
+      "find": "if (kind == null || kind == KindSettingRules.HOUSE) return null",
+      "replace": "if (kind == null) return null",
+      "expect": "aSpaceOtherThanTheHouseGoesToTheServerOnlyWhenItsStatusNamesTheKind"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
+      "find": "withApi { if (kind == null) it.ask(question) else it.ask(question, kind) }",
+      "replace": "withApi { it.ask(question) }",
+      "expect": "aSpaceOtherThanTheHouseGoesToTheServerOnlyWhenItsStatusNamesTheKind"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
+      "find": "withApi { it.planVisits(if (kind == null) request else request.copy(kind = kind)) }",
+      "replace": "withApi { it.planVisits(request) }",
+      "expect": "aSpaceOtherThanTheHouseGoesToTheServerOnlyWhenItsStatusNamesTheKind"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/CommonRepository.kt",
+      "find": "override val aiServerKinds: StateFlow<List<String>> = ai.serverKinds",
+      "replace": "override val aiServerKinds: StateFlow<List<String>> = kotlinx.coroutines.flow.MutableStateFlow(emptyList())",
+      "expect": "aSpaceOtherThanTheHouseGoesToTheServerOnlyWhenItsStatusNamesTheKind"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/api/ApiClient.kt",
+      "find": "send(HttpMethod.Post, \"/api/ai/ask\", AskRequest(question, kind))",
+      "replace": "send(HttpMethod.Post, \"/api/ai/ask\", AskRequest(question))",
+      "expect": "askAndPlanNameTheKindOnlyWhenTheCallerDoesAndTheStatusListsTheKindsTheServerAccepts"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/api/ApiModels.kt",
+      "find": "    val kinds: List<String> = emptyList(),\n)",
+      "replace": "    val kinds: List<String> = listOf(\"house\"),\n)",
+      "expect": "askAndPlanNameTheKindOnlyWhenTheCallerDoesAndTheStatusListsTheKindsTheServerAccepts"
+    }
+  ]
+}

@@ -27,8 +27,10 @@ import app.doorprints.server.ai.rag.AskModels.AskRequest;
 import app.doorprints.server.ai.rag.AskModels.AskResponse;
 import app.doorprints.server.ai.rag.HouseIndexer;
 import app.doorprints.server.ai.rag.RagService;
+import app.doorprints.server.house.House;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBooleanProperty;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -48,7 +50,13 @@ import java.util.Map;
 public class AiController {
 
     /** Hard cap for the JSON body field; the configurable, smaller limit is enforced in the service. */
-    public record ExtractRequest(@NotBlank @Size(max = 20000) String text) {
+    public record ExtractRequest(@NotBlank @Size(max = 20000) String text,
+                                 /* Kinds PR 7 (S4b-BL-211): the candidate's kind; absent (a house) as before. */
+                                 @Pattern(regexp = House.KIND_PATTERN) String kind) {
+        /** A house's request: the text alone. */
+        public ExtractRequest(String text) {
+            this(text, null);
+        }
     }
 
     private final ListingExtractionService extraction;
@@ -64,21 +72,35 @@ public class AiController {
         this.planner = planner;
     }
 
+    /**
+     * Turns pasted listing text into a draft house for the user to review; nothing is saved here.
+     */
     @PostMapping("/extract-listing")
     public HouseDraft extractListing(@Valid @RequestBody ExtractRequest body) {
-        return extraction.extract(body.text());
+        return extraction.extract(body.text(), body.kind());
     }
 
+    /**
+     * Answers a question about the user's own houses, with citations.
+     */
     @PostMapping("/ask")
     public AskResponse ask(@Valid @RequestBody AskRequest body) {
-        return rag.ask(body.question(), body.filters());
+        return rag.ask(body.question(), body.filters(), body.kind());
     }
 
+    /**
+     * Plans an ordered visit route over the user's saved houses from a start point.
+     */
     @PostMapping("/plan-visits")
     public PlanResponse planVisits(@Valid @RequestBody PlanRequest body) {
         return planner.plan(body);
     }
 
+    /**
+     * Rebuilds the search index for every live house and returns how many were indexed; used after a missed update or
+     * a changed embedding model.
+     * @throws AiUnavailableException if re-indexing fails
+     */
     @PostMapping("/reindex")
     public Map<String, Integer> reindex() {
         try {

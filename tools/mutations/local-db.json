@@ -1,0 +1,53 @@
+{
+  "spec": "web/src/app/data/local-db.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/data/local-db.ts",
+      "find": "export const DB_VERSION = 3;",
+      "replace": "export const DB_VERSION = 2;",
+      "expect": "is at version 3"
+    },
+    {
+      "file": "web/src/app/data/local-db.ts",
+      "find": "'records', 'trace_points', 'saved_walks']",
+      "replace": "'records', 'trace_points']",
+      "expect": "is at version 3"
+    },
+    {
+      "file": "web/src/app/data/local-db.ts",
+      "find": "  trace_points: ['walk'],",
+      "replace": "  trace_points: [],",
+      "expect": "creates every store and index on a fresh install"
+    },
+    {
+      "file": "web/src/app/data/local-db.ts",
+      "find": "  if (oldVersion < 3) {",
+      "replace": "  if (oldVersion < 2) {",
+      "expect": "brings a version-2 database up by adding only the two path trace stores"
+    },
+    {
+      "file": "web/src/app/data/local-db.ts",
+      "find": "      if (!STORE_NAMES.includes(op.store)) return Promise.reject(new Error(`unknown store ${op.store}`));",
+      "replace": "      if (false) return Promise.reject(new Error(`unknown store ${op.store}`));",
+      "expect": "batch applies nothing when one operation is invalid"
+    },
+    {
+      "file": "web/src/app/data/local-db.ts",
+      "find": "    for (const key of keys) this.map(store).delete(memoryKey(key));",
+      "replace": "    for (const key of keys.slice(1)) this.map(store).delete(memoryKey(key));",
+      "expect": "deleteAll removes the rows with those keys"
+    },
+    {
+      "file": "web/src/app/data/local-db.ts",
+      "find": "    return Promise.resolve([...rows.values()].filter((row) => (row as Record<string, unknown>)[index] === value).length);",
+      "replace": "    return Promise.resolve(rows.size);",
+      "expect": "reads trace points by the walk index"
+    },
+    {
+      "file": "web/src/app/data/local-db.ts",
+      "find": "    return Promise.resolve(rows.map((row) => (typeof path === 'string' ? String(row[path]) : path.map((p) => String(row[p])))));",
+      "replace": "    return Promise.resolve(rows.map((row) => String(row['id'])));",
+      "expect": "lists the keys of a store"
+    }
+  ]
+}

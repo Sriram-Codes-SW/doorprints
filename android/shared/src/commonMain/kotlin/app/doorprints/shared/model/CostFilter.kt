@@ -50,6 +50,9 @@ data class CostFilter(
     /** How many of the three ranges are set: the count on the *Filters* button. */
     val active: Int get() = listOf(monthly, moveIn, perSqFt).count { it.isSet }
 
+    /**
+     * Whether [summary] passes all three ranges; a number that cannot be computed fails only a range that is set on it.
+     */
     fun matches(summary: CostSummary): Boolean =
         monthly.accepts(summary.monthlyCost?.toDouble()) && moveIn.accepts(summary.moveIn?.toDouble()) &&
             perSqFt.accepts(summary.perSqFt)

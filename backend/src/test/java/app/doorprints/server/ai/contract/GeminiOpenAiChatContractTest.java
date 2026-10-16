@@ -330,6 +330,142 @@ public class GeminiOpenAiChatContractTest {
         assertThat(requestBodies).hasSize(1); // maxRetries 0 here; production uses AI_MAX_RETRIES
     }
 
+    /**
+     * S4b-BL-244: the shared vectors {@code quotaResponses} through the real stack (a local server answering with each body):
+     * a spent quota or credit (402, a Gemini {@code PerDay} quota id, {@code insufficient_quota}) is told from a wait. The
+     * Anthropic bodies are skipped: the server never talks to Anthropic. Same expectations as the clients' {@code AiQuota}.
+     */
+    @Test
+    void theSharedQuotaVectorsTellASpentQuotaFromAWait() throws Exception {
+        var vectors = new tools.jackson.databind.ObjectMapper().readTree(java.nio.file.Files.readString(
+                app.doorprints.server.ai.HouseAiPins.repoFile("docs/ai/evals/parity-vectors.json"))).get("quotaResponses");
+        int checked = 0;
+        for (var v : vectors) {
+            int status = v.get("status").asInt();
+            var provider = v.get("provider").asString();
+            if ("anthropic".equals(provider) || (status != 400 && status != 402 && status != 429)) continue;
+            replies.clear();
+            replies.add(new Reply(status, v.get("body").asString()));
+            var thrown = org.assertj.core.api.Assertions.catchThrowable(() -> model().call(new Prompt("q")));
+            assertThat(thrown).as(v.get("note").asString()).isNotNull();
+            assertThat(app.doorprints.server.ai.ProviderErrors.isQuotaSpent(thrown)).as(v.get("note").asString())
+                    .isEqualTo(v.get("expected").get("quota").asBoolean());
+            checked++;
+        }
+        assertThat(checked).as("vectors read").isGreaterThanOrEqualTo(10);
+
+        // Gemini's compatible endpoint wraps its error in an array; the per-minute form waits, the per-day form is spent.
+        for (var day : new boolean[] {false, true}) {
+            replies.clear();
+            replies.add(new Reply(429, "[{\"error\":{\"code\":429,\"status\":\"RESOURCE_EXHAUSTED\",\"details\":[{\"violations\":"
+                    + "[{\"quotaId\":\"GenerateRequests" + (day ? "PerDay" : "PerMinute") + "PerProject\"}]}]}}]"));
+            var thrown = org.assertj.core.api.Assertions.catchThrowable(() -> model().call(new Prompt("q")));
+            assertThat(app.doorprints.server.ai.ProviderErrors.isQuotaSpent(thrown)).as("array form, day=" + day).isEqualTo(day);
+            assertThat(app.doorprints.server.ai.ProviderErrors.isQuotaExhausted(thrown)).isTrue();
+        }
+    }
+
+    // What a provider safety block does on the server today (S4b-BL-232, docs/ai/ai-design.md 15). The server maps nothing
+    // to a "declined" result yet (backlog S4b-BL-233); these tests pin the outcome so the later change starts from facts.
+    // Shapes: Gemini's OpenAI-compatible endpoint reports a filtered answer as finish_reason "content_filter" with no
+    // content (OpenAI's SDK types and Azure OpenAI document the same value), a filtered prompt as HTTP 400.
+
+    static final String CONTENT_FILTER = """
+            {
+              "choices": [
+                {
+                  "finish_reason": "content_filter",
+                  "index": 0,
+                  "message": {
+                    "role": "assistant"
+                  }
+                }
+              ],
+              "created": 1758528004,
+              "id": "CXbRaNt9Ie-Bz7IP2pSX8Ag",
+              "model": "gemini-3.5-flash",
+              "object": "chat.completion"
+            }
+            """;
+
+    @Test
+    void todayAContentFilterFinishReachesTheServiceAsAnEmptyAnswerWithTheFinishReason() {
+        replies.add(new Reply(200, CONTENT_FILTER));
+
+        var response = model().call(new Prompt("q"));
+
+        assertThat(response.getResult().getMetadata().getFinishReason()).isEqualToIgnoringCase("content_filter");
+        assertThat(response.getResult().getOutput().getText()).isNullOrEmpty();
+    }
+
+    /** A vector body with the envelope the SDK requires and the vectors leave out ({@code id}, {@code model}, {@code created}, {@code object}). */
+    private static String completion(String choicesBody) {
+        var mapper = new tools.jackson.databind.ObjectMapper();
+        var node = (tools.jackson.databind.node.ObjectNode) mapper.readTree(choicesBody);
+        node.put("id", "x").put("model", "gemini-3.5-flash").put("created", 1758528004).put("object", "chat.completion");
+        return node.toString();
+    }
+
+    private ChatClient guarded() {
+        return ChatClient.builder(model()).defaultAdvisors(new app.doorprints.server.ai.SafetyBlockAdvisor()).build();
+    }
+
+    @Test
+    void aContentFilterFinishIsDeclinedNotUnavailable() {
+        replies.add(new Reply(200, CONTENT_FILTER));
+
+        // S4b-BL-233: the structured call used to fail inside Spring AI with a RuntimeException that said nothing (a 503).
+        var thrown = org.assertj.core.api.Assertions.catchThrowable(() -> guarded().prompt().user("q").call().responseEntity(ModelAnswer.class));
+
+        assertThat(thrown).isInstanceOf(app.doorprints.server.ai.ProviderBlockedException.class);
+        assertThat(app.doorprints.server.ai.ProviderErrors.isDeclined(thrown)).isTrue();
+        assertThat(requestBodies).as("never asked again").hasSize(1);
+    }
+
+    @Test
+    void aFilteredPromptIsAnHttp400ThatIsDeclinedAndNotQuotaAndNotAnOutage() {
+        replies.add(new Reply(400, "{\"error\":{\"message\":\"blocked\",\"type\":\"invalid_request_error\","
+                + "\"code\":\"content_policy_violation\"}}"));
+
+        var thrown = org.assertj.core.api.Assertions.catchThrowable(() -> guarded().prompt().user("q").call().responseEntity(ModelAnswer.class));
+
+        assertThat(thrown).isInstanceOf(RuntimeException.class);
+        assertThat(app.doorprints.server.ai.ProviderErrors.isDeclined(thrown)).isTrue();
+        // A 400 is "ours" to ProviderErrors (request or setup), so the problem detail carries no cause property.
+        assertThat(app.doorprints.server.ai.ProviderErrors.cause(thrown)).isNull();
+        assertThat(app.doorprints.server.ai.ProviderErrors.isQuotaExhausted(thrown)).isFalse();
+        assertThat(requestBodies).hasSize(1);
+    }
+
+    /**
+     * S4b-BL-233: the shared vectors {@code blockedResponses} for the OpenAI-compatible shape, through the real stack. The twin
+     * rule: the server declines what the clients decline. {@code message.refusal} is the one place the server cannot see (Spring
+     * AI's generation keeps no refusal), listed here so a library change that exposes it is noticed.
+     */
+    @Test
+    void theSharedBlockedVectorsForTheOpenAiShapeAreDeclinedOnTheServerToo() throws Exception {
+        var vectors = new tools.jackson.databind.ObjectMapper().readTree(java.nio.file.Files.readString(
+                app.doorprints.server.ai.HouseAiPins.repoFile("docs/ai/evals/parity-vectors.json"))).get("blockedResponses");
+        var notSeen = new java.util.ArrayList<String>();
+        int checked = 0;
+        for (var v : vectors) {
+            int status = v.get("status").asInt();
+            if (!"openai".equals(v.get("provider").asString()) || (status != 200 && status != 400)) continue;
+            boolean expected = v.get("expected").get("blocked").asBoolean();
+            var note = v.get("note").asString();
+            replies.clear();
+            replies.add(new Reply(status, status == 200 ? completion(v.get("body").asString()) : v.get("body").asString()));
+            var thrown = org.assertj.core.api.Assertions.catchThrowable(() -> guarded().prompt().user("q").call().responseEntity(ModelAnswer.class));
+            boolean declined = app.doorprints.server.ai.ProviderErrors.isDeclined(thrown);
+            if (expected && !declined) notSeen.add(note);
+            if (!expected) assertThat(declined).as(note).isFalse();
+            checked++;
+        }
+        assertThat(checked).isGreaterThanOrEqualTo(8);
+        assertThat(notSeen).as("blocked on the clients, not seen by the server (docs/ai/ai-design.md 15.3)")
+                .containsExactly("message.refusal text");
+    }
+
     /** Must be public: Spring AI invokes tool methods reflectively. */
     public static class CountTools {
         final AtomicReference<String> locality = new AtomicReference<>();

@@ -1,0 +1,23 @@
+{
+  "spec": "web/src/app/data/device-auth/web-authn-prf-authenticator.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/data/device-auth/web-authn-prf-authenticator.ts",
+      "find": "          authenticatorSelection: {\n            // A passkey is a discoverable credential. Without this, the default is \"discouraged\".\n            residentKey: 'required',\n            requireResidentKey: true,\n            userVerification: 'required',\n          },",
+      "replace": "          authenticatorSelection: {\n            authenticatorAttachment: 'platform',\n            // A passkey is a discoverable credential. Without this, the default is \"discouraged\".\n            residentKey: 'required',\n            requireResidentKey: true,\n            userVerification: 'required',\n          },",
+      "expect": "lists ES256 then RS256 and requires a discoverable platform credential"
+    },
+    {
+      "file": "web/src/app/data/device-auth/web-authn-prf-authenticator.ts",
+      "find": "    // Check if PublicKeyCredential is available\n    const PubKeyCredential = this.getPublicKeyCredential();\n    return PubKeyCredential !== undefined;",
+      "replace": "    // Feature detect: try to find passkeys that support PRF\n    const PubKeyCredential = this.getPublicKeyCredential();\n    if (!PubKeyCredential || typeof PubKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable !== 'function') {\n      return false;\n    }\n    return await PubKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();",
+      "expect": "returns true when the probe says false"
+    },
+    {
+      "file": "web/src/app/data/device-auth/web-authn-prf-authenticator.ts",
+      "find": "    try {\n      return await PubKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();\n    } catch {\n      return null;\n    }",
+      "replace": "    try {\n      return await PubKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();\n    } catch {\n      return true;\n    }",
+      "expect": "returns null when isUserVerifyingPlatformAuthenticatorAvailable throws"
+    }
+  ]
+}

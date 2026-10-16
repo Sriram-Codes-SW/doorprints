@@ -1,6 +1,6 @@
-# Doorprints (https://doorprints.web.app). The landing page and about.html are public. Every other address is the
-# same app shell showing the visitor's own local data; it says noindex itself (src/app/i18n/i18n-title.strategy.ts),
-# so crawling stays allowed: a crawler must be able to read the noindex.
+# Doorprints (https://doorprints.web.app). The landing page, about.html and privacy.html are public. Every other
+# address is the same app shell showing the visitor's own local data; it says noindex itself
+# (src/app/i18n/i18n-title.strategy.ts), so crawling stays allowed: a crawler must be able to read the noindex.
 User-agent: *
 Allow: /
 

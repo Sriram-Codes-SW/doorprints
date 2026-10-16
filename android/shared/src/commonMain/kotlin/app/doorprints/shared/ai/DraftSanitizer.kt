@@ -67,9 +67,36 @@ object DraftSanitizer {
         RegexOption.IGNORE_CASE,
     )
     private val FIRST_INT = Regex("\\d+")
+    private val LINK = Regex("https?://[A-Za-z0-9\\-._~:/?#@!\$&*+,;=%]+", RegexOption.IGNORE_CASE)
+    /** What a sentence puts after a link and is not part of it: the full stop, comma and so on, and a WhatsApp bold mark. */
+    private const val LINK_TAIL = ".,;:!?*"
     /** Absolute http(s) with a host and no spaces: what Java's `URI.create` accepts for these links. */
     private val HTTP_URL = Regex("^(?:https?)://[^\\s/?#]+(?:[/?#]\\S*)?$", RegexOption.IGNORE_CASE)
 
+    /**
+     * How many different http(s) links the pasted listing text holds (S4b-BL-182; the server's `linkCount` and the
+     * website's `countListingLinks` give the same numbers, see the shared vectors). A link ends at the first character an
+     * address cannot hold, so Hindi, Tamil and Telugu text next to it is not part of it, and loses the punctuation a
+     * sentence puts after it; one written twice counts once and a scheme with no host is no link. One pass with a character
+     * class and no nested repeat, so the time is linear.
+     */
+    fun linkCount(text: String): Int {
+        val seen = HashSet<String>()
+        for (m in LINK.findAll(text)) {
+            val link = m.value
+            var end = link.length
+            while (end > 0 && link[end - 1] in LINK_TAIL) end--
+            if (end > link.indexOf("//") + 2) seen += link.substring(0, end)
+        }
+        return seen.size
+    }
+
+    /**
+      * The checked draft for the model's [raw] listing and the [sourceText] it was read from. A null [raw] gives a
+      * draft with
+      * only a placeholder label and a warning. Never throws on model output; every dropped or changed value adds a
+      * warning.
+     */
     fun sanitize(raw: RawListing?, sourceText: String?): HouseDraftDto {
         val warnings = mutableListOf<String>()
         if (raw == null) return HouseDraftDto(label = "Untitled listing", warnings = listOf("Model returned nothing usable"))
@@ -84,6 +111,11 @@ object DraftSanitizer {
         val contactName = clean(raw.contactName, CONTACT_NAME_MAX, "contactName", warnings)
         val phone = phone(raw.contactPhone, source, warnings)
         val url = url(raw.listingUrl, source, warnings)
+        if (url != null) {
+            // The model picked one link; if the pasted text holds several, the person is told, whatever the model thinks.
+            val links = linkCount(source)
+            if (links >= 2) warnings += "listingUrl: the text has $links links, check this is the right one"
+        }
         val notes = clean(raw.notes, NOTES_MAX, "notes", warnings)
         val amenities = amenities(raw.amenities, warnings)
         var label = clean(raw.label, LABEL_MAX, "label", warnings)
@@ -113,6 +145,7 @@ object DraftSanitizer {
         return s
     }
 
+    /** RENT or SALE from the usual words for them; anything else is dropped with a warning. */
     fun priceType(value: String?, warnings: MutableList<String>): String? {
         if (value.isNullOrBlank()) return null
         return when (value.trim().uppercase()) {
@@ -126,11 +159,12 @@ object DraftSanitizer {
     }
 
     /** "25,000", "₹ 25000/month", "25k", "1.2 Cr", "85 lakh" -> whole rupees (the fraction truncated, as `BigDecimal`). */
-    fun price(value: String?, warnings: MutableList<String>): Long? {
+    fun price(value: String?, warnings: MutableList<String>, field: String = "price"): Long? {
         if (value.isNullOrBlank()) return null
-        val m = PRICE.find(value.replace(",", "").replace("_", ""))
+        // A price in the digits of an Indian script (S4b-BL-174b) is read as 0-9, character for character.
+        val m = PRICE.find(ContactRedactor.asciiDigits(value).replace(",", "").replace("_", ""))
         if (m == null) {
-            warnings += "price: could not read '${abbreviate(value)}', dropped"
+            warnings += "$field: could not read '${abbreviate(value)}', dropped"
             return null
         }
         val multiplier = when (m.groupValues[2].lowercase()) {
@@ -145,7 +179,7 @@ object DraftSanitizer {
         val fraction = number.substringAfter('.', "")
         // More digits than a Long holds is certainly out of range.
         if (whole.length > 15) {
-            warnings += "price: $number is out of range, dropped"
+            warnings += "$field: $number is out of range, dropped"
             return null
         }
         var rupees = whole.toLong() * multiplier
@@ -160,17 +194,21 @@ object DraftSanitizer {
             rupees += frac * multiplier / scale
         }
         if (rupees < 0 || rupees > PRICE_MAX) {
-            warnings += "price: $rupees is out of range, dropped"
+            warnings += "$field: $rupees is out of range, dropped"
             return null
         }
         return rupees
     }
 
+    /**
+      * A studio or 1RK is 0, else the first whole number; more than [BEDROOMS_MAX] or no number is dropped with a
+      * warning.
+     */
     fun bedrooms(value: String?, warnings: MutableList<String>): Int? {
         if (value.isNullOrBlank()) return null
         val lower = value.lowercase()
         if ("studio" in lower || "1rk" in lower) return 0
-        val m = FIRST_INT.find(value)
+        val m = FIRST_INT.find(ContactRedactor.asciiDigits(value))
         val n = m?.value?.toIntOrNull()
         if (n == null) {
             warnings += "bedrooms: could not read '${abbreviate(value)}', dropped"
@@ -186,7 +224,7 @@ object DraftSanitizer {
     /** The first whole number, 1..[AREA_MAX] sq ft ("1,150 sq ft" -> 1150); anything else is dropped with a warning. */
     fun areaSqft(value: String?, warnings: MutableList<String>): Int? {
         if (value.isNullOrBlank()) return null
-        val n = FIRST_INT.find(value.replace(",", ""))?.value?.toIntOrNull()
+        val n = FIRST_INT.find(ContactRedactor.asciiDigits(value).replace(",", ""))?.value?.toIntOrNull()
         if (n == null || n !in 1..AREA_MAX) {
             warnings += "areaSqft: could not read '${abbreviate(value)}', dropped"
             return null
@@ -197,13 +235,14 @@ object DraftSanitizer {
     /** Only phone characters; 7-15 digits; the last 10 digits must appear in the pasted text. */
     fun phone(value: String?, source: String, warnings: MutableList<String>): String? {
         if (value.isNullOrBlank()) return null
-        val kept = value.filter { it in '0'..'9' || it in "+()- " }.trim()
+        // Native digits are read as 0-9 in the number and in the text (S4b-BL-174b), so a number copied in them is kept as 0-9.
+        val kept = ContactRedactor.asciiDigits(value).filter { it in '0'..'9' || it in "+()- " }.trim()
         val digits = kept.filter { it in '0'..'9' }
         if (digits.length !in 7..15) {
             warnings += "contactPhone: not a valid phone number, dropped"
             return null
         }
-        val sourceDigits = source.filter { it in '0'..'9' }
+        val sourceDigits = ContactRedactor.asciiDigits(source).filter { it in '0'..'9' }
         if (digits.takeLast(10) !in sourceDigits) {
             warnings += "contactPhone: not found in the listing text, dropped"
             return null
@@ -230,6 +269,7 @@ object DraftSanitizer {
         return v
     }
 
+    /** Cleaned, lower-cased, without repeats, at most [AMENITIES_MAX]; a longer list is cut with a warning. */
     fun amenities(values: List<String>?, warnings: MutableList<String>): List<String> {
         if (values == null) return emptyList()
         val out = LinkedHashSet<String>()
@@ -243,6 +283,7 @@ object DraftSanitizer {
         return out.toList()
     }
 
+    /** A label made from the bedrooms and the locality (or street), used when the model gave none. */
     fun defaultLabel(bedrooms: Int?, locality: String?, street: String?): String {
         val where = locality ?: street
         val what = when (bedrooms) {
@@ -253,7 +294,7 @@ object DraftSanitizer {
         return (if (where == null) what else "$what in $where").take(LABEL_MAX)
     }
 
-    private fun abbreviate(s: String): String {
+    internal fun abbreviate(s: String): String {
         val t = s.replace(WS, " ").trim()
         return if (t.length <= 40) t else t.take(40) + "…"
     }

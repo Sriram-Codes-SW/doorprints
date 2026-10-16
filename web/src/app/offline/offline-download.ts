@@ -55,6 +55,7 @@ export const RETRIES = 2;
  */
 export const GLYPH_RANGE_STARTS: readonly number[] = [0, 256, 2304, 2560, 2816, 3072, 3328, 8192];
 
+/** How far a download is: tiles saved, tiles in all and bytes written. */
 export interface DownloadProgress {
   /** Files saved so far (tiles only). */
   readonly done: number;
@@ -63,12 +64,16 @@ export interface DownloadProgress {
   readonly bytes: number;
 }
 
+/**
+ * What a download needs from the browser: the cache to save into, a fetch function and the style address. Tests pass fakes.
+ */
 export interface DownloadDeps {
   readonly cache: CacheLike;
   fetch(url: string, init?: { signal?: AbortSignal }): Promise<Response>;
   readonly styleUrl: string;
 }
 
+/** The area to save: its id, name, box and the time to record. */
 export interface DownloadRequest {
   readonly id: string;
   readonly name: string;
@@ -76,6 +81,7 @@ export interface DownloadRequest {
   readonly now: number;
 }
 
+/** Optional callbacks and cancellation for a download. */
 export interface DownloadHooks {
   readonly signal?: AbortSignal;
   /** Called once the style is read and the area's files are known, before any tile is fetched. */
@@ -144,6 +150,9 @@ function fromMap(url: unknown): url is string {
   return typeof url === 'string' && url.startsWith(`${MAP_ORIGIN}/`);
 }
 
+/**
+ * Fetches [url], trying again after a failure (`RETRIES` more times); a 404 is returned as an answer, any other failure ends in an `OfflineDownloadError`. An aborted signal stops it at once.
+ */
 async function getOk(deps: DownloadDeps, url: string, signal: AbortSignal | undefined): Promise<Response> {
   let last: unknown;
   for (let attempt = 0; attempt <= RETRIES; attempt++) {

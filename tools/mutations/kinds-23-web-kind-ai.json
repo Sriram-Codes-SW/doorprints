@@ -1,0 +1,68 @@
+{
+  "spec": [
+    "web/src/app/core/ai.service.requests.spec.ts",
+    "web/src/app/core/space-scope.spec.ts"
+  ],
+  "mutations": [
+    {
+      "file": "web/src/app/core/space-scope.ts",
+      "find": "(available.includes(kind) && (ownKey || serverKinds.includes(kind)))",
+      "replace": "(available.includes(kind) && ownKey)",
+      "expect": "when a space shows the assistant"
+    },
+    {
+      "file": "web/src/app/core/space-scope.ts",
+      "find": "on: boolean, ownKey: boolean, serverKinds: readonly string[] = []): boolean {\n  if (!on) return false;",
+      "replace": "on: boolean, ownKey: boolean, serverKinds: readonly string[] = []): boolean {\n  if (false) return false;",
+      "expect": "when a space shows the assistant"
+    },
+    {
+      "file": "web/src/app/core/ai.service.ts",
+      "find": "computed<readonly string[]>(() => this.status()?.kinds ?? [])",
+      "replace": "computed<readonly string[]>(() => [])",
+      "expect": "ask posts the space’s kind when the status names it"
+    },
+    {
+      "file": "web/src/app/core/ai.service.ts",
+      "find": "this.enabled(), this.usesOwnKey(), this.serverKinds());",
+      "replace": "this.enabled(), this.usesOwnKey());",
+      "expect": "the assistant is shown in a space the server names"
+    },
+    {
+      "file": "web/src/app/core/ai.service.ts",
+      "find": "kind && kind !== 'house' ? { ...body, kind } : body",
+      "replace": "kind ? { ...body, kind } : body",
+      "expect": "ask posts the space’s kind when the status names it"
+    },
+    {
+      "file": "web/src/app/core/ai.service.ts",
+      "find": "kind && kind !== 'house' ? { ...body, kind } : body",
+      "replace": "body",
+      "expect": "ask posts the space’s kind when the status names it"
+    },
+    {
+      "file": "web/src/app/core/ai.service.ts",
+      "find": "kind && kind !== 'house' ? { ...request, kind } : request",
+      "replace": "{ ...request, kind }",
+      "expect": "planVisits posts the space’s kind with the request"
+    },
+    {
+      "file": "web/src/app/core/ai.service.ts",
+      "find": "kind && kind !== 'house' ? { ...request, kind } : request",
+      "replace": "request",
+      "expect": "planVisits posts the space’s kind with the request"
+    },
+    {
+      "file": "web/src/app/core/ai.service.ts",
+      "find": "!this.usesOwnKey() && !this.serverKinds().includes(kind) ? throwError",
+      "replace": "!this.usesOwnKey() ? throwError",
+      "expect": "ask posts the space’s kind when the status names it"
+    },
+    {
+      "file": "web/src/app/core/ai.service.ts",
+      "find": "!this.usesOwnKey() && !this.serverKinds().includes(kind) ? throwError",
+      "replace": "false ? throwError",
+      "expect": "an older server names no kinds"
+    }
+  ]
+}

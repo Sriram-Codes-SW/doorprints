@@ -21,6 +21,15 @@
   height: 100%;
 }
 
+/*
+ * Not painted before the first update pass (the host's `drawn` class, MapPage): Angular makes the template's elements
+ * first and fills in the text and the @if blocks a frame later, and a slow phone painted that empty frame, so the
+ * actions row, the counters and the search jumped when it filled (a layout shift of 0.1-0.6 at 4x-8x CPU slowdown).
+ */
+:host:not(.drawn) {
+  visibility: hidden;
+}
+
 .layout {
   display: grid;
   grid-template-columns: minmax(18rem, 24rem) 1fr;
@@ -70,7 +79,6 @@
   padding: var(--space-2) var(--space-3);
   max-width: 32rem;
   background: var(--overlay);
-  color: var(--text);
   border-radius: 8px;
   box-shadow: var(--shadow-lg);
   font-size: var(--text-sm);
@@ -138,7 +146,6 @@
   gap: var(--space-1) var(--space-3);
   padding: var(--space-1) var(--space-3);
   background: var(--overlay);
-  color: var(--text);
   border-radius: 8px;
   font-size: var(--text-xs);
   font-weight: 600;
@@ -160,6 +167,12 @@
   border-radius: 50%;
   border: 2px solid #fff;
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+
+.sample {
+  width: 24px;
+  height: 8px;
+  flex: none;
 }
 
 .dot.NEW { background: #3c5a99; }
@@ -199,6 +212,12 @@
   border-block: 1px solid var(--border);
 }
 
+/* The counters' place while they are read: the counters' own cells, their words hidden (map-page.html), so the heights agree. */
+.stats-pending dt,
+.stats-pending dd {
+  visibility: hidden;
+}
+
 .stats div {
   display: flex;
   flex-direction: column-reverse;
@@ -212,12 +231,10 @@
   margin: 0;
   font-size: var(--text-lg);
   font-weight: 700;
-  color: var(--text);
 }
 
 .stats dt {
   font-size: var(--text-xs);
-  color: var(--text);
   /* Breaks only a word that cannot fit at all: Tamil and Telugu words are not cut in the middle otherwise. */
   overflow-wrap: break-word;
   hyphens: auto;
@@ -409,24 +426,50 @@
   }
 
   /*
-   * The map fills the visible page area (100cqh of <main>, app.ts: between the header and the bottom bar) less the
-   * list's heading and counters (--map-peek, measured by MapPage: listPeek), so "Your houses" and every counter, number
-   * and caption, show under it before any scrolling. 55vh was 55% of the largest viewport (vh ignores the address
-   * bar): on a 384x615 Android phone the map took 391px and the counters' captions sat under the bottom bar (owner
-   * report 2026-09-24). 3.75rem (the heading) stands in until the first measurement; a short landscape page keeps at
-   * least 256px of map (or all of the page, if smaller). 55vh stays for a browser without container units.
+   * The map region (S4b-BL-49, 2026-10-13) is a grid of two rows: the map, then the bottom row (legend and actions) under
+   * it, in the page's flow and no longer drawn over the map. Every size comes from CSS, nothing is measured, so the first
+   * paint is already the final layout (no jump when a script writes a height) and no size can feed back on itself.
+   *
+   * Together they fill the visible page area (100cqh of <main>, app.ts: between the header and the bottom bar) less
+   * --map-peek, the list's heading and two rows of counters (below), so "Your houses" and every counter show above the
+   * bottom bar before any scrolling where the screen has room for them. 55vh is for a browser without container units.
+   *
+   * The map row never goes under --map-floor: MapLibre's control column (zoom in, zoom out, my location: 44px each, their
+   * 10px margins and the credits, 44px with the credits open on two lines: 216px, measured, the last margin included) with --space-2 above it. With the bottom row
+   * out of the map, nothing else needs room inside it. Where the floor and the bottom row are more than the visible area
+   * (landscape, or 200% text) the page scrolls; the map itself is then 224px, inside the screen.
+   *
+   * The overlays that belong to the map (the map, the offline message, the crosshair, the add-mode hint) are absolutely
+   * placed in the first row (grid-area: 1 / 1 / 2 / 2: an absolutely placed item's missing end line would be the
+   * grid's far edge, not the end of the row), so the crosshair stays on the map's centre, where "Place here" puts the
+   * house.
    */
   .map-wrap {
-    --map-peek: 3.75rem;
-    height: 55vh;
-    height: max(min(256px, 100cqh), calc(100cqh - var(--map-peek)));
+    --map-floor: calc(216px + var(--space-2));
     /*
-     * Never so short that MapLibre's control column (zoom in, zoom out, my location: 44px each, their 10px margins and
-     * the 24px credits button: 196px, measured) runs out of the top of the map above the bottom row (--map-stack-h,
-     * measured by MapPage), with --space-2 below and above it: with a two-row legend and 150% text at 320px, zoom in
-     * was cut off under the header.
+     * The heading (its 0.75rem padding and one line of --text-xl) and the counters (0.75rem above, two rows of a
+     * --text-lg number with its caption on one line, 0.5rem above and below each, and three 1px rules), in rem so it
+     * follows the text size. Indic scripts have taller lines (--leading-indic) and longer captions: in Tamil a first-row
+     * caption (நிராகரித்தவை) does not fit beside its number in the 3 + 2 strip and goes under it (the strip 117px, not 96px,
+     * on 320-384px pages), so the Indic reserve holds one more caption line (--text-xs at 1.7), the same in hi, ta and te.
      */
-    min-height: calc(var(--map-stack-h, 0px) + 196px + 2 * var(--space-2));
+    --map-peek: calc(0.75rem + 1.375rem * 1.25 + 0.75rem + 2 * (1rem + 1.125rem * 1.5) + 3px);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(var(--map-floor), 1fr) auto auto;
+    min-height: 55vh;
+    min-height: max(var(--map-floor), calc(100cqh - var(--map-peek)));
+  }
+
+  .map-wrap:is(:lang(hi), :lang(ta), :lang(te)) {
+    --map-peek: calc(0.75rem + 1.375rem * 1.45 + 0.75rem + 2 * (1rem + 1.125rem * 1.7) + 0.75rem * 1.7 + 3px);
+  }
+
+  .map,
+  .map-offline,
+  .crosshair,
+  .add-hint {
+    grid-area: 1 / 1 / 2 / 2;
   }
 
 
@@ -436,63 +479,70 @@
   }
 
   /*
-   * Phones: one bottom row, which grows with whatever it holds (UX lead audit 2026-09-22). The legend is at the start
-   * and wraps inside its own space; the actions are a column at the end, the primary action ("Place here") last,
-   * nearest the thumb. Nothing is positioned on its own any more, so a two-row Tamil or Telugu legend can never
-   * cover the add-mode hint or the buttons.
-   */
-  .map-stack {
-    position: absolute;
-    left: var(--space-3);
-    right: var(--space-3);
-    bottom: var(--space-2);
-    z-index: 2;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-end;
-    gap: var(--space-2);
-    pointer-events: none;
-  }
-
-  .map-stack > * {
-    pointer-events: auto;
-  }
-
-  /*
-   * Beside the actions while its widest item fits there, else on a row of its own above them: at 320px with 150% text
-   * "Shortlisted" and "Rejected" ran under "Add house" (owner report 2026-09-24). It wraps from its narrowest
-   * (min-content) and grows no wider than its one-line width, so it keeps the shape of a small card.
+   * Phones (UX lead audit 2026-09-22, S4b-BL-49 2026-10-13): the legend and the actions are items of .map-wrap's grid
+   * (.map-stack has no box, as on wider screens), so nothing is measured to keep them apart.
+   *
+   * The legend is a card in the map's bottom-left corner, in the map row's flow: it wraps inside the width the control
+   * column leaves it (54px, as CONTROL_COLUMN_W in fit-padding.ts, and a --space-2 gap), and a taller legend (Tamil or
+   * Telugu, larger text) makes the map row taller instead of running under the zoom buttons or out of the map.
+   *
+   * The actions are a row under the map that grows with whatever it holds, wrapping from the end, the primary action
+   * ("Place here") last, nearest the thumb. Under the map, they never cover its controls, the add-mode hint or the
+   * legend.
    */
   .legend {
+    grid-area: 1 / 1;
+    place-self: end start;
     position: static;
-    flex: 1 1 0;
-    min-width: min-content;
-    max-width: max-content;
+    margin: 0 0 var(--space-2) var(--space-3);
+    max-width: calc(100% - var(--space-3) - var(--space-2) - 54px);
+    /* Under MapLibre's corners (z-index 2), so the credits, open for their first seconds, are read over the card. */
+    z-index: 1;
+  }
+
+  /* A label wider than the card breaks inside itself; shorter labels stay one line. */
+  .legend-item {
+    max-width: 100%;
+    min-width: 0;
+    overflow-wrap: anywhere;
   }
 
   .map-actions {
+    grid-area: 3 / 1;
     position: static;
-    flex: 0 0 auto;
-    max-width: 60%;
-    margin-inline-start: auto;
-    flex-direction: column;
-    flex-wrap: nowrap;
-    align-items: flex-end;
-    pointer-events: none;
+    justify-content: flex-end;
+    align-items: center;
+    padding: var(--space-2) var(--space-3);
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    pointer-events: auto;
   }
 
   .map-actions .btn {
     max-width: 100%;
+    box-shadow: none;
   }
 
   /*
-   * With the legend shown the actions keep their one-line width (the legend takes what is left, or moves to a row of
-   * its own above them). Capped at 60%, "Add house" broke onto two lines when it was alone on its row, and the taller
-   * row pushed MapLibre's zoom-in button out of the top of the map at 320px and 150% text. In add mode (no legend) the
-   * 60% cap stays, so a long Tamil "Place here" does not cover the whole width of the map.
+   * A page less than 16rem wide (a 320px phone at 150% text, 360px at 200%): the legend card in the corner would be a
+   * column of words taller than the screen, so it is a row of its own under the map, above the actions, the full width.
    */
-  .map-stack.with-legend .map-actions {
-    max-width: 100%;
+  @container (max-width: 16rem) {
+    .legend {
+      grid-area: 2 / 1;
+      justify-self: stretch;
+      margin: 0;
+      max-width: none;
+      padding: var(--space-2) var(--space-3) 0;
+      border-radius: 0;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      box-shadow: none;
+    }
+
+    .legend + .map-actions {
+      border-top: 0;
+    }
   }
 
   /*
@@ -522,16 +572,93 @@
   }
 
   /*
-   * MapLibre's bottom-right corner (zoom, my location, attribution) sits above the bottom row, whose measured height
-   * MapPage writes to --map-stack-h: one column at the end, the primary action lowest. Its elements are created by
-   * MapLibre, outside this component's view, hence ::ng-deep.
+   * Where MapLibre's controls are bottom-right (MapPage's BOTTOM_CONTROLS_QUERY), the corner has the column's full height
+   * (216px, as --map-floor) from the first frame, its controls at the top: the credits come under "My location" when the
+   * style's TileJSON arrives, and the column used to grow upward then, moving the zoom buttons (a layout shift). 216px is
+   * the column with the credits open on a phone: the open credits wrap to a second line (a 44px row, not the 24px button),
+   * which the live site showed as a shift of 0.129 at 390x664 once the real style loaded (S4b-BL-49 follow-up; the layout
+   * gate answers the style with credits and a delayed TileJSON to hold it). The container is as wide as the map
+   * (MapLibre leaves a corner click-through), so the credits opening and folding up do not move its box either, at any
+   * height. Elements made by MapLibre, outside this component's view, hence ::ng-deep.
    */
   :host ::ng-deep .maplibregl-ctrl-bottom-right {
-    bottom: calc(var(--space-2) + var(--map-stack-h, 0px));
+    left: 0;
   }
 
-  /* The offline overlay keeps its message clear of the bottom row instead of the top one. */
+  @media (min-height: 501px) {
+    :host ::ng-deep .maplibregl-ctrl-bottom-right {
+      min-height: 216px;
+    }
+  }
+
+  /*
+   * The credits open for a few seconds when the style's sources arrive (ATTRIBUTION_SHOW_MS), and in MapLibre's own CSS the
+   * control then grows from the 24px button to the full line, its left edge moving: a layout shift, which the live site
+   * showed. Here the control keeps the button's box, open or folded, and the open credits are drawn over it from the
+   * button's right edge, as wide as the map from the first frame (the credits come in two steps, "Natural Earth", then the
+   * tile source's, and a box that grew to the left would move at each) and growing down into the corner reserved above:
+   * only its height changes, which moves nothing. The button stays at the right, as folded, with the text to its left.
+   */
+  :host ::ng-deep .maplibregl-ctrl-attrib.maplibregl-compact-show {
+    padding: 2px 24px 2px 0;
+    background: none; /* the open credits have their own */
+  }
+
+  :host ::ng-deep .maplibregl-ctrl-attrib-button {
+    left: auto;
+    right: 0;
+    z-index: 1;
+  }
+
+  :host ::ng-deep .maplibregl-compact-show .maplibregl-ctrl-attrib-inner {
+    position: absolute;
+    top: 0;
+    right: 0;
+    box-sizing: border-box;
+    width: calc(100cqw - 20px);
+    padding: 2px 28px 2px 8px;
+    background: #fff;
+    border-radius: 12px;
+  }
+
+  /*
+   * While the credits are open they are drawn over the legend card (same corner) and are 2px shorter and wider than it, so
+   * the card showed round their edge as a second popup. The card is hidden, not removed, while they are open (a few
+   * seconds, or until the button is tapped again): nothing moves.
+   */
+  .map-wrap:has(.maplibregl-compact-show) .legend {
+    visibility: hidden;
+  }
+
+  /* The offline message is centred in the map; the bottom row is under the map now, not over its foot. */
   .map-offline {
-    padding: var(--space-4) var(--space-4) calc(var(--space-4) + var(--map-stack-h, 0px));
+    padding: var(--space-4);
+  }
+
+  /*
+   * MapLibre's two-finger hint is a full-map scrim at z-index 99999. Its opacity is 0, but the fade waits a
+   * second, and for that second the used opacity is still 1: the white sentence is painted over the legend with
+   * no gesture at all. At 200% text on a 360px phone the Tamil sentence sat on "Taken" and "Not chosen".
+   * Hidden is opacity 0 from the first frame. While a one-finger pan is blocked, the sentence sits at the foot of the
+   * map, clear of the control column.
+   */
+  :host ::ng-deep .maplibregl-cooperative-gesture-screen {
+    z-index: 1;
+    align-items: flex-end;
+    justify-content: center;
+    box-sizing: border-box;
+    padding-bottom: calc(2 * var(--space-2));
+    padding-inline: var(--space-3) calc(var(--target) + var(--space-4) + 2px);
+    text-align: center;
+  }
+
+  :host ::ng-deep .maplibregl-cooperative-gesture-screen:not(.maplibregl-show) {
+    opacity: 0;
+    transition: none;
+  }
+
+  :host ::ng-deep .maplibregl-cooperative-gesture-screen .maplibregl-mobile-message {
+    max-width: 100%;
+    overflow-wrap: anywhere;
   }
 }

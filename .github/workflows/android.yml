@@ -14,7 +14,7 @@
 #
 # SPDX-License-Identifier: AGPL-3.0-only
 
-# Android: debug APK + JVM unit tests + lint (report only); signed release APK on main when the keystore secrets exist. The APK artifact is how the app is installed (sideload), see README.md.
+# Android: debug APK + JVM unit tests + lint (blocking, S4b-BL-170); signed release APK on main when the keystore secrets exist. The APK artifact is how the app is installed (sideload), see README.md.
 name: Android
 
 # Path filters cover every file the build and tests read, not only android/** (same rule as backend.yml).
@@ -43,6 +43,9 @@ on:
       # either file alone can turn this workflow red.
       - "docs/ai/evals/parity-vectors.json"
       - "web/src/app/core/ai/parity-vectors.json"
+      # The fake AI provider server (S4b-BL-175). Load-bearing: FakeProviderWireTest (:shared:testAndroidHostTest) starts it
+      # as a Node subprocess, so editing it alone can turn this workflow red.
+      - "tools/fake-ai-provider/**"
       - ".github/workflows/android.yml"
   pull_request:
     paths:
@@ -51,6 +54,7 @@ on:
       - "web/public/geo/**"
       - "docs/ai/evals/parity-vectors.json"
       - "web/src/app/core/ai/parity-vectors.json"
+      - "tools/fake-ai-provider/**"
       - ".github/workflows/android.yml"
   workflow_dispatch:
 
@@ -107,10 +111,11 @@ jobs:
           ./gradlew --no-daemon --stacktrace assembleDebug testDebugUnitTest :shared:testAndroidHostTest :ui:testAndroidHostTest \
             :shared:compileCommonMainKotlinMetadata :ui:compileCommonMainKotlinMetadata -Proborazzi.test.verify=true
 
-      # Android lint (includes MissingTranslation as an error, see app/build.gradle.kts). Reported, not yet
-      # blocking: switch continue-on-error off once the first report is clean.
+      # Android lint, blocking (S4b-BL-170): any error-severity finding fails the job (MissingTranslation and
+      # ExtraTranslation are errors, see app/build.gradle.kts; the one AppLinkUrlError is ignored on its intent filter,
+      # with the reason, in AndroidManifest.xml). Warnings stay in the report (lint-results-debug.html); there is no
+      # baseline file.
       - name: Lint
-        continue-on-error: true
         run: ./gradlew --no-daemon lintDebug
 
       # Artifact names follow the product name Doorprints (were house-hunt-*-apk until 2026-09-22).
@@ -169,6 +174,22 @@ jobs:
           chmod +x gradlew
           ./gradlew --no-daemon --stacktrace :app:assembleRelease
 
+      # Docker Hub rate limit (docs/07 section 7.3): optional login with a read-only access token. Without the two secrets
+      # (forks, Dependabot, not yet set, expired) the step is skipped or fails softly and the pulls stay anonymous.
+      - name: Docker Hub secrets present?
+        id: dockerhub
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          if [ -n "$DOCKERHUB_USERNAME" ] && [ -n "$DOCKERHUB_TOKEN" ]; then echo "present=true" >> "$GITHUB_OUTPUT"; fi
+      - name: Log in to Docker Hub (pull rate limit)
+        if: ${{ steps.dockerhub.outputs.present == 'true' }}
+        continue-on-error: true
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: MobSF static scan
         run: |
           chmod +x ci/mobsf-scan.sh
@@ -191,6 +212,7 @@ jobs:
   release-signing-check:
     name: Release signing secrets present?
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    environment: release
     runs-on: ubuntu-26.04
     timeout-minutes: 5
     permissions: {}
@@ -218,6 +240,7 @@ jobs:
     name: Signed release APK
     needs: [build, release-signing-check]
     if: needs.release-signing-check.outputs.present == 'true'
+    environment: release
     runs-on: ubuntu-26.04
     timeout-minutes: 40
     permissions:
@@ -253,6 +276,9 @@ jobs:
           HH_KEYSTORE_PASSWORD: ${{ secrets.HH_KEYSTORE_PASSWORD }}
           HH_KEY_ALIAS: ${{ secrets.HH_KEY_ALIAS }}
           HH_KEY_PASSWORD: ${{ secrets.HH_KEY_PASSWORD }}
+          # The Android OAuth client id for the browser sign-in fallback (docs/15 §2.4): a repository VARIABLE, not a secret
+          # (it is a public identifier). Empty when the variable is not set: the browser fallback then stays unavailable.
+          GOOGLE_ANDROID_CLIENT_ID: ${{ vars.GOOGLE_ANDROID_CLIENT_ID }}
         run: |
           chmod +x gradlew
           ./gradlew --no-daemon --stacktrace assembleRelease

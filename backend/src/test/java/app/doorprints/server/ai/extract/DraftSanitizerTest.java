@@ -40,7 +40,7 @@ class DraftSanitizerTest {
 
     @Test
     void acceptsAGoodExtraction() {
-        var d = DraftSanitizer.sanitize(raw("2BHK in Indiranagar", "28,000", "rent", "2",
+        var d = HouseRaw.sanitize(raw("2BHK in Indiranagar", "28,000", "rent", "2",
                 "+91 98450 12345", "https://example.com/listing/42", List.of("Parking", "parking", " Lift ")), SOURCE);
         assertThat(d.label()).isEqualTo("2BHK in Indiranagar");
         assertThat(d.price()).isEqualTo(28000L);
@@ -50,6 +50,32 @@ class DraftSanitizerTest {
         assertThat(d.listingUrl()).isEqualTo("https://example.com/listing/42");
         assertThat(d.amenities()).containsExactly("parking", "lift");
         assertThat(d.warnings()).isEmpty();
+    }
+
+    @Test
+    void warnsWhenTheTextHasSeveralLinksAndTheDraftHasOne() {
+        var text = "Flat in Thane West: https://a.example/p/1 and the broker's https://b.example/p/2";
+        var raw = new RawListing("Flat", null, null, null, null, null, null, null, null, "https://a.example/p/1", null, List.of());
+        assertThat(HouseRaw.sanitize(raw, text).warnings())
+                .containsExactly("listingUrl: the text has 2 links, check this is the right one");
+        var none = new RawListing("Flat", null, null, null, null, null, null, null, null, null, null, List.of());
+        assertThat(HouseRaw.sanitize(none, text).warnings()).isEmpty();
+        assertThat(HouseRaw.sanitize(raw, "Flat in Thane West: https://a.example/p/1 https://a.example/p/1").warnings())
+                .isEmpty();
+    }
+
+    @Test
+    void countsThePastedTextNotTheLinksTheModelWroteInTheNotes() {
+        var raw = new RawListing("Flat", null, null, null, null, null, null, null, null, "https://a.example/k/1",
+                "Also https://b.example/2 https://c.example/3", List.of());
+        assertThat(HouseRaw.sanitize(raw, "Salt Lake flat https://a.example/k/1 only").warnings()).isEmpty();
+    }
+
+    @Test
+    void countsLinksInLinearTime() {
+        assertThat(DraftSanitizer.linkCount("http:// ".repeat(50_000))).isZero();
+        assertThat(DraftSanitizer.linkCount("https://a" + "a".repeat(200_000) + " https://b" + ".".repeat(200_000))).isEqualTo(2);
+        assertThat(DraftSanitizer.linkCount(("https://x.example/" + "p".repeat(30) + " ").repeat(5_000))).isEqualTo(1);
     }
 
     @Test
@@ -65,9 +91,37 @@ class DraftSanitizerTest {
         assertThat(w).hasSize(2);
     }
 
+    /**
+     * S4b-BL-174b: a price, a bedroom count or a phone number the model copies in the digits of an Indian script is read
+     * as 0-9 (Bengali "\u09E8\u09EB,\u09E6\u09E6\u09E6" is 25,000), as in Kotlin and TypeScript; the shared vectors pin the same.
+     */
+    @Test
+    void aPriceOrBedroomCountInNativeDigitsIsRead() {
+        var w = new ArrayList<String>();
+        assertThat(DraftSanitizer.price("\u09E8\u09EB,\u09E6\u09E6\u09E6", w)).isEqualTo(25_000L);
+        assertThat(DraftSanitizer.price("\u096A\u096B\u096A\u096A\u096A", w)).isEqualTo(45_444L); // Devanagari
+        assertThat(DraftSanitizer.price("\u0BEA\u0BEB,\u0BE6\u0BE6\u0BE6", w)).isEqualTo(45_000L); // Tamil
+        assertThat(DraftSanitizer.price("\u0C68.\u0C6B Cr", w)).isEqualTo(25_000_000L); // Telugu 2.5 Cr
+        assertThat(DraftSanitizer.bedrooms("\u09E8 BHK", w)).isEqualTo(2);
+        assertThat(DraftSanitizer.bedrooms("\u0BE9 BHK", w)).isEqualTo(3);
+        assertThat(DraftSanitizer.bedrooms("\u0968\u0966", w)).isEqualTo(20);
+        assertThat(DraftSanitizer.bedrooms("\u096A\u0966\u0966", w)).isNull(); // 400 is out of range
+        assertThat(w).hasSize(1); // the 400
+    }
+
+    @Test
+    void aPhoneInNativeDigitsIsKeptAsAsciiWhenTheTextHasIt() {
+        var w = new ArrayList<String>();
+        var source = "\u0938\u0902\u092A\u0930\u094D\u0915 \u096F\u096E\u096A\u096B\u0966 \u0967\u0968\u0969\u096A\u096B"; // 98450 12345
+        assertThat(DraftSanitizer.phone("\u096F\u096E\u096A\u096B\u0966 \u0967\u0968\u0969\u096A\u096B", source, w)).isEqualTo("98450 12345");
+        assertThat(DraftSanitizer.phone("98450 12345", source, w)).isEqualTo("98450 12345");
+        assertThat(DraftSanitizer.phone("98450 99999", source, w)).isNull();
+        assertThat(w).containsExactly("contactPhone: not found in the listing text, dropped");
+    }
+
     @Test
     void dropsHallucinatedPhoneAndUrl() {
-        var d = DraftSanitizer.sanitize(raw("x", "28000", "RENT", "2", "+91 99999 00000",
+        var d = HouseRaw.sanitize(raw("x", "28000", "RENT", "2", "+91 99999 00000",
                 "https://evil.example/phish", List.of()), SOURCE);
         assertThat(d.contactPhone()).isNull();
         assertThat(d.listingUrl()).isNull();
@@ -86,7 +140,7 @@ class DraftSanitizerTest {
     @Test
     void clampsLengthsAndStripsControlCharacters() {
         var longLabel = "L".repeat(500);
-        var d = DraftSanitizer.sanitize(new RawListing(longLabel, "a\u0000b  c", null, null, null, "LEASE", "2 BHK",
+        var d = HouseRaw.sanitize(new RawListing(longLabel, "a\u0000b  c", null, null, null, "LEASE", "2 BHK",
                 null, null, null, "n".repeat(5000), null), SOURCE);
         assertThat(d.label()).hasSize(DraftSanitizer.LABEL_MAX);
         assertThat(d.address()).isEqualTo("ab c");
@@ -107,12 +161,12 @@ class DraftSanitizerTest {
 
     @Test
     void generatesLabelAndHandlesNullOutput() {
-        var d = DraftSanitizer.sanitize(new RawListing(null, null, null, "HSR Layout", null, null, "3", null, null,
+        var d = HouseRaw.sanitize(new RawListing(null, null, null, "HSR Layout", null, null, "3", null, null,
                 null, "null", null), SOURCE);
         assertThat(d.label()).isEqualTo("3BHK in HSR Layout");
         assertThat(d.notes()).isNull();
         assertThat(d.amenities()).isEmpty();
-        assertThat(DraftSanitizer.sanitize(null, SOURCE).label()).isEqualTo("Untitled listing");
+        assertThat(HouseRaw.sanitize(null, SOURCE).label()).isEqualTo("Untitled listing");
     }
 
     @Test

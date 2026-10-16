@@ -66,6 +66,22 @@ fun MainViewController(): UIViewController {
 /** The deep links of this process; main thread only. */
 private val iosDeepLinks = MutableStateFlow<DeepLink?>(null)
 
+/** Opens [link] as a tapped alert or a connect link would (the Drive screens' hand-offs). Main thread. */
+internal fun openDeepLink(link: DeepLink) {
+    iosDeepLinks.value = link
+}
+
+/**
+ * Hands the file at [path] (a decrypted backup from Google Drive) to the Import screen, as a file another app opened in
+ * Doorprints is handed to it: the screen copies it into its own staging and, for a file of the Drive staging folder, deletes
+ * the original ([IosImportServices]). True when the hand-over was made.
+ */
+internal fun openImportFile(path: String): Boolean {
+    val url = platform.Foundation.NSURL.fileURLWithPath(path).absoluteString ?: return false
+    iosDeepLinks.value = DeepLink.ImportFile(url)
+    return true
+}
+
 /**
  * Hunt mode's alerts as notifications (S4b-BL-69): sets the notification centre's delegate, so a tapped alert opens
  * its house or the new-house form. The Swift app calls it from its `init`, before the app finishes launching, as iOS
@@ -90,17 +106,20 @@ fun installAreaWakeup() {
  * well-formed UUID for a house or visit, coordinates in range; anything else is ignored.
  */
 internal fun notificationDeepLink(userInfo: Map<Any?, *>): DeepLink? {
+    // Drive's pause notice (S4b-BL-145): Settings, where the Drive card is; nothing else is read from it.
+    if (userInfo[IosDriveServices.KEY_OPEN_SETTINGS] != null) return DeepLink.OpenScreen(Routes.SETTINGS)
     (userInfo[IosHunt.KEY_OPEN_HOUSE] as? String)?.let { return if (isUuid(it)) DeepLink.OpenHouse(it) else null }
     (userInfo[IosHunt.KEY_OPEN_VIEWING] as? String)?.let { return if (RecordRules.isValidId(it)) DeepLink.OpenViewing(it) else null }
     // A Hunt mode reminder (slice 3c) or an area wake-up (S4b-BL-96): the Map, which offers Hunt mode (S4b-BL-94c) and
     // on *Start Hunt mode* asks for location if needed and starts it, as Android's notification action does.
-    (userInfo[IosHunt.KEY_OFFER_HUNT_VIEWING] as? String)?.let { return if (RecordRules.isValidId(it)) DeepLink.OfferHunt else null }
-    (userInfo[IosAreaWakeup.KEY_START_HUNT_AREA] as? String)?.let { return if (RecordRules.isValidId(it)) DeepLink.OfferHunt else null }
+    (userInfo[IosHunt.KEY_OFFER_HUNT_VIEWING] as? String)?.let { return if (RecordRules.isValidId(it)) DeepLink.OfferHunt(HuntSpace.Starter.REMINDER) else null }
+    (userInfo[IosAreaWakeup.KEY_START_HUNT_AREA] as? String)?.let { return if (RecordRules.isValidId(it)) DeepLink.OfferHunt(HuntSpace.Starter.AREA) else null }
     val lat = (userInfo[IosHunt.KEY_NEW_LAT] as? String)?.toDoubleOrNull() ?: return null
     val lon = (userInfo[IosHunt.KEY_NEW_LON] as? String)?.toDoubleOrNull() ?: return null
     if (lat !in -90.0..90.0 || lon !in -180.0..180.0) return null
     val visitId = (userInfo[IosHunt.KEY_VISIT_ID] as? String)?.takeIf(::isUuid)
-    return DeepLink.NewHouse(lat, lon, visitId)
+    // The kind of the walk that raised the alert; only one of the app's own kinds is accepted (docs/03 section 18.20).
+    return DeepLink.NewHouse(lat, lon, visitId, HuntSpace.knownKind(userInfo[IosHunt.KEY_NEW_KIND] as? String))
 }
 
 private val UUID_PATTERN = Regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")

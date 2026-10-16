@@ -42,7 +42,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import org.jetbrains.compose.resources.stringResource
 import app.doorprints.data.HouseEntity
-import app.doorprints.data.TrackPointEntity
+import app.doorprints.shared.trace.RepeatLook
 import app.doorprints.ui.res.Res
 import app.doorprints.ui.res.map_boundary_credit
 import kotlin.math.hypot
@@ -78,7 +78,9 @@ import org.maplibre.geojson.Point
 @Composable
 actual fun PlatformMap(
     houses: List<HouseEntity>,
-    track: List<TrackPointEntity>,
+    track: TraceDrawing,
+    repeatLook: RepeatLook,
+    check: CheckOverlay?,
     labelSizeSp: Float,
     showLocation: Boolean,
     attribution: MapAttribution,
@@ -124,7 +126,21 @@ actual fun PlatformMap(
 
     // And the path trace (docs/11 5.27).
     LaunchedEffect(style, track) {
-        (style?.getSource(TRACK_SOURCE) as? GeoJsonSource)?.setGeoJson(trackGeoJson(track))
+        (style?.getSource(TRACK_SOURCE) as? GeoJsonSource)?.setGeoJson(track.geoJson)
+    }
+
+    // How repeated paths look (docs/11 5.27.4): the overlay layer's width and visibility, live; no GeoJSON rebuilt.
+    LaunchedEffect(style, repeatLook) {
+        val layer = style?.getLayerAs<LineLayer>(TRACK_REPEAT_LAYER) ?: return@LaunchedEffect
+        layer.setProperties(
+            PropertyFactory.lineWidth(repeatWidthExpression(repeatLook)),
+            PropertyFactory.visibility(if (repeatLook == RepeatLook.OFF) Property.NONE else Property.VISIBLE),
+        )
+    }
+
+    // The place check's stretches and ring (docs/11 5.27.13), cleared when the sheet closes.
+    LaunchedEffect(style, check) {
+        (style?.getSource(CHECK_SOURCE) as? GeoJsonSource)?.setGeoJson(checkGeoJson(check))
     }
 
     // Show the blue "you are here" dot once we have permission.
@@ -194,6 +210,7 @@ actual fun PlatformMap(
     )
 }
 
+/** The camera now as a [CameraSpot], or null while the map has no target. */
 private fun MapLibreMap.spot(): CameraSpot? {
     val p = cameraPosition
     return p.target?.let { CameraSpot(it.latitude, it.longitude, p.zoom, p.bearing) }
@@ -238,6 +255,12 @@ private class MapLibreControl(private val m: MapLibreMap, private val reload: ()
     override fun reloadStyle() = reload()
 }
 
+/**
+ * Adds the app's own sources and layers to a loaded style, from the bottom up: the path trace and its repeat overlay,
+ * the place check's halo, ring, cross and label, then the house dots and house names on top, so no base layer covers a
+ * marker. Status is told by size, ring and opacity as well as colour. Called on every style load, after India's
+ * boundaries are applied.
+ */
 private fun addHouseLayers(style: Style, labelSizeSp: Float) {
     // The path trace first, so it is drawn under the houses (the same values as trackLayerJson, iOS's copy).
     style.addSource(GeoJsonSource(TRACK_SOURCE, trackGeoJson(emptyList())))
@@ -253,7 +276,73 @@ private fun addHouseLayers(style: Style, labelSizeSp: Float) {
                     *TRACK_WIDTHS.map { (zoom, width) -> Expression.stop(zoom, width.toFloat()) }.toTypedArray(),
                 ),
             ),
-        ),
+        ).withFilter(Expression.eq(Expression.get("kind"), Expression.literal(TRACK_KIND_BASE))),
+    )
+    // The repeat overlay above it (docs/11 5.27.4), from trackRepeatLayerJson's values; the look sets its width and
+    // visibility live (the effect above), so it starts as the default look until the first one arrives.
+    style.addLayer(
+        LineLayer(TRACK_REPEAT_LAYER, TRACK_SOURCE).withProperties(
+            PropertyFactory.lineCap(Property.LINE_CAP_BUTT),
+            PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
+            PropertyFactory.lineColor(TRACK_REPEAT_COLOR),
+            PropertyFactory.lineOpacity(
+                Expression.interpolate(
+                    Expression.linear(), Expression.zoom(),
+                    Expression.stop(TRACK_REPEAT_FADE_FROM.toFloat(), 0f),
+                    Expression.stop(TRACK_REPEAT_FADE_TO.toFloat(), TRACK_REPEAT_OPACITY.toFloat()),
+                ),
+            ),
+            PropertyFactory.lineDasharray(TRACK_REPEAT_DASH.map { it.toFloat() }.toTypedArray()),
+            PropertyFactory.lineWidth(repeatWidthExpression(RepeatLook.CLEAR)),
+        ).withFilter(Expression.eq(Expression.get("kind"), Expression.literal(TRACK_KIND_REPEAT))),
+    )
+    // The place check's layers over the lines and under the houses (docs/11 5.27.13).
+    style.addSource(GeoJsonSource(CHECK_SOURCE, checkGeoJson(null)))
+    style.addLayer(
+        LineLayer(CHECK_HALO_LAYER, CHECK_SOURCE).withProperties(
+            PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
+            PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
+            PropertyFactory.lineColor(CHECK_COLOR),
+            PropertyFactory.lineOpacity(0.55f),
+            PropertyFactory.lineWidth(
+                Expression.interpolate(
+                    Expression.linear(), Expression.zoom(),
+                    *TRACK_WIDTHS.map { (zoom, width) -> Expression.stop(zoom, (width + CHECK_HALO_EXTRA_PX).toFloat()) }.toTypedArray(),
+                ),
+            ),
+        ).withFilter(Expression.eq(Expression.get("kind"), Expression.literal("stretch"))),
+    )
+    val isPlace = Expression.eq(Expression.get("kind"), Expression.literal("place"))
+    style.addLayer(
+        CircleLayer(CHECK_RING_LAYER, CHECK_SOURCE).withProperties(
+            PropertyFactory.circleRadius(CHECK_RING_RADIUS_PX.toFloat()),
+            PropertyFactory.circleColor(0xFFFFFFFF.toInt()),
+            PropertyFactory.circleOpacity(0f),
+            PropertyFactory.circleStrokeColor(CHECK_COLOR),
+            PropertyFactory.circleStrokeWidth(CHECK_RING_STROKE_PX.toFloat()),
+        ).withFilter(isPlace),
+    )
+    style.addLayer(
+        SymbolLayer(CHECK_CROSS_LAYER, CHECK_SOURCE).withProperties(
+            PropertyFactory.textField("+"),
+            PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
+            PropertyFactory.textSize(22f),
+            PropertyFactory.textAllowOverlap(true),
+            PropertyFactory.textColor(CHECK_COLOR),
+        ).withFilter(isPlace),
+    )
+    style.addLayer(
+        SymbolLayer(CHECK_LABEL_LAYER, CHECK_SOURCE).withProperties(
+            PropertyFactory.textField(Expression.get("label")),
+            PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
+            PropertyFactory.textSize(13f),
+            PropertyFactory.textOffset(arrayOf(0f, 2.2f)),
+            PropertyFactory.textAnchor("top"),
+            PropertyFactory.textAllowOverlap(true),
+            PropertyFactory.textColor(CHECK_COLOR),
+            PropertyFactory.textHaloColor(0xFFFFFFFF.toInt()),
+            PropertyFactory.textHaloWidth(1.5f),
+        ).withFilter(isPlace),
     )
     style.addSource(GeoJsonSource(HOUSES_SOURCE, housesGeoJson(emptyList())))
     val statusColor = Expression.match(
@@ -414,3 +503,9 @@ private fun rememberMapViewWithLifecycle(): MapView {
     }
     return mapView
 }
+
+/** [repeatWidthStops] as MapLibre's expression: the same numbers [trackRepeatLayerJson] writes (iOS reads those). */
+private fun repeatWidthExpression(look: RepeatLook): Expression = Expression.interpolate(
+    Expression.linear(), Expression.zoom(),
+    *repeatWidthStops(look).map { (zoom, width) -> Expression.stop(zoom.toFloat(), width.toFloat()) }.toTypedArray(),
+)

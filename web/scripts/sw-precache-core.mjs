@@ -31,11 +31,12 @@
  *    every path that is not a file with /index.html, so the build needs none (web/README.md "Deploy"). Still
  *    excluded in case a build for another host adds one: a precached 404 page is never what the app wants.
  *  * `sw.js` — the worker itself: the browser fetches it for update checks, and caching it would be circular.
+ *  * `fonts/README.txt` — the fonts' licence note; the three `.woff2` files beside it are cached, the note is not needed offline.
  *
  * Host configuration is not in the build output at all: `web/firebase.json` sits next to `package.json`, outside
  * `public/`, so nothing here has to keep it out (the Cloudflare-era `_headers` and `_redirects` are gone).
  */
-export const EXCLUDED = Object.freeze(['404.html', 'sw.js']);
+export const EXCLUDED = Object.freeze(['404.html', 'sw.js', 'fonts/README.txt']);
 
 /**
  * Build-output folders that are never precached: `screenshots/` holds the manifest's install-sheet pictures

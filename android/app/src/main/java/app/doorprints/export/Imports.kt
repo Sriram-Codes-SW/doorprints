@@ -21,6 +21,7 @@ package app.doorprints.export
 import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
+import app.doorprints.drive.wiring.DriveImportStaging
 import app.doorprints.data.Repository
 import app.doorprints.shared.export.BackupFormat
 import app.doorprints.shared.export.BackupProblem
@@ -93,6 +94,9 @@ object Imports {
             staged.delete()
             throw e
         }
+        // A backup opened from Google Drive was decrypted into a file for this copy: it has served, so it goes now
+        // (not after the six-hour sweep), whatever the copy's outcome. Any other source is left alone.
+        DriveImportStaging.discardIfStaged(stagingDir(context), source)
         if (outcome == CopyOutcome.OK) {
             ImportStaging.Staged(staged.absolutePath)
         } else {

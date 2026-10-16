@@ -20,12 +20,22 @@ of moving in.
 You need no account. Your houses stay on your phone or in your browser. A server of your own (a computer that stays on
 and keeps a copy of your houses) is optional.
 
+## Take the tour (website)
+
+The first time you open the website, a card offers **Take the tour**: short steps over the real screens. Each step
+highlights one thing and says what to try, such as **Add house**, **Trace my path**, **Compare** or **Save a copy**.
+You can use the highlighted control right there, then choose **Next**. **Skip tour** (or the Escape key) leaves at any
+point. To see it again, open **Your data** and choose **Take the tour** in the Help card. The Android and iPhone apps have
+their own tour: see [The screen at a glance](screen-at-a-glance.md).
+
 ## Website, Android or iPhone?
 
 - **Website:** open **https://doorprints.web.app** in any up-to-date browser, on a computer or a phone.
 - **Android app:** install it from the project's GitHub page (see the [README](https://github.com/Sriram-Codes-SW/doorprints/blob/main/README.md#install-the-android-app-no-build-needed)).
   It is not in the Play Store yet.
 - **iPhone app:** it is new and still being tested. It is not in the App Store.
+
+How the website differs on a phone and on a computer: [Phone or computer](phone-or-computer.md).
 
 What each one can do ("offline" means without internet; "AI" means the computer reads your notes and answers you):
 
@@ -44,9 +54,11 @@ What each one can do ("offline" means without internet; "AI" means the computer 
 | **Hunt mode** (alerts when you pass a house you have seen) | No | Yes | Yes |
 | **Wake me in my hunting areas** | No | Yes | Yes (new) |
 | **Save an area of the map for offline** | Yes | Yes | Yes |
-| Ask and Plan visits (AI) | With [your own Gemini key](settings-and-privacy.md#ai-without-a-server), or [your own server](set-up-a-server.md) with AI turned on | Same | Same |
+| Ask and Plan visits (AI), optional: [is it worth it for me?](settings-and-privacy.md#is-ai-worth-it) | With [the AI provider you chose](settings-and-privacy.md#ai-without-a-server), or [your own server](set-up-a-server.md) with AI turned on | Same | Same, early like the rest of the iPhone app |
 | Works offline | Yes, after the first visit | Yes | Yes |
 
 On the phones, **Help** in **Settings**, under **About**, opens this guide in the app's language. The website has a
 **Help** link too, at the top and on **Your data**, and a short **About** page in all four languages at
 **https://doorprints.web.app/about.html**.
+
+**For developers:** how Doorprints is built is on one page, the [architecture overview](https://github.com/Sriram-Codes-SW/doorprints/blob/main/docs/16-architecture-overview.md) (in English, on GitHub).

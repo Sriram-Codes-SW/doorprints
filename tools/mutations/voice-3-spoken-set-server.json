@@ -1,0 +1,36 @@
+{
+  "spec": "backend/src/test/java/app/doorprints/server/ai/eval/SpokenSetTest.java",
+  "maven": ["-Dtest=SpokenSetTest"],
+  "mutations": [
+    {
+      "file": "docs/ai/evals/spoken-set.json",
+      "find": " \"fixturesFrom\": \"golden-set.json\",",
+      "replace": " \"thresholds\": { \"answerCorrectness\": { \"min\": 0.5 } },\n \"fixturesFrom\": \"golden-set.json\",",
+      "expect": "theSpokenSetTakesTheGoldenSetsFixturesAndIsInformational"
+    },
+    {
+      "file": "docs/ai/evals/spoken-set.json",
+      "find": "um which house had the best water situation",
+      "replace": "um, which house had the best water situation?",
+      "expect": "everyCaseIsTheSpokenFormOfAGoldenCaseWithTheSameExpectationsAndIsSpoken"
+    },
+    {
+      "file": "docs/ai/evals/golden-set.json",
+      "find": "\"refusalAccuracy\": { \"min\": 1.0 }",
+      "replace": "\"refusalAccuracy\": { \"min\": 0.5 }",
+      "expect": "theGoldenSetItsThresholdsAndTheLoaderAreByteIdenticalToMain"
+    },
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/EvalScorer.java",
+      "find": "status = value >= min.doubleValue() - 1e-9 ? \"PASS\" : \"FAIL\";",
+      "replace": "status = value >= min.doubleValue() - 1e-3 ? \"PASS\" : \"FAIL\";",
+      "expect": "theVerdictLogicIsTheSourceTextItWasOnMain"
+    },
+    {
+      "file": ".github/workflows/ai-evals.yml",
+      "find": "          - spoken-set\n",
+      "replace": "",
+      "expect": "theWorkflowChoosesTheSetAndValidatesItInTheFirstJob"
+    }
+  ]
+}

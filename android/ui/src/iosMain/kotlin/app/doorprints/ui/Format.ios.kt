@@ -30,6 +30,13 @@ internal actual fun formatDate(epochMillis: Long, language: String, withTime: Bo
     return formatter.stringFromDate(NSDate.dateWithTimeIntervalSince1970(epochMillis / 1000.0))
 }
 
+internal actual fun formatDateWithWeekday(epochMillis: Long, language: String, withYear: Boolean): String {
+    val formatter = NSDateFormatter()
+    formatter.locale = NSLocale(localeIdentifier = "${language.ifEmpty { "en" }}_IN")
+    formatter.setLocalizedDateFormatFromTemplate(if (withYear) "EEEdMMMy" else "EEEdMMM")
+    return formatter.stringFromDate(NSDate.dateWithTimeIntervalSince1970(epochMillis / 1000.0))
+}
+
 // Not NSString's "%.6f": C rounds the exact binary value ("12.345678" for 12.3456785) where Java rounds its shortest
 // decimal half up ("12.345679"), and the form writes what Android writes (S4b-BL-40).
 internal actual fun formatSixDecimals(value: Double): String = sixDecimalsHalfUp(value)

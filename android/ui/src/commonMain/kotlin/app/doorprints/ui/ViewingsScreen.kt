@@ -76,6 +76,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.doorprints.data.HouseEntity
 import app.doorprints.data.VisitEntity
 import app.doorprints.shared.model.HuntReminders
+import app.doorprints.shared.model.KindLabels
 import app.doorprints.shared.model.Scoring
 import app.doorprints.shared.model.Viewing
 import app.doorprints.shared.model.ViewingIcs
@@ -113,7 +114,7 @@ fun ViewingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(Res.string.viewings_title)) },
+                title = { Text(stringResource(kindSection(LocalSpace.current.built.labels, "viewings"))) },
                 navigationIcon = {
                     IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(Res.string.common_back)) }
                 },
@@ -140,6 +141,9 @@ fun ViewingsHistory(
 ) {
     val repo = LocalAppServices.current.repository
     val scope = rememberCoroutineScope()
+    // The space on screen: its kind's viewings are listed and worded (kinds PR 29, docs/03 §18.23).
+    val space = LocalSpace.current
+    val words = space.pages
     // null until Room answers, so the empty state does not flash on the way in.
     val all: List<Viewing>? by remember(repo) { repo.observeViewings() }.collectAsStateWithLifecycle(initialValue = null)
     // null until Room answers too, so no row reads "a house that is gone" on the way in.
@@ -175,17 +179,19 @@ fun ViewingsHistory(
     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         val forHouse = houseId?.let { byId[it]?.label ?: gone }
         Text(
-            forHouse?.let { stringResource(Res.string.viewings_forHouse, it) } ?: stringResource(Res.string.viewings_intro),
+            forHouse?.let { stringResource(Res.string.viewings_forHouse, it) } ?: stringResource(words.viewingsIntro),
             style = MaterialTheme.typography.bodyMedium,
         )
         Button(onClick = { onPlan(houseId, ViewingKind.FIRST) }, modifier = Modifier.heightIn(min = 48.dp)) {
-            ButtonLabel(stringResource(Res.string.viewings_plan))
+            ButtonLabel(stringResource(words.viewingPlan))
         }
         val list = all ?: return@Column
         if (loadedHouses == null) return@Column
-        val mine = if (houseId == null) list else list.filter { it.houseId == houseId }
+        // A viewing is listed in the space of its candidate's kind; one whose candidate is gone stays in the default space.
+        val inSpace = { v: Viewing -> Viewings.inSpace(space.view, v) { id -> byId[id]?.kind } }
+        val mine = if (houseId == null) list.filter(inSpace) else list.filter { it.houseId == houseId }
         if (mine.isEmpty()) {
-            Text(stringResource(Res.string.viewings_empty), style = MaterialTheme.typography.bodyLarge)
+            Text(stringResource(words.viewingsEmpty), style = MaterialTheme.typography.bodyLarge)
             return@Column
         }
 
@@ -391,6 +397,9 @@ fun ViewingsCard(
     onPlan: (ViewingKind) -> Unit,
     onOpenAll: () -> Unit,
     nowMs: Long = remember { nowMillis() },
+    /** The candidate's kind: its section heading and its words (kinds PR 29); the house's unless the form says otherwise. */
+    labels: KindLabels = KindLabels.HOUSE,
+    words: PageWords = PageWords.HOUSE,
 ) {
     val repo = LocalAppServices.current.repository
     val scope = rememberCoroutineScope()
@@ -404,10 +413,10 @@ fun ViewingsCard(
     var secondFor by rememberSaveable { mutableStateOf(false) }
 
     HorizontalDivider()
-    SectionHeading(stringResource(Res.string.viewings_cardHeading))
+    SectionHeading(stringResource(kindSection(labels, "viewings")))
     Text(
         next?.let { stringResource(Res.string.viewings_next, it.startsAt.dateText(), stringResource(it.viewingKind.labelResource)) }
-            ?: stringResource(Res.string.viewings_none),
+            ?: stringResource(words.viewingNone),
         style = MaterialTheme.typography.bodyMedium,
     )
     if (candidate != null && suggested != null) {
@@ -422,10 +431,10 @@ fun ViewingsCard(
     }
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         OutlinedButton(onClick = { onPlan(ViewingKind.FIRST) }, modifier = Modifier.heightIn(min = 48.dp)) {
-            ButtonLabel(stringResource(Res.string.viewings_plan))
+            ButtonLabel(stringResource(words.viewingPlan))
         }
         TextButton(onClick = onOpenAll, modifier = Modifier.heightIn(min = 48.dp)) {
-            ButtonLabel(stringResource(Res.string.viewings_allOfHouse))
+            ButtonLabel(stringResource(words.viewingAll))
         }
     }
     if (secondFor) {

@@ -1,0 +1,73 @@
+<!--
+   Copyright 2026 Sriram (Sriram-Codes-SW)
+
+   This file is part of Doorprints.
+
+   Doorprints is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+   Public License as published by the Free Software Foundation, version 3 of the License.
+
+   Doorprints is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+   warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+   details.
+
+   You should have received a copy of the GNU Affero General Public License along with Doorprints (the file LICENSE;
+   the file NOTICE has additional permissions under section 7). If not, see <https://www.gnu.org/licenses/>.
+
+   SPDX-License-Identifier: AGPL-3.0-only
+-->
+
+<section class="card-section" aria-labelledby="drive-sync-heading">
+  <h3 id="drive-sync-heading">{{ 'driveSync.heading' | t }}</h3>
+  <button type="button" class="btn btn-primary" (click)="performSync()" [disabled]="busy()">
+    {{ 'driveSync.syncNow' | t }}
+  </button>
+
+  <p class="status-line" role="status" aria-live="polite" aria-atomic="true">
+    {{ statusMessage() }}
+  </p>
+  <p>{{ 'driveSync.afterChange' | t }}</p>
+
+  @if (skippedCount() > 0) {
+    <p class="notice" role="alert" aria-live="assertive">
+      {{ 'driveSync.skippedFiles' | t: { count: skippedCount() } }}
+    </p>
+  }
+
+  @if (needsConfirmation()) {
+    <div class="confirm-box" role="dialog" aria-labelledby="sync-confirm-title">
+      <h4 id="sync-confirm-title">{{ 'driveSync.shrinkConfirm' | t }}</h4>
+      <p>{{ 'driveSync.shrinkConfirmDetails' | t }}</p>
+      <div class="actions">
+        <button type="button" class="btn btn-primary" (click)="confirmShrinkDeletion()" [disabled]="busy()">
+          {{ 'driveSync.applyShrink' | t }}
+        </button>
+        <button type="button" class="btn" (click)="cancelConfirmation()" [disabled]="busy()">
+          {{ 'driveSync.notNow' | t }}
+        </button>
+      </div>
+    </div>
+  }
+
+  <label class="checkbox">
+    <input
+      type="checkbox"
+      [checked]="photosWifiOnly()"
+      (change)="togglePhotosWifiOnly($event)"
+      [disabled]="busy()"
+    />
+    <span>{{ 'driveSync.wifiOnly' | t }}</span>
+  </label>
+  <p>{{ 'driveSync.websitePhotos' | t }}</p>
+
+  @if (photoLabel(); as size) {
+    <button type="button" class="btn" (click)="uploadPhotosNowOverMobile()" [disabled]="busy()">
+      {{ 'driveSync.uploadNow' | t: { size } }}
+    </button>
+  }
+
+  @if (showPhotoError()) {
+    <p class="error-message" role="alert" aria-live="assertive">
+      {{ 'driveSync.photoError' | t }}
+    </p>
+  }
+</section>

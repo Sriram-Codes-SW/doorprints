@@ -23,8 +23,8 @@
 # the simulator's unified log. The self-check (Kotlin, Debug builds only) writes one line per check with NSLog,
 #   DOORPRINTS-SELFCHECK <name> START, then PASS|FAIL|SKIP ...   for resources, database, settings, keychain,
 #   indiaView and map (CMP-8c: the in-app boundary check, the owner's CI gate for the iOS map),
-# and finally DOORPRINTS-SELFCHECK done PASS or done FAIL. The script passes only on "done PASS" with indiaView and map
-# both PASS (they download the map's style, so they need the network); no done line within the time limit (a crash, a
+# and finally DOORPRINTS-SELFCHECK done PASS or done FAIL. The script passes only on "done PASS" with keychain, indiaView,
+# map and hunt each PASS and no SKIP line (S4b-BL-59 a) (they download the map's style, so they need the network); no done line within the time limit (a crash, a
 # hang) fails too. It writes <out>/launch.log (the streamed DOORPRINTS- lines),
 # <out>/unified.log (the same from `log show`), <out>/app-unified.log and <out>/system-unified.log (everything the app
 # logged, and what the system logged about it), <out>/launch.png and any crash reports, and always shuts the
@@ -94,7 +94,11 @@ stream_pid=""
 # shellcheck disable=SC2329  # called by the EXIT trap
 stop_stream() {
   if [ -n "$stream_pid" ]; then
+    kill -INT "$stream_pid" 2>/dev/null || true
+    sleep 1
     kill "$stream_pid" 2>/dev/null || true
+    wait "$stream_pid" 2>/dev/null || true
+    stream_pid=""
   fi
 }
 read_unified_log() {
@@ -119,6 +123,9 @@ app_running() {
   xcrun simctl spawn "$udid" launchctl list 2>/dev/null | grep -q "UIKitApplication:$bundle_id"
 }
 
+# The predicate is the one `log show` uses below, which found every line when the stream found none (S4b-BL-59 d). A
+# likely cause is the stream's stdout block-buffering into a file and losing its tail when killed, so it is stopped with
+# SIGINT and waited for (see stop_stream); the counts printed at the end show which source saw how many lines.
 xcrun simctl spawn "$udid" log stream --style compact --level debug \
   --predicate 'eventMessage CONTAINS "DOORPRINTS-"' > "$log" 2>&1 &
 stream_pid=$!
@@ -183,6 +190,7 @@ xcrun simctl spawn "$udid" log show --last 5m --style compact \
 # 2026-09-29 the stream dropped "indiaView PASS" while it kept the lines around it), so neither is read alone; each
 # check's lines are kept in the order the app wrote them, once.
 read_unified_log
+echo "Lines seen: stream $(grep -c 'DOORPRINTS-' "$log" 2>/dev/null || true), log show $(grep -c 'DOORPRINTS-' "$unified" 2>/dev/null || true)"
 lines=$(cat "$log" "$unified" 2>/dev/null | grep -o 'DOORPRINTS-SELFCHECK .*' | tr -d '\r' | awk '!seen[$0]++' || true)
 echo "--- self-check lines ---"
 echo "${lines:-(none)}"
@@ -202,16 +210,20 @@ for report in "$out"/*.ips; do
 done
 
 if [ "$result" = "DOORPRINTS-SELFCHECK done PASS" ]; then
-  # The gates: both map checks (India's boundary) and the Hunt mode check must have passed, not merely not failed.
-  for gate in indiaView map hunt; do
+  # The gates: the Keychain round trip, both map checks (India's boundary) and the Hunt mode check must have passed,
+  # not merely not failed (S4b-BL-59 a: a Keychain SKIP once passed as a warning although the ad-hoc signed build has a
+  # Keychain).
+  for gate in keychain indiaView map hunt; do
     if ! echo "$lines" | grep -q "DOORPRINTS-SELFCHECK $gate PASS"; then
-      echo "::error::the self-check passed without '$gate PASS' (the iOS map's boundary gate, or Hunt mode's)"
+      echo "::error::the self-check passed without '$gate PASS' (the Keychain, the iOS map's boundary gate, or Hunt mode's)"
       exit 1
     fi
   done
-  skipped=$(echo "$lines" | grep 'DOORPRINTS-SELFCHECK [a-z]* SKIP' || true)
+  # Any other SKIP fails too: a check that did not run proves nothing.
+  skipped=$(echo "$lines" | grep 'DOORPRINTS-SELFCHECK [A-Za-z]* SKIP' || true)
   if [ -n "$skipped" ]; then
-    echo "::warning::self-check skipped a check: $(echo "$skipped" | tr '\n' ' ')"
+    echo "::error::the self-check skipped a check, which fails the smoke: $(echo "$skipped" | tr '\n' ' ')"
+    exit 1
   fi
   echo "Launch smoke test passed."
   exit 0

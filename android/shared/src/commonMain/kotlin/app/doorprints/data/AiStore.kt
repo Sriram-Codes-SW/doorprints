@@ -1,0 +1,274 @@
+/*
+ * Copyright 2026 Sriram (Sriram-Codes-SW)
+ *
+ * This file is part of Doorprints.
+ *
+ * Doorprints is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+ * Public License as published by the Free Software Foundation, version 3 of the License.
+ *
+ * Doorprints is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+ * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Affero General Public License along with Doorprints (the file LICENSE;
+ * the file NOTICE has additional permissions under section 7). If not, see <https://www.gnu.org/licenses/>.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
+package app.doorprints.data
+
+import app.doorprints.shared.model.KindCapabilities
+import app.doorprints.shared.ai.AiHouse
+import app.doorprints.shared.ai.AiKind
+import app.doorprints.shared.ai.AiProviderConfig
+import app.doorprints.shared.ai.AiQuality
+import app.doorprints.shared.ai.AnthropicClient
+import app.doorprints.shared.ai.BaseUrlCheck
+import app.doorprints.shared.ai.BaseUrlValidator
+import app.doorprints.shared.ai.GeminiClient
+import app.doorprints.shared.ai.JsonChatModel
+import app.doorprints.shared.ai.OnDeviceAi
+import app.doorprints.shared.api.ApiClient
+import app.doorprints.shared.api.ApiException
+import app.doorprints.shared.api.AskResponseDto
+import app.doorprints.shared.api.HouseDraftDto
+import app.doorprints.shared.api.PlanRequest
+import app.doorprints.shared.api.PlanResponseDto
+import app.doorprints.shared.model.KindSettingRules
+import app.doorprints.shared.model.SpaceView
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.withContext
+
+/**
+ * Whether AI is offered on this phone and where its three calls go (S4b-BL-168, slice 8): the server's answer to
+ * *is AI on for this device*, the person's own key and provider, the one on-device AI kept per key (so its rate limit
+ * holds), and the choice between that and the server for *Add a shared listing*, *Ask* and *Plan*. It is separate from
+ * [CommonRepository] because the six setters that change the choice all publish the same state, and the three calls all
+ * make the same choice. The Assistant's house document ([houses]) is read from every kind of data, so the repository
+ * builds it and hands it over; the prompts, the checks and the safeguards stay in `shared/ai`, untouched.
+ */
+internal class AiStore(
+    private val settings: SettingsStore,
+    private val apiFor: (serverUrl: String, apiKey: String) -> ApiClient,
+    private val geminiFor: ((apiKey: String, quality: AiQuality) -> GeminiClient)?,
+    private val openAiFor: ((baseUrl: String, model: String, apiKey: String) -> JsonChatModel)?,
+    private val anthropicFor: ((baseUrl: String, model: String, apiKey: String) -> JsonChatModel)?,
+    private val emulatorHostAllowed: Boolean,
+    private val houses: suspend () -> List<AiHouse>,
+    /** The developer flag of the hidden kinds (kinds PR 7): false on the iPhone and in a release. [OnDeviceAi] reads a kind other than the house while it or the person's switch ([SettingsStore.kindsOn]) is on. */
+    private val devKinds: Boolean = false,
+) {
+    private val _enabled = MutableStateFlow(false)
+    val enabled: StateFlow<Boolean> = _enabled.asStateFlow()
+    private val _off = MutableStateFlow<AiOff?>(AiOff.NO_SERVER)
+    val off: StateFlow<AiOff?> = _off.asStateFlow()
+    private val _ownKey = MutableStateFlow(false)
+
+    /** Whether the person's own AI answers on this phone (kinds PR C): the only one that reads a space other than the house. */
+    val ownKey: StateFlow<Boolean> = _ownKey.asStateFlow()
+
+    private val _serverKinds = MutableStateFlow<List<String>>(emptyList())
+
+    /** The kinds the server's status said its Ask and Plan accept (S4b-BL-290); none for an older server, a failed status or no server. */
+    val serverKinds: StateFlow<List<String>> = _serverKinds.asStateFlow()
+
+    /** What the server said last: AI on for this device, or why not (NO_SERVER, SERVER, DEVICE). */
+    private var serverAi: AiOff? = AiOff.NO_SERVER
+
+    /**
+     * Asks the server whether AI features are on for this device. No server set up means off, and so does a real
+     * `enabled: false` answer. A failed request (offline, a timeout, a server error) keeps what was known (UX review,
+     * whole-app audit): turning the Assistant tab off on every network error removed it while the user was on it.
+     * AI is then offered only when this phone's *AI features* switch is on too ([AppSettings.aiFeatures]).
+     */
+    suspend fun refreshStatus(): Boolean = withContext(Dispatchers.IO) {
+        val s = settings.current()
+        serverAi = if (!s.serverConfigured) {
+            _serverKinds.value = emptyList()
+            AiOff.NO_SERVER
+        } else {
+            runCatching { apiFor(s.serverUrl, s.apiKey).aiStatus() }.fold(
+                { status ->
+                    _serverKinds.value = status.kinds
+                    when {
+                        status.offForDevice -> AiOff.DEVICE
+                        !status.enabled -> AiOff.SERVER
+                        else -> null
+                    }
+                },
+                { e ->
+                    if (e is kotlinx.coroutines.CancellationException) throw e
+                    serverAi
+                },
+            )
+        }
+        publish(s)
+    }
+
+    suspend fun setFeatures(on: Boolean) {
+        settings.saveAiFeatures(on)
+        publish(settings.current())
+    }
+
+    /** On-device AI with the person's own key (docs/03 §13.1): chosen, and a key saved. */
+    private fun usesOwnKey(s: AppSettings) = s.aiProvider == AiProviderChoice.DEVICE && when (s.aiProviderConfig.kind) {
+        AiKind.GEMINI -> s.geminiKey.isNotBlank() && geminiFor != null
+        // The key is optional here (a model on the person's own computer needs none).
+        AiKind.OPENAI_COMPATIBLE -> openAiFor != null && s.aiProviderConfig.model.isNotBlank() &&
+            BaseUrlValidator.check(s.aiProviderConfig.baseUrl, emulatorHostAllowed) is BaseUrlCheck.Valid
+        // Anthropic has no keyless form: the key is required.
+        AiKind.ANTHROPIC -> anthropicFor != null && s.geminiKey.isNotBlank() && s.aiProviderConfig.model.isNotBlank() &&
+            BaseUrlValidator.check(s.aiProviderConfig.baseUrl, emulatorHostAllowed) is BaseUrlCheck.Valid
+    }
+
+    /** The model for the saved choice, or null when nothing here can build it. */
+    private fun chatModel(config: AiProviderConfig, key: String, quality: AiQuality): JsonChatModel? = when (config.kind) {
+        AiKind.GEMINI -> geminiFor?.invoke(key, quality)
+        AiKind.OPENAI_COMPATIBLE -> openAiFor?.invoke(config.baseUrl, config.model, key)
+        AiKind.ANTHROPIC -> anthropicFor?.invoke(config.baseUrl, config.model, key)
+    }
+
+    /**
+     * Works out whether AI is offered and why not, from the settings and the server's report, and publishes it to
+     * [off] and [enabled]. With the person's own key only this phone's switch counts.
+     */
+    private fun publish(s: AppSettings): Boolean {
+        // With the person's own key nothing depends on a server: only this phone's switch counts.
+        val off = if (usesOwnKey(s)) (if (s.aiFeatures) null else AiOff.OPT_IN) else serverAi ?: if (s.aiFeatures) null else AiOff.OPT_IN
+        _off.value = off
+        _ownKey.value = usesOwnKey(s)
+        _enabled.value = off == null
+        return off == null
+    }
+
+    suspend fun saveKey(key: String) {
+        settings.saveGeminiKey(key)
+        publish(settings.current())
+    }
+
+    suspend fun setProvider(choice: AiProviderChoice) {
+        settings.saveAiProvider(choice)
+        publish(settings.current())
+    }
+
+    /** Saves the *AI speed and cost* choice; the next call builds its client with it. No publish: nothing about "AI on" changes. */
+    suspend fun setQuality(quality: AiQuality) {
+        settings.saveAiQuality(quality)
+    }
+
+    suspend fun removeKey() {
+        settings.removeGeminiKey()
+        publish(settings.current())
+    }
+
+    suspend fun saveConfig(config: AiProviderConfig, key: String) {
+        val checked = checkedConfig(config)
+        require(checked.kind != AiKind.ANTHROPIC || key.isNotBlank()) { "key" }
+        settings.saveAiProviderConfig(checked, key)
+        publish(settings.current())
+    }
+
+    suspend fun testProvider(config: AiProviderConfig, key: String): Result<Unit> = withContext(Dispatchers.IO) {
+        runCatching {
+            val client = chatModel(checkedConfig(config), key.trim(), settings.current().aiQuality) ?: throw IllegalStateException("no provider")
+            client.ping()
+        }
+    }
+
+    /** [config] with its base URL normalised, or an [IllegalArgumentException] saying what is wrong with it. */
+    private fun checkedConfig(config: AiProviderConfig): AiProviderConfig = when (config.kind) {
+        AiKind.GEMINI -> AiProviderConfig.GEMINI
+        AiKind.OPENAI_COMPATIBLE, AiKind.ANTHROPIC -> {
+            // Anthropic has one address; a config saved without one means that.
+            val address = if (config.kind == AiKind.ANTHROPIC && config.baseUrl.isBlank()) AnthropicClient.BASE_URL else config.baseUrl
+            val url = when (val check = BaseUrlValidator.check(address, emulatorHostAllowed)) {
+                is BaseUrlCheck.Valid -> check.normalised
+                is BaseUrlCheck.Invalid -> throw IllegalArgumentException(check.reason.wire)
+            }
+            require(config.model.isNotBlank()) { "model" }
+            config.copy(baseUrl = url, model = config.model.trim())
+        }
+    }
+
+    /** On-device AI for the saved key, or null when AI goes through the server. One per key, so its rate limit holds. */
+    private var onDevice: Pair<Pair<Triple<AiProviderConfig, String, AiQuality>, Boolean>, OnDeviceAi>? = null
+
+    /**
+     * The on-device AI for the saved key, or null when AI goes through the server; the instance is reused while
+     * the key and provider stay the same.
+     */
+    private suspend fun ownKeyAi(): OnDeviceAi? {
+        val s = settings.current()
+        if (!usesOwnKey(s)) return null
+        // Only the Gemini client reads the choice, so for another service it is left out of the key and a change rebuilds nothing.
+        val quality = if (s.aiProviderConfig.kind == AiKind.GEMINI) s.aiQuality else AiQuality.DEFAULT
+        // Kinds other than the house are read only while the developer flag or the person's switch allows (a build that lists the school is the house build with the switch off); a change of it rebuilds.
+        val key = Triple(s.aiProviderConfig, s.geminiKey, quality) to settings.kindsOn(devKinds)
+        onDevice?.let { (saved, ai) -> if (saved == key) return ai }
+        return OnDeviceAi(chatModel(s.aiProviderConfig, s.geminiKey, quality)!!, houses, devKinds = key.second).also { onDevice = key to it }
+    }
+
+    /**
+     * Runs [block] against the configured server on the IO dispatcher; throws `IllegalStateException` when no
+     * server is set.
+     */
+    private suspend fun <T> withApi(block: suspend (ApiClient) -> T): T = withContext(Dispatchers.IO) {
+        val s = settings.current()
+        check(s.serverConfigured) { "Server not configured" }
+        block(apiFor(s.serverUrl, s.apiKey))
+    }
+
+    /**
+     * The guard of the three calls (S4b-BL-251): while [off] says AI is off nothing is sent, whoever calls, so a caller that
+     * forgets the screens' check on [enabled] cannot send a listing out. [ApiException.Kind.AI_OFF]; the *Test* of a provider
+     * ([testProvider]) is the setup and is not guarded.
+     */
+    private fun requireOn() {
+        if (_off.value != null) throw ApiException(ApiException.Kind.AI_OFF)
+    }
+
+    // The same three calls, answered by the server or on this device (ADR-26): the screens do not know which.
+    suspend fun extractListing(text: String): HouseDraftDto {
+        requireOn()
+        return ownKeyAi()?.let { withContext(Dispatchers.IO) { it.extractListing(text) } } ?: withApi { it.extractListing(text) }
+    }
+
+    /** As above for a candidate of another kind the extract fills (kinds PR 7): the kind goes with the text. */
+    suspend fun extractListing(text: String, kind: String): HouseDraftDto {
+        requireOn()
+        return ownKeyAi()?.let { withContext(Dispatchers.IO) { it.extractListing(text, kind) } } ?: withApi { it.extractListing(text, kind) }
+    }
+
+    /**
+     * Ask and Plan read one [space] (kinds PR C, S4b-BL-289): on this device's AI the candidates it holds; on the server, since
+     * S4b-BL-290, the space's kind is sent when the server's status named it, and the house's call is today's, with no kind. A
+     * space the server did not name is refused ([ApiException.Kind.AI_OFF]) and nothing is sent: an older server would read
+     * every candidate.
+     */
+    suspend fun ask(question: String, space: SpaceView? = null): AskResponseDto {
+        requireOn()
+        return ownKeyAi()?.let { withContext(Dispatchers.IO) { it.ask(question, holds = space.holder(), kind = space?.kind) } }
+            ?: serverKind(space).let { kind -> withApi { if (kind == null) it.ask(question) else it.ask(question, kind) } }
+    }
+
+    suspend fun planVisits(request: PlanRequest, space: SpaceView? = null): PlanResponseDto {
+        requireOn()
+        return ownKeyAi()?.let { withContext(Dispatchers.IO) { it.planVisits(request, holds = space.holder()) } }
+            ?: serverKind(space).let { kind -> withApi { it.planVisits(if (kind == null) request else request.copy(kind = kind)) } }
+    }
+
+    /** The kind to send the server for [space]: none for the house (today's call), the space's when the server named it, else a refusal. */
+    private fun serverKind(space: SpaceView?): String? {
+        val kind = space?.kind
+        if (kind == null || KindCapabilities.of(kind).baseline) return null
+        if (kind !in _serverKinds.value) throw ApiException(ApiException.Kind.AI_OFF)
+        return kind
+    }
+
+    private fun SpaceView?.holder(): (String?) -> Boolean = this?.let { v -> { kind: String? -> v.holds(kind) } } ?: { true }
+}

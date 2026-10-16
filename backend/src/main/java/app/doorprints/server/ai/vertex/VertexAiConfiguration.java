@@ -106,6 +106,10 @@ public class VertexAiConfiguration {
                 .build();
     }
 
+    /**
+     * Builds the Vertex embedding model with a read timeout, no redirects, and the embedding location, which can
+     * differ from the chat location.
+     */
     @Bean
     public EmbeddingModel vertexEmbeddingModel(AiProperties props, GoogleAccessTokenSource vertexAccessTokens) {
         var v = props.vertex();

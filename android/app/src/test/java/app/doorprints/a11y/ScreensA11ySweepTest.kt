@@ -75,7 +75,25 @@ import app.doorprints.ui.QuestionsEditor
 import app.doorprints.ui.SettingsScreen
 import app.doorprints.ui.ShareUpdatesScreen
 import app.doorprints.ui.ViewingsHistory
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.performClick
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import app.doorprints.FakeVoiceRepository
+import app.doorprints.FakeVoiceServices
+import app.doorprints.data.KeystoreSecretStore
+import app.doorprints.data.Repository
+import app.doorprints.data.SettingsStore
+import app.doorprints.ui.AppServices
+import app.doorprints.ui.res.Res
+import app.doorprints.ui.res.voice_mic
+import app.doorprints.ui.res.voice_mic_desc
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.runBlocking
+import org.jetbrains.compose.resources.getString
+import java.io.File
 import org.junit.After
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -134,7 +152,7 @@ class ScreensA11ySweepTest(private val lang: String) {
     )
 
     /** Shows [content] at 200 % text, waits for [ready] (text the loaded screen shows) and runs [A11yAudit]. */
-    private fun sweep(screen: String, ready: String? = null, content: @Composable () -> Unit) {
+    private fun sweep(screen: String, ready: String? = null, steps: () -> Unit = {}, content: @Composable () -> Unit) {
         compose.setContent {
             ProvideAppServices {
                 val density = LocalDensity.current
@@ -148,6 +166,7 @@ class ScreensA11ySweepTest(private val lang: String) {
                 compose.onAllNodes(hasText(ready, substring = true), useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
             }
         }
+        steps()
         repeat(3) {
             shadowOf(Looper.getMainLooper()).idle()
             compose.waitForIdle()
@@ -231,7 +250,8 @@ class ScreensA11ySweepTest(private val lang: String) {
 
     @Test fun huntSettings() = sweep("hunt settings") {
         val settings by repo.settings.settings.collectAsState(AppSettings())
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        // Scrolls, as Settings does: the trace section grew with the look, the alert and the saved walks.
+        Column(Modifier.verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             HuntRemindersSection()
             PathTraceSection(settings)
         }
@@ -243,6 +263,46 @@ class ScreensA11ySweepTest(private val lang: String) {
     }
 
     @Test fun assistant() = sweep("assistant") { AssistantScreen(onOpenHouse = {}) }
+
+    /**
+     * Ask with the microphone (voice input, S4b-BL-222), idle and recording, at 200 % text in English and Tamil: names, 48 dp
+     * targets, no clipped or off-screen text, and a glyph for every Tamil letter. A fake microphone and the person's own AI.
+     */
+    private fun voiceAssistant(record: Boolean) {
+        val job = SupervisorJob()
+        val file = File.createTempFile("voice-a11y", ".preferences_pb").also { it.delete() }
+        val seal: (String) -> String = { "v1:" + it.reversed() }
+        val open: (String?) -> String? = { v -> v?.takeIf { it.startsWith("v1:") }?.removePrefix("v1:")?.reversed() }
+        val store = SettingsStore(
+            PreferenceDataStoreFactory.create(scope = CoroutineScope(Dispatchers.IO + job)) { file },
+            KeystoreSecretStore(seal, open = open),
+            geminiSecrets = KeystoreSecretStore(seal, KeystoreSecretStore.GEMINI_ENTRY, open),
+        )
+        runBlocking { store.saveVoiceInput(true) }
+        val voice = FakeVoiceServices(granted = true)
+        val fake = FakeVoiceRepository(repo, store)
+        val mic = runBlocking { getString(Res.string.voice_mic_desc) }
+        try {
+            sweep(
+                if (record) "assistant recording" else "assistant with voice", ready = runBlocking { getString(Res.string.voice_mic) },
+                steps = { if (record) compose.onNodeWithContentDescription(mic).performClick() },
+            ) {
+                val services = LocalAppServices.current
+                val wrapped = object : AppServices by services {
+                    override val repository: Repository = fake
+                    override val voice = voice
+                }
+                CompositionLocalProvider(LocalAppServices provides wrapped) { AssistantScreen(onOpenHouse = {}) }
+            }
+        } finally {
+            runBlocking { job.cancelAndJoin() }
+            file.delete()
+        }
+    }
+
+    @Test fun assistantWithVoice() = voiceAssistant(record = false)
+
+    @Test fun assistantRecording() = voiceAssistant(record = true)
 
     @Test fun shareUpdates() {
         runBlocking { repo.settings.addShareContact("Priya") }

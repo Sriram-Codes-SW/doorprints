@@ -43,6 +43,9 @@ import {
 } from 'maplibre-gl';
 import { AI_MAX_QUESTION_CHARS, AiService, PlanResponse, aiErrorMsg, aiOffMsg } from '../../core/ai.service';
 import { AiSessionState } from '../../core/ai-session.state';
+import { SpaceService } from '../../core/space.service';
+import { toolWord } from '../../core/space-tool-words';
+import type { TKey } from '../../i18n/en';
 import { Announcer } from '../../core/announcer.service';
 import { ConfigService } from '../../core/config.service';
 import { LocalDataService } from '../../core/local-data.service';
@@ -51,10 +54,12 @@ import { TPipe } from '../../i18n/t.pipe';
 import { createMlMap, localizeMap, relabelUnavailable } from '../../shared/map-style';
 import { RunResult, runResult } from '../../shared/run-result';
 import { focusIfLost } from '../../shared/focus';
+import { VoiceButton } from '../../shared/voice-button';
 import { round6 } from '../../shared/location-map';
 import { COUNTRY_VIEW, loadStartPoint, locationErrorKey, parseCoordinate } from '../../shared/map-center';
 import { locateOnce } from '../../shared/locate-once';
 import { NO_TYPED_START, type StartFieldId, type TypedStart, nextTypedStart, startFieldToFix } from './start-field';
+import { isBaselineKind } from '../../core/kind-capabilities';
 
 const ROUTE_SOURCE = 'plan-route';
 
@@ -73,7 +78,7 @@ const ROUTE_SOURCE = 'plan-route';
  */
 @Component({
   selector: 'app-plan-page',
-  imports: [FormsModule, RouterLink, TPipe],
+  imports: [FormsModule, RouterLink, TPipe, VoiceButton],
   templateUrl: './plan-page.html',
   styleUrl: './plan-page.css',
 })
@@ -84,6 +89,13 @@ export class PlanPage implements AfterViewInit, OnDestroy {
   protected readonly i18n = inject(TranslationService);
   private readonly announcer = inject(Announcer);
   private readonly session = inject(AiSessionState);
+  /** Plan reads the space on screen only (kinds PR B, S4b-BL-279). */
+  protected readonly space = inject(SpaceService);
+  protected readonly kind = this.space.kind();
+  protected readonly on = computed(() => this.ai.enabledFor(this.kind));
+  protected w(key: TKey): TKey {
+    return toolWord(this.kind, key);
+  }
   private readonly api = inject(LocalDataService);
   private readonly injector = inject(Injector);
   private readonly mapEl = viewChild<ElementRef<HTMLDivElement>>('mapEl');
@@ -141,7 +153,7 @@ export class PlanPage implements AfterViewInit, OnDestroy {
   private destroyed = false;
 
   constructor() {
-    const saved = this.session.plan;
+    const saved = this.session.planOf(this.kind);
     if (saved) {
       this.question = saved.question;
       this.maxStops = saved.maxStops;
@@ -153,7 +165,7 @@ export class PlanPage implements AfterViewInit, OnDestroy {
     }
     // The map is only made while AI is on (the form is hidden otherwise), and once the view exists.
     effect(() => {
-      if (!this.viewReady() || !this.ai.enabled() || this.map) return;
+      if (!this.viewReady() || !this.on() || this.map) return;
       const el = this.mapEl()?.nativeElement;
       if (el) untracked(() => this.createMap(el));
     });
@@ -170,17 +182,21 @@ export class PlanPage implements AfterViewInit, OnDestroy {
     this.viewReady.set(true);
   }
 
+  /**
+   * Stops a request still running and keeps the request, start point and route in {@link AiSessionState} (memory only),
+   * so Back from a stop shows the route again.
+   */
   ngOnDestroy(): void {
     this.destroyed = true;
     this.request?.unsubscribe();
     // Kept for Back from a stop: the request, the start and the route (memory only).
-    this.session.plan = {
+    this.session.setPlan(this.kind, {
       question: this.question,
       maxStops: this.maxStops,
       start: this.start(),
       startSet: this.startSet(),
       plan: this.plan(),
-    };
+    });
     this.resizeObserver?.disconnect();
     this.stopMarkers.forEach((m) => m.remove());
     this.startMarker?.remove();
@@ -203,7 +219,7 @@ export class PlanPage implements AfterViewInit, OnDestroy {
       const houses = await firstValueFrom(this.api.houses());
       if (this.destroyed) return;
       const newest = [...houses]
-        .filter((h) => !h.deleted)
+        .filter((h) => !h.deleted && this.space.holds(h))
         .sort((a, b) => Date.parse(b.createdAt ?? '') - Date.parse(a.createdAt ?? ''))[0];
       // Not over what the user typed in the meantime (a value, a typo or a cleared field).
       if (newest && !this.startSet() && !this.startTyped) this.setStart(newest.lat, newest.lon, true);
@@ -212,6 +228,10 @@ export class PlanPage implements AfterViewInit, OnDestroy {
     }
   }
 
+  /**
+   * Sets the start point from the device location. Only a press of the button asks for it; a result that arrives after
+   * the page is gone is dropped.
+   */
   protected useMyLocation(): void {
     if (typeof navigator === 'undefined' || !navigator.geolocation || this.locating()) return;
     this.locating.set(true);
@@ -266,11 +286,22 @@ export class PlanPage implements AfterViewInit, OnDestroy {
     return ids.join(' ');
   }
 
+  /** The words spoken into the request (voice input, ADR-37): they join the box for the person to read and edit; nothing is sent. */
+  protected onVoice(text: string): void {
+    this.question = text;
+    this.onQuestion(text);
+  }
+
   /** Typing a request clears "Type what you want to see first". */
   protected onQuestion(value: string): void {
     if (this.questionMissing() && value.trim()) this.questionMissing.set(false);
   }
 
+  /**
+   * Asks the AI to plan visits from the start point, with 1 to 8 stops. A missing request or start point shows what is
+   * missing and focuses its field instead of planning from somewhere the person never chose. The route is drawn on the
+   * map and announced once; an earlier error stays, marked as updating, until this run ends.
+   */
   protected submit(): void {
     if (this.busy()) return;
     const q = this.question.trim();
@@ -297,7 +328,7 @@ export class PlanPage implements AfterViewInit, OnDestroy {
     // An earlier error stays in place while this run is busy (drawn as being updated); the run's end replaces it.
     this.busy.set(true);
     this.request = this.ai
-      .planVisits({ question: q, startLat: s.lat, startLon: s.lon, maxStops: clamp(Math.round(this.maxStops), 1, 8) })
+      .planVisits({ question: q, startLat: s.lat, startLon: s.lon, maxStops: clamp(Math.round(this.maxStops), 1, 8) }, ...(isBaselineKind(this.kind) ? [] : [this.kind]))
       .subscribe({
         next: (p) => {
           this.request = null;
@@ -363,6 +394,10 @@ export class PlanPage implements AfterViewInit, OnDestroy {
     if (move) this.map?.easeTo({ center: [lon, lat], zoom: 14 });
   }
 
+  /**
+   * Creates the route map. Until a start is set a click sets it; afterwards the start marker is dragged. The route
+   * layer is added on load.
+   */
   private createMap(container: HTMLDivElement): void {
     const s = this.start();
     const map = createMlMap(this.i18n, { container, center: [s.lon, s.lat], zoom: this.startSet() ? 13 : 4 });
@@ -444,6 +479,7 @@ export class PlanPage implements AfterViewInit, OnDestroy {
   }
 }
 
+/** Keeps a number within `min` and `max`; a non-finite value gives `min`. */
 function clamp(n: number, min: number, max: number): number {
   return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : min;
 }

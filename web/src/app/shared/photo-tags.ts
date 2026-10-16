@@ -44,6 +44,7 @@ export const FIXED_TAGS = [
   'MOVE_IN',
 ] as const;
 
+/** One of the built-in photo tags. */
 export type FixedTag = (typeof FIXED_TAGS)[number];
 
 /** The tag the condition record (docs/11 5.24) is made of. */
@@ -59,6 +60,7 @@ export function photoTagKey(tag: string): TKey | null {
   return isFixedTag(tag) ? (`photoTag.${tag}` as TKey) : null;
 }
 
+/** Whether the tag is one of the built-in tags. */
 export function isFixedTag(tag: string): tag is FixedTag {
   return (FIXED_TAGS as readonly string[]).includes(tag);
 }

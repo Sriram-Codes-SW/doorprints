@@ -126,6 +126,7 @@ export function relabelUnavailable(container: HTMLElement | null | undefined, i1
   if (p) p.textContent = i18n.t('map.unavailable');
 }
 
+/** Sets the text of the first element matching the selector, if any. */
 function setText(root: HTMLElement, selector: string, text: string): void {
   const el = root.querySelector<HTMLElement>(selector);
   if (el) el.textContent = text;
@@ -133,11 +134,9 @@ function setText(root: HTMLElement, selector: string, text: string): void {
 
 /**
  * MapLibre GL 6 is ESM-only and no longer inlines its worker as a blob: URL. angular.json copies
- * `maplibre-gl-worker.mjs` and its `maplibre-gl-shared.mjs` chunk to the site root, so the worker is same-origin
- * (CSP `worker-src 'self'`, no `blob:` needed). `externalDependencies` (angular.json) keeps that shared chunk out of
- * the app's own MapLibre chunk, which imports the same `./maplibre-gl-shared.mjs` at run time: one copy (516 KB)
- * serves the page and the worker instead of two (S4b-BL-78). They sit side by side at the root because both import
- * it by that relative path.
+ * `maplibre-gl-worker.mjs` to the site root, so the worker is same-origin (CSP `worker-src 'self'`, no `blob:` needed).
+ * From maplibre-gl 6.13 the worker is self-contained (it carries its own copy of the shared code; the package's
+ * `maplibre-gl-shared.mjs` is an empty, deprecated stub that is not copied), so nothing else has to sit beside it.
  */
 let workerConfigured = false;
 
@@ -181,6 +180,7 @@ function configureOfflineMaps(): void {
   addProtocol(ASSET_SCHEME, protocolHandler(false, deps) as AddProtocolAction);
 }
 
+/** Points MapLibre at the same-origin worker file, once. */
 function configureWorker(): void {
   if (workerConfigured) return;
   setWorkerUrl(new URL('maplibre-gl-worker.mjs', document.baseURI).href);
@@ -252,6 +252,12 @@ export function createMlMap(
         attribution: i18n.t('map.boundaryCredit'),
       }),
     );
+    // Re-measure the canvas once the layout has settled, and again when the style loads. A map made while its
+    // container is still being sized — the Map page's map, on a phone, is sized from container-query units and its
+    // grid's rows (map-page.css) — otherwise keeps the size it was born with and draws only its background
+    // layer (owner report 2026-10-12: the map stayed a flat colour on a phone while the desktop map drew).
+    requestAnimationFrame(() => map.resize());
+    map.on('style.load', () => map.resize());
     return map;
   } catch (e) {
     if (!(e instanceof GPUInitializationError)) throw e;
@@ -355,6 +361,20 @@ export interface MapStyleWatch {
 }
 
 /**
+ * Determine the i18n message key for a map error.
+ * Distinguishes between worker load failures and offline/other errors.
+ * @param error - The error object from MapLibre
+ * @param online - Whether the browser reports being online
+ * @returns The i18n key for the error message
+ */
+export function mapErrorMessageKey(error: unknown, online: boolean): 'map.workerFailed' | 'map.offline' {
+  if (!online) return 'map.offline';
+  const msg = error instanceof Error ? error.message : String(error);
+  if (msg.includes('Worker failed to load')) return 'map.workerFailed';
+  return 'map.offline';
+}
+
+/**
  * Tells the page whether the map can actually be drawn, and brings it back when the connection returns.
  *
  * The style comes from tiles.openfreemap.org, which `sw.js` deliberately never caches (third-party tiles, their
@@ -364,7 +384,8 @@ export interface MapStyleWatch {
  *  * `onChange(false)` when the style has not loaded and either the request failed (`error` before `style.load`)
  *    or the browser says it is offline; the page then shows an overlay that explains it and offers the ways that
  *    work without a map (the list, "use my location", typed coordinates);
- *  * `onChange(true)` on every `style.load`;
+ *  * `onChange(true)` on every `style.load` (unless the map's worker failed to load: then `onChange(false,
+ *    'map.workerFailed')`, before or after the style);
  *  * on the window `online` event, while no style has loaded, the style is requested again with `diff: false`
  *    (a fresh `Style`, not a diff against the one that never loaded). The page adds its sources and layers on
  *    `style.load`, not on the one-off `load`, so they come back with it, and so do India's boundaries
@@ -372,18 +393,34 @@ export interface MapStyleWatch {
  *
  * Tile errors after the style has loaded are left to MapLibre: the pins still draw on the background.
  */
-export function watchMapStyle(map: MlMap, onChange: (available: boolean) => void): MapStyleWatch {
+export function watchMapStyle(
+  map: MlMap,
+  onChange: (available: boolean, messageKey?: 'map.workerFailed' | 'map.offline') => void,
+): MapStyleWatch {
   let loaded = false;
+  // A worker that failed to load is a separate event from the style loading (MapLibre parses the style JSON on the
+  // main thread and fires `style.load` without waiting for the worker), so it can arrive before or after
+  // `style.load`. Either way the map has no tiles, and the panel has to keep saying so.
+  let workerFailed = false;
   const reload = () => {
     if (loaded) return;
     map.setStyle(MAP_STYLE_URL, { diff: false });
   };
   map.on('style.load', () => {
     loaded = true;
-    onChange(true);
+    if (workerFailed) onChange(false, 'map.workerFailed');
+    else onChange(true);
   });
-  map.on('error', () => {
-    if (!loaded) onChange(false);
+  map.on('error', (event: { error?: unknown }) => {
+    const online = typeof navigator === 'undefined' || navigator.onLine !== false;
+    const key = mapErrorMessageKey(event?.error, online);
+    if (key === 'map.workerFailed') {
+      workerFailed = true;
+      onChange(false, key);
+      return;
+    }
+    if (loaded) return;
+    onChange(false, key);
   });
   const onOffline = () => {
     if (!loaded) onChange(false);

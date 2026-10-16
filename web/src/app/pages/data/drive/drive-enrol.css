@@ -1,0 +1,75 @@
+/*
+ * Copyright 2026 Sriram (Sriram-Codes-SW)
+ *
+ * This file is part of Doorprints.
+ *
+ * Doorprints is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+ * Public License as published by the Free Software Foundation, version 3 of the License.
+ *
+ * Doorprints is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+ * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Affero General Public License along with Doorprints (the file LICENSE;
+ * the file NOTICE has additional permissions under section 7). If not, see <https://www.gnu.org/licenses/>.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
+.card-section {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border, var(--color-border));
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+
+.mono {
+  display: block;
+  width: 100%;
+  font-family: ui-monospace, monospace;
+  margin: 0.5rem 0 1rem;
+}
+
+.code {
+  font-size: 1.5rem;
+  letter-spacing: 0.2em;
+}
+
+.code-label {
+  display: block;
+  font-size: 1rem;
+  letter-spacing: 0;
+  margin-bottom: 0.25rem;
+}
+
+.error-message {
+  color: var(--error-text, #b00020);
+}
+
+.qr {
+  display: inline-block;
+  background: #fff;
+  padding: 8px;
+  margin: 0.5rem 0 1rem;
+}
+
+.qr-row {
+  display: flex;
+  line-height: 0;
+}
+
+.qr-cell {
+  width: 4px;
+  height: 4px;
+  background: #fff;
+}
+
+.qr-cell.on {
+  background: #000;
+}

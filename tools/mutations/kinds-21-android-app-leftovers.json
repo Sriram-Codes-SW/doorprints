@@ -1,0 +1,45 @@
+{
+  "spec": [
+    "android/app/src/test/java/app/doorprints/SchoolPasteSummaryTest.kt",
+    "android/app/src/test/java/app/doorprints/SchoolPasteFormTest.kt",
+    "android/app/src/test/java/app/doorprints/SchoolFormTest.kt",
+    "android/app/src/test/java/app/doorprints/ReleaseKindsTest.kt"
+  ],
+  "gradle": [
+    ":app:testDebugUnitTest",
+    "--tests",
+    "app.doorprints.SchoolPasteSummaryTest",
+    "--tests",
+    "app.doorprints.SchoolPasteFormTest",
+    "--tests",
+    "app.doorprints.SchoolFormTest",
+    "--tests",
+    "app.doorprints.ReleaseKindsTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/PasteListing.kt",
+      "find": "if (merge.filled.isEmpty() && merge.extrasFilled.isEmpty()) {",
+      "replace": "if (merge.filled.isEmpty()) {",
+      "expect": "anExtrasOnlyFillIsASentenceNotNothingNew"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/PasteListing.kt",
+      "find": "if (merge.kept.isNotEmpty() || merge.extrasKept.isNotEmpty()) parts +=",
+      "replace": "if (merge.kept.isNotEmpty()) parts +=",
+      "expect": "theFilledAndTheKeptExtrasAreNamedByTheKindsLabels"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/HouseEditScreen.kt",
+      "find": "d.copy(label = d.label.ifBlank { unnamed }).withInRangeExtras(kind.fields)",
+      "replace": "d.copy(label = d.label.ifBlank { unnamed })",
+      "expect": "aNumberOutsideTheKindFilesRangeIsNotSavedByTheForm"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/HouseEditScreen.kt",
+      "find": "if (aiEnabled && kind.extracts) {",
+      "replace": "if (aiEnabled && kind.extracts && kind.id == \"house\") {",
+      "expect": "aSchoolsFormOffersTheFillWhenTheAiIsOnAsAHousesDoesAndNotOtherwise"
+    }
+  ]
+}

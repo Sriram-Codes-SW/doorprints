@@ -25,6 +25,10 @@ import org.hibernate.type.SqlTypes;
 import java.time.Instant;
 import java.util.UUID;
 
+/**
+ * Database row of one house photo: the sanitised image bytes, the person's room, tags and caption, and the sync
+ * fields. A deleted photo stays as a tombstone with no bytes so other devices can drop their copy.
+ */
 @Entity
 @Table(name = "photo")
 public class Photo {
@@ -47,7 +51,7 @@ public class Photo {
     private boolean deleted;
     @Column(nullable = false)
     private long syncVersion;
-    /* Slice 5 (V12): what the person says about the photo; all blank on a tombstone. */
+    /* Slice 5: what the person says about the photo; all blank on a tombstone. */
     private String roomId;
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")

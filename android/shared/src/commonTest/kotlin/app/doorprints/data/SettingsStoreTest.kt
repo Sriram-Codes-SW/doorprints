@@ -25,6 +25,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import app.doorprints.shared.sync.SyncOutcome
+import app.doorprints.shared.trace.RepeatLook
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
@@ -362,6 +363,39 @@ class SettingsStoreTest {
     }
 
     @Test
+    fun theRepeatLookIsClearAndTheAlertOffUntilChangedAndBothSurviveARestart() = runTest {
+        // docs/11 5.27.4, 5.27.5 (S4b-FR-14): per device, never exported.
+        assertEquals(RepeatLook.CLEAR, store.current().repeatLook)
+        assertFalse(store.current().repeatAlert)
+        store.saveRepeatLook(RepeatLook.SUBTLE)
+        store.saveRepeatAlert(true)
+        val reopened = SettingsStore(dataStore, secrets) { clock }
+        assertEquals(RepeatLook.SUBTLE, reopened.current().repeatLook)
+        assertTrue(reopened.current().repeatAlert)
+        store.saveRepeatLook(RepeatLook.OFF)
+        assertEquals(RepeatLook.OFF, store.current().repeatLook)
+        assertEquals("OFF", raw()["repeatLook"])
+    }
+
+    @Test
+    fun anUnknownRepeatLookReadsAsClear() = runTest {
+        dataStore.updateData { it.toMutablePreferences().apply { this[stringPreferencesKey("repeatLook")] = "LOUD" } }
+        assertEquals(RepeatLook.CLEAR, store.current().repeatLook)
+    }
+
+    @Test
+    fun theWalkWatermarkOnlyMovesForwardAndIsNeverPrinted() = runTest {
+        assertEquals(0L, store.current().walkAskedUpTo)
+        store.saveWalkAskedUpTo(1_760_000_123_456)
+        store.saveWalkAskedUpTo(1_750_000_000_000) // an older answer does not move it back
+        assertEquals(1_760_000_123_456, store.current().walkAskedUpTo)
+        val printed = store.current().toString()
+        assertFalse(printed.contains("walkAskedUpTo"), printed)
+        assertFalse(printed.contains("1760000123456"), printed)
+        assertTrue(printed.contains("repeatLook=CLEAR") && printed.contains("repeatAlert=false"), printed)
+    }
+
+    @Test
     fun thePathTraceIsOffUntilTurnedOn() = runTest {
         assertFalse(store.current().pathTrace)
         store.savePathTrace(true)
@@ -384,6 +418,26 @@ class SettingsStoreTest {
         store.removeShareContact(priya.id)
         assertEquals(listOf("Amma"), store.current().shareContacts.map { it.name })
         assertTrue(store.current().toString().contains("shareContacts=1"))
+    }
+
+    @Test
+    fun theTourIsUnseenUntilItEndsAndThenRemembersHowItEnded() = runTest {
+        assertNull(store.tourEnd().first(), "a fresh install has not seen the tour")
+        store.setTourEnd(TourEnd.SKIPPED)
+        assertEquals(TourEnd.SKIPPED, store.tourEnd().first())
+        assertEquals("skipped", raw()["tour"], "the stored words are the website's")
+        store.setTourEnd(TourEnd.DONE)
+        assertEquals(TourEnd.DONE, store.tourEnd().first())
+        assertEquals("done", raw()["tour"])
+        assertEquals(AppSettings(), store.current(), "the tour is not one of the app settings, so no export or sync carries it")
+    }
+
+    @Test
+    fun aStoredTourWordIsReadTheWayTheWebsiteReadsIt() {
+        assertNull(TourEnd.fromWire(null))
+        assertEquals(TourEnd.DONE, TourEnd.fromWire("done"))
+        assertEquals(TourEnd.SKIPPED, TourEnd.fromWire("skipped"))
+        assertEquals(TourEnd.SKIPPED, TourEnd.fromWire("anything else"), "any stored value counts as seen")
     }
 
     @Test

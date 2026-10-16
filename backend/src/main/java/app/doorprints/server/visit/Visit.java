@@ -23,6 +23,10 @@ import jakarta.persistence.*;
 import java.time.Instant;
 import java.util.UUID;
 
+/**
+ * Database row of one visit: arrival and departure times, where the person was, and the house it is linked to (if
+ * any). Deleted rows stay as tombstones for sync, with the place wiped.
+ */
 @Entity
 @Table(name = "visit")
 public class Visit {

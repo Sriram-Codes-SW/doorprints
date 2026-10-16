@@ -1,0 +1,41 @@
+{
+  "spec": ["web/src/app/core/ai/ai-blocked.spec.ts", "web/src/app/core/ai/ai-provider.spec.ts"],
+  "mutations": [
+    {
+      "file": "web/src/app/core/ai/ai-blocked.ts",
+      "find": "const GEMINI_FINISH = ['SAFETY', 'PROHIBITED_CONTENT',",
+      "replace": "const GEMINI_FINISH = ['PROHIBITED_CONTENT',",
+      "expect": "every provider response is blocked or not"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-blocked.ts",
+      "find": "  if (status === 400) return OPENAI_CODES.includes(text(obj(body['error'])?.['code']));\n",
+      "replace": "",
+      "expect": "every provider response is blocked or not"
+    },
+    {
+      "file": "web/src/app/core/ai/openai-compat.ts",
+      "find": "      if (openAiBlocked(res.status, parseBody(res.body))) throw new OnDeviceAiError('blocked');\n      if (res.status >= 200",
+      "replace": "      if (res.status >= 200",
+      "expect": "finish_reason content_filter is blocked after one call"
+    },
+    {
+      "file": "web/src/app/core/ai/anthropic.ts",
+      "find": "      if (anthropicBlocked(res.status, parseBody(res.body))) throw new OnDeviceAiError('blocked');\n      if (force &&",
+      "replace": "      if (force &&",
+      "expect": "stop_reason refusal is blocked after one call"
+    },
+    {
+      "file": "web/src/app/core/ai/on-device-ai.service.ts",
+      "find": "    if (geminiBlocked(res)) throw new OnDeviceAiError('blocked');\n",
+      "replace": "",
+      "expect": "a blocked prompt and a SAFETY finish are blocked"
+    },
+    {
+      "file": "web/src/app/core/ai.service.ts",
+      "find": "    if (err.kind === 'blocked') return { key: 'ai.blocked' };\n",
+      "replace": "",
+      "expect": "are one message"
+    }
+  ]
+}

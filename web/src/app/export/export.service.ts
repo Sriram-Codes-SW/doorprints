@@ -20,6 +20,9 @@ import { Injectable, inject } from '@angular/core';
 import { LocalStore } from '../data/local-store.service';
 import { LocalDataError } from '../core/local-error';
 import { loadDictionary } from '../i18n/languages';
+import { availableKinds, defaultKind, drawnKind, enabledKinds, spacesOn } from '../core/kind-setting';
+import { holdsFor, spaceFileName } from '../core/space-scope';
+import { en } from '../i18n/en';
 import { resizeImage } from '../core/image-resize';
 import { buildBackupZip } from './backup-export';
 import { buildCsvTables } from './csv-export';
@@ -90,16 +93,22 @@ export class ExportService {
     return collect({
       houses: await this.store.allHouses(),
       visits: await this.store.allVisits(),
-      photos: await this.store.allPhotos(),
-      brokers: await this.store.brokers(),
-      criteria: await this.store.criterionRows(),
-      preferences: await this.store.preferenceRows(),
-      questions: await this.store.questionRows(),
-      viewings: await this.store.viewingRows(),
-      areas: await this.store.areaRows(),
-      places: await this.store.placeRows(),
-      areaNotes: await this.store.areaNoteRows(),
+      photos: await this.store.photos.all(),
+      brokers: await this.store.brokers.rows(),
+      criteria: await this.store.criteria.rows(),
+      preferences: await this.store.criteria.preferenceRows(),
+      questions: await this.store.questions.rows(),
+      viewings: await this.store.viewings.rows(),
+      areas: await this.store.areas.rows(),
+      places: await this.store.places.rows(),
+      areaNotes: await this.store.areaNotes.rows(),
       lengthUnit: await this.store.lengthUnit(),
+      // Each candidate as its page draws it (S4b-BL-210): its own kind when built in (S4b-BL-212), else a house.
+      kinds: { fieldsOf: (kind) => drawnKind(kind).fields, dict: await loadDictionary(options.lang) },
+      // The backup's `search` says the kinds enabled and the default (Settings > Kinds, S4b-BL-212); the house alone as before.
+      spaces: { kinds: enabledKinds(), defaultKind: defaultKind() },
+      // A copy of one space holds that space's candidates only (S4b-BL-279); with one space enabled there is only one.
+      ...(options.space && spacesOn() ? { inSpace: holdsFor(options.space, true, defaultKind(), availableKinds()) } : {}),
       exportedAt,
       options,
     });
@@ -116,6 +125,8 @@ export class ExportService {
     now: Date = new Date(),
     control: ExportControl = {},
   ): Promise<ExportResult> {
+    // The backup is the whole data set: never of one space, never renamed.
+    if (format === 'backup' && options.space) options = { ...options, space: undefined };
     const bundle = await this.bundle(options, now.toISOString());
     control.signal?.throwIfAborted();
     if (PHOTO_BEARING.has(format)) checkPhotoBudget(bundle);
@@ -131,7 +142,7 @@ export class ExportService {
         const html = buildHtml(bundle, dict, photos);
         return {
           format,
-          fileName: htmlCopyName(bundle.exportedAt),
+          fileName: named(htmlCopyName(bundle.exportedAt), options),
           blob: new Blob([html], { type: 'text/html;charset=utf-8' }),
           counts,
         };
@@ -140,7 +151,7 @@ export class ExportService {
         const md = buildMarkdown(bundle, dict);
         return {
           format,
-          fileName: `Doorprints-${stamp}.md`,
+          fileName: named(`Doorprints-${stamp}.md`, options),
           blob: new Blob([md], { type: 'text/markdown;charset=utf-8' }),
           counts,
         };
@@ -152,7 +163,7 @@ export class ExportService {
           .map(([path, text]) => ({ path, data: utf8(text) }));
         return {
           format,
-          fileName: `Doorprints-${stamp}-csv.zip`,
+          fileName: named(`Doorprints-${stamp}-csv.zip`, options),
           blob: new Blob([toArrayBuffer(zip(entries, now))], { type: 'application/zip' }),
           counts,
         };
@@ -161,7 +172,7 @@ export class ExportService {
         const bytes = buildXlsx(buildWorkbook(bundle), now);
         return {
           format,
-          fileName: `Doorprints-${stamp}.xlsx`,
+          fileName: named(`Doorprints-${stamp}.xlsx`, options),
           blob: new Blob([toArrayBuffer(bytes)], {
             type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
           }),
@@ -351,6 +362,12 @@ export class ExportService {
     }
     return out;
   }
+}
+
+/** A copy's file name with the plural noun of its space (the house's, and a copy of every space, as they were). */
+function named(name: string, options: ExportOptions): string {
+  const space = options.space;
+  return space && spacesOn() ? spaceFileName(name, space, en[drawnKind(space).keys.ref('kind.many') as keyof typeof en]) : name;
 }
 
 /** How many photos of the bundle carry bytes, i.e. how many steps a photo-bearing export has. */

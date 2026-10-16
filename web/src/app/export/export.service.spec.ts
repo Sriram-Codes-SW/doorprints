@@ -19,12 +19,25 @@
 import { TestBed } from '@angular/core/testing';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { LocalStore } from '../data/local-store.service';
+import type { PhotoStore } from '../data/photo-store';
+import type { AreaNoteStore } from '../data/area-note-store';
+import type { AreaStore } from '../data/area-store';
+import type { PlaceStore } from '../data/place-store';
+import type { QuestionStore } from '../data/question-store';
+import type { BrokerStore } from '../data/broker-store';
+import type { CriteriaStore } from '../data/criteria-store';
+import type { ViewingStore } from '../data/viewing-store';
 import { LocalDataError } from '../core/local-error';
 import { DEFAULT_EXPORT_OPTIONS } from './export-model';
 import { ExportService, MAX_EXPORT_PHOTO_BYTES, approximateSize, checkPhotoBudget, isAbortError } from './export.service';
 import type { ExportResult } from './export.service';
 import { FIXTURE_BROKERS, FIXTURE_HOUSES, FIXTURE_PHOTOS, FIXTURE_VISITS, fixtureBundle } from './golden/fixture';
-import type { PhotoRecord } from '../data/records';
+import { tryHouseFromDto, type PhotoRecord } from '../data/records';
+import schoolVectors from '../../../../docs/schemas/kinds/school-vectors.json';
+import { houseOf, type CandidateDto } from '../core/candidate';
+import { DEV_KINDS_KEY } from '../core/dev-kinds';
+import { DEFAULT_KIND_KEY, ENABLED_KINDS_KEY, EXPERIMENTAL_KINDS_KEY } from '../core/kind-setting';
+import { SCHOOL_FIELDS } from '../core/school-kind';
 
 /**
  * The two failure paths S4-03 has that CI cannot see by building a file: a print view the browser refuses to
@@ -39,15 +52,14 @@ function fakeStore(photos: PhotoRecord[]): Partial<LocalStore> {
   return {
     allHouses: () => Promise.resolve(FIXTURE_HOUSES.map((h) => ({ ...h }))),
     allVisits: () => Promise.resolve(FIXTURE_VISITS.map((v) => ({ ...v }))),
-    allPhotos: () => Promise.resolve(photos),
-    brokers: () => Promise.resolve(FIXTURE_BROKERS),
-    criterionRows: () => Promise.resolve([]),
-    preferenceRows: () => Promise.resolve([]),
-    questionRows: () => Promise.resolve([]),
-    viewingRows: () => Promise.resolve([]),
-    areaRows: () => Promise.resolve([]),
-    placeRows: () => Promise.resolve([]),
-    areaNoteRows: () => Promise.resolve([]),
+    photos: { all: () => Promise.resolve(photos) } as unknown as PhotoStore,
+    brokers: { rows: () => Promise.resolve(FIXTURE_BROKERS) } as unknown as BrokerStore,
+    criteria: { rows: () => Promise.resolve([]), preferenceRows: () => Promise.resolve([]) } as unknown as CriteriaStore,
+    questions: { rows: () => Promise.resolve([]) } as unknown as QuestionStore,
+    viewings: { rows: () => Promise.resolve([]) } as unknown as ViewingStore,
+    areas: { rows: () => Promise.resolve([]) } as unknown as AreaStore,
+    places: { rows: () => Promise.resolve([]) } as unknown as PlaceStore,
+    areaNotes: { rows: () => Promise.resolve([]) } as unknown as AreaNoteStore,
     lengthUnit: () => Promise.resolve('FT' as const),
   };
 }
@@ -274,15 +286,14 @@ describe('lengthUnit (slice 1c)', () => {
     const metersStore = {
       allHouses: () => Promise.resolve(FIXTURE_HOUSES.map((h) => ({ ...h }))),
       allVisits: () => Promise.resolve(FIXTURE_VISITS.map((v) => ({ ...v }))),
-      allPhotos: () => Promise.resolve(FIXTURE_PHOTOS),
-      brokers: () => Promise.resolve(FIXTURE_BROKERS),
-      criterionRows: () => Promise.resolve([]),
-      preferenceRows: () => Promise.resolve([]),
-      questionRows: () => Promise.resolve([]),
-      viewingRows: () => Promise.resolve([]),
-      areaRows: () => Promise.resolve([]),
-      placeRows: () => Promise.resolve([]),
-      areaNoteRows: () => Promise.resolve([]),
+      photos: { all: () => Promise.resolve(FIXTURE_PHOTOS) } as unknown as PhotoStore,
+      brokers: { rows: () => Promise.resolve(FIXTURE_BROKERS) } as unknown as BrokerStore,
+      criteria: { rows: () => Promise.resolve([]), preferenceRows: () => Promise.resolve([]) } as unknown as CriteriaStore,
+      questions: { rows: () => Promise.resolve([]) } as unknown as QuestionStore,
+      viewings: { rows: () => Promise.resolve([]) } as unknown as ViewingStore,
+      areas: { rows: () => Promise.resolve([]) } as unknown as AreaStore,
+      places: { rows: () => Promise.resolve([]) } as unknown as PlaceStore,
+      areaNotes: { rows: () => Promise.resolve([]) } as unknown as AreaNoteStore,
       lengthUnit: () => Promise.resolve('M' as const),
     };
     TestBed.configureTestingModule({ providers: [{ provide: LocalStore, useValue: metersStore }] });
@@ -298,5 +309,37 @@ describe('lengthUnit (slice 1c)', () => {
     // Room sizes in metres: 396cm = 3.96 m, 366cm = 3.66 m (two decimals in CSV)
     expect(csvContent).toMatch(/3\.96/);
     expect(csvContent).toMatch(/3\.66/);
+  });
+});
+
+describe('the copies read each candidate as its page draws it (kinds PR 6, S4b-BL-210)', () => {
+  const school = () => tryHouseFromDto(houseOf((schoolVectors as unknown as { candidate: CandidateDto }).candidate))!;
+  afterEach(() => localStorage.removeItem(DEV_KINDS_KEY));
+
+  it('a stored school is copied with its extras whatever the switch says (S4b-BL-212); the houses as they were', async () => {
+    TestBed.resetTestingModule();
+    const store = { ...fakeStore([]), allHouses: () => Promise.resolve([...FIXTURE_HOUSES.map((h) => ({ ...h })), school()]) };
+    TestBed.configureTestingModule({ providers: [{ provide: LocalStore, useValue: store }] });
+    const service = TestBed.inject(ExportService);
+    const off = await service.bundle({ ...OPTIONS, lang: 'hi' });
+    localStorage.setItem(DEV_KINDS_KEY, 'school');
+    const on = await service.bundle({ ...OPTIONS, lang: 'hi' });
+    for (const b of [off, on]) {
+      expect(b.extraColumns?.map((c) => c.key)).toEqual(SCHOOL_FIELDS.others().map((f) => `school.${f.id}`));
+      expect(b.extraColumns?.[0].label).toBe('बोर्ड');
+      expect(b.houses.filter((h) => h.extras).map((h) => h.house.kind)).toEqual(['school']);
+    }
+  });
+
+  it('the bundle carries the enabled kinds and the default for the backup only when more than the house is on (S4b-BL-212)', async () => {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({ providers: [{ provide: LocalStore, useValue: fakeStore([]) }] });
+    const service = TestBed.inject(ExportService);
+    localStorage.setItem(ENABLED_KINDS_KEY, '["house","school"]');
+    localStorage.setItem(DEFAULT_KIND_KEY, 'school');
+    expect((await service.bundle(OPTIONS)).spaces).toBeUndefined();
+    localStorage.setItem(EXPERIMENTAL_KINDS_KEY, '1');
+    expect((await service.bundle(OPTIONS)).spaces).toEqual({ kinds: ['house', 'school'], defaultKind: 'school' });
+    for (const k of [EXPERIMENTAL_KINDS_KEY, ENABLED_KINDS_KEY, DEFAULT_KIND_KEY]) localStorage.removeItem(k);
   });
 });

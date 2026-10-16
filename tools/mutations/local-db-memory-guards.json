@@ -1,0 +1,17 @@
+{
+  "spec": "web/src/app/data/local-db.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/data/local-db.ts",
+      "find": "if (!guardHolds(guard, n)) return Promise.reject(new BatchGuardError(guard.reason));",
+      "replace": "",
+      "expect": "batch with guards checks the counts first"
+    },
+    {
+      "file": "web/src/app/data/local-db.ts",
+      "find": "rows.filter((r) => r[guard.index!] === guard.value).length;",
+      "replace": "rows.length;",
+      "expect": "batch with guards checks the counts first"
+    }
+  ]
+}

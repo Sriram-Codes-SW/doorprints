@@ -92,6 +92,7 @@ object PhoneKey {
     const val MIN_DIGITS = 6
     const val KEPT_DIGITS = 10
 
+    /** The comparison key of [phone], or null when it has too few digits to identify anyone. */
     fun of(phone: String?): String? {
         if (phone == null) return null
         val digits = phone.filter { it in '0'..'9' }

@@ -31,15 +31,19 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
+import { TourService } from '../../core/tour.service';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { Announcer } from '../../core/announcer.service';
 import { AiService } from '../../core/ai.service';
 import { AiSessionState } from '../../core/ai-session.state';
+import { SpaceService } from '../../core/space.service';
+import { toolWord } from '../../core/space-tool-words';
 import { ConfigService } from '../../core/config.service';
 import { ConfirmService } from '../../core/confirm.service';
 import { errorMsg } from '../../core/format';
 import { LocalStore } from '../../data/local-store.service';
+import { TraceStore } from '../../data/trace-store';
 import type { LengthUnit } from '../../shared/room-sizes';
 import { StorageService } from '../../data/storage.service';
 import { SyncService } from '../../data/sync.service';
@@ -59,9 +63,18 @@ import type { TKey } from '../../i18n/en';
 import { RunResult, runResult } from '../../shared/run-result';
 import { LEGAL_NOTICE } from '../../shared/legal-notice';
 import { ImportBackupCard } from './import-backup';
+import { KindsSettings } from './kinds-settings';
+import { SpacePick } from './space-pick';
+import { BulkGuard } from '../../core/bulk-guard.service';
+import { availableKinds, kindById } from '../../core/kind-setting';
 import { OfflineAreasCard } from './offline-areas';
+import { RecentlyDeleted } from './recently-deleted';
+import { DriveConnectComponent } from './drive-connect';
+import { provideDriveConnect } from '../../data/drive/connect/drive-connect.providers';
 import { OfflineMapsService } from '../../offline/offline-maps.service';
 import { guideUrl } from '../../shared/help-link';
+import { kindOfCandidate } from '../../core/candidate';
+import { isBaselineKind } from '../../core/kind-capabilities';
 
 interface FormatChoice {
   readonly id: ExportFormat;
@@ -103,18 +116,30 @@ const ICONS = {
  */
 @Component({
   selector: 'app-data-page',
-  imports: [FormsModule, RouterLink, TPipe, ImportBackupCard, OfflineAreasCard],
+  imports: [FormsModule, RouterLink, TPipe, ImportBackupCard, OfflineAreasCard, DriveConnectComponent, KindsSettings, RecentlyDeleted, SpacePick],
   templateUrl: './data-page.html',
   styleUrl: './data-page.css',
+  providers: provideDriveConnect(),
 })
 export class DataPage implements OnInit, OnDestroy {
   private readonly exporter = inject(ExportService);
+  /** With spaces, a copy (not the backup) is of the space on screen (kinds PR B, S4b-BL-279). */
+  protected readonly space = inject(SpaceService);
+  /** The space on screen is the baseline kind's (the house): its checklist options are the person's own criteria. */
+  protected isBaseline(): boolean { return isBaselineKind(this.space.current().id); }
   private readonly store = inject(LocalStore);
+  private readonly traces = inject(TraceStore);
+  /** How many saved walks this browser holds (docs/11 5.27.6): shown with *Delete all saved walks*. */
+  protected readonly savedWalks = signal(0);
   private readonly announcer = inject(Announcer);
   private readonly confirm = inject(ConfirmService);
+  private readonly bulk = inject(BulkGuard);
+  /** What this browser holds, per kind and the saved walks, in words ("Houses: 12, Schools: 3"); '' when it holds none. */
+  protected readonly deviceList = signal('');
   private readonly config = inject(ConfigService);
   private readonly ai = inject(AiService);
   private readonly aiSession = inject(AiSessionState);
+  protected readonly tour = inject(TourService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly injector = inject(Injector);
@@ -213,12 +238,39 @@ export class DataPage implements OnInit, OnDestroy {
    */
   protected stopFocused = false;
   private readonly installHeading = viewChild<ElementRef<HTMLElement>>('installHeading');
+  private readonly importCard = viewChild(ImportBackupCard);
+
+  /** A Full backup ZIP fetched from Google Drive is checked by *Import a backup*, nothing written yet. */
+  protected onDriveImport(file: Blob): void {
+    void this.importCard()?.check(file);
+  }
 
   /**
    * Nothing to export with these options, and why: `none` (no house in this browser: Android's export_empty),
    * `shortlisted` (houses exist, none shortlisted) or `filtered` (the options leave every house out). Null while
    * there is something to export, or before the first count.
    */
+  /** The space a copy is of: with two or more spaces, the one on screen; never for the backup (it holds everything). */
+  private readonly scopedKind = computed(() => (this.space.multi() && this.format() !== 'backup' ? this.space.kind() : null));
+  /** The options the file is made with: the chosen ones, and the space when the copy is of one. */
+  private exportOptions(): ExportOptions {
+    const space = this.scopedKind();
+    return space ? { ...this.options(), space } : this.options();
+  }
+  /** The words of the card: the space's own where it has them, the house's keys otherwise. */
+  protected w(key: TKey): TKey {
+    // The Full backup holds every space: with spaces its words are the kind-neutral ones (S4b-BL-291).
+    return toolWord(this.scopedKind() ?? (this.space.multi() ? '*' : null), key);
+  }
+  protected readonly many = computed(() => this.i18n.t(this.space.words().many));
+  /** Says what the copy holds when there are spaces: this space's candidates, or, for the backup, everything. */
+  protected readonly scopeNote = computed<Msg | null>(() => {
+    if (!this.space.multi()) return null;
+    if (this.format() === 'backup') return { key: 'data.spaceScopeBackup' };
+    const c = this.counts();
+    return c ? { key: 'data.spaceScope', params: { many: this.many(), n: this.i18n.number(c.houses) } } : null;
+  });
+
   protected readonly emptyReason = computed<'none' | 'shortlisted' | 'filtered' | null>(() => {
     const c = this.counts();
     const total = this.totalHouses();
@@ -235,7 +287,7 @@ export class DataPage implements OnInit, OnDestroy {
     if (this.format() !== 'backup') return null;
     const gaps = backupGaps(this.options());
     if (gaps.length === 0) return null;
-    return this.i18n.t('data.partialNote', { gaps: this.i18n.list(gaps.map((g) => this.i18n.t(BACKUP_GAP_KEY[g]))) });
+    return this.i18n.t('data.partialNote', { gaps: this.i18n.list(gaps.map((g) => this.i18n.t(this.w(BACKUP_GAP_KEY[g])))) });
   });
 
   constructor() {
@@ -245,6 +297,7 @@ export class DataPage implements OnInit, OnDestroy {
     // first-run download on this page cost the square of the number of rows.
     effect(() => {
       this.store.settled();
+      this.scopedKind();
       if (!this.started()) return;
       void this.refreshCounts();
       void this.storage.refresh();
@@ -292,6 +345,10 @@ export class DataPage implements OnInit, OnDestroy {
     await this.store.setLengthUnit(unit);
   }
 
+  /**
+   * Prepares the page: reads the saved export options, the length unit, storage durability and the counts of what a
+   * copy would hold. Follows a `?export=backup` link from the storage banner by choosing the backup format.
+   */
   async ngOnInit(): Promise<void> {
     // "Save a backup" from the storage-risk banner arrives as /data?export=backup: choose the restorable ZIP and
     // put focus on its button (once the saved options are read), so the next obvious tap makes a backup and not
@@ -316,10 +373,39 @@ export class DataPage implements OnInit, OnDestroy {
       const format = safeFormat(saved);
       if (format) this.format.set(format);
     }
+    await this.refreshSavedWalks();
     await this.refreshCounts();
     await this.refreshPending();
     this.started.set(true);
     this.markStarted();
+  }
+
+  /** Counts the saved walks; shows 0 if the store cannot be read. */
+  private async refreshSavedWalks(): Promise<void> {
+    try {
+      this.savedWalks.set(await this.traces.savedCount());
+    } catch {
+      this.savedWalks.set(0);
+    }
+  }
+
+  /** *Delete all saved walks*: asks with the count first; the 30-day trace is not touched. */
+  protected async deleteSavedWalks(): Promise<void> {
+    const n = this.savedWalks();
+    if (n === 0) return;
+    const ok = await this.confirm.ask(
+      { key: 'trace.settings.deleteAllConfirm', params: { n: this.i18n.number(n) } },
+      { confirmKey: 'trace.settings.deleteAll', danger: true },
+    );
+    if (!ok) return;
+    if (!this.bulk.tryStart()) {
+      this.announcer.announce({ key: 'delete.bulkWait', params: { n: this.bulk.waitSeconds() } });
+      return;
+    }
+    await this.traces.deleteAllSavedWalks();
+    await this.refreshSavedWalks();
+    this.announcer.announce({ key: 'trace.settings.deleted' });
+    afterNextRender(() => document.getElementById('storage-heading')?.focus(), { injector: this.injector });
   }
 
   /** The Photos choice only matters for a file that can carry photos (Android parity). */
@@ -343,8 +429,11 @@ export class DataPage implements OnInit, OnDestroy {
     try {
       do {
         this.recount = false;
-        const bundle = await this.exporter.bundle(this.options());
-        this.totalHouses.set((await this.store.liveHouses()).length);
+        const bundle = await this.exporter.bundle(this.exportOptions());
+        const scoped = this.scopedKind() !== null;
+        const live = await this.store.liveHouses();
+        this.totalHouses.set(live.filter((h) => !scoped || this.space.holds(h)).length);
+        this.deviceList.set(this.describeDevice(live));
         this.counts.set(bundle.counts);
       } while (this.recount);
     } catch {
@@ -355,6 +444,23 @@ export class DataPage implements OnInit, OnDestroy {
     }
   }
 
+  /** "Houses: 12, Schools: 3": every kind this browser holds, none left out (Remove all data takes them all). */
+  private describeDevice(live: readonly { kind?: string | null }[]): string {
+    const per = new Map<string, number>();
+    for (const h of live) per.set(kindOfCandidate(h), (per.get(kindOfCandidate(h)) ?? 0) + 1);
+    const known = availableKinds();
+    const ids = [...known.filter((k) => per.has(k)), ...[...per.keys()].filter((k) => !known.includes(k))];
+    const parts = ids.map((k) => `${known.includes(k) ? this.i18n.t(kindById(k).keys.ref('kind.many')) : k}: ${this.i18n.number(per.get(k) ?? 0)}`);
+    return parts.join(', ');
+  }
+
+  /** The sentence the Remove all data card and its question add, or '' when there is nothing. */
+  protected readonly deviceSentence = computed(() => {
+    const parts = [this.deviceList(), this.savedWalks() > 0 ? `${this.i18n.t('data.clearWalks')}: ${this.i18n.number(this.savedWalks())}` : ''].filter(Boolean);
+    return parts.length ? this.i18n.t('data.clearCounts', { counts: parts.join(', ') }) : '';
+  });
+
+  /** Counts the changes waiting to be sent to the server; 0 when sync is off. */
   private async refreshPending(): Promise<void> {
     try {
       this.pending.set(this.sync.enabled() ? await this.sync.pendingCount() : 0);
@@ -368,6 +474,10 @@ export class DataPage implements OnInit, OnDestroy {
     await this.store.setSetting(SETTING_KEYS.exportOptions, JSON.stringify({ ...this.options(), format: this.format() }));
   }
 
+  /**
+   * After any option changes: forgets the last result, remembers the choices and recounts. Ignored while a file is
+   * being built.
+   */
   protected async onOptionChange(): Promise<void> {
     // The options are disabled while a file is built; this is the guard behind that, so a file built with the old
     // options can never be shared as if it matched what the screen now shows.
@@ -378,6 +488,7 @@ export class DataPage implements OnInit, OnDestroy {
     await this.refreshCounts();
   }
 
+  /** Chooses the file format and remembers it; a result built in another format is dropped. */
   protected setFormat(format: ExportFormat): void {
     if (this.busy()) return;
     this.format.set(format);
@@ -386,21 +497,25 @@ export class DataPage implements OnInit, OnDestroy {
     void this.persistChoices();
   }
 
+  /** Chooses all houses or only the shortlisted ones for the copy. */
   protected setScope(scope: 'all' | 'shortlisted'): void {
     this.options.update((o) => ({ ...o, scope }));
     void this.onOptionChange();
   }
 
+  /** Chooses which photos go into a file that can carry photos. */
   protected setPhotos(photos: 'all' | 'shortlisted' | 'none'): void {
     this.options.update((o) => ({ ...o, photos }));
     void this.onOptionChange();
   }
 
+  /** Includes or leaves out rejected houses. */
   protected setIncludeRejected(includeRejected: boolean): void {
     this.options.update((o) => ({ ...o, includeRejected }));
     void this.onOptionChange();
   }
 
+  /** Includes or leaves out contact names and phone numbers. */
   protected setIncludeContacts(includeContacts: boolean): void {
     this.options.update((o) => ({ ...o, includeContacts }));
     void this.onOptionChange();
@@ -423,6 +538,7 @@ export class DataPage implements OnInit, OnDestroy {
     afterNextRender(() => this.focusTarget()?.nativeElement.focus(), { injector: this.injector });
   }
 
+  /** Sets the language the readable copies are written in. */
   protected onLangChange(event: Event): void {
     const value = (event.target as HTMLSelectElement).value;
     if (isLang(value)) this.options.update((o) => ({ ...o, lang: value }));
@@ -475,7 +591,7 @@ export class DataPage implements OnInit, OnDestroy {
     let lastQuarter = -1;
     let lastAnnounced = 0;
     try {
-      const result = await this.exporter.build(format, this.options(), new Date(), {
+      const result = await this.exporter.build(format, this.exportOptions(), new Date(), {
         signal: abort.signal,
         onProgress: (done, total) => {
           if (total <= 0) return;
@@ -560,11 +676,13 @@ export class DataPage implements OnInit, OnDestroy {
     this.abort?.abort();
   }
 
+  /** Shares the file just built through the system share sheet, if there is one. */
   protected async shareFile(): Promise<void> {
     const result = this.lastResult();
     if (result) await this.shareResult(result);
   }
 
+  /** Shares a built file; a failure points to saving the file instead, since it exists. */
   private async shareResult(result: ExportResult): Promise<void> {
     const outcome = await this.exporter.share(result, this.i18n.t('exp.title'));
     if (outcome === 'shared') {
@@ -613,6 +731,10 @@ export class DataPage implements OnInit, OnDestroy {
     }
   }
 
+  /**
+   * Runs a sync with the connected server now. While the first-run download question is open it runs that download
+   * instead, so the banner moves on with it.
+   */
   protected syncNow(): void {
     // While the first-run question is open, "Sync now" is the download it asks about: run it as that, so the
     // banner's state moves on with it instead of a forced pull leaving the question on screen.
@@ -664,10 +786,10 @@ export class DataPage implements OnInit, OnDestroy {
       const answer =
         unsynced > 0
           ? await this.confirm.choose(
-              { key: 'confirm.clearUnsynced', params: { n: unsynced } },
+              { key: 'confirm.clearUnsynced', params: { n: unsynced, list: this.deviceSentence() } },
               { confirmKey: 'data.clear', altKey: this.sync.paused() ? null : 'data.syncFirst', danger: true },
             )
-          : (await this.confirm.ask({ key: 'confirm.clearBrowser' }, { confirmKey: 'data.clear', danger: true }))
+          : (await this.confirm.ask({ key: this.space.appWord('confirm.clearBrowser'), params: { list: this.deviceSentence() } }, { confirmKey: 'data.clear', danger: true }))
             ? 'confirm'
             : 'cancel';
       if (answer === 'cancel') return;
@@ -675,6 +797,10 @@ export class DataPage implements OnInit, OnDestroy {
       // "Sync first": send what is waiting, then ask again with the new count (0 when it all went through).
       await this.sync.syncNow(true);
       if (this.sync.lastError()) return; // the sync card shows why; nothing was removed
+    }
+    if (!this.bulk.tryStart()) {
+      this.announcer.announce({ key: 'delete.bulkWait', params: { n: this.bulk.waitSeconds() } });
+      return;
     }
     this.sync.cancel();
     this.config.clear();
@@ -686,6 +812,7 @@ export class DataPage implements OnInit, OnDestroy {
     clearMapView();
     await this.offlineMaps.removeAll();
     await this.store.clearEverything();
+    this.savedWalks.set(0);
     try {
       clearSessionLeftovers(tabSessionStorage());
     } catch {

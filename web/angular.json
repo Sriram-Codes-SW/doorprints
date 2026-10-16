@@ -18,7 +18,6 @@
             "outputPath": "dist/web",
             "index": "src/index.html",
             "browser": "src/main.ts",
-            "externalDependencies": ["./maplibre-gl-shared.mjs"],
             "tsConfig": "tsconfig.app.json",
             "assets": [
               {
@@ -27,11 +26,6 @@
               },
               {
                 "glob": "maplibre-gl-worker.mjs",
-                "input": "node_modules/maplibre-gl/dist",
-                "output": "/"
-              },
-              {
-                "glob": "maplibre-gl-shared.mjs",
                 "input": "node_modules/maplibre-gl/dist",
                 "output": "/"
               }
@@ -47,6 +41,9 @@
           },
           "configurations": {
             "production": {
+              "define": {
+                "DOORPRINTS_KINDS": "'house,school'"
+              },
               "budgets": [
                 {
                   "type": "initial",
@@ -93,7 +90,8 @@
           "builder": "@angular/build:unit-test",
           "options": {
             "tsConfig": "tsconfig.spec.json",
-            "runner": "vitest"
+            "runner": "vitest",
+            "runnerConfig": "vitest.config.mjs"
           }
         }
       }

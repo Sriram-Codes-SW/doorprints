@@ -1,0 +1,83 @@
+{
+  "spec": "web/src/app/shared/trace-place-text.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/shared/trace-place-text.ts",
+      "find": "Math.max(...onListed.map((r) => r.distanceM))",
+      "replace": "Math.min(...onListed.map((r) => r.distanceM))",
+      "expect": "counts two walks on one day as one day"
+    },
+    {
+      "file": "web/src/app/shared/trace-place-text.ts",
+      "find": "const wholeMetres = (d: number) => Math.max(1, Math.ceil(d));",
+      "replace": "const wholeMetres = (d: number) => Math.max(1, Math.round(d));",
+      "expect": "counts two walks on one day as one day"
+    },
+    {
+      "file": "web/src/app/shared/trace-place-text.ts",
+      "find": "const wholeMetres = (d: number) => Math.max(1, Math.ceil(d));",
+      "replace": "const wholeMetres = (d: number) => Math.ceil(d);",
+      "expect": "counts two walks on one day as one day"
+    },
+    {
+      "file": "web/src/app/shared/trace-place-text.ts",
+      "find": "export const MAX_HEADLINE_DAYS = 3;",
+      "replace": "export const MAX_HEADLINE_DAYS = 4;",
+      "expect": "lists the distinct days of the walked rows"
+    },
+    {
+      "file": "web/src/app/shared/trace-place-text.ts",
+      "find": "export const MAX_ROWS = 5;",
+      "replace": "export const MAX_ROWS = 6;",
+      "expect": "shows at most five rows"
+    },
+    {
+      "file": "web/src/app/shared/trace-place-text.ts",
+      "find": "result.status === 'WALKED' ? result.rows.filter((r) => r.walked)",
+      "replace": "result.status === 'WALKED' ? result.rows",
+      "expect": "uses only the walked rows for the headline"
+    },
+    {
+      "file": "web/src/app/shared/trace-place-text.ts",
+      "find": "summary.hasSaved ? 'trace.here.noneSaved' : 'trace.here.none'",
+      "replace": "summary.hasSaved ? 'trace.here.none' : 'trace.here.noneSaved'",
+      "expect": "writes the none headline"
+    },
+    {
+      "file": "web/src/app/shared/trace-place-text.ts",
+      "find": "i18n.metres(TRACE.toleranceM)",
+      "replace": "i18n.metres(20)",
+      "expect": "writes the close headline with the tolerance"
+    },
+    {
+      "file": "web/src/app/shared/trace-place-text.ts",
+      "find": "const showsFuzzy = result.fuzzy && (result.status === 'WALKED' || result.status === 'CLOSE' || result.status === 'NONE');",
+      "replace": "const showsFuzzy = result.fuzzy;",
+      "expect": "shows the fuzzy line only with"
+    },
+    {
+      "file": "web/src/app/shared/trace-place-text.ts",
+      "find": "    if (web) notes.push(i18n.t('trace.here.onlyRecordedWeb'));",
+      "replace": "    notes.push(i18n.t('trace.here.onlyRecordedWeb'));",
+      "expect": "writes the close headline with the tolerance"
+    },
+    {
+      "file": "web/src/app/shared/trace-place-text.ts",
+      "find": "i18n.t(web ? 'trace.here.emptyWeb' : 'trace.here.empty')",
+      "replace": "i18n.t('trace.here.empty')",
+      "expect": "answers the other states"
+    },
+    {
+      "file": "web/src/app/shared/trace-place-text.ts",
+      "find": "summary.moreDays > 0 ? i18n.t('trace.here.andMore'",
+      "replace": "summary.moreDays > 99 ? i18n.t('trace.here.andMore'",
+      "expect": "adds \"and n more\" after three days"
+    },
+    {
+      "file": "web/src/app/shared/trace-place-text.ts",
+      "find": "timeZone }).format(new Date(epochMs));\n}",
+      "replace": "timeZone: 'UTC' }).format(new Date(epochMs));\n}",
+      "expect": "is the calendar day in the given time zone"
+    }
+  ]
+}

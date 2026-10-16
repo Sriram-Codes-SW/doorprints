@@ -33,6 +33,8 @@ object HuntState {
 
     data class State(
         val active: Boolean = false,
+        /** The kind the walk belongs to (the space it was started in, docs/03 section 18.20); null while Hunt mode is off. */
+        val kind: String? = null,
         val lat: Double? = null,
         val lon: Double? = null,
         val accuracyM: Float? = null,
@@ -50,6 +52,11 @@ object HuntState {
          * whole-app audit); null after the user stopped it.
          */
         val stopReason: StopReason? = null,
+        /**
+         * The walk being recorded now (the `at` of its first kept point; 0 before it, after *Finish walk* and when Hunt
+         * mode is off): the Map's *Save this walk?* question leaves this walk alone (docs/11 5.27.6). Never logged.
+         */
+        val walkId: Long = 0,
     )
 
     /** Why Hunt mode stopped without being asked to ([HuntEngine], the adapter). */
@@ -67,6 +74,7 @@ object HuntState {
     private val _state = MutableStateFlow(State())
     val state: StateFlow<State> = _state
 
+    /** Replaces the state with [transform] of the current one; the engine writes, the Map's Hunt card reads. */
     fun update(transform: (State) -> State) {
         _state.value = transform(_state.value)
     }

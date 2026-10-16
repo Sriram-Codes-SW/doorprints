@@ -75,6 +75,10 @@ class FileRandomSource(file: File) : RandomSource, Closeable {
     private val raf = RandomAccessFile(file, "r")
     override val size: Long = raf.length()
 
+    /**
+     * Reads up to [length] bytes at [position]; 0 at the end of the file. Synchronized because seek and read share
+     * the file position.
+     */
     @Synchronized
     override fun readAt(position: Long, buffer: ByteArray, offset: Int, length: Int): Int {
         raf.seek(position)

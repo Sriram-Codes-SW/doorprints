@@ -22,7 +22,14 @@ import android.app.Application
 import android.content.res.Configuration
 import androidx.annotation.VisibleForTesting
 import androidx.work.Configuration as WorkConfiguration
+import app.doorprints.data.Api
 import app.doorprints.data.AppDatabase
+import app.doorprints.data.ServerSyncBackend
+import app.doorprints.drive.wiring.ActivityProvider
+import app.doorprints.drive.wiring.DriveServices
+import app.doorprints.drive.wiring.DriveSyncChoice
+import app.doorprints.drive.wiring.DriveSyncRoute
+import app.doorprints.drive.wiring.FileDrivePrefs
 import app.doorprints.data.create
 import app.doorprints.data.AndroidRepository
 import app.doorprints.data.SettingsStore
@@ -40,12 +47,40 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
+import java.io.File
 import org.maplibre.android.MapLibre
 
+/**
+ * The app's long-lived objects (settings, repository, Drive, reminders, area wake-up, the common screens' services), built
+ * once per process so every Activity, worker and receiver shares one database and one settings store.
+ */
 class AppContainer(app: DoorprintsApp) {
     // One settings DataStore per process (see data/SettingsStoreFactory.kt), as the old property delegate gave.
     val settings = SettingsStore.create(app)
-    val repository = AndroidRepository(app, AppDatabase.create(app), settings)
+    /** Internal so a screenshot test can pin a stored row's stamp (the repository stamps edits with the real clock). */
+    internal val db = AppDatabase.create(app, app.databaseExecutor)
+
+    /** Carries the Drive backend into the repository's sync loop for one Drive pass (S4b-BL-70's seam, docs/15 §1.3). */
+    private val driveRoute = DriveSyncRoute()
+
+    /** The foreground Activity, for the device check and Google's consent screen (MainActivity registers itself). */
+    val activities = ActivityProvider()
+
+    /**
+     * Whether Drive is in use is read from one small file, without building Drive: while it is, Drive replaces the server
+     * for sync (both would share the rows' clean marks and cursors); otherwise the server is chosen exactly as before.
+     */
+    private val driveFlag = FileDrivePrefs(File(File(app.noBackupFilesDir, DriveServices.DIR), DriveServices.PREFS_FILE))
+
+    val repository = AndroidRepository(
+        app, db, settings,
+        syncBackendFor = DriveSyncChoice.backendFor({ driveFlag.engaged }, driveRoute) { s ->
+            if (s.serverConfigured) ServerSyncBackend(Api.client(s.serverUrl, s.apiKey)) else null
+        },
+    )
+
+    /** Google Drive backup and sync (docs/15); the graph is built when first used. */
+    val drive = DriveServices(app, repository, db, driveRoute, activities)
 
     /** The viewing reminders' alarms (docs/11 5.8, slice 3b-2). */
     val reminders = ViewingReminderScheduler(app, repository)
@@ -59,6 +94,10 @@ class AppContainer(app: DoorprintsApp) {
 
 // open for the screenshot tests' app (ScreenshotTestApp), which skips startServices(): no MapLibre (native code) and
 // no WorkManager or notification set-up on the JVM.
+/**
+ * The process entry point: builds the [AppContainer], applies the chosen language and starts the background work (sync,
+ * reminders, backups) when the system creates the process, whether for the launcher, a receiver or a worker.
+ */
 open class DoorprintsApp : Application(), WorkConfiguration.Provider {
     lateinit var container: AppContainer
         private set
@@ -67,6 +106,13 @@ open class DoorprintsApp : Application(), WorkConfiguration.Provider {
     // jobs queued under the pre-rename class names still find their worker (LegacyWorkerFactory).
     override val workManagerConfiguration: WorkConfiguration
         get() = WorkConfiguration.Builder().setWorkerFactory(LegacyWorkerFactory).build()
+
+    /**
+     * Where Room runs its queries: null (Room's own threads) in the app. The Compose tests' application runs them on the calling
+     * thread, so that a screen's effect, which the test rule runs unconfined, resumes on the main thread after the database
+     * answers, as it does in the app, and not on a Room thread (S4b-BL-254).
+     */
+    internal open val databaseExecutor: java.util.concurrent.Executor? = null
 
     /** Application-lifetime scope for one-off start-up work. */
     val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -112,11 +158,26 @@ open class DoorprintsApp : Application(), WorkConfiguration.Provider {
         appScope.launch { container.areaWakeup.watch() }
     }
 
-    /** Platform services and start-up work; the data container above is all the screens need. */
+    /**
+     * A saved walk never outlives its house (docs/11 5.27.6): at app start every saved walk whose house is a tombstone or
+     * missing is deleted (the other triggers are the Undo snackbar closing, Hunt start, sync end and import end). Not
+     * cancelled by anything the screens do (the repository's sweep runs under NonCancellable).
+     */
+    @VisibleForTesting
+    internal fun sweepWalksAtStart(): Job = appScope.launch { runCatching { container.repository.sweepWalksOfDeletedHouses() } }
+
+    /**
+     * Platform services and start-up work that the screens do not need to wait for: map library, saved-walk sweep,
+     * notification channels, the periodic sync and Drive jobs, the weekly backup, and the reminder and area watchers.
+     * Everything that can fail is wrapped so a start-up problem never stops the app opening.
+     */
     protected open fun startServices() {
         MapLibre.getInstance(this)
+        sweepWalksAtStart()
         Notifications.createChannels(AppLocale.wrap(this))
         SyncWorker.schedulePeriodic(this)
+        // Google Drive's regular run follows "in use and automatic backup on"; re-set at every start, as the weekly backup is.
+        container.drive.rescheduleWork()
         // v0.1 kept the API key in plaintext; encrypt it with the Keystore key (threat model F-03).
         appScope.launch { runCatching { container.settings.migrateLegacyKey() } }
         // Whether the server has AI features on, once per process (UX review, whole-app audit): Root used to ask on

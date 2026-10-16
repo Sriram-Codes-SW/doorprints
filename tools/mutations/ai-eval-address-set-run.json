@@ -1,0 +1,54 @@
+{
+  "spec": ["backend/src/test/java/app/doorprints/server/ai/eval/AddressSetRunTest.java"],
+  "maven": ["-Dtest=AddressSetRunTest"],
+  "mutations": [
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/EvalScorer.java",
+      "find": "return new Verdict(reasons.isEmpty(), false, List.copyOf(reasons));",
+      "replace": "return new Verdict(reasons.isEmpty(), true, List.copyOf(reasons));",
+      "expect": "aMetricBelowItsThresholdFailsTheDefaultRunAndNotAnAddressSetRun"
+    },
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/EvalScorer.java",
+      "find": "var verdict = address == null ? verdict(metrics, results, errors, progress) : variantVerdict(results, errors, progress);",
+      "replace": "var verdict = verdict(metrics, results, errors, progress);",
+      "expect": "anAddressSetScorecardSaysItIsNotGatedListsWhatWasLeftOutAndHidesPassAndFail"
+    },
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/EvalScorer.java",
+      "find": "if (address != null) metrics = notGated(metrics);",
+      "replace": "",
+      "expect": "anAddressSetScorecardSaysItIsNotGatedListsWhatWasLeftOutAndHidesPassAndFail"
+    },
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/EvalScorer.java",
+      "find": "if (address != null) appendAddressSet(sb, address);",
+      "replace": "",
+      "expect": "anAddressSetScorecardSaysItIsNotGatedListsWhatWasLeftOutAndHidesPassAndFail"
+    },
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/EvalScorer.java",
+      "find": "if (progress != null && !progress.complete()) {\n            int notRun",
+      "replace": "if (false) {\n            int notRun",
+      "expect": "anAddressSetRunFailsOnlyOnAHarnessErrorAStopOrNoCase"
+    },
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/AddressVariants.java",
+      "find": "if (isDefault(name)) return null;",
+      "replace": "if (name == null) return null;",
+      "expect": "aDefaultRunHasNoAddressSetAtAll"
+    },
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/AddressVariants.java",
+      "find": "if (!fingerprint.equals(recorded)) {",
+      "replace": "if (false) {",
+      "expect": "aFingerprintThatIsNotTheOneInTheFileIsAHarnessErrorThatNamesBoth"
+    },
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/AddressVariants.java",
+      "find": "fingerprint.substring(0, 12)",
+      "replace": "fingerprint.substring(0, 8)",
+      "expect": "aNamedSetCarriesItsAppliedGoldenSetTheNotApplicableCasesAndTheHeaderLine"
+    }
+  ]
+}

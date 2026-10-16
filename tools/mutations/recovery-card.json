@@ -1,0 +1,53 @@
+{
+  "spec": "web/src/app/pages/data/drive/drive-delete.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/pages/data/drive/drive-delete.ts",
+      "find": "      this.askRecoveryKey.set(factor === 'PASSKEY' && this.passkeyStatus() !== 'registered' && this.recoveryOffered());",
+      "replace": "      this.askRecoveryKey.set(factor === 'PASSKEY' && this.recoveryOffered());",
+      "expect": "does not show recovery key input when passkey is registered"
+    },
+    {
+      "file": "web/src/app/pages/data/drive/drive-delete.ts",
+      "find": "      this.askRecoveryKey.set(factor === 'PASSKEY' && this.passkeyStatus() !== 'registered' && this.recoveryOffered());",
+      "replace": "      this.askRecoveryKey.set(factor === 'PASSKEY' && this.passkeyStatus() !== 'registered');",
+      "expect": "does not show recovery key input when recovery is not offered"
+    },
+    {
+      "file": "web/src/app/pages/data/drive/drive-delete.ts",
+      "find": "      if (info.ok) {\n        const text = this.recoveryKeyText();\n        this.recoveryKeyText.set('');",
+      "replace": "      if (info.ok) {\n        const text = this.recoveryKeyText();",
+      "expect": "clears recovery key text after authorization attempt"
+    },
+    {
+      "file": "web/src/app/pages/data/drive/drive-delete.ts",
+      "find": "          if (!auth.ok) {\n            if (auth.reason === 'RECOVERY_KEY_WRONG') {\n              this.recoveryError.set('driveDelete.recoveryWrong');\n              return;\n            }",
+      "replace": "          if (!auth.ok) {\n            if (auth.reason === 'RECOVERY_KEY_WRONG') {\n              this.showRefused(auth.reason);\n              return;\n            }",
+      "expect": "shows recoveryWrong error when authorizeDelete returns RECOVERY_KEY_WRONG"
+    },
+    {
+      "file": "web/src/app/pages/data/drive/drive-delete.ts",
+      "find": "      this.askRecoveryKey.set(factor === 'PASSKEY' && this.passkeyStatus() !== 'registered' && this.recoveryOffered());",
+      "replace": "      this.askRecoveryKey.set(this.passkeyStatus() !== 'registered' && this.recoveryOffered());",
+      "expect": "does not show recovery key input for NONE factor"
+    },
+    {
+      "file": "web/src/app/pages/data/drive/drive-delete.ts",
+      "find": "  protected cancel(): void {\n    this.phase.set('menu');\n    this.ticked.set(false);\n    this.error.set(null);\n    this.result.set(null);\n    this.recoveryKeyText.set('');\n    this.recoveryError.set(null);\n    this.askRecoveryKey.set(false);",
+      "replace": "  protected cancel(): void {\n    this.phase.set('menu');\n    this.ticked.set(false);\n    this.error.set(null);\n    this.result.set(null);\n    this.recoveryError.set(null);\n    this.askRecoveryKey.set(false);",
+      "expect": "cancel clears recovery key text and error"
+    },
+    {
+      "file": "web/src/app/pages/data/drive/drive-delete.ts",
+      "find": "      this.recoveryOffered.set(await this.service.recoveryKeyOffered());\n      const factor",
+      "replace": "      const factor",
+      "expect": "after this card loaded (it reads the state again)"
+    },
+    {
+      "file": "web/src/app/pages/data/drive/drive-delete.ts",
+      "find": "      this.passkeyStatus.set(await this.service.passkeyStatus());\n      this.recoveryOffered",
+      "replace": "      this.recoveryOffered",
+      "expect": "a passkey was registered after this card loaded"
+    }
+  ]
+}

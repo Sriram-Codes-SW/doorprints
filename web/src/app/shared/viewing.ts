@@ -39,7 +39,9 @@ export const DEFAULT_REMIND_MIN = 60;
 /** How long after its end a PLANNED viewing counts as missed, and how far from a visit's arrival it may be linked. */
 export const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
 
+/** First viewing, second viewing, or follow-up. */
 export type ViewingKind = 'FIRST' | 'SECOND' | 'FOLLOW_UP';
+/** Planned, done or cancelled. A planned viewing long past reads as missed. */
 export type ViewingStatus = 'PLANNED' | 'DONE' | 'CANCELLED';
 
 export const VIEWING_KINDS: readonly ViewingKind[] = ['FIRST', 'SECOND', 'FOLLOW_UP'];
@@ -50,6 +52,10 @@ export const REMIND_OPTIONS: readonly number[] = [0, 15, 30, 60, 120, 1440];
 /** A viewing's own id: `v_` and 8 lowercase hex characters. */
 const APP_ID_PATTERN = /^v_[0-9a-f]{8}$/;
 
+/**
+ * A planned or past visit to a house at a set time: when, how long, which kind, its status, when to remind, and with
+ * whom. `withWhom` is contact data and is kept out of calendar files, AI text and copies made without contact details.
+ */
 export interface Viewing {
   id: string;
   /** A house id; the house may be gone (the history then says "a house that is gone"). */
@@ -97,27 +103,47 @@ export function isViewingId(id: string): boolean {
   return RECORD_ID_PATTERN.test(id) && id !== '.' && id !== '..';
 }
 
+/** The kind from a stored value; anything unknown reads as FIRST. */
 export function viewingKind(value: unknown): ViewingKind {
   return VIEWING_KINDS.includes(value as ViewingKind) ? (value as ViewingKind) : 'FIRST';
 }
 
+/** The status from a stored value; anything unknown reads as PLANNED. */
 export function viewingStatus(value: unknown): ViewingStatus {
   return VIEWING_STATUSES.includes(value as ViewingStatus) ? (value as ViewingStatus) : 'PLANNED';
 }
 
+/** The value if it is non-blank text within `max` characters, else undefined. */
 function optionalText(value: unknown, max: number): string | undefined {
   return typeof value === 'string' && value.trim() !== '' && value.length <= max ? value : undefined;
 }
 
+/** The payload key that names the viewing's candidate since S4b-BL-247; every writer writes it. */
+export const VIEWING_CANDIDATE_KEY = 'candidateId';
+/** The key before S4b-BL-247, still read: a payload stored or synced before names its house so. */
+export const VIEWING_OLD_HOUSE_KEY = 'houseId';
+
 /**
- * Reads a record payload as a viewing. A blank or missing `houseId`, a missing or non-positive `startsAt`, or an id
- * outside the record-id pattern is untrusted, so the row is `null` and the caller skips it. An unknown kind is FIRST
- * and an unknown status PLANNED, a duration outside 5..480 is 30, a reminder not in the list 60; an over-long or
- * blank `withWhom`, `notes` or `visitId` is left out. Kotlin: `Viewings.fromPayload`.
+ * The candidate a viewing payload names under exactly one of `candidateId` and `houseId` (the key before S4b-BL-247),
+ * as text; undefined when it has neither or both (a payload with both, whatever their values, is a bad row).
+ * `docs/schemas/viewing-payload-vectors.json`; Kotlin `ViewingPayloadSerializer`, Java `ViewingPayload.candidateOf`.
+ */
+function candidateOfPayload(payload: Record<string, unknown>): unknown {
+  const hasKey = VIEWING_CANDIDATE_KEY in payload;
+  if (hasKey === (VIEWING_OLD_HOUSE_KEY in payload)) return undefined;
+  return payload[hasKey ? VIEWING_CANDIDATE_KEY : VIEWING_OLD_HOUSE_KEY];
+}
+
+/**
+ * Reads a record payload as a viewing. A blank or missing `candidateId` (or `houseId`, the key before S4b-BL-247; both
+ * keys is a bad row), a missing or non-positive `startsAt`, or an id outside the record-id pattern is untrusted, so the
+ * row is `null` and the caller skips it. An unknown kind is FIRST and an unknown status PLANNED, a duration outside
+ * 5..480 is 30, a reminder not in the list 60; an over-long or blank `withWhom`, `notes` or `visitId` is left out.
+ * Kotlin: `Viewings.fromPayload`.
  */
 export function viewingFromPayload(id: string, payload: Record<string, unknown> | null | undefined): Viewing | null {
   if (!isViewingId(id) || !payload || typeof payload !== 'object') return null;
-  const houseId = payload['houseId'];
+  const houseId = candidateOfPayload(payload);
   if (typeof houseId !== 'string' || houseId.trim() === '' || houseId.length > MAX_ID_LENGTH) return null;
   const startsAt = payload['startsAt'];
   if (typeof startsAt !== 'number' || !Number.isSafeInteger(startsAt) || startsAt <= 0) return null;
@@ -145,10 +171,13 @@ export function viewingFromPayload(id: string, payload: Record<string, unknown> 
   return out;
 }
 
-/** The payload keys in the contract's order: houseId, startsAt, durationMin, kind, status, remindMin, then the optional ones. */
+/**
+ * The payload keys in the contract's order: candidateId (S4b-BL-247; never `houseId`), startsAt, durationMin, kind,
+ * status, remindMin, then the optional ones.
+ */
 export function viewingToPayload(v: Viewing): Record<string, unknown> {
   const out: Record<string, unknown> = {
-    houseId: v.houseId,
+    [VIEWING_CANDIDATE_KEY]: v.houseId,
     startsAt: v.startsAt,
     durationMin: v.durationMin,
     kind: v.kind,
@@ -238,6 +267,9 @@ export interface ViewingGroups {
   cancelled: Viewing[];
 }
 
+/**
+ * Splits the viewings into the timeline groups: upcoming (soonest first), missed, done and cancelled (newest first).
+ */
 export function groupViewings(list: readonly Viewing[], nowMs: number): ViewingGroups {
   const asc = sortViewings(list);
   const newestFirst = [...asc].reverse();
@@ -257,6 +289,7 @@ export interface ViewingFilter {
   status?: ViewingStatus | '';
 }
 
+/** Keeps the viewings in the date range and of the kind and status chosen. */
 export function filterViewings(list: readonly Viewing[], f: ViewingFilter): Viewing[] {
   return list.filter(
     (v) =>

@@ -1,0 +1,36 @@
+{
+  "spec": "backend/src/test/java/app/doorprints/server/ai/eval/SchoolSetTest.java",
+  "maven": ["-Dtest=SchoolSetTest"],
+  "mutations": [
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/EvalScorer.java",
+      "find": "                    && (money.get(\"cadence\") == null || fieldMatches(\"cadence\", money.get(\"cadence\"), got.get(\"cadence\")));",
+      "replace": "                    ;",
+      "expect": "anExtractIsScoredPerExtraAndAMoneyExtraByAmountAndCadence"
+    },
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/FixtureSeeding.java",
+      "find": "        if (body.containsKey(\"kind\")) {",
+      "replace": "        if (false) {",
+      "expect": "aSchoolFixtureIsSeededAsItIsWithOrderedTimestamps"
+    },
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/InjectionScoring.java",
+      "find": "            if (e.getValue() instanceof Map<?, ?> money && money.containsKey(\"amount\")) keys.add(\"extras.\" + e.getKey());",
+      "replace": "",
+      "expect": "aMoneyExtraTheInjectionAsksToChangeIsAGuard"
+    },
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/GoldenSetEvalTest.java",
+      "find": "        if (kind != null && !\"house\".equals(String.valueOf(kind))) body.put(\"kind\", String.valueOf(kind));",
+      "replace": "",
+      "expect": "theExtractRequestNamesTheKindOnlyForAnotherKindThanTheHouse"
+    },
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/EvalSets.java",
+      "find": "            if (candidates.isEmpty()) throw new IllegalArgumentException(",
+      "replace": "            if (false) throw new IllegalArgumentException(",
+      "expect": "aSetWithItsOwnFixturesNeedsThemAndTheGoldenSetsAreNotSeeded"
+    }
+  ]
+}

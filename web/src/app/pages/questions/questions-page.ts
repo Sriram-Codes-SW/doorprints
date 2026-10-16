@@ -24,12 +24,14 @@ import { Announcer } from '../../core/announcer.service';
 import { ConfirmService } from '../../core/confirm.service';
 import { errorMsg } from '../../core/format';
 import { LocalDataService } from '../../core/local-data.service';
+import { SpaceService } from '../../core/space.service';
 import type { TKey } from '../../i18n/en';
 import { TPipe } from '../../i18n/t.pipe';
 import { Msg, TranslationService } from '../../i18n/translation.service';
-import { MAX_QUESTIONS, MAX_QUESTION_TEXT, QUESTION_CATEGORIES, QUESTION_SCOPES, sortQuestions } from '../../shared/question';
+import { MAX_QUESTIONS, MAX_QUESTION_TEXT, QUESTION_CATEGORIES, questionCategoryLabel, questionScopesOf, questionsOfKind, sortQuestions } from '../../shared/question';
 import type { Question, QuestionCategory, QuestionScope } from '../../shared/question';
 import { RunResult, nextRunResult } from '../../shared/run-result';
+import { isBaselineKind } from '../../core/kind-capabilities';
 
 /** One category of the bank, in the order the screen shows them. */
 interface Group {
@@ -41,7 +43,7 @@ interface Group {
  * Questions (slice 3a, docs/11 5.5), reached from Your data: the bank of questions to ask at a viewing, grouped by
  * category. Each question can be edited, given a category and a scope (Rent, Buy, Both), switched to "Ask by default",
  * moved, archived and brought back, or deleted (a seeded one too: it stays deleted until Reset to defaults). Every change
- * is saved at once and writes only the record that changed (`LocalStore.saveQuestion`).
+ * is saved at once and writes only the record that changed (`LocalStore.questions.save`).
  */
 @Component({
   selector: 'app-questions-page',
@@ -54,10 +56,14 @@ export class QuestionsPage {
   private readonly confirm = inject(ConfirmService);
   private readonly announcer = inject(Announcer);
   private readonly i18n = inject(TranslationService);
+  /** The space the page is opened in: its kind's own bank is shown (kinds PR 29, docs/03 §18.23). */
+  protected readonly space = inject(SpaceService);
 
   protected readonly loading = signal(true);
   protected readonly error = signal<RunResult<Msg> | null>(null);
-  protected readonly bank = signal<Question[]>([]);
+  /** The bank of every kind, and the one of the space on screen. */
+  private readonly allQuestions = signal<Question[]>([]);
+  protected readonly bank = computed(() => questionsOfKind(this.allQuestions(), this.space.kind()));
   protected newText = '';
   protected newCategory: QuestionCategory = 'OTHER';
   protected readonly textError = signal(false);
@@ -65,7 +71,8 @@ export class QuestionsPage {
   protected readonly actionError = signal<Msg | null>(null);
 
   protected readonly categories = QUESTION_CATEGORIES;
-  protected readonly scopes = QUESTION_SCOPES;
+  /** The scopes this space's questions can have: a school's are all for both, so no scope control (kinds PR 29). */
+  protected readonly scopes = computed(() => questionScopesOf(this.space.kind()));
   protected readonly maxText = MAX_QUESTION_TEXT;
   protected readonly maxQuestions = MAX_QUESTIONS;
 
@@ -78,7 +85,7 @@ export class QuestionsPage {
   );
   protected readonly archived = computed(() => this.bank().filter((q) => q.archived === true));
   /** At the cap of 100, archived questions included. */
-  protected readonly atCap = computed(() => this.bank().length >= MAX_QUESTIONS);
+  protected readonly atCap = computed(() => this.allQuestions().length >= MAX_QUESTIONS);
 
   constructor() {
     // Again after writes to this browser's store (a sync pull, an edit in another tab).
@@ -86,12 +93,15 @@ export class QuestionsPage {
       this.api.settled();
       this.reload();
     });
+    // A kind's own bank is seeded the first time its Questions page opens (never for a house-only person).
+    if (!isBaselineKind(this.space.kind())) this.api.seedKindQuestions(this.space.kind(), this.i18n.lang()).subscribe({ next: () => this.reload(), error: () => undefined });
   }
 
+  /** Reads the question bank. `userAsked` marks a Retry, so a repeated failure is announced again. */
   protected reload(userAsked = false): void {
     this.api.questions().subscribe({
       next: (list) => {
-        this.bank.set(list);
+        this.allQuestions.set(list);
         this.error.set(null);
         this.loading.set(false);
       },
@@ -102,8 +112,9 @@ export class QuestionsPage {
     });
   }
 
-  protected categoryKey(category: QuestionCategory): TKey {
-    return `questions.category.${category}` as TKey;
+  /** The header of a category: the kind's own word when its question file has one, else the house's (door 9). */
+  protected categoryText(category: QuestionCategory): string {
+    return questionCategoryLabel(this.space.kind(), category, this.i18n.lang()) ?? this.i18n.t(`questions.category.${category}` as TKey);
   }
 
   protected scopeKey(scope: QuestionScope): TKey {
@@ -115,6 +126,10 @@ export class QuestionsPage {
     return q.text.length > 60 ? q.text.slice(0, 57) + '…' : q.text;
   }
 
+  /**
+   * Saves the edited question text. A blank text is refused and the old one put back, so a question is never deleted by
+   * accident.
+   */
   protected editText(q: Question, event: Event): void {
     const input = event.target as HTMLInputElement;
     const text = input.value.trim();
@@ -128,14 +143,17 @@ export class QuestionsPage {
     void this.save([{ ...q, text }]);
   }
 
+  /** Saves a new category for the question. */
   protected setCategory(q: Question, event: Event): void {
     void this.save([{ ...q, category: (event.target as HTMLSelectElement).value as QuestionCategory }]);
   }
 
+  /** Saves whether the question applies to renting, buying or both. */
   protected setScope(q: Question, event: Event): void {
     void this.save([{ ...q, appliesTo: (event.target as HTMLSelectElement).value as QuestionScope }]);
   }
 
+  /** Saves whether the question is added to a house by "Add the usual questions". */
   protected setDefaultOn(q: Question, event: Event): void {
     void this.save([{ ...q, defaultOn: (event.target as HTMLInputElement).checked }]);
   }
@@ -159,10 +177,12 @@ export class QuestionsPage {
     });
   }
 
+  /** Hides the question from the bank and from the picker; answers already on houses stay. */
   protected archive(q: Question): void {
     void this.save([{ ...q, archived: true }]);
   }
 
+  /** Brings an archived question back at the end of the visible list. */
   protected bringBack(q: Question): void {
     // Back at the end of the visible list, so it does not land among questions that were renumbered meanwhile.
     const last = this.bank()
@@ -171,6 +191,7 @@ export class QuestionsPage {
     void this.save([{ ...q, archived: false, sort: last + 1 }]);
   }
 
+  /** Deletes the question after asking; a seeded question stays deleted until the bank is reset. */
   protected async remove(q: Question): Promise<void> {
     const ok = await this.confirm.ask(
       { key: 'questions.confirmDelete', params: { name: this.nameOf(q) } },
@@ -187,6 +208,7 @@ export class QuestionsPage {
     }
   }
 
+  /** Adds a question with the typed text and chosen category, unless the text is empty or the limit is reached. */
   protected async add(): Promise<void> {
     const text = this.newText.trim();
     if (text === '') {
@@ -197,7 +219,7 @@ export class QuestionsPage {
     if (this.atCap()) return;
     this.textError.set(false);
     try {
-      await firstValueFrom(this.api.addQuestion(text, this.newCategory));
+      await firstValueFrom(this.api.addQuestion(text, this.newCategory, 'BOTH', this.space.kind()));
       this.newText = '';
       this.actionError.set(null);
       this.announcer.announce({ key: 'questions.updated' });
@@ -207,11 +229,12 @@ export class QuestionsPage {
     }
   }
 
+  /** Restores the default questions, in the app's language, after asking. */
   protected async reset(): Promise<void> {
     const ok = await this.confirm.ask({ key: 'questions.confirmReset' }, { confirmKey: 'questions.reset', danger: true });
     if (!ok) return;
     try {
-      await firstValueFrom(this.api.resetQuestions(this.i18n.lang()));
+      await firstValueFrom(this.api.resetQuestions(this.i18n.lang(), this.space.kind()));
       this.actionError.set(null);
       this.announcer.announce({ key: 'questions.resetDone' });
       this.reload();
@@ -220,6 +243,7 @@ export class QuestionsPage {
     }
   }
 
+  /** Saves the changed questions, announces it and reads the bank again; a failure is shown above the list. */
   private async save(list: readonly Question[], announcement: Msg = { key: 'questions.updated' }): Promise<void> {
     if (list.length === 0) return;
     try {

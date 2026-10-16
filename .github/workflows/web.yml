@@ -65,21 +65,32 @@
 #   only. The live check also checks /geo/in-boundaries-soi.json.
 # 2026-10-01 (Web), branch feat/web-open-backup-file-handler: pwa-files also checks the manifest's file_handlers
 #   (S4b-BL-108): a relative action and at least one ".ext" accepted per handler.
+#
+# 2026-10-02 (Web), draft PR #118: deploy-firebase writes config.js from vars.GOOGLE_OAUTH_WEB_CLIENT_ID
+#   (empty allowed; Drive then stays unavailable). Do not invent a client id.
+#
+# 2026-10-12 (Web), branch ci/web-mobile-layout-gate (S4b-BL-245): new job layout-gate, the phone layout gate
+#   (tools/live-ui/layout-gate.js, docs/06 TC-S-46), after the build, on pull requests and pushes to main.
+#
+# 2026-10-15 (Web), branch feat/kinds-23-ship-school-web (S4b-BL-288): layout-gate sets GATE_DEV_KINDS=1 (the school is
+#   compiled into the production build, switch off and on); no new job, no new check name.
 name: Web
 
 # Triggers: a push to main touching the paths below (tag pushes do not trigger), a pull request to main (tests the
 # merge result; also covers fork PRs) and manual runs. The two path lists are identical and must stay that way.
 # Only a push or manual run on main can deploy.
+# tools/fake-ai-provider/** (S4b-BL-175): load-bearing, fake-provider.wire.spec.ts starts that server; editing it alone can turn
+# this workflow red (android.yml has the same path).
 # docs/schemas/** (S4b-BL-105 a): load-bearing, the unit tests import the shared contract files (import-vectors.json,
-# update-sample.json, default-questions.json, default-movein.json, listing-fixtures.json, viewing-sample.ics), so
-# editing one alone can turn this workflow red; android.yml and backend.yml have the same path. A schema-only merge
-# to main also redeploys (the built site is unchanged).
+# update-sample.json, default-questions.json, default-movein.json, listing-fixtures.json, viewing-sample.ics,
+# drive-vectors.json), so editing one alone can turn this workflow red; android.yml and backend.yml have the same
+# path. A schema-only merge to main also redeploys (the built site is unchanged).
 on:
   push:
     branches: [main]
-    paths: ["web/**", "docs/schemas/**", ".github/workflows/web.yml", ".github/firebase-tools/**"]
+    paths: ["web/**", "docs/schemas/**", "tools/fake-ai-provider/**", ".github/workflows/web.yml", ".github/firebase-tools/**"]
   pull_request:
-    paths: ["web/**", "docs/schemas/**", ".github/workflows/web.yml", ".github/firebase-tools/**"]
+    paths: ["web/**", "docs/schemas/**", "tools/fake-ai-provider/**", ".github/workflows/web.yml", ".github/firebase-tools/**"]
   workflow_dispatch:
 
 # Least privilege: nothing by default; each job asks for what it needs (contents: read; deploy-firebase also
@@ -328,6 +339,33 @@ jobs:
             }
           }
 
+          // 7. MapLibre GL worker file (S4b-BL-54, S4b-BL-55; reshaped for maplibre-gl 6.13): the build copies
+          //    maplibre-gl-worker.mjs from node_modules/maplibre-gl/dist via angular.json assets glob. If a release renames
+          //    it, the build stays green and the deployed worker URL gets the "**" rewrite with index.html (a map with no
+          //    tiles). Up to 6.12 the worker imported ./maplibre-gl-shared.mjs and both were copied; since 6.13 the worker is
+          //    self-contained and maplibre-gl-shared.mjs is an empty deprecated stub that is no longer copied. So: the worker
+          //    is present, non-empty, starts with the license header, names its version, and imports no sibling file (a
+          //    sibling would not be copied). Same rules as web/scripts/maplibre-worker-check.mjs (which also compares the
+          //    version with the installed package, where there is a checkout); keep the two in step.
+          if (required('maplibre-gl-worker.mjs', 'MapLibre GL worker')) {
+            const workerContent = read('maplibre-gl-worker.mjs');
+            if (!workerContent.startsWith('/**')) {
+              errors.push(`maplibre-gl-worker.mjs does not start with license header comment (/** ...)`);
+            }
+            const sibling = workerContent.match(/\b(?:from|import)\s*\(?\s*["'](\.{1,2}\/[^"']+)["']/);
+            if (sibling) {
+              errors.push(`maplibre-gl-worker.mjs imports "${sibling[1]}", a sibling file angular.json does not copy (it must be self-contained)`);
+            } else {
+              console.log(`ok: maplibre-gl-worker.mjs is self-contained (no relative import)`);
+            }
+            const versionMatch = workerContent.match(/maplibre-gl-js\/blob\/v([\d.]+)\//);
+            if (!versionMatch) {
+              errors.push(`maplibre-gl-worker.mjs has no version in header`);
+            } else {
+              console.log(`ok: maplibre-gl-worker.mjs v${versionMatch[1]}`);
+            }
+          }
+
           for (const w of warnings) console.log(`::warning title=PWA check::${w}`);
           for (const e of errors) console.log(`::error title=PWA check::${e}`);
           if (errors.length > 0) {
@@ -339,6 +377,68 @@ jobs:
 
       - name: Check the built site
         run: node check-pwa.cjs site
+
+  # The phone layout gate (S4b-BL-245, docs/06 TC-S-46): the built site, served locally and offline, opened on 320x568,
+  # 360x640 and 390x664 phones at normal and 130% text; the map and the app must fit the screen (a runaway map, 14,000-21,000px
+  # tall, reached production on 2026-10-12 because only the post-deploy live UI test looked). tools/live-ui/layout-gate.js
+  # is the same script `tools/check.sh` runs. A normal job (no `if`), so it can be a required check. The full live UI test
+  # after the deploy (tools/live-ui/live-ui.js, TC-M-26) is unchanged.
+  # Sparse checkout: only the script and its npm project (Playwright and axe-core, pinned by its lock file).
+  layout-gate:
+    name: Phone layout gate (320x568, 360x640, 390x664)
+    needs: build
+    # ubuntu-24.04, not 26.04 like the other jobs: Playwright 1.56.1 refuses `install --with-deps` on 26.04 ("does not support
+    # chromium on ubuntu26.04-x64"). Move to 26.04 with a Playwright that supports it (tools/live-ui/package.json).
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: tools/live-ui
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            /tools/live-ui/
+          sparse-checkout-cone-mode: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: tools/live-ui/package-lock.json
+
+      - name: Download the built site
+        uses: actions/download-artifact@v8
+        with:
+          name: doorprints-web-dist
+          path: site
+
+      - name: Install Playwright
+        run: npm ci --no-audit --no-fund
+
+      # Chromium's download, keyed by the Playwright version the lock file pins; the system libraries are installed
+      # on every run (they are not in the cache).
+      - name: Playwright version
+        id: playwright
+        run: echo "version=$(node -p "require('playwright/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      # GATE_DEV_KINDS=1 (2026-10-15, S4b-BL-288): the production build lists the school, so the gate also runs the kinds
+      # passes twice, with Experimental: more than houses off and on (about 4 s more). Same job, same required check name.
+      - name: Run the layout gate on the built site
+        env:
+          GATE_DEV_KINDS: "1"
+        run: node layout-gate.js "$GITHUB_WORKSPACE/site"
 
   # Checks, on every run (pull requests included) and with no credentials at all, what the deploy job relies on:
   # web/firebase.json passes the deploy gate (.github/firebase-tools/check-firebase-json.sh), and the pinned
@@ -475,7 +575,7 @@ jobs:
   # Rollback: Firebase console > Hosting > release history > Rollback (docs/08). No rebuild needed.
   deploy-firebase:
     name: Deploy to Firebase Hosting
-    needs: [build, pwa-files, firebase-config, firebase-setup]
+    needs: [build, pwa-files, layout-gate, firebase-config, firebase-setup]
     if: needs.firebase-setup.outputs.ready == 'true' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-26.04
     timeout-minutes: 20
@@ -551,6 +651,32 @@ jobs:
             exit 1
           fi
           echo "$(find . -type f | wc -l) files to publish."
+
+      # The built site ships web/public/config.js with an empty client id. Overwrite it from the repository
+      # variable GOOGLE_OAUTH_WEB_CLIENT_ID (the Google Cloud OAuth *Web* client, drive.file only). Do not invent
+      # an id here: an empty variable leaves Drive unavailable (S4b-BL-117, docs/15 §2.4).
+      - name: Write Google OAuth web client id into config.js
+        env:
+          GOOGLE_OAUTH_WEB_CLIENT_ID: ${{ vars.GOOGLE_OAUTH_WEB_CLIENT_ID }}
+        working-directory: web/dist/web/browser
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, pathlib
+          client = os.environ.get("GOOGLE_OAUTH_WEB_CLIENT_ID", "").strip()
+          if client:
+              import re
+              if not re.fullmatch(r"[0-9]+-[a-z0-9]+\.apps\.googleusercontent\.com", client):
+                  raise SystemExit("GOOGLE_OAUTH_WEB_CLIENT_ID is set but is not a Google OAuth web client id")
+          path = pathlib.Path("config.js")
+          path.write_text(
+              "window.__DOORPRINTS__ = window.__DOORPRINTS__ || {};\n"
+              f"window.__DOORPRINTS__.googleClientId = {json.dumps(client)};\n"
+              "window.__DOORPRINTS__.googleRedirectUri = window.__DOORPRINTS__.googleRedirectUri || '';\n",
+              encoding="utf-8",
+          )
+          print("config.js googleClientId is", "set" if client else "empty")
+          PY
 
       - uses: actions/setup-node@v7
         with:

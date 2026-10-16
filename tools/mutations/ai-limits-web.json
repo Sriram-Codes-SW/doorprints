@@ -1,0 +1,143 @@
+{
+  "spec": "web/src/app/core/ai/ai-limits.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/core/ai/ai-core.ts",
+      "find": "export const MAX_HOUSES = 40;",
+      "replace": "export const MAX_HOUSES = 41;",
+      "expect": "keeps the forty nearest of forty-five"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-core.ts",
+      "find": "if (kept.length > MAX_HOUSES) {",
+      "replace": "if (kept.length >= MAX_HOUSES) {",
+      "expect": "does not rank or cut exactly forty"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-core.ts",
+      "find": ".sort((a, b) => a.c.distanceMeters - b.c.distanceMeters || a.index - b.index)",
+      "replace": ".sort((a, b) => a.c.distanceMeters - b.c.distanceMeters || b.index - a.index)",
+      "expect": "breaks a tie by the order saved"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-core.ts",
+      "find": ".sort((a, b) => b.score - a.score || a.index - b.index).slice(0, MAX_HOUSES)",
+      "replace": ".sort((a, b) => b.score - a.score || b.index - a.index).slice(0, MAX_HOUSES)",
+      "expect": "sharing most words with the question"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-core.ts",
+      "find": "if (chosen.length === maxStops) break;",
+      "replace": "if (chosen.length === maxStops + 1) break;",
+      "expect": "stops at the cap"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-core.ts",
+      "find": ".slice(0, maxStops).map((h) => ({ id: h.id, lat: h.lat, lon: h.lon }))",
+      "replace": ".slice(0, maxStops + 1).map((h) => ({ id: h.id, lat: h.lat, lon: h.lon }))",
+      "expect": "keeps the cap on the fallback route"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-core.ts",
+      "find": "export const NOTES_MAX = 3000;",
+      "replace": "export const NOTES_MAX = 3001;",
+      "expect": "cuts 3,001 characters"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-core.ts",
+      "find": "notes.length > NOTES_MAX ?",
+      "replace": "notes.length >= NOTES_MAX ?",
+      "expect": "leaves 3,000 whole"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-core.ts",
+      "find": "clipUnits(notes, NOTES_MAX) + ' …'",
+      "replace": "clipUnits(notes, NOTES_MAX - 1) + ' …'",
+      "expect": "cuts 3,001 characters"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-core.ts",
+      "find": "clipUnits(notes, NOTES_MAX) + ' …'",
+      "replace": "clipUnits(notes, NOTES_MAX) + '…'",
+      "expect": "cuts 3,001 characters"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-core.ts",
+      "find": "? s.slice(0, max - 1) : s.slice(0, max);",
+      "replace": "? s.slice(0, max) : s.slice(0, max);",
+      "expect": "never leaves half of an emoji"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-core.ts",
+      "find": ": s.slice(0, max);",
+      "replace": ": s.slice(0, max - 1);",
+      "expect": "cuts 3,001 characters"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-core.ts",
+      "find": "low >= 0xdc00 && low <= 0xdfff ?",
+      "replace": "low >= 0xdc00 && low <= 0xdfff && max > 4000 ?",
+      "expect": "never leaves half of an emoji"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-core.ts",
+      "find": "const notes = h.notes.trim();",
+      "replace": "const notes = h.notes;",
+      "expect": "measures the notes after trimming"
+    },
+    {
+      "file": "web/src/app/core/ai/on-device-ai.service.ts",
+      "find": "const MAX_STOPS = 8;",
+      "replace": "const MAX_STOPS = 9;",
+      "expect": "offers a plan only the forty nearest"
+    },
+    {
+      "file": "web/src/app/core/ai/on-device-ai.service.ts",
+      "find": "Math.max(1, Math.min(request.maxStops ?? MAX_STOPS, MAX_STOPS))",
+      "replace": "Math.max(0, Math.min(request.maxStops ?? MAX_STOPS, MAX_STOPS))",
+      "expect": "never for none"
+    },
+    {
+      "file": "web/src/app/core/ai/on-device-ai.service.ts",
+      "find": "Math.max(1, Math.min(request.maxStops ?? MAX_STOPS, MAX_STOPS))",
+      "replace": "Math.max(1, request.maxStops ?? MAX_STOPS)",
+      "expect": "never for more than eight"
+    },
+    {
+      "file": "web/src/app/core/ai/on-device-ai.service.ts",
+      "find": "export const MAX_INPUT_CHARS = 8000;",
+      "replace": "export const MAX_INPUT_CHARS = 8001;",
+      "expect": "accepts a pasted listing of 8,000"
+    },
+    {
+      "file": "web/src/app/core/ai/on-device-ai.service.ts",
+      "find": "text.length > MAX_INPUT_CHARS",
+      "replace": "text.length >= MAX_INPUT_CHARS",
+      "expect": "accepts a pasted listing of 8,000"
+    },
+    {
+      "file": "web/src/app/core/ai/on-device-ai.service.ts",
+      "find": "!text.trim() ||",
+      "replace": "false ||",
+      "expect": "refuses a listing of spaces only"
+    },
+    {
+      "file": "web/src/app/core/ai/on-device-ai.service.ts",
+      "find": "!(Math.abs(request.startLat) <= 90)",
+      "replace": "!(Math.abs(request.startLat) < 90)",
+      "expect": "accepts the poles and the date line"
+    },
+    {
+      "file": "web/src/app/core/ai/on-device-ai.service.ts",
+      "find": "!(Math.abs(request.startLon) <= 180)",
+      "replace": "!(Math.abs(request.startLon) <= 181)",
+      "expect": "refuses a start point that is not on Earth"
+    },
+    {
+      "file": "web/src/app/core/ai/on-device-ai.service.ts",
+      "find": "!(Math.abs(request.startLat) <= 90)",
+      "replace": "Math.abs(request.startLat) > 90",
+      "expect": "refuses a start point that is not on Earth"
+    }
+  ]
+}

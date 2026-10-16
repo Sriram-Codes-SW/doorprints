@@ -34,6 +34,7 @@ import type { ZipEntry } from './zip';
  *  - the header row frozen on every sheet, and an autofilter over the used range.
  */
 
+/** One spreadsheet cell: text, a number, a rupee amount, a date, or blank. */
 export type CellValue =
   | { kind: 'text'; value: string }
   | { kind: 'number'; value: number }
@@ -41,6 +42,7 @@ export type CellValue =
   | { kind: 'date'; value: Date }
   | { kind: 'blank' };
 
+/** One worksheet: its name, a header row and the rows of cells. */
 export interface Sheet {
   /** Sheet name; Excel allows at most 31 characters and none of `[]:*?/\`. */
   name: string;
@@ -48,12 +50,16 @@ export interface Sheet {
   rows: readonly (readonly CellValue[])[];
 }
 
+/** A text cell, or blank for an empty value. */
 export const text = (value: string | null | undefined): CellValue =>
   value === null || value === undefined || value === '' ? { kind: 'blank' } : { kind: 'text', value };
+/** A number cell, or blank for a missing or non-finite value. */
 export const num = (value: number | null | undefined): CellValue =>
   value === null || value === undefined || !Number.isFinite(value) ? { kind: 'blank' } : { kind: 'number', value };
+/** A rupee cell, or blank for a missing or non-finite value. */
 export const money = (value: number | null | undefined): CellValue =>
   value === null || value === undefined || !Number.isFinite(value) ? { kind: 'blank' } : { kind: 'money', value };
+/** A date cell from an ISO string, or blank when it is missing or unparsable. */
 export const date = (iso: string | null | undefined): CellValue => {
   if (!iso) return { kind: 'blank' };
   const ms = Date.parse(iso);
@@ -65,6 +71,9 @@ const STYLE_MONEY = 1;
 const STYLE_DATE = 2;
 const STYLE_HEADER = 3;
 
+/**
+ * Writes the sheets as an XLSX file (a ZIP of XML parts). The same sheets and modification time always give the same bytes.
+ */
 export function buildXlsx(sheets: readonly Sheet[], modifiedAt: Date): Uint8Array {
   const entries: ZipEntry[] = [
     { path: '[Content_Types].xml', data: utf8(contentTypes(sheets.length)) },

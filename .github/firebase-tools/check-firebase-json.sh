@@ -32,7 +32,9 @@
 #   - hosting.site differs from the expected site ID (repository variable FIREBASE_SITE_ID);
 #   - a "predeploy" or "postdeploy" key appears anywhere: firebase-tools runs them as shell commands
 #     (src/deploy/lifecycleHooks.ts), which would execute next to the deploy credential;
-#   - a rewrite has "function", "run" or "dynamicLinks", or a "destination" other than "/index.html".
+#   - a rewrite has "function", "run" or "dynamicLinks", or a "destination" other than "/index.html";
+#   - the Permissions-Policy header of the "**" rule is missing, names microphone, camera or geolocation as anything but
+#     "()" or "(self)" (voice input needs microphone=(self), S4b-BL-221), or contains "*" anywhere.
 #
 # Change log
 # 2026-09-23 (DevSecOps): first version, for the Firebase Hosting deploy (web.yml jobs firebase-config and
@@ -99,6 +101,20 @@ else
                or (.value.destination != "/index.html"))
       | "#\(.key) \(.value | tojson)" ] | join("; ")' "$file")
   [ -z "$bad_rewrites" ] || fail "only rewrites to \"/index.html\" are allowed (no function, run or dynamicLinks): ${bad_rewrites}"
+fi
+
+pp=$(jq -r '[.hosting.headers // [] | .[] | select(.source == "**") | .headers[] | select(.key == "Permissions-Policy") | .value] | last // ""' "$file")
+if [ -z "$pp" ]; then
+  fail "the \"**\" rule has no Permissions-Policy header"
+else
+  case "$pp" in *'*'*) fail "Permissions-Policy '${pp}' contains '*': a feature may be allowed for this origin only" ;; esac
+  for feature in microphone camera geolocation; do
+    value=$(printf '%s' "$pp" | tr ',' '\n' | sed -n "s/^[[:space:]]*${feature}=//p" | head -n 1)
+    case "$value" in
+      '()' | '(self)') ;;
+      *) fail "Permissions-Policy has ${feature}='${value:-missing}', must be () or (self)" ;;
+    esac
+  done
 fi
 
 if [ "$errors" -gt 0 ]; then

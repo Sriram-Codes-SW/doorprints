@@ -1,0 +1,18 @@
+{
+  "spec": "backend/src/test/java/app/doorprints/server/ai/ParityVectorsTest.java",
+  "maven": ["-Dtest=ParityVectorsTest"],
+  "mutations": [
+    {"file": "backend/src/main/java/app/doorprints/server/ai/ContactRedactor.java", "find": "0x0B66, 0x0BE6, 0x0C66, 0x0CE6", "replace": "0x0B66, 0x0BE6, 0x0CE6", "expect": "ParityVectorsTest"},
+    {"file": "backend/src/main/java/app/doorprints/server/ai/ContactRedactor.java", "find": "0x0660, 0x06F0, 0x0966", "replace": "0x06F0, 0x0966", "expect": "ParityVectorsTest"},
+    {"file": "backend/src/main/java/app/doorprints/server/ai/ContactRedactor.java", "find": "if (c >= 0x0660) {", "replace": "if (c >= 0x0670) {", "expect": "ParityVectorsTest"},
+    {"file": "backend/src/main/java/app/doorprints/server/ai/ContactRedactor.java", "find": "mapped = (char) ('0' + (c - zero));", "replace": "mapped = '0';", "expect": "ParityVectorsTest"},
+    {"file": "backend/src/main/java/app/doorprints/server/ai/ContactRedactor.java", "find": "c <= zero + 9", "replace": "c <= zero + 8", "expect": "ParityVectorsTest"},
+    {"file": "backend/src/main/java/app/doorprints/server/ai/ContactRedactor.java", "find": "\"|\\\\(?0\\\\d{2,4}\\\\)?[ \\\\-]?\\\\d{3,4}", "replace": "\"|0\\\\d{2,4}[ \\\\-]?\\\\d{3,4}", "expect": "ParityVectorsTest"},
+    {"file": "backend/src/main/java/app/doorprints/server/ai/ContactRedactor.java", "find": "out.append(s, last, m.start()).append(PHONE);", "replace": "out.append(PHONE);", "expect": "ParityVectorsTest"},
+    {"file": "backend/src/main/java/app/doorprints/server/ai/ContactRedactor.java", "find": "return out.append(s, last, s.length()).toString();", "replace": "return out.toString();", "expect": "ParityVectorsTest"},
+    {"file": "backend/src/main/java/app/doorprints/server/ai/ContactRedactor.java", "find": "var m = p.matcher(asciiDigits(s));", "replace": "var m = p.matcher(s);", "expect": "ParityVectorsTest"},
+    {"file": "backend/src/main/java/app/doorprints/server/ai/ContactRedactor.java", "find": "EMAIL_LIKE.matcher(replaceInDigits(PHONE_LIKE, text))", "replace": "EMAIL_LIKE.matcher(PHONE_LIKE.matcher(text).replaceAll(PHONE))", "expect": "ParityVectorsTest"},
+    {"file": "backend/src/main/java/app/doorprints/server/ai/ContactRedactor.java", "find": "EMAIL_LIKE.matcher(replaceInDigits(PHONE_LIKE, out))", "replace": "EMAIL_LIKE.matcher(PHONE_LIKE.matcher(out).replaceAll(PHONE))", "expect": "ParityVectorsTest"},
+    {"file": "backend/src/main/java/app/doorprints/server/ai/ContactRedactor.java", "find": "savedPhone == null ? s : replaceInDigits(savedPhone, s)", "replace": "savedPhone == null ? s : savedPhone.matcher(s).replaceAll(PHONE)", "expect": "ParityVectorsTest"}
+  ]
+}

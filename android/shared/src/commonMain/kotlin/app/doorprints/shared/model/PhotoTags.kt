@@ -38,6 +38,9 @@ object PhotoTags {
     const val MAX = 10
     const val MAX_LENGTH = 30
 
+    /**
+     * Whether [tag] is one of the fixed keys (these are translated on screen; any other tag is the person's own text).
+     */
     fun isFixed(tag: String): Boolean = tag in FIXED
 
     /**

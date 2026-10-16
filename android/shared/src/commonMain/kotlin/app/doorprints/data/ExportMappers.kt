@@ -23,6 +23,7 @@ import app.doorprints.shared.export.ExportHouse
 import app.doorprints.shared.export.ExportOptions
 import app.doorprints.shared.export.ExportPhoto
 import app.doorprints.shared.export.ExportVisit
+import app.doorprints.shared.model.Candidates
 import app.doorprints.shared.model.HouseAnswers
 import app.doorprints.shared.model.HouseRooms
 import app.doorprints.shared.model.HouseStatus
@@ -43,7 +44,8 @@ fun HouseEntity.toExport() = ExportHouse(
     contactName = contactName, contactPhone = contactPhone, listingUrl = listingUrl, notes = notes,
     areaSqft = areaSqft, locationSource = locationSource, cost = cost?.orNull(), rooms = rooms?.takeIf { it.isNotEmpty() },
     answers = answers?.takeIf { it.isNotEmpty() }, moveIn = MoveIn.coerced(moveIn), floor = floor, brokerId = brokerId,
-    checklist = checklist, createdAt = createdAt, updatedAt = updatedAt,
+    checklist = checklist, createdAt = createdAt, updatedAt = updatedAt, extrasOther = extrasOther,
+    kind = kind.takeIf { it != Candidates.HOUSE_KIND },
 )
 
 /**
@@ -62,6 +64,10 @@ fun ExportHouse.toEntity(dirty: Boolean = true) = HouseEntity(
     brokerId = brokerId?.takeIf(RecordRules::isValidId),
     checklist = checklist, createdAt = createdAt, updatedAt = updatedAt,
     deleted = false, dirty = dirty,
+    // A newer app's extras, kept by the server's and the website's rules (S4b-BL-248).
+    extrasOther = Candidates.cleanOtherExtras(extrasOther),
+    // A kind other than the house is kept as the file says (S4b-BL-209; BackupWire checked its pattern).
+    kind = kind?.takeIf { Candidates.KIND_PATTERN.matches(it) } ?: Candidates.HOUSE_KIND,
 )
 
 fun VisitEntity.toExport() = ExportVisit(
@@ -99,7 +105,7 @@ fun ExportPhoto.toEntity(path: String, id: String = this.id, houseId: String = t
  * on the main thread for every option tap. Common since ADR-23 CMP-6 P6b.
  */
 fun Repository.LocalRows.toBundle(options: ExportOptions): ExportBundle = ExportBundle.build(
-    options.copy(lengthUnit = lengthUnit),
+    options.copy(lengthUnit = lengthUnit, enabledKinds = kinds.enabled, defaultKind = kinds.default),
     houses.map { it.toExport() },
     visits.map { it.toExport() },
     photos.map { it.toExport() },

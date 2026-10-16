@@ -32,7 +32,7 @@ import java.util.UUID;
  * readable HTML copy). The server speaks the {@code data.json} half of it: {@code GET /api/export} returns exactly
  * that object and {@code POST /api/import} accepts exactly that object, so a backup made on a phone or in a browser
  * can be restored to a server and back again without a converter. Photo bytes are not JSON: on the server they are
- * uploaded and fetched through {@code /api/houses/{id}/photos} and {@code /api/photos/{id}}, and
+ * uploaded and fetched through {@code /api/candidates/{id}/photos} and {@code /api/photos/{id}}, and
  * {@link BackupPhoto#fileName()} still names the entry a ZIP copy of the same data would use.
  */
 public final class BackupFormat {
@@ -41,10 +41,15 @@ public final class BackupFormat {
      * Written into {@code manifest.json} and {@code data.json}. Readers accept {@code doorprints-backup/1} up to
      * {@link #MAX_VERSION} (docs/11 section 5.30 item 3, ADR-28): a new entity list means a new format number, and
      * a file newer than {@code MAX_VERSION} is refused with "update the app" rather than read with its lists
-     * dropped in silence. A writer uses the lowest number that holds the copy: {@code /2} once it has a broker (slice 1b), a room (slice 1c), a criterion, a preference, a question or an answer (slice 3a), a viewing (slice 3b-1), else {@code /1}.
+     * dropped in silence. A writer uses the lowest number that holds the copy: {@code /2} once it has anything listed at {@link #ID_WITH_BROKERS}, else {@code /1}.
      */
     public static final String ID = "doorprints-backup/1";
-    /** Written instead of {@link #ID} only when the copy holds at least one broker or one room: the lowest number that holds it. */
+    /**
+     * Written instead of {@link #ID} when the copy holds anything {@code /1} has no place for: a broker, a room, a
+     * criterion, a preference, a question, a viewing, an area, a place or an area note; a house with answers, a
+     * move-in, a floor or the status TAKEN or NOT_CHOSEN; or a photo with a room, tags, a caption or an edit time (the
+     * lowest number that holds the copy).
+     */
     public static final String ID_WITH_BROKERS = "doorprints-backup/2";
     private static final String PREFIX = "doorprints-backup/";
     /**

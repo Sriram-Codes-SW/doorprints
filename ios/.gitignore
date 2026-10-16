@@ -5,3 +5,5 @@ build/
 DerivedData/
 xcuserdata/
 *.xcuserstate
+# The owner's Google client for Drive (Config/Drive.xcconfig explains it): never committed.
+Config/Drive.local.xcconfig

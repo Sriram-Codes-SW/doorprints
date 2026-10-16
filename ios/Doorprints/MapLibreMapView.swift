@@ -38,6 +38,8 @@ final class MapLibreMapView: NSObject, IosMapView, MLNMapViewDelegate, UIGesture
     private static let hitRadius: CGFloat = 24
     private static let housesSource = "houses"
     private static let trackSource = "track"
+    private static let checkSource = "track-check"
+    private static let repeatLayer = "track-repeat-line"
     private static let houseLayers: Set<String> = ["houses-dots", "houses-labels"]
     /// What the view shows until Kotlin hands over the prepared style: nothing. `MLNMapView(frame:)` alone would load
     /// MapLibre's demo style, whose borders ignore India's boundary rules (ADR-22) until Liberty replaces it.
@@ -89,6 +91,23 @@ final class MapLibreMapView: NSObject, IosMapView, MLNMapViewDelegate, UIGesture
 
     func setTrack(geoJson: String) {
         guard let source = mapView.style?.source(withIdentifier: Self.trackSource) as? MLNShapeSource else { return }
+        source.shape = try? MLNShape(data: Data(geoJson.utf8), encoding: String.Encoding.utf8.rawValue)
+    }
+
+    /// The repeat overlay's look (docs/11 5.27.4): its width stops by zoom, and whether it shows. Live: no GeoJSON rebuilt.
+    func setRepeatLook(widthStops: [[KotlinDouble]], visible: Bool) {
+        guard let layer = mapView.style?.layer(withIdentifier: Self.repeatLayer) as? MLNLineStyleLayer else { return }
+        let stops = Dictionary(uniqueKeysWithValues: widthStops.compactMap { pair -> (NSNumber, NSNumber)? in
+            guard pair.count == 2 else { return nil }
+            return (NSNumber(value: pair[0].doubleValue), NSNumber(value: pair[1].doubleValue))
+        })
+        layer.lineWidth = NSExpression(forMLNInterpolating: NSExpression.zoomLevelVariable, curveType: .linear, parameters: nil, stops: NSExpression(forConstantValue: stops))
+        layer.isVisible = visible
+    }
+
+    /// The place check's matched stretches and ring (docs/11 5.27.13); an empty collection clears them.
+    func setCheck(geoJson: String) {
+        guard let source = mapView.style?.source(withIdentifier: Self.checkSource) as? MLNShapeSource else { return }
         source.shape = try? MLNShape(data: Data(geoJson.utf8), encoding: String.Encoding.utf8.rawValue)
     }
 

@@ -21,6 +21,7 @@ package app.doorprints.server.ai.rag;
 import app.doorprints.server.house.HouseAnswer;
 import app.doorprints.server.house.HouseCost;
 import app.doorprints.server.house.HouseDto;
+import app.doorprints.server.house.TestHouses;
 import app.doorprints.server.house.HouseRoom;
 import app.doorprints.server.house.HouseStatus;
 import app.doorprints.server.visit.VisitDto;
@@ -37,7 +38,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class HouseDocumentsTest {
 
     private final UUID id = UUID.randomUUID();
-    private final HouseDto house = new HouseDto(id, "Blue gate", "12 MG Road", "MG Road", "Indiranagar", 12.97, 77.64,
+    private final HouseDto house = TestHouses.dto(id, "Blue gate", "12 MG Road", "MG Road", "Indiranagar", 12.97, 77.64,
             HouseStatus.SHORTLISTED, 28000L, "RENT", 2, 4, "Ramesh", "+91 98450 12345", null,
             "Great water pressure", null, null, null, null, null, null, null, null, Map.of("water", 5, "parking", 2), null, null, false, 7, null);
 
@@ -65,7 +66,7 @@ class HouseDocumentsTest {
 
     @Test
     void contactNameAndPhoneNeverReachTheEmbeddingTextEvenWhenTypedIntoOtherFields() {
-        var leaky = new HouseDto(id, "Ramesh Kumar's flat", "Near Kumar stores, ph 98450 12345", "MG Road",
+        var leaky = TestHouses.dto(id, "Ramesh Kumar's flat", "Near Kumar stores, ph 98450 12345", "MG Road",
                 "Indiranagar", 12.97, 77.64, HouseStatus.NEW, 28000L, "RENT", 2, 4, "Ramesh Kumar", "+91 98450 12345",
                 "https://example.com/l/9845012345",
                 "Ramesh said water is fine. Call ramesh on 98450-12345 or his wife on +91 99001 23456 after 6.",
@@ -87,7 +88,7 @@ class HouseDocumentsTest {
 
     @Test
     void labelNamedAfterTheOwnersFirstNameLosesItInTextAndMetadata() {
-        var h = new HouseDto(id, "Ramesh's 2BHK, Indiranagar", "12 MG Road", "MG Road", "Indiranagar", 12.97, 77.64,
+        var h = TestHouses.dto(id, "Ramesh's 2BHK, Indiranagar", "12 MG Road", "MG Road", "Indiranagar", 12.97, 77.64,
                 HouseStatus.NEW, 28000L, "RENT", 2, 4, "Ramesh Kumar", "+91 98450 12345", null, "Kumar is fine",
                 null, null, null, null, null, null, null, null, Map.of("Ramesh fixes leaks", 4), null, null, false, 7, null);
 
@@ -103,7 +104,7 @@ class HouseDocumentsTest {
 
     @Test
     void careOfAddressWithTheOwnersFullNameLosesItInTextAndMetadata() {
-        var h = new HouseDto(id, "Blue gate", "C/o Ramesh Kumar, 12 MG Road", "C/o Ramesh  Kumar",
+        var h = TestHouses.dto(id, "Blue gate", "C/o Ramesh Kumar, 12 MG Road", "C/o Ramesh  Kumar",
                 "Kumar Ramesh layout", 12.97, 77.64, HouseStatus.NEW, 28000L, "RENT", 2, 4, "Mr. Ramesh Kumar",
                 "+91 98450 12345", null, "Fine", null, null, null, null, null, null, null, null, Map.of(), null, null, false, 7, null);
 
@@ -125,7 +126,7 @@ class HouseDocumentsTest {
     @Test
     void carpetAreaAndCostLinesAreIndexedButNeverMyOffer() {
         var cost = new HouseCost(64000L, 3, 2500L, false, null, 1, 11, 2, "2026-10-15", 30000L, 31000L);
-        var h = new HouseDto(id, "Blue gate", null, null, null, 12.97, 77.64, HouseStatus.NEW, 32000L, "RENT", 2,
+        var h = TestHouses.dto(id, "Blue gate", null, null, null, 12.97, 77.64, HouseStatus.NEW, 32000L, "RENT", 2,
                 null, null, null, null, null, 1150, "GPS", cost, null, null, null, null, null, Map.of(), null, null, false, 1, null);
 
         var text = HouseDocuments.text(h, List.of());
@@ -143,7 +144,7 @@ class HouseDocumentsTest {
         // Months when there are no rupees, "included" when the rent covers the maintenance, and no line for a
         // field that is not set.
         var sale = new HouseCost(null, 2, 2500L, true, 25000L, null, null, null, null, null, null);
-        var saleText = HouseDocuments.text(new HouseDto(id, "Plot", null, null, null, 0, 0, null, null, null,
+        var saleText = HouseDocuments.text(TestHouses.dto(id, "Plot", null, null, null, 0, 0, null, null, null,
                 null, null, null, null, null, null, null, null, sale, null, null, null, null, null, Map.of(), null, null, false, 1, null), List.of());
         assertThat(saleText).contains("Deposit: 2 months\n").contains("Maintenance: Rs 2500 per month (included)\n")
                 .contains("Brokerage: Rs 25000\n").doesNotContain("Lock-in").doesNotContain("Notice")
@@ -162,7 +163,7 @@ class HouseDocumentsTest {
                 new HouseRoom("m", "BEDROOM", "Master bedroom", 396, 366, 4, "Damp patch near the window", 0),
                 new HouseRoom("s", "STORE", "", null, 200, 2, null, 2),
                 new HouseRoom("p", "POOJA", null, null, null, null, null, 2));
-        var h = new HouseDto(id, "Blue gate", null, null, null, 12.97, 77.64, HouseStatus.NEW, null, null, 2,
+        var h = TestHouses.dto(id, "Blue gate", null, null, null, 12.97, 77.64, HouseStatus.NEW, null, null, 2,
                 null, null, null, null, null, 1150, "GPS", null, rooms, null, null, null, null, Map.of(), null, null, false, 1, null);
 
         var text = HouseDocuments.text(h, List.of());
@@ -226,7 +227,7 @@ class HouseDocumentsTest {
     /** S4b-BL-87: a Floor line right after the carpet area, in the apps' words (0 the ground floor, below 0 a basement). */
     @Test
     void theFloorLineFollowsTheCarpetArea() {
-        java.util.function.IntFunction<String> text = floor -> HouseDocuments.text(new HouseDto(id, "Blue gate", null, null,
+        java.util.function.IntFunction<String> text = floor -> HouseDocuments.text(TestHouses.dto(id, "Blue gate", null, null,
                 null, 12.97, 77.64, HouseStatus.NEW, null, null, 2, null, null, null, null, null, 1150, null, null, null, null,
                 null, floor, null, Map.of(), null, null, false, 1, null), List.of());
         assertThat(text.apply(3)).contains("Carpet area: 1150 sq ft\nFloor: 3\n");
@@ -236,13 +237,13 @@ class HouseDocumentsTest {
     }
 
     private HouseDto withAnswers(List<HouseAnswer> answers) {
-        return new HouseDto(id, "Blue gate", null, null, null, 12.97, 77.64, HouseStatus.NEW, null, null, 2,
+        return TestHouses.dto(id, "Blue gate", null, null, null, 12.97, 77.64, HouseStatus.NEW, null, null, 2,
                 null, "Ramesh Kumar", "+91 98450 12345", null, null, null, null, null, null, answers, null, null, null, Map.of(),
                 null, null, false, 1, null);
     }
 
     private HouseDto withMoveIn(app.doorprints.server.house.HouseMoveIn moveIn) {
-        return new HouseDto(id, "Blue gate", null, null, null, 12.97, 77.64, HouseStatus.TAKEN, null, null, 2,
+        return TestHouses.dto(id, "Blue gate", null, null, null, 12.97, 77.64, HouseStatus.TAKEN, null, null, 2,
                 null, "Ramesh Kumar", "+91 98450 12345", null, null, null, null, null, null, null, moveIn, null, null,
                 Map.of(), null, null, false, 1, null);
     }
@@ -326,22 +327,81 @@ class HouseDocumentsTest {
     void aViewingRecordIsReadWithTheClientDefaultsAndWithoutWithWhom() {
         var mapper = tools.jackson.databind.json.JsonMapper.builder().build();
         var record = new app.doorprints.server.record.Record(new app.doorprints.server.record.RecordKey("viewing", "v_1"));
-        record.setPayload("{\"houseId\":\"h\",\"startsAt\":1790000000000,\"kind\":\"THIRD\",\"status\":\"MISSED\","
+        record.setPayload("{\"candidateId\":\"h\",\"startsAt\":1790000000000,\"kind\":\"THIRD\",\"status\":\"MISSED\","
                 + "\"withWhom\":\"Ravi\",\"notes\":\"Tape\"}");
         var line = ViewingLine.from(record, mapper);
         assertThat(line).isEqualTo(new ViewingLine("v_1", "h", 1_790_000_000_000L, "FIRST", "PLANNED", "Tape"));
-        record.setPayload("{\"houseId\":\"\",\"startsAt\":1}");
+        // A payload stored before S4b-BL-247 names its house houseId and reads the same.
+        record.setPayload("{\"houseId\":\"h\",\"startsAt\":1790000000000,\"kind\":\"THIRD\",\"status\":\"MISSED\","
+                + "\"withWhom\":\"Ravi\",\"notes\":\"Tape\"}");
+        assertThat(ViewingLine.from(record, mapper)).isEqualTo(line);
+        record.setPayload("{\"candidateId\":\"\",\"startsAt\":1}");
         assertThat(ViewingLine.from(record, mapper)).isNull();
-        record.setPayload("{\"houseId\":\"h\",\"startsAt\":0}");
+        record.setPayload("{\"candidateId\":\"h\",\"startsAt\":0}");
         assertThat(ViewingLine.from(record, mapper)).isNull();
+        record.setPayload("{\"candidateId\":\"h\",\"houseId\":\"h\",\"startsAt\":1}");
+        assertThat(ViewingLine.from(record, mapper)).as("both keys: a bad row").isNull();
+    }
+
+    /** The shared viewing payload vectors (S4b-BL-247): the AI's viewing line names the vectors' candidate, or is skipped. */
+    @Test
+    void theViewingLineOfEveryVectorPayloadNamesItsCandidate() throws Exception {
+        var mapper = tools.jackson.databind.json.JsonMapper.builder().build();
+        var dir = java.nio.file.Path.of("").toAbsolutePath();
+        while (dir != null && !java.nio.file.Files.isRegularFile(dir.resolve("docs/schemas/viewing-payload-vectors.json"))) {
+            dir = dir.getParent();
+        }
+        assertThat(dir).as("docs/schemas/viewing-payload-vectors.json").isNotNull();
+        var vectors = mapper.readTree(java.nio.file.Files.readString(dir.resolve("docs/schemas/viewing-payload-vectors.json")));
+        int read = 0;
+        for (var c : vectors.get("reads")) {
+            var record = new app.doorprints.server.record.Record(
+                    new app.doorprints.server.record.RecordKey("viewing", c.get("id").asString()));
+            record.setPayload(c.get("payload").toString());
+            var line = ViewingLine.from(record, mapper);
+            if (c.get("candidateId").isNull()) {
+                assertThat(line).as(c.get("name").asString()).isNull();
+            } else {
+                assertThat(line).as(c.get("name").asString()).isNotNull();
+                assertThat(line.houseId()).as(c.get("name").asString()).isEqualTo(c.get("candidateId").asString());
+                read++;
+            }
+        }
+        assertThat(read).isGreaterThanOrEqualTo(4);
+    }
+
+    @Test
+    void metadataSaysWhetherAHouseWasVisitedAndWhenLast() {
+        var older = new VisitDto(UUID.randomUUID(), id, 12.97, 77.64, "MG Road",
+                Instant.parse("2026-09-01T10:00:00Z"), null, VisitSource.AUTO, null, false, 1);
+        var newer = new VisitDto(UUID.randomUUID(), id, 12.97, 77.64, "MG Road",
+                Instant.parse("2026-09-14T10:00:00Z"), null, VisitSource.AUTO, null, false, 1);
+
+        var visited = HouseDocuments.toDocument(house, List.of(older, newer)).getMetadata();
+        assertThat(visited).containsEntry("visited", true)
+                .containsEntry("lastVisit", Instant.parse("2026-09-14T10:00:00Z").getEpochSecond());
+
+        var never = HouseDocuments.toDocument(house, List.of()).getMetadata();
+        assertThat(never).containsEntry("visited", false).doesNotContainKey("lastVisit");
+        assertThat(HouseDocuments.metadata(house)).containsEntry("visited", false).doesNotContainKey("lastVisit");
+    }
+
+    @Test
+    void severalVisitsNameTheFirstDayAndTheLast() {
+        var a = new VisitDto(UUID.randomUUID(), id, 12.97, 77.64, "MG Road",
+                Instant.parse("2026-09-01T10:00:00Z"), null, VisitSource.AUTO, null, false, 1);
+        var b = new VisitDto(UUID.randomUUID(), id, 12.97, 77.64, "MG Road",
+                Instant.parse("2026-09-14T10:00:00Z"), null, VisitSource.AUTO, null, false, 1);
+        assertThat(HouseDocuments.visitSummary(List.of(b, a))).isEqualTo("2 visits, first on 2026-09-01, last on 2026-09-14");
+        assertThat(HouseDocuments.visitSummary(List.of(a))).isEqualTo("1 visit, last on 2026-09-01");
     }
 
     @Test
     void metadataSkipsNullsAndNotesAreCapped() {
-        var bare = new HouseDto(id, "Plot", null, null, null, 0, 0, null, null, null, null, null, null, null, null,
+        var bare = TestHouses.dto(id, "Plot", null, null, null, 0, 0, null, null, null, null, null, null, null, null,
                 "n".repeat(10_000), null, null, null, null, null, null, null, null, Map.of(), null, null, false, 1, null);
         var doc = HouseDocuments.toDocument(bare, List.of());
-        assertThat(doc.getMetadata()).containsOnlyKeys("houseId", "label");
+        assertThat(doc.getMetadata()).containsOnlyKeys("houseId", "label", "visited").containsEntry("visited", false);
         assertThat(doc.getText()).contains("Visits: not visited yet");
         assertThat(doc.getText().length()).isLessThan(HouseDocuments.NOTES_MAX + 200);
     }
@@ -352,7 +412,7 @@ class HouseDocumentsTest {
     private static final double ADYAR_LON = 80.2574;
 
     private HouseDto at(double lat, double lon, String street, String source) {
-        return new HouseDto(id, "Blue gate", null, street, null, lat, lon, HouseStatus.NEW, null, null, 2, null,
+        return TestHouses.dto(id, "Blue gate", null, street, null, lat, lon, HouseStatus.NEW, null, null, 2, null,
                 "Ramesh Kumar", "+91 98450 12345", null, null, null, source, null, null, null, null, null, null, Map.of(),
                 null, null, false, 1, null);
     }

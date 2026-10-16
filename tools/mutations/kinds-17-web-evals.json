@@ -1,0 +1,35 @@
+{
+  "spec": "web/src/app/core/ai/ai-eval.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/core/ai/ai-eval.ts",
+      "find": " && (m.cadence === undefined || g.cadence === m.cadence);",
+      "replace": ";",
+      "expect": "names each wrong extra"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-eval.ts",
+      "find": "...(extras ? { extrasOther: extras } : {}), ",
+      "replace": "",
+      "expect": "reads a candidate's extras as the record's extrasOther"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-eval.ts",
+      "find": "  for (const id of list(e['extrasAbsent'])) if (!blank(got[id])) out.push(`extras.${id}: expected nothing, got ${JSON.stringify(got[id])}`);",
+      "replace": "",
+      "expect": "treats an extra the listing does not give as an invention"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-eval.ts",
+      "find": "  if (additive && !EVAL_SETS.includes(evalSet as EvalSetName)) return invalid(",
+      "replace": "  if (false) return invalid(",
+      "expect": "refuses any other name, hard-set included"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-eval.ts",
+      "find": "  if (only && category !== 'prompt-injection') return invalid('category must be all or prompt-injection');",
+      "replace": "",
+      "expect": "carries prompt-injection, refuses any other name"
+    }
+  ]
+}

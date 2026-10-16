@@ -1,0 +1,34 @@
+{
+  "spec": "android/ui/src/androidHostTest/kotlin/app/doorprints/ui/SchoolPageWordsTest.kt",
+  "gradle": [
+    ":ui:testAndroidHostTest",
+    "--tests",
+    "app.doorprints.ui.SchoolPageWordsTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/PageWords.kt",
+      "find": "            deleteTitle = Res.string.school_delete_confirm_title,",
+      "replace": "            deleteTitle = Res.string.house_delete_confirm_title,",
+      "expect": "everySchoolPageWordIsAString"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/PageWords.kt",
+      "find": "        fun of(kind: String): PageWords = if (kind == \"school\") SCHOOL else HOUSE",
+      "replace": "        fun of(kind: String): PageWords = HOUSE",
+      "expect": "aHousesPageWordsAreTheStrings"
+    },
+    {
+      "file": "android/ui/src/commonMain/composeResources/values/strings.xml",
+      "find": "<string name=\"school_walk_button\">Did I walk past this school?</string>",
+      "replace": "<string name=\"school_walk_button\">Did I walk past this house?</string>",
+      "expect": "everySchoolPageWordIsAString"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/Space.kt",
+      "find": "    val pages: PageWords = PageWords.of(built.id)",
+      "replace": "    val pages: PageWords = PageWords.HOUSE",
+      "expect": "aHousesPageWordsAreTheStrings"
+    }
+  ]
+}

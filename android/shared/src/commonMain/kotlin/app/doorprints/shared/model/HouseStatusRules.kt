@@ -18,8 +18,13 @@
 
 package app.doorprints.shared.model
 
-/** A house as the status rules see it: its id and its status. */
-data class StatusHouse(val id: String, val status: HouseStatus)
+/**
+ * A house as the status rules see it: its id, its status and its kind (`null`: a house). The rules act within the chosen
+ * candidate's own kind (S4b-BL-306).
+ */
+data class StatusHouse(val id: String, val status: HouseStatus, val kind: String? = null) {
+    internal val kindId: String get() = Candidates.kindOf(kind)
+}
 
 /**
  * The end of a hunt (docs/11 5.24, slice 5), the same rules as the web's `house-status.ts` and the server's, pinned by
@@ -28,26 +33,29 @@ data class StatusHouse(val id: String, val status: HouseStatus)
 object HouseStatusRules {
     /**
      * [status] chosen for house [id] (M1, M3): that house takes it, and when it is [HouseStatus.TAKEN] the house that was
-     * TAKEN before returns to [HouseStatus.SHORTLISTED], so at most one house is ever TAKEN. Every other house is left
-     * as it is; an unknown [id] changes nothing.
+     * TAKEN before returns to [HouseStatus.SHORTLISTED], so at most one house is ever TAKEN per kind (a TAKEN school never
+     * returns a TAKEN house, S4b-BL-306). Every other house is left as it is; an unknown [id] changes nothing.
      */
     fun choose(houses: List<StatusHouse>, id: String, status: HouseStatus): List<StatusHouse> {
-        if (houses.none { it.id == id }) return houses
+        val chosen = houses.firstOrNull { it.id == id } ?: return houses
         return houses.map { h ->
             when {
                 h.id == id -> if (h.status == status) h else h.copy(status = status)
-                status == HouseStatus.TAKEN && h.status == HouseStatus.TAKEN -> h.copy(status = HouseStatus.SHORTLISTED)
+                status == HouseStatus.TAKEN && h.status == HouseStatus.TAKEN && h.kindId == chosen.kindId -> h.copy(status = HouseStatus.SHORTLISTED)
                 else -> h
             }
         }
     }
 
     /**
-     * The houses *Close this hunt* (and *Mark them Not chosen*) marks NOT_CHOSEN (M2): every house that is not the
-     * TAKEN one [takenId] and not already REJECTED or NOT_CHOSEN, in [houses]' order. Nothing is deleted.
+     * The houses *Close this hunt* (and *Mark them Not chosen*) marks NOT_CHOSEN (M2): every house of the TAKEN one's own
+     * kind that is not the TAKEN one [takenId] and not already REJECTED or NOT_CHOSEN, in [houses]' order (S4b-BL-306: a
+     * taken school never closes the houses). An unknown [takenId] closes nothing. Nothing is deleted.
      */
-    fun closeTargets(houses: List<StatusHouse>, takenId: String): List<String> =
-        houses.filter { it.id != takenId && inTheRunning(it.status) }.map { it.id }
+    fun closeTargets(houses: List<StatusHouse>, takenId: String): List<String> {
+        val taken = houses.firstOrNull { it.id == takenId } ?: return emptyList()
+        return houses.filter { it.id != takenId && it.kindId == taken.kindId && inTheRunning(it.status) }.map { it.id }
+    }
 
     /**
      * The statuses out of the running (S4b-BL-99 a): REJECTED (turned down after looking) and NOT_CHOSEN (passed over

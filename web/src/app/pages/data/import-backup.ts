@@ -33,6 +33,10 @@ import type { TKey } from '../../i18n/en';
 import { TranslationService } from '../../i18n/translation.service';
 import type { Msg } from '../../i18n/translation.service';
 import { TPipe } from '../../i18n/t.pipe';
+import { routesFor } from '../../app.routes';
+import { adoptSpaces } from '../../core/kind-setting';
+import { SpaceService } from '../../core/space.service';
+import { toolWord } from '../../core/space-tool-words';
 
 /** One line of the preview: its label, its number, and whether the person loses something by it. */
 export interface PreviewLine {
@@ -84,7 +88,12 @@ type Phase = 'idle' | 'checking' | 'refused' | 'ready' | 'importing' | 'done';
   styleUrl: './import-backup.css',
 })
 export class ImportBackupCard {
+  private readonly space = inject(SpaceService);
   private readonly importer = inject(ImportService);
+  /** A backup holds every space: with two or more kinds on, its words name no kind (S4b-BL-291). */
+  protected w(key: TKey): TKey {
+    return this.space.multi() ? toolWord('*', key) : key;
+  }
   private readonly announcer = inject(Announcer);
   protected readonly i18n = inject(TranslationService);
   private readonly launch = inject(LaunchFilesService);
@@ -127,6 +136,7 @@ export class ImportBackupCard {
     });
   }
 
+  /** The options the person chose, as the import rules read them. */
   private flags(): Omit<ImportFlags, 'applyDeletions'> {
     return { mode: this.mode(), restoreDeleted: this.restore(), skipUpdates: this.keepMine() };
   }
@@ -169,6 +179,7 @@ export class ImportBackupCard {
     this.fileInput()?.nativeElement.click();
   }
 
+  /** Checks the file chosen in the file picker. */
   protected async picked(event: Event): Promise<void> {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
@@ -210,9 +221,11 @@ export class ImportBackupCard {
     this.failure.set(null);
     try {
       const done = await this.importer.apply(archive, this.flags());
+      // The file's kinds and default, for a browser that never chose (S4b-BL-212); the router follows.
+      if (adoptSpaces(archive.spaces)) this.space.refresh(routesFor);
       this.outcome.set(done);
       this.undo = done.undo && done.undo.houses.size + done.undo.visits.size + done.undo.records.size > 0 ? done.undo : null;
-      this.announcer.announce({ key: 'imp.done', params: { houses: done.houses, visits: done.visits, photos: done.photos } });
+      this.announcer.announce({ key: this.w('imp.done'), params: { houses: done.houses, visits: done.visits, photos: done.photos } });
     } catch (err) {
       this.failure.set({ key: 'imp.writeFailed', params: { reason: this.i18n.msg(errorMsg(err)) } });
     }
@@ -226,6 +239,7 @@ export class ImportBackupCard {
     return this.undo !== null && this.undoState() === 'none';
   }
 
+  /** Removes what a copy import added and reports how many were removed and how many were kept. */
   async undoCopy(): Promise<void> {
     if (!this.undo || this.undoState() !== 'none') return;
     this.undoState.set('running');
@@ -245,6 +259,7 @@ export class ImportBackupCard {
     this.reset();
   }
 
+  /** Returns the card to its start and forgets the file, the preview and any undo. */
   private reset(): void {
     this.phase.set('idle');
     this.problem.set(null);
@@ -260,6 +275,7 @@ export class ImportBackupCard {
     this.undone.set(null);
   }
 
+  /** The sentence for why a file was refused. */
   protected problemKey(p: BackupProblem): TKey {
     return `imp.problem.${p}` as TKey;
   }

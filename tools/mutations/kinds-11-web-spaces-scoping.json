@@ -1,0 +1,120 @@
+{
+  "spec": [
+    "web/src/app/core/space-scope.spec.ts",
+    "web/src/app/core/space.spec.ts",
+    "web/src/app/core/space-tools.spec.ts",
+    "web/src/app/nav-section.spec.ts",
+    "web/src/app/pages/compare/compare-space.spec.ts",
+    "web/src/app/export/space-copies.spec.ts"
+  ],
+  "mutations": [
+    {
+      "file": "web/src/app/core/space-scope.ts",
+      "find": "    return (available.includes(kind) ? kind : dflt) === space;",
+      "replace": "    return true;",
+      "expect": "what a space contains"
+    },
+    {
+      "file": "web/src/app/core/space-scope.ts",
+      "find": "    if (!holds(h)) refused.push(id);",
+      "replace": "    if (false) refused.push(id);",
+      "expect": "Compare keeps the picks"
+    },
+    {
+      "file": "web/src/app/core/space-scope.ts",
+      "find": "export const COMPARE_MAX = 4;",
+      "replace": "export const COMPARE_MAX = 5;",
+      "expect": "Compare keeps the picks"
+    },
+    {
+      "file": "web/src/app/core/space-scope.ts",
+      "find": "  if (!space || space === 'house' || !slug) return name;",
+      "replace": "  if (!space || !slug) return name;",
+      "expect": "the file name of a space"
+    },
+    {
+      "file": "web/src/app/core/space-scope.ts",
+      "find": "  return kind === 'house' || (available.includes(kind) && ownKey);",
+      "replace": "  return true;",
+      "expect": "when a space shows the assistant"
+    },
+    {
+      "file": "web/src/app/core/space-scope.ts",
+      "find": "  return chosen && enabled.includes(chosen) ? chosen : dflt;",
+      "replace": "  return chosen ? chosen : dflt;",
+      "expect": "the kind a shared listing lands in"
+    },
+    {
+      "file": "web/src/app/core/space.service.ts",
+      "find": "    return this.multi() && kind !== 'house' ? `/k/${kind}/${tool}` : `/${tool}`;",
+      "replace": "    return this.multi() ? `/k/${kind}/${tool}` : `/${tool}`;",
+      "expect": "the space from the address"
+    },
+    {
+      "file": "web/src/app/nav-section.ts",
+      "find": "(path.startsWith('/k/') && !isSpaceTool(path))",
+      "replace": "path.startsWith('/k/')",
+      "expect": "tabs of their own"
+    },
+    {
+      "file": "web/src/app/export/export-model.ts",
+      "find": "    .filter((h) => input.inSpace?.(h) ?? true)",
+      "replace": "    .filter(() => true)",
+      "expect": "the school space holds the schools only"
+    },
+    {
+      "file": "web/src/app/export/export-model.ts",
+      "find": "  const whole = options.scope === 'all' && !input.inSpace;",
+      "replace": "  const whole = options.scope === 'all';",
+      "expect": "what belongs to the other space stays out"
+    },
+    {
+      "file": "web/src/app/export/export.service.ts",
+      "find": "    if (format === 'backup' && options.space) options",
+      "replace": "    if (false && options.space) options",
+      "expect": "the backup holds everything"
+    },
+    {
+      "file": "web/src/app/export/export.service.ts",
+      "find": "  return space && spacesOn() ? spaceFileName(",
+      "replace": "  return space ? spaceFileName(",
+      "expect": "with one kind enabled a space is no filter and no name"
+    },
+    {
+      "file": "web/src/app/core/ai/on-device-ai.service.ts",
+      "find": "(h) => !h.deleted && holds(h));",
+      "replace": "(h) => !h.deleted);",
+      "expect": "a school space’s Ask shows the model the schools only"
+    },
+    {
+      "file": "web/src/app/pages/compare/compare-page.ts",
+      "find": "inTheRunning(h.status) && !h.deleted && this.space.holds(h))",
+      "replace": "inTheRunning(h.status) && !h.deleted)",
+      "expect": "holds the schools only"
+    },
+    {
+      "file": "web/src/app/pages/compare/compare-page.ts",
+      "find": "          this.refused.set(pick.refused.length > 0);",
+      "replace": "          this.refused.set(false);",
+      "expect": "refuses a pick of a house"
+    },
+    {
+      "file": "web/src/app/core/space-tool-words.ts",
+      "find": "  return table?.[key] ?? key;",
+      "replace": "  return key;",
+      "expect": "in Tamil the title is the school"
+    },
+    {
+      "file": "web/src/app/app.ts",
+      "find": "        @if (ai.enabledFor(space.kind())) {",
+      "replace": "        @if (ai.enabled()) {",
+      "expect": "shows Compare alone"
+    },
+    {
+      "file": "web/src/app/pages/share/share-page.ts",
+      "find": "this.router.navigate([this.space.home(this.chosen())]",
+      "replace": "this.router.navigate([this.space.home()]",
+      "expect": "the words and the map follow the choice"
+    }
+  ]
+}

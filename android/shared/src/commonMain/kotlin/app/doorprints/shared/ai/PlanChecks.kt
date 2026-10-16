@@ -27,6 +27,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class AgentPlan(val summary: String? = null, val stops: List<AgentStop>? = null)
 
+/** One stop the model chose: a house id and its reason, both unchecked. */
 @Serializable
 data class AgentStop(val houseId: String? = null, val reason: String? = null)
 
@@ -44,19 +45,60 @@ data class PlanCandidate(
     val lat: Double,
     val lon: Double,
     val distanceMeters: Long,
-)
+    /**
+     * A built-in kind's own details its `ai.plan` slot names (S4b-BL-270): the extra's English words to its value as the Ask
+     * document writes it, in the slot's order. Null for a house; non-null (possibly empty) for a candidate of the kind, whose
+     * line then has no price or bedrooms.
+     */
+    val extras: Map<String, String>? = null,
+) {
+    /** The text the house pins hash: the data class's own while [extras] is null (a house), so a house's candidate reads as before. */
+    override fun toString(): String =
+        "PlanCandidate(id=$id, label=$label, locality=$locality, street=$street, status=$status, price=$price, " +
+            "priceType=$priceType, bedrooms=$bedrooms, rating=$rating, lat=$lat, lon=$lon, distanceMeters=$distanceMeters" +
+            (if (extras == null) "" else ", extras=$extras") + ")"
+}
 
 /**
  * The checks on a plan: the server's `VisitPlannerService.assemble`, ported (docs/03 §13.1). Stops are kept only if
- * they name a candidate, once each, up to [maxStops]; without a usable plan the non-rejected candidates are ordered by
- * nearest neighbour instead, with the same words as the server. Legs are always recomputed here.
+ * they name a candidate, once each, up to [maxStops]; without a usable plan the candidates in the running within
+ * [FALLBACK_MAX_METERS] of the start, nearest first, at most [maxStops], are ordered by nearest neighbour instead, with
+ * the same words as the server (S4b-BL-199; the shared vectors' `planFallback`). Legs are always recomputed here.
  */
 object PlanChecks {
     const val FALLBACK_REASON = "Found by the search; ordered by walking distance"
     const val FALLBACK_SUMMARY =
         "The assistant could not finish a plan, so these are the houses it found, ordered by nearest neighbour from your start point."
+
+    /** How far from the start point a house may be for the fallback route to offer it, as the server's `FALLBACK_MAX_METERS`: a house hunt is one city. */
+    const val FALLBACK_MAX_METERS = 50_000.0
+
+    /** The summary of a fallback when no candidate is within [FALLBACK_MAX_METERS] of the start. */
+    const val FALLBACK_NONE_IN_REACH = "No saved houses within reach of your start point were found."
     private val UUID_TEXT = Regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 
+    /**
+     * The fallback's candidates, as the server's `fallbackPoints`: the houses in the running with usable coordinates
+     * within [FALLBACK_MAX_METERS] of the start, nearest to the start first (equal distances by house id), at most
+     * [maxStops]. The order of [seen] does not matter.
+     */
+    private fun fallbackPoints(seen: Map<String, PlanCandidate>, startLat: Double, startLon: Double, maxStops: Int): List<RouteOptimizer.Point> {
+        val near = ArrayList<Pair<PlanCandidate, Double>>()
+        for (h in seen.values) {
+            if (!HouseStatusRules.inTheRunning(h.status)) continue
+            val meters: Double = RouteOptimizer.haversineMeters(startLat, startLon, h.lat, h.lon)
+            // A NaN distance (an unusable coordinate) is not within reach.
+            if (meters <= FALLBACK_MAX_METERS) near += h to meters
+        }
+        return near.sortedWith(compareBy<Pair<PlanCandidate, Double>> { it.second }.thenBy { it.first.id.lowercase() })
+            .take(maxStops).map { RouteOptimizer.Point(it.first.id, it.first.lat, it.first.lon) }
+    }
+
+    /**
+      * The plan to show: [plan]'s stops that name a known candidate (each once, up to [maxStops]) with the legs
+      * recomputed
+     * from the start point, or the fallback order when [plan] is missing or none of its stops was usable.
+     */
     fun assemble(
         plan: AgentPlan?,
         seen: Map<String, PlanCandidate>,
@@ -66,6 +108,8 @@ object PlanChecks {
         maxStops: Int,
     ): PlanResponseDto {
         val byId = seen.mapKeys { it.key.lowercase() }
+        // What the model was given about the houses (labels, localities, streets), for AnswerText.clean.
+        val context = seen.values.joinToString("\n") { "${it.label}\n${it.locality.orEmpty()}\n${it.street.orEmpty()}" }
         val chosen = mutableListOf<PlanCandidate>()
         val reasons = mutableListOf<String>()
         val used = HashSet<String>()
@@ -76,23 +120,22 @@ object PlanChecks {
             val h = byId[id] ?: return@forEach
             if (!used.add(id)) return@forEach
             chosen += h
-            reasons += stop.reason?.trim() ?: ""
+            reasons += AnswerText.clean(stop.reason?.trim() ?: "", context)
         }
         var fallback = false
-        var summary = plan?.summary?.trim()
+        var summary = plan?.summary?.trim()?.let { AnswerText.clean(it, context) }
         val legs: List<RouteOptimizer.Leg>
         if (plan == null || (chosen.isEmpty() && seen.isNotEmpty() && !plan.stops.isNullOrEmpty())) {
             fallback = true
             chosen.clear()
             reasons.clear()
-            val points = seen.values.filter { HouseStatusRules.inTheRunning(it.status) }.take(maxStops)
-                .map { RouteOptimizer.Point(it.id, it.lat, it.lon) }
+            val points = fallbackPoints(seen, startLat, startLon, maxStops)
             legs = RouteOptimizer.nearestNeighbour(startLat, startLon, points)
             legs.forEach { l ->
                 chosen += seen.getValue(l.to.id)
                 reasons += FALLBACK_REASON
             }
-            summary = FALLBACK_SUMMARY
+            summary = if (points.isEmpty()) FALLBACK_NONE_IN_REACH else FALLBACK_SUMMARY
         } else {
             legs = RouteOptimizer.legsInOrder(startLat, startLon, chosen.map { RouteOptimizer.Point(it.id, it.lat, it.lon) })
         }

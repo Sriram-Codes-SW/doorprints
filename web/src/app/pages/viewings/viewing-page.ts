@@ -25,6 +25,7 @@ import { ConfirmService } from '../../core/confirm.service';
 import { errorMsg } from '../../core/format';
 import { LocalDataService } from '../../core/local-data.service';
 import type { HouseDto } from '../../core/models';
+import { toolWord } from '../../core/space-tool-words';
 import type { TKey } from '../../i18n/en';
 import { TPipe } from '../../i18n/t.pipe';
 import { Msg, TranslationService } from '../../i18n/translation.service';
@@ -119,10 +120,15 @@ export class ViewingPage implements OnInit {
   /** 5-minute steps, plus the stored value when it is not one of them (a file from elsewhere). */
   protected durations: number[] = [];
 
+  /** Loads the form. */
   ngOnInit(): void {
     void this.load();
   }
 
+  /**
+   * Reads the houses and either the viewing being edited (not found if unknown) or the defaults for a new one from
+   * `?houseId=` and `?kind=`.
+   */
   private async load(): Promise<void> {
     try {
       const houses = await firstValueFrom(this.api.houses());
@@ -163,6 +169,7 @@ export class ViewingPage implements OnInit {
     }
   }
 
+  /** The durations offered in 5-minute steps, plus the current one if it is not a step. */
   private durationChoices(current: number): number[] {
     const out: number[] = [];
     for (let m = MIN_DURATION_MIN; m <= MAX_DURATION_MIN; m += 5) out.push(m);
@@ -213,6 +220,10 @@ export class ViewingPage implements OnInit {
     return viewing;
   }
 
+  /**
+   * Saves the viewing the form describes (optionally with a new status) and returns to the list. A missing house or
+   * time shows the field error and saves nothing.
+   */
   protected async save(status?: Viewing['status']): Promise<void> {
     if (this.saving()) return;
     if (this.isNew() && this.id === '') this.id = await firstValueFrom(this.api.newViewingId());
@@ -236,6 +247,7 @@ export class ViewingPage implements OnInit {
     return this.save('CANCELLED');
   }
 
+  /** Deletes the viewing after asking. */
   protected async remove(): Promise<void> {
     if (this.isNew()) return;
     const ok = await this.confirm.ask({ key: 'viewings.confirmDelete' }, { confirmKey: 'viewings.delete', danger: true });
@@ -259,7 +271,7 @@ export class ViewingPage implements OnInit {
       viewing,
       house?.label || this.i18n.t('common.untitled'),
       house?.address,
-      this.i18n.t('viewings.icsWord'),
+      this.i18n.t(toolWord(house?.kind, 'viewings.icsWord')),
       this.stamp ?? Date.now(),
     );
   }

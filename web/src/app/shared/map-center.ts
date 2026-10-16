@@ -93,6 +93,7 @@ export function loadStartPoint(): MapView | null {
   return startPointFromView(loadMapView());
 }
 
+/** The last map view this browser remembered, or null when none or unreadable. */
 export function loadMapView(): MapView | null {
   try {
     return typeof localStorage === 'undefined' ? null : parseMapView(localStorage.getItem(MAP_VIEW_KEY));
@@ -101,6 +102,7 @@ export function loadMapView(): MapView | null {
   }
 }
 
+/** Remembers the map view for the next visit; silently does nothing if storage is blocked. */
 export function saveMapView(view: MapView): void {
   try {
     localStorage.setItem(MAP_VIEW_KEY, JSON.stringify(view));

@@ -1,0 +1,35 @@
+{
+  "spec": "web/src/app/data/local-db-idb.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/data/local-db.ts",
+      "find": "(guard.min === undefined || n >= guard.min)",
+      "replace": "true",
+      "expect": "a failed limit aborts the transaction"
+    },
+    {
+      "file": "web/src/app/data/local-db.ts",
+      "find": "(guard.max === undefined || n <= guard.max)",
+      "replace": "true",
+      "expect": "a failed limit aborts the transaction"
+    },
+    {
+      "file": "web/src/app/data/local-db.ts",
+      "find": "reject(new BatchGuardError(failed.reason)); // no write was issued: the transaction ends empty",
+      "replace": "reject(new BatchGuardError(failed.reason)); write();",
+      "expect": "a failed limit aborts the transaction"
+    },
+    {
+      "file": "web/src/app/data/local-db.ts",
+      "find": "if (counts.filter((c) => c !== undefined).length < guards.length) return;",
+      "replace": "",
+      "expect": "checks the limits INSIDE the same transaction"
+    },
+    {
+      "file": "web/src/app/data/local-db.ts",
+      "find": "if (guards.length === 0) write();\n        else {",
+      "replace": "write();\n        if (guards.length > 0) {",
+      "expect": "a failed limit aborts the transaction"
+    }
+  ]
+}

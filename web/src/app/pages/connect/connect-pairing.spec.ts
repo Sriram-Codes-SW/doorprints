@@ -266,5 +266,6 @@ function aiStub() {
     offReason: signal('optIn'),
     geminiKeyHint: signal(''),
     hasGeminiKey: signal(false),
+    aiConfig: signal({ kind: 'gemini', baseUrl: '', model: '' }),
   };
 }

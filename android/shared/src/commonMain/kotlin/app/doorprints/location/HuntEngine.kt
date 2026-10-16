@@ -18,6 +18,7 @@
 
 package app.doorprints.location
 
+import app.doorprints.data.AppSettings
 import app.doorprints.data.HouseEntity
 import app.doorprints.data.Repository
 import app.doorprints.data.TrackPointEntity
@@ -26,13 +27,23 @@ import app.doorprints.shared.api.IsoTime
 import app.doorprints.shared.location.Geo
 import app.doorprints.shared.location.StayDetector
 import app.doorprints.shared.location.StreetAlerts
+import app.doorprints.shared.model.KindCapabilities
+import app.doorprints.shared.model.KindSettingRules
 import app.doorprints.shared.model.LocationSource
 import app.doorprints.shared.model.VisitSource
+import app.doorprints.shared.trace.RepeatAlert
+import app.doorprints.shared.trace.TraceConstants
+import app.doorprints.shared.trace.TracePoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
@@ -55,6 +66,11 @@ import kotlin.uuid.Uuid
  * Fixes worse than [HuntState.MAX_ACCURACY_M] are shown but never trigger alerts or visits. The wording of alerts and
  * the notifications themselves stay with the platform: the engine hands over the facts.
  *
+ * The walk belongs to a kind, the space it was started in (docs/03 section 18.20, kinds PR 26): [kind] says whose saved
+ * places it alerts about, and the kind's `capabilities.hunt` ([hunt]) says how near (the file's radius, or the person's own for
+ * the house, [radiusFor]), whether the street line is told ([KindCapabilities.Hunt.streetMemory]) and whether a stay at an
+ * unsaved place is offered ([KindCapabilities.Hunt.stayCreates]). Nothing in the engine names a kind.
+ *
  * Not thread-safe: the adapter calls it from one thread, and [scope] must run on that same thread (Android: the
  * service's `lifecycleScope` on the main looper; iOS: a `Dispatchers.Main` scope), because the collectors and the
  * street lookups write the engine's fields from [scope]. A `Default` scope would race. [scope] is the adapter's
@@ -66,6 +82,10 @@ class HuntEngine(
     private val battery: BatteryReader,
     private val effects: HuntEffects,
     private val scope: CoroutineScope,
+    /** The kind the walk belongs to: the space it was started in. */
+    val kind: String,
+    /** That kind's Hunt capability; the adapter has checked the kind has one. */
+    private val hunt: KindCapabilities.Hunt = checkNotNull(KindCapabilities.of(kind).hunt) { "kind '$kind' has no Hunt capability" },
     private val now: () -> Long = { IsoTime.nowMillis() },
     private val newId: () -> String = { randomId() },
 ) {
@@ -75,8 +95,15 @@ class HuntEngine(
 
     /** The last fix accurate enough to use: the houses are looked at again from it when the list changes. */
     private var lastFix: Pair<Double, Double>? = null
-    private var alertRadiusM = 30
+    private var alertRadiusM = hunt.alertRadiusM
     private var pathTrace = false
+    private var repeatAlertOn = false
+
+    // The repeat alert of the live walk (docs/11 5.27.5): the others are loaded once per walk id, and the points that
+    // arrive meanwhile wait and are replayed in order. The engine writes no setting and posts no notification.
+    private var alertWalkId = 0L
+    private var alert: RepeatAlert? = null
+    private var alertPending = mutableListOf<TracePoint>()
     private val houseAlertedAt = mutableMapOf<String, Long>()
     private val streetAlertedAt = mutableMapOf<String, Long>()
     private var lastGeocodeAt = 0L
@@ -104,18 +131,23 @@ class HuntEngine(
             },
             scope.launch {
                 data.tracking.collect {
-                    alertRadiusM = it.alertRadiusM
+                    alertRadiusM = radiusFor(kind, hunt, it.alertRadiusM)
                     stays.minStayMs = it.minStayMinutes * 60_000L
                     pathTrace = it.pathTrace
+                    repeatAlertOn = it.pathTrace && it.repeatAlert
+                    if (!repeatAlertOn) dropAlert()
                 }
             },
             // The retention limit, once per start: the trace never outlives 30 days, on or off.
             scope.launch { data.pruneTrack(before = now() - Repository.TRACK_KEPT_MS) },
+            // A saved walk never outlives its house: Hunt start is one of the sweep's triggers (docs/11 5.27.6).
+            scope.launch { data.sweepWalksOfDeletedHouses() },
         )
         track.reset()
+        dropAlert()
         stationaryMode = null
         requestUpdates(stationary = false)
-        HuntState.update { it.copy(active = true, startedAt = now(), stopReason = null) }
+        HuntState.update { it.copy(active = true, kind = kind, startedAt = now(), stopReason = null, walkId = 0) }
     }
 
     /**
@@ -125,7 +157,59 @@ class HuntEngine(
     fun stopped(reason: HuntState.StopReason?) {
         collectors.forEach { it.cancel() }
         collectors = emptyList()
+        dropAlert()
         HuntState.update { HuntState.State(stopReason = reason) }
+    }
+
+    /**
+     * *Finish walk* (docs/11 5.27.6): the walk ends and the next kept point begins a new walk id. Hunt mode keeps
+     * running. The app then asks about the walk through [walkToAskAbout].
+     */
+    fun finishWalk() {
+        track.finishWalk()
+        dropAlert()
+        HuntState.update { it.copy(walkId = 0) }
+    }
+
+    /** The id of the walk being recorded now; 0 before its first kept point. */
+    val liveWalkId: Long get() = track.walkId
+
+    /**
+     * The walk to ask *Save this walk?* about (the newest ended walk above the watermark with 5 points and 100 m), or
+     * null. Computed, not stored, so a walk cut by process death is asked about too (docs/11 5.27.6).
+     */
+    suspend fun walkToAskAbout(): Long? = data.lastEndedWalk(track.walkId)
+
+    /** Forgets the repeat-walk alert state, for a new walk or a reset. */
+    private fun dropAlert() {
+        alertWalkId = 0
+        alert = null
+        alertPending = mutableListOf()
+    }
+
+    /** Feeds a kept point of walk [walkId] to the alert; the others of a new walk id are loaded first. */
+    private fun feedAlert(walkId: Long, point: TracePoint) {
+        if (walkId != alertWalkId) {
+            dropAlert()
+            alertWalkId = walkId
+            alertPending.add(point)
+            scope.launch {
+                val loaded = RepeatAlert(data.walksOtherThan(walkId))
+                if (alertWalkId != walkId) return@launch // the walk ended while the others were loading
+                alert = loaded
+                val waiting = alertPending
+                alertPending = mutableListOf()
+                for (p in waiting) ring(loaded.onPoint(p))
+            }
+            return
+        }
+        val a = alert
+        if (a == null) alertPending.add(point) else ring(a.onPoint(point))
+    }
+
+    /** Passes a detected repeat run, in metres, to the platform as an alert; null is no run. */
+    private fun ring(runM: Double?) {
+        if (runM != null) effects.alertRepeat(runM.roundToInt())
     }
 
     /** A GPS fix: [accuracyM] as the platform reports it, [time] the fix's own time (epoch milliseconds). */
@@ -135,11 +219,16 @@ class HuntEngine(
         // Readings this rough can't tell one house from the next.
         if (accuracyM > HuntState.MAX_ACCURACY_M) return
         if (pathTrace && track.accept(lat, lon, time)) {
-            scope.launch { data.saveTrackPoint(TrackPointEntity(at = time, lat = lat, lon = lon, accuracyM = accuracyM)) }
+            val walkId = track.walkId
+            HuntState.update { it.copy(walkId = walkId) }
+            scope.launch {
+                data.saveTrackPoint(TrackPointEntity(at = time, lat = lat, lon = lon, accuracyM = accuracyM, walkId = walkId))
+            }
+            if (repeatAlertOn) feedAlert(walkId, TracePoint(lat, lon, time, walkId))
         }
         lastFix = lat to lon
         checkNearbyHouses(lat, lon)
-        checkStreet(lat, lon)
+        if (hunt.streetMemory) checkStreet(lat, lon)
         checkStay(lat, lon, time)
         requestUpdates(stationary = stays.isStaying)
     }
@@ -151,6 +240,10 @@ class HuntEngine(
         effects.requestUpdates(stationary)
     }
 
+    /**
+     * Reads the battery at most every [BATTERY_CHECK_MS]; below [LOW_BATTERY_PERCENT] and not charging it tells
+     * the platform and stops Hunt mode. Returns true when it stopped.
+     */
     private fun stopIfBatteryLow(): Boolean {
         val at = now()
         if (at - lastBatteryCheckAt < BATTERY_CHECK_MS) return false
@@ -164,6 +257,10 @@ class HuntEngine(
         return false
     }
 
+    /**
+     * Updates the Hunt card's nearest house (within [NEAREST_SHOWN_M]) and alerts once per house per
+     * [HOUSE_ALERT_AGAIN_MS] when it is inside the alert radius.
+     */
     private fun checkNearbyHouses(lat: Double, lon: Double) {
         val at = now()
         // A house whose spot is only approximate (FR-068) is never the nearest: its marker is a ring, not a place.
@@ -181,6 +278,10 @@ class HuntEngine(
         effects.alertHouse(house, distance.toInt())
     }
 
+    /**
+     * Asks the platform which street this is, at most every [GEOCODE_AGAIN_MS] or [GEOCODE_AGAIN_M]; on a new
+     * street it updates the card and alerts if the street has houses or visits and was not alerted recently.
+     */
     private fun checkStreet(lat: Double, lon: Double) {
         val at = now()
         val moved = Geo.distanceM(lastGeocodeLat, lastGeocodeLon, lat, lon)
@@ -202,6 +303,7 @@ class HuntEngine(
         }
     }
 
+    /** Feeds the fix to the stay detector and starts or ends the visit it reports. */
     private fun checkStay(lat: Double, lon: Double, time: Long) {
         when (val event = stays.onLocation(lat, lon, time)) {
             is StayDetector.Event.Started -> onStayStarted(event)
@@ -216,6 +318,11 @@ class HuntEngine(
         .filter { it.second <= HOUSE_AT_M }
         .minByOrNull { it.second }?.first
 
+    /**
+     * Saves an automatic visit at the spot (linked to a saved house within [HOUSE_AT_M]) and, when no house is
+     * there and the kind's Hunt offers it ([KindCapabilities.Hunt.stayCreates]), asks the platform to offer saving the place
+     * as an entry of [kind]; the visit is saved either way.
+     */
     private fun onStayStarted(e: StayDetector.Event.Started) {
         val visitId = newId()
         stayPromptVisitId = visitId
@@ -229,9 +336,10 @@ class HuntEngine(
                 ),
             )
         }
-        if (house == null) effects.alertStay(visitId, e.lat, e.lon)
+        if (house == null && hunt.stayCreates) effects.alertStay(visitId, e.lat, e.lon)
     }
 
+    /** Closes the visit that [onStayStarted] opened with the time left and the final position. */
     private fun onStayEnded(e: StayDetector.Event.Ended) {
         val visitId = stayPromptVisitId ?: return
         stayPromptVisitId = null
@@ -253,6 +361,14 @@ class HuntEngine(
         /** A stay this close to a saved house is a visit to it. */
         const val HOUSE_AT_M = 40.0
 
+        /**
+         * The radius a walk of [kind] alerts within: the person's Settings value for the kind that setting belongs to (the
+         * house, whose file value is its default), the kind's file value for every other kind (a per-kind override is not
+         * offered). The one place the house's own setting is named (docs/03 section 18.20).
+         */
+        fun radiusFor(kind: String, hunt: KindCapabilities.Hunt, settingsM: Int): Int =
+            if (KindCapabilities.of(kind).baseline) settingsM else hunt.alertRadiusM
+
         @OptIn(ExperimentalUuidApi::class)
         private fun randomId(): String = Uuid.random().toString()
     }
@@ -267,9 +383,22 @@ class TrackRecorder(private val minDistanceM: Double = 20.0, private val minGapM
     private var lastLon = 0.0
     private var lastAt = Long.MIN_VALUE
 
+    /**
+     * The id of the walk being recorded (docs/11 5.27.2): the `at` of its first kept point, assigned at that point (not
+     * at Hunt start, so a walk that never gets a fix has no id and no row); 0 before it. A gap of
+     * [TraceConstants.WALK_GAP_MS] or more before a kept point starts a new walk, as the splitter reads it.
+     */
+    var walkId: Long = 0
+        private set
+
+    /** Forgets the walk and the last kept point. */
     fun reset() {
         lastAt = Long.MIN_VALUE
+        walkId = 0
     }
+
+    /** *Finish walk*: the next kept point begins a new walk id. */
+    fun finishWalk() = reset()
 
     /** True when the fix at [time] is kept (and becomes the last kept one). */
     fun accept(lat: Double, lon: Double, time: Long): Boolean {
@@ -277,6 +406,7 @@ class TrackRecorder(private val minDistanceM: Double = 20.0, private val minGapM
             time - lastAt >= minGapMs ||
             Geo.distanceM(lastLat, lastLon, lat, lon) >= minDistanceM
         if (keep) {
+            if (lastAt == Long.MIN_VALUE || time - lastAt >= TraceConstants.WALK_GAP_MS) walkId = maxOf(time, 1L)
             lastLat = lat; lastLon = lon; lastAt = time
         }
         return keep
@@ -288,27 +418,72 @@ interface HuntData {
     val houses: Flow<List<HouseEntity>>
     val tracking: Flow<HuntTracking>
     suspend fun streetInfo(street: String): Repository.StreetInfo
+    /** Saves an automatic visit. */
     suspend fun saveVisit(visit: VisitEntity)
     suspend fun getVisit(id: String): VisitEntity?
+    /** Appends a kept fix to the path trace. */
     suspend fun saveTrackPoint(point: TrackPointEntity)
+    /** Drops trace points older than [before]. */
     suspend fun pruneTrack(before: Long)
 
+    /** The walks the alert compares the live walk with (the others, saved walks included); none by default. */
+    suspend fun walksOtherThan(liveWalkId: Long): List<List<TracePoint>> = emptyList()
+
+    /** The walk to ask about (docs/11 5.27.6), or null. */
+    suspend fun lastEndedWalk(liveWalkId: Long): Long? = null
+
+    /** Saved walks of deleted houses go (Hunt start is one trigger). */
+    suspend fun sweepWalksOfDeletedHouses() {}
+
     companion object {
-        fun of(repo: Repository): HuntData = object : HuntData {
-            override val houses: Flow<List<HouseEntity>> get() = repo.houses
+        /**
+         * The engine's data for a walk of [kind] (docs/03 section 18.20): the saved places are the kind's space's own (with one
+         * kind on, every candidate, as it always was), and the street's saved-place count is the space's too. The space follows
+         * the *What you track* setting, so a change while the walk runs is read. The visits are the person's own, whatever
+         * the kind they were to.
+         */
+        @OptIn(ExperimentalCoroutinesApi::class)
+        fun of(repo: Repository, kind: String): HuntData = object : HuntData {
+            private val spaces = repo.settings.kindSetting().map { it.view(kind) }.distinctUntilChanged()
+            override val houses: Flow<List<HouseEntity>> =
+                spaces.flatMapLatest { space -> if (space.multi) repo.housesOf(space) else repo.houses }
             override val tracking: Flow<HuntTracking> =
-                repo.settings.settings.map { HuntTracking(it.alertRadiusM, it.minStayMinutes, it.pathTrace) }
-            override suspend fun streetInfo(street: String) = repo.streetInfo(street)
+                repo.settings.settings.map { it.toHuntTracking() }
+            override suspend fun streetInfo(street: String): Repository.StreetInfo {
+                val info = repo.streetInfo(street)
+                val space = spaces.first()
+                if (!space.multi) return info
+                // The store counts the street's candidates of every kind; a space counts its own (SQLite's LOWER is ASCII-only).
+                val key = street.asciiLower()
+                return info.copy(houses = repo.housesOf(space).first().count { it.street?.asciiLower() == key })
+            }
             override suspend fun saveVisit(visit: VisitEntity) = repo.saveVisit(visit)
             override suspend fun getVisit(id: String) = repo.getVisit(id)
             override suspend fun saveTrackPoint(point: TrackPointEntity) = repo.saveTrackPoint(point)
             override suspend fun pruneTrack(before: Long) = repo.pruneTrack(before)
+            override suspend fun walksOtherThan(liveWalkId: Long) = repo.walksOtherThan(liveWalkId)
+            override suspend fun lastEndedWalk(liveWalkId: Long) = repo.lastEndedWalk(liveWalkId)
+            override suspend fun sweepWalksOfDeletedHouses() = repo.sweepWalksOfDeletedHouses()
         }
     }
 }
 
+private fun String.asciiLower(): String = map { if (it in 'A'..'Z') it + 32 else it }.joinToString("")
+
+/**
+ * What the engine reads of the settings. **Not** [AppSettings.repeatLook]: *How repeated paths look* is a display choice,
+ * and the alert rings with the look Off (docs/11 5.27.4; `HuntEngineWalkTest.alertRingsWithLookOff`).
+ */
+fun AppSettings.toHuntTracking() = HuntTracking(alertRadiusM, minStayMinutes, pathTrace, repeatAlert)
+
 /** The Hunt mode settings (Settings > Hunt mode): the alert radius, the minimum stay, and *Trace my path*. */
-data class HuntTracking(val alertRadiusM: Int, val minStayMinutes: Int, val pathTrace: Boolean = false)
+data class HuntTracking(
+    val alertRadiusM: Int,
+    val minStayMinutes: Int,
+    val pathTrace: Boolean = false,
+    /** *Warn me when I walk a path again* (docs/11 5.27.5); counts only while [pathTrace] is on. */
+    val repeatAlert: Boolean = false,
+)
 
 /** The platform's reverse geocoder: the street at a point, or null when unknown or offline. */
 fun interface StreetLookup {
@@ -338,6 +513,14 @@ interface HuntEffects {
 
     /** The battery is at [percent] and not charging: say so, then [stop] follows. */
     fun lowBattery(percent: Int)
+
+    /**
+     * The live walk has followed paths of earlier walks for [runM] metres (docs/11 5.27.5): the platform posts the
+     * notification (Android channel `repeat_path`; iPhone category `repeat-path`). The engine decides when; the
+     * words, sound and permission are the platform's. Nothing by default, so an adapter that has not learned it yet
+     * stays silent.
+     */
+    fun alertRepeat(runM: Int) {}
 
     /** Hunt mode must end for [reason]; the platform stops its service and then calls [HuntEngine.stopped]. */
     fun stop(reason: HuntState.StopReason)

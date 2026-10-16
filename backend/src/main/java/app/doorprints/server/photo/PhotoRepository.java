@@ -27,6 +27,9 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Photo queries. Listings return metadata only, so image bytes are loaded just when one photo is fetched.
+ */
 public interface PhotoRepository extends JpaRepository<Photo, UUID> {
 
     /** Live photo ids of a house, oldest first. */

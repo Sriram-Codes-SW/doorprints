@@ -1,0 +1,1051 @@
+{
+ "format": "doorprints-delete-policy-vectors/1",
+ "about": "Docs/15 3 and 10 (S4b-BL-127): what each action requires, the confirm button, the 60-second grant, the Drive gate. Run by Kotlin DeletionPolicyVectorsTest and the website's delete-policy.spec.ts. Expected values were written by hand from the docs, not produced by the code.",
+ "decisions": [
+  {
+   "name": "phone: delete one backup, 5 left",
+   "action": "DELETE_ONE_BACKUP",
+   "context": {
+    "platform": "PHONE",
+    "deviceLock": true,
+    "webPrf": false,
+    "online": true,
+    "backupsLeft": 5
+   },
+   "result": {
+    "outcome": "ALLOWED",
+    "level": "L1",
+    "factor": "NONE",
+    "tickBox": false,
+    "delaySeconds": 0,
+    "pairing": "NONE",
+    "authValidMs": 0
+   }
+  },
+  {
+   "name": "phone: delete one backup, 2 left",
+   "action": "DELETE_ONE_BACKUP",
+   "context": {
+    "platform": "PHONE",
+    "deviceLock": true,
+    "webPrf": false,
+    "online": true,
+    "backupsLeft": 2
+   },
+   "result": {
+    "outcome": "ALLOWED",
+    "level": "L1",
+    "factor": "NONE",
+    "tickBox": false,
+    "delaySeconds": 0,
+    "pairing": "NONE",
+    "authValidMs": 0
+   }
+  },
+  {
+   "name": "phone: delete the last backup",
+   "action": "DELETE_ONE_BACKUP",
+   "context": {
+    "platform": "PHONE",
+    "deviceLock": true,
+    "webPrf": false,
+    "online": true,
+    "backupsLeft": 1
+   },
+   "result": {
+    "outcome": "ALLOWED",
+    "level": "L2",
+    "factor": "DEVICE_AUTH",
+    "tickBox": false,
+    "delaySeconds": 0,
+    "pairing": "NONE",
+    "authValidMs": 60000
+   }
+  },
+  {
+   "name": "phone: delete a backup, none counted",
+   "action": "DELETE_ONE_BACKUP",
+   "context": {
+    "platform": "PHONE",
+    "deviceLock": true,
+    "webPrf": false,
+    "online": true,
+    "backupsLeft": 0
+   },
+   "result": {
+    "outcome": "ALLOWED",
+    "level": "L2",
+    "factor": "DEVICE_AUTH",
+    "tickBox": false,
+    "delaySeconds": 0,
+    "pairing": "NONE",
+    "authValidMs": 60000
+   }
+  },
+  {
+   "name": "phone: delete a backup, count unknown is the last",
+   "action": "DELETE_ONE_BACKUP",
+   "context": {
+    "platform": "PHONE",
+    "deviceLock": true,
+    "webPrf": false,
+    "online": true,
+    "backupsLeft": null
+   },
+   "result": {
+    "outcome": "ALLOWED",
+    "level": "L2",
+    "factor": "DEVICE_AUTH",
+    "tickBox": false,
+    "delaySeconds": 0,
+    "pairing": "NONE",
+    "authValidMs": 60000
+   }
+  },
+  {
+   "name": "phone: remove a shared hunt",
+   "action": "REMOVE_SHARED_HUNT",
+   "context": {
+    "platform": "PHONE",
+    "deviceLock": true,
+    "webPrf": false,
+    "online": true,
+    "backupsLeft": 3
+   },
+   "result": {
+    "outcome": "ALLOWED",
+    "level": "L1",
+    "factor": "NONE",
+    "tickBox": false,
+    "delaySeconds": 0,
+    "pairing": "NONE",
+    "authValidMs": 0
+   }
+  },
+  {
+   "name": "phone: disconnect this device",
+   "action": "DISCONNECT_THIS_DEVICE",
+   "context": {
+    "platform": "PHONE",
+    "deviceLock": true,
+    "webPrf": false,
+    "online": true,
+    "backupsLeft": 3
+   },
+   "result": {
+    "outcome": "ALLOWED",
+    "level": "L1",
+    "factor": "NONE",
+    "tickBox": false,
+    "delaySeconds": 0,
+    "pairing": "NONE",
+    "authValidMs": 0
+   }
+  },
+  {
+   "name": "phone: turn automatic backup off",
+   "action": "TURN_AUTO_BACKUP_OFF",
+   "context": {
+    "platform": "PHONE",
+    "deviceLock": true,
+    "webPrf": false,
+    "online": true,
+    "backupsLeft": 3
+   },
+   "result": {
+    "outcome": "ALLOWED",
+    "level": "L1",
+    "factor": "NONE",
+    "tickBox": false,
+    "delaySeconds": 0,
+    "pairing": "NONE",
+    "authValidMs": 0
+   }
+  },
+  {
+   "name": "phone: delete all backups",
+   "action": "DELETE_ALL_BACKUPS",
+   "context": {
+    "platform": "PHONE",
+    "deviceLock": true,
+    "webPrf": false,
+    "online": true,
+    "backupsLeft": 3
+   },
+   "result": {
+    "outcome": "ALLOWED",
+    "level": "L2",
+    "factor": "DEVICE_AUTH",
+    "tickBox": true,
+    "delaySeconds": 0,
+    "pairing": "NONE",
+    "authValidMs": 60000
+   }
+  },
+  {
+   "name": "phone: stop sharing",
+   "action": "STOP_SHARING",
+   "context": {
+    "platform": "PHONE",
+    "deviceLock": true,
+    "webPrf": false,
+    "online": true,
+    "backupsLeft": 3
+   },
+   "result": {
+    "outcome": "ALLOWED",
+    "level": "L2",
+    "factor": "DEVICE_AUTH",
+    "tickBox": false,
+    "delaySeconds": 0,
+    "pairing": "NONE",
+    "authValidMs": 60000
+   }
+  },
+  {
+   "name": "phone: revoke a device",
+   "action": "REVOKE_DEVICE",
+   "context": {
+    "platform": "PHONE",
+    "deviceLock": true,
+    "webPrf": false,
+    "online": true,
+    "backupsLeft": 3
+   },
+   "result": {
+    "outcome": "ALLOWED",
+    "level": "L2",
+    "factor": "DEVICE_AUTH",
+    "tickBox": false,
+    "delaySeconds": 0,
+    "pairing": "NONE",
+    "authValidMs": 60000
+   }
+  },
+  {
+   "name": "phone: approve a device needs the QR code or code too",
+   "action": "APPROVE_DEVICE",
+   "context": {
+    "platform": "PHONE",
+    "deviceLock": true,
+    "webPrf": false,
+    "online": true,
+    "backupsLeft": 3
+   },
+   "result": {
+    "outcome": "ALLOWED",
+    "level": "L2",
+    "factor": "DEVICE_AUTH",
+    "tickBox": false,
+    "delaySeconds": 0,
+    "pairing": "QR_OR_CODE",
+    "authValidMs": 60000
+   }
+  },
+  {
+   "name": "phone: disconnect on all devices",
+   "action": "DISCONNECT_ALL_DEVICES",
+   "context": {
+    "platform": "PHONE",
+    "deviceLock": true,
+    "webPrf": false,
+    "online": true,
+    "backupsLeft": 3
+   },
+   "result": {
+    "outcome": "ALLOWED",
+    "level": "L2",
+    "factor": "DEVICE_AUTH",
+    "tickBox": false,
+    "delaySeconds": 0,
+    "pairing": "NONE",
+    "authValidMs": 60000
+   }
+  },
+  {
+   "name": "phone: delete everything",
+   "action": "DELETE_EVERYTHING",
+   "context": {
+    "platform": "PHONE",
+    "deviceLock": true,
+    "webPrf": false,
+    "online": true,
+    "backupsLeft": 3
+   },
+   "result": {
+    "outcome": "ALLOWED",
+    "level": "L3",
+    "factor": "DEVICE_AUTH",
+    "tickBox": true,
+    "delaySeconds": 5,
+    "pairing": "NONE",
+    "authValidMs": 60000
+   }
+  },
+  {
+   "name": "phone: weaken protection",
+   "action": "WEAKEN_PROTECTION",
+   "context": {
+    "platform": "PHONE",
+    "deviceLock": true,
+    "webPrf": false,
+    "online": true,
+    "backupsLeft": 3
+   },
+   "result": {
+    "outcome": "ALLOWED",
+    "level": "L3",
+    "factor": "DEVICE_AUTH",
+    "tickBox": true,
+    "delaySeconds": 5,
+    "pairing": "NONE",
+    "authValidMs": 60000
+   }
+  },
+  {
+   "name": "phone without a lock: delete one backup refused",
+   "action": "DELETE_ONE_BACKUP",
+   "context": {
+    "platform": "PHONE",
+    "deviceLock": false,
+    "webPrf": false,
+    "online": true,
+    "backupsLeft": 5
+   },
+   "result": {
+    "outcome": "REFUSED",
+    "reason": "NO_DEVICE_LOCK"
+   }
+  },
+  {
+   "name": "phone without a lock: delete all refused",
+   "action": "DELETE_ALL_BACKUPS",
+   "context": {
+    "platform": "PHONE",
+    "deviceLock": false,
+    "webPrf": false,
+    "online": true,
+    "backupsLeft": 5
+   },
+   "result": {
+    "outcome": "REFUSED",
+    "reason": "NO_DEVICE_LOCK"
+   }
+  },
+  {
+   "name": "phone without a lock: delete everything refused",
+   "action": "DELETE_EVERYTHING",
+   "context": {
+    "platform": "PHONE",
+    "deviceLock": false,
+    "webPrf": false,
+    "online": true,
+    "backupsLeft": 5
+   },
+   "result": {
+    "outcome": "REFUSED",
+    "reason": "NO_DEVICE_LOCK"
+   }
+  },
+  {
+   "name": "phone without a lock: a shared hunt cannot be removed",
+   "action": "REMOVE_SHARED_HUNT",
+   "context": {
+    "platform": "PHONE",
+    "deviceLock": false,
+    "webPrf": false,
+    "online": true,
+    "backupsLeft": 5
+   },
+   "result": {
+    "outcome": "REFUSED",
+    "reason": "NO_DEVICE_LOCK"
+   }
+  },
+  {
+   "name": "phone without a lock: disconnect still works",
+   "action": "DISCONNECT_THIS_DEVICE",
+   "context": {
+    "platform": "PHONE",
+    "deviceLock": false,
+    "webPrf": false,
+    "online": true,
+    "backupsLeft": 5
+   },
+   "result": {
+    "outcome": "ALLOWED",
+    "level": "L1",
+    "factor": "NONE",
+    "tickBox": false,
+    "delaySeconds": 0,
+    "pairing": "NONE",
+    "authValidMs": 0
+   }
+  },
+  {
+   "name": "phone without a lock: automatic backup can still be turned off",
+   "action": "TURN_AUTO_BACKUP_OFF",
+   "context": {
+    "platform": "PHONE",
+    "deviceLock": false,
+    "webPrf": false,
+    "online": false,
+    "backupsLeft": 5
+   },
+   "result": {
+    "outcome": "ALLOWED",
+    "level": "L1",
+    "factor": "NONE",
+    "tickBox": false,
+    "delaySeconds": 0,
+    "pairing": "NONE",
+    "authValidMs": 0
+   }
+  },
+  {
+   "name": "phone offline: delete one backup refused",
+   "action": "DELETE_ONE_BACKUP",
+   "context": {
+    "platform": "PHONE",
+    "deviceLock": true,
+    "webPrf": false,
+    "online": false,
+    "backupsLeft": 5
+   },
+   "result": {
+    "outcome": "REFUSED",
+    "reason": "OFFLINE"
+   }
+  },
+  {
+   "name": "phone offline: delete all refused",
+   "action": "DELETE_ALL_BACKUPS",
+   "context": {
+    "platform": "PHONE",
+    "deviceLock": true,
+    "webPrf": false,
+    "online": false,
+    "backupsLeft": 5
+   },
+   "result": {
+    "outcome": "REFUSED",
+    "reason": "OFFLINE"
+   }
+  },
+  {
+   "name": "phone offline: delete everything refused",
+   "action": "DELETE_EVERYTHING",
+   "context": {
+    "platform": "PHONE",
+    "deviceLock": true,
+    "webPrf": false,
+    "online": false,
+    "backupsLeft": 5
+   },
+   "result": {
+    "outcome": "REFUSED",
+    "reason": "OFFLINE"
+   }
+  },
+  {
+   "name": "phone offline: revoke refused",
+   "action": "REVOKE_DEVICE",
+   "context": {
+    "platform": "PHONE",
+    "deviceLock": true,
+    "webPrf": false,
+    "online": false,
+    "backupsLeft": 5
+   },
+   "result": {
+    "outcome": "REFUSED",
+    "reason": "OFFLINE"
+   }
+  },
+  {
+   "name": "phone offline: disconnect this device works",
+   "action": "DISCONNECT_THIS_DEVICE",
+   "context": {
+    "platform": "PHONE",
+    "deviceLock": true,
+    "webPrf": false,
+    "online": false,
+    "backupsLeft": 5
+   },
+   "result": {
+    "outcome": "ALLOWED",
+    "level": "L1",
+    "factor": "NONE",
+    "tickBox": false,
+    "delaySeconds": 0,
+    "pairing": "NONE",
+    "authValidMs": 0
+   }
+  },
+  {
+   "name": "phone offline: removing a shared hunt is local and works",
+   "action": "REMOVE_SHARED_HUNT",
+   "context": {
+    "platform": "PHONE",
+    "deviceLock": true,
+    "webPrf": false,
+    "online": false,
+    "backupsLeft": 5
+   },
+   "result": {
+    "outcome": "ALLOWED",
+    "level": "L1",
+    "factor": "NONE",
+    "tickBox": false,
+    "delaySeconds": 0,
+    "pairing": "NONE",
+    "authValidMs": 0
+   }
+  },
+  {
+   "name": "phone offline without a lock: the lock is named first",
+   "action": "DELETE_ALL_BACKUPS",
+   "context": {
+    "platform": "PHONE",
+    "deviceLock": false,
+    "webPrf": false,
+    "online": false,
+    "backupsLeft": 5
+   },
+   "result": {
+    "outcome": "REFUSED",
+    "reason": "NO_DEVICE_LOCK"
+   }
+  },
+  {
+   "name": "website without PRF: delete one backup (L1) works",
+   "action": "DELETE_ONE_BACKUP",
+   "context": {
+    "platform": "WEBSITE",
+    "deviceLock": false,
+    "webPrf": false,
+    "online": true,
+    "backupsLeft": 5
+   },
+   "result": {
+    "outcome": "ALLOWED",
+    "level": "L1",
+    "factor": "NONE",
+    "tickBox": false,
+    "delaySeconds": 0,
+    "pairing": "NONE",
+    "authValidMs": 0
+   }
+  },
+  {
+   "name": "website without PRF: the last backup is L2, use the phone",
+   "action": "DELETE_ONE_BACKUP",
+   "context": {
+    "platform": "WEBSITE",
+    "deviceLock": false,
+    "webPrf": false,
+    "online": true,
+    "backupsLeft": 1
+   },
+   "result": {
+    "outcome": "REFUSED",
+    "reason": "USE_PHONE"
+   }
+  },
+  {
+   "name": "website without PRF: count unknown, use the phone",
+   "action": "DELETE_ONE_BACKUP",
+   "context": {
+    "platform": "WEBSITE",
+    "deviceLock": false,
+    "webPrf": false,
+    "online": true,
+    "backupsLeft": null
+   },
+   "result": {
+    "outcome": "REFUSED",
+    "reason": "USE_PHONE"
+   }
+  },
+  {
+   "name": "website without PRF: delete all, use the phone",
+   "action": "DELETE_ALL_BACKUPS",
+   "context": {
+    "platform": "WEBSITE",
+    "deviceLock": false,
+    "webPrf": false,
+    "online": true,
+    "backupsLeft": 5
+   },
+   "result": {
+    "outcome": "REFUSED",
+    "reason": "USE_PHONE"
+   }
+  },
+  {
+   "name": "website without PRF: delete everything, use the phone",
+   "action": "DELETE_EVERYTHING",
+   "context": {
+    "platform": "WEBSITE",
+    "deviceLock": false,
+    "webPrf": false,
+    "online": true,
+    "backupsLeft": 5
+   },
+   "result": {
+    "outcome": "REFUSED",
+    "reason": "USE_PHONE"
+   }
+  },
+  {
+   "name": "website without PRF: revoke, use the phone",
+   "action": "REVOKE_DEVICE",
+   "context": {
+    "platform": "WEBSITE",
+    "deviceLock": false,
+    "webPrf": false,
+    "online": true,
+    "backupsLeft": 5
+   },
+   "result": {
+    "outcome": "REFUSED",
+    "reason": "USE_PHONE"
+   }
+  },
+  {
+   "name": "website without PRF: approve, use the phone",
+   "action": "APPROVE_DEVICE",
+   "context": {
+    "platform": "WEBSITE",
+    "deviceLock": false,
+    "webPrf": false,
+    "online": true,
+    "backupsLeft": 5
+   },
+   "result": {
+    "outcome": "REFUSED",
+    "reason": "USE_PHONE"
+   }
+  },
+  {
+   "name": "website without PRF: disconnect works",
+   "action": "DISCONNECT_THIS_DEVICE",
+   "context": {
+    "platform": "WEBSITE",
+    "deviceLock": false,
+    "webPrf": false,
+    "online": true,
+    "backupsLeft": 5
+   },
+   "result": {
+    "outcome": "ALLOWED",
+    "level": "L1",
+    "factor": "NONE",
+    "tickBox": false,
+    "delaySeconds": 0,
+    "pairing": "NONE",
+    "authValidMs": 0
+   }
+  },
+  {
+   "name": "website without PRF: automatic backup off works",
+   "action": "TURN_AUTO_BACKUP_OFF",
+   "context": {
+    "platform": "WEBSITE",
+    "deviceLock": false,
+    "webPrf": false,
+    "online": true,
+    "backupsLeft": 5
+   },
+   "result": {
+    "outcome": "ALLOWED",
+    "level": "L1",
+    "factor": "NONE",
+    "tickBox": false,
+    "delaySeconds": 0,
+    "pairing": "NONE",
+    "authValidMs": 0
+   }
+  },
+  {
+   "name": "website without PRF, offline: use the phone is named before offline",
+   "action": "DELETE_ALL_BACKUPS",
+   "context": {
+    "platform": "WEBSITE",
+    "deviceLock": false,
+    "webPrf": false,
+    "online": false,
+    "backupsLeft": 5
+   },
+   "result": {
+    "outcome": "REFUSED",
+    "reason": "USE_PHONE"
+   }
+  },
+  {
+   "name": "website without PRF, offline: an L1 delete is offline",
+   "action": "DELETE_ONE_BACKUP",
+   "context": {
+    "platform": "WEBSITE",
+    "deviceLock": false,
+    "webPrf": false,
+    "online": false,
+    "backupsLeft": 5
+   },
+   "result": {
+    "outcome": "REFUSED",
+    "reason": "OFFLINE"
+   }
+  },
+  {
+   "name": "website with PRF: delete one backup",
+   "action": "DELETE_ONE_BACKUP",
+   "context": {
+    "platform": "WEBSITE",
+    "deviceLock": false,
+    "webPrf": true,
+    "online": true,
+    "backupsLeft": 5
+   },
+   "result": {
+    "outcome": "ALLOWED",
+    "level": "L1",
+    "factor": "NONE",
+    "tickBox": false,
+    "delaySeconds": 0,
+    "pairing": "NONE",
+    "authValidMs": 0
+   }
+  },
+  {
+   "name": "website with PRF: the last backup asks the passkey",
+   "action": "DELETE_ONE_BACKUP",
+   "context": {
+    "platform": "WEBSITE",
+    "deviceLock": false,
+    "webPrf": true,
+    "online": true,
+    "backupsLeft": 1
+   },
+   "result": {
+    "outcome": "ALLOWED",
+    "level": "L2",
+    "factor": "PASSKEY",
+    "tickBox": false,
+    "delaySeconds": 0,
+    "pairing": "NONE",
+    "authValidMs": 60000
+   }
+  },
+  {
+   "name": "website with PRF: delete all asks the passkey",
+   "action": "DELETE_ALL_BACKUPS",
+   "context": {
+    "platform": "WEBSITE",
+    "deviceLock": false,
+    "webPrf": true,
+    "online": true,
+    "backupsLeft": 5
+   },
+   "result": {
+    "outcome": "ALLOWED",
+    "level": "L2",
+    "factor": "PASSKEY",
+    "tickBox": true,
+    "delaySeconds": 0,
+    "pairing": "NONE",
+    "authValidMs": 60000
+   }
+  },
+  {
+   "name": "website with PRF: approve needs the code comparison and the passkey",
+   "action": "APPROVE_DEVICE",
+   "context": {
+    "platform": "WEBSITE",
+    "deviceLock": false,
+    "webPrf": true,
+    "online": true,
+    "backupsLeft": 5
+   },
+   "result": {
+    "outcome": "ALLOWED",
+    "level": "L2",
+    "factor": "PASSKEY",
+    "tickBox": false,
+    "delaySeconds": 0,
+    "pairing": "CODE",
+    "authValidMs": 60000
+   }
+  },
+  {
+   "name": "website with PRF: delete everything",
+   "action": "DELETE_EVERYTHING",
+   "context": {
+    "platform": "WEBSITE",
+    "deviceLock": false,
+    "webPrf": true,
+    "online": true,
+    "backupsLeft": 5
+   },
+   "result": {
+    "outcome": "ALLOWED",
+    "level": "L3",
+    "factor": "PASSKEY",
+    "tickBox": true,
+    "delaySeconds": 5,
+    "pairing": "NONE",
+    "authValidMs": 60000
+   }
+  },
+  {
+   "name": "website with PRF: a device lock flag is ignored",
+   "action": "DELETE_ALL_BACKUPS",
+   "context": {
+    "platform": "WEBSITE",
+    "deviceLock": true,
+    "webPrf": true,
+    "online": true,
+    "backupsLeft": 5
+   },
+   "result": {
+    "outcome": "ALLOWED",
+    "level": "L2",
+    "factor": "PASSKEY",
+    "tickBox": true,
+    "delaySeconds": 0,
+    "pairing": "NONE",
+    "authValidMs": 60000
+   }
+  },
+  {
+   "name": "website with PRF offline: delete all refused",
+   "action": "DELETE_ALL_BACKUPS",
+   "context": {
+    "platform": "WEBSITE",
+    "deviceLock": false,
+    "webPrf": true,
+    "online": false,
+    "backupsLeft": 5
+   },
+   "result": {
+    "outcome": "REFUSED",
+    "reason": "OFFLINE"
+   }
+  },
+  {
+   "name": "phone: a PRF flag is ignored",
+   "action": "DELETE_ALL_BACKUPS",
+   "context": {
+    "platform": "PHONE",
+    "deviceLock": true,
+    "webPrf": true,
+    "online": true,
+    "backupsLeft": 5
+   },
+   "result": {
+    "outcome": "ALLOWED",
+    "level": "L2",
+    "factor": "DEVICE_AUTH",
+    "tickBox": true,
+    "delaySeconds": 0,
+    "pairing": "NONE",
+    "authValidMs": 60000
+   }
+  }
+ ],
+ "confirm": [
+  {
+   "name": "L1/L2 dialog: enabled at once",
+   "tickBox": false,
+   "delaySeconds": 0,
+   "ticked": false,
+   "elapsedMs": 0,
+   "enabled": true
+  },
+  {
+   "name": "L1/L2 dialog: a tick is not needed",
+   "tickBox": false,
+   "delaySeconds": 0,
+   "ticked": true,
+   "elapsedMs": 0,
+   "enabled": true
+  },
+  {
+   "name": "L3: not ticked, delay passed",
+   "tickBox": true,
+   "delaySeconds": 5,
+   "ticked": false,
+   "elapsedMs": 6000,
+   "enabled": false
+  },
+  {
+   "name": "L3: ticked, 1 ms early",
+   "tickBox": true,
+   "delaySeconds": 5,
+   "ticked": true,
+   "elapsedMs": 4999,
+   "enabled": false
+  },
+  {
+   "name": "L3: ticked, exactly 5 s",
+   "tickBox": true,
+   "delaySeconds": 5,
+   "ticked": true,
+   "elapsedMs": 5000,
+   "enabled": true
+  },
+  {
+   "name": "L3: ticked, long after",
+   "tickBox": true,
+   "delaySeconds": 5,
+   "ticked": true,
+   "elapsedMs": 60000,
+   "enabled": true
+  },
+  {
+   "name": "L3: untouched at the start",
+   "tickBox": true,
+   "delaySeconds": 5,
+   "ticked": false,
+   "elapsedMs": 0,
+   "enabled": false
+  },
+  {
+   "name": "L3: ticked at once",
+   "tickBox": true,
+   "delaySeconds": 5,
+   "ticked": true,
+   "elapsedMs": 0,
+   "enabled": false
+  },
+  {
+   "name": "L2 delete all backups: box needed, no delay, not ticked",
+   "tickBox": true,
+   "delaySeconds": 0,
+   "ticked": false,
+   "elapsedMs": 10000,
+   "enabled": false
+  },
+  {
+   "name": "L2 delete all backups: ticked, enabled at once",
+   "tickBox": true,
+   "delaySeconds": 0,
+   "ticked": true,
+   "elapsedMs": 0,
+   "enabled": true
+  }
+ ],
+ "grants": [
+  {
+   "name": "started at once",
+   "factor": "DEVICE_AUTH",
+   "authValidMs": 60000,
+   "grantedAtMs": 1000,
+   "startedAtMs": 1000,
+   "result": "VALID"
+  },
+  {
+   "name": "started at the last allowed ms",
+   "factor": "DEVICE_AUTH",
+   "authValidMs": 60000,
+   "grantedAtMs": 1000,
+   "startedAtMs": 61000,
+   "result": "VALID"
+  },
+  {
+   "name": "one ms too late",
+   "factor": "DEVICE_AUTH",
+   "authValidMs": 60000,
+   "grantedAtMs": 1000,
+   "startedAtMs": 61001,
+   "result": "EXPIRED"
+  },
+  {
+   "name": "a clock that went back",
+   "factor": "DEVICE_AUTH",
+   "authValidMs": 60000,
+   "grantedAtMs": 1000,
+   "startedAtMs": 999,
+   "result": "NOT_YET"
+  },
+  {
+   "name": "passkey, over a minute",
+   "factor": "PASSKEY",
+   "authValidMs": 60000,
+   "grantedAtMs": 0,
+   "startedAtMs": 120000,
+   "result": "EXPIRED"
+  },
+  {
+   "name": "no factor asked never expires",
+   "factor": "NONE",
+   "authValidMs": 0,
+   "grantedAtMs": 1000,
+   "startedAtMs": 1000000000,
+   "result": "VALID"
+  }
+ ],
+ "gate": [
+  {
+   "name": "phone with a lock may connect",
+   "op": "CONNECT",
+   "platform": "PHONE",
+   "result": "ALLOWED",
+   "lockEnabled": true
+  },
+  {
+   "name": "phone without a lock may not connect",
+   "op": "CONNECT",
+   "platform": "PHONE",
+   "result": "NEEDS_SCREEN_LOCK",
+   "lockEnabled": false
+  },
+  {
+   "name": "website may connect (it is told its limit)",
+   "op": "CONNECT",
+   "platform": "WEBSITE",
+   "result": "ALLOWED",
+   "lockEnabled": false
+  },
+  {
+   "name": "phone, lock there: run",
+   "op": "RUN",
+   "platform": "PHONE",
+   "result": "RUN",
+   "lock": "PRESENT",
+   "dropsKeys": false
+  },
+  {
+   "name": "phone, lock removed: paused, keys dropped",
+   "op": "RUN",
+   "platform": "PHONE",
+   "result": "PAUSED_NO_LOCK",
+   "lock": "REMOVED",
+   "dropsKeys": true
+  },
+  {
+   "name": "phone, lock state unknown: paused, keys kept",
+   "op": "RUN",
+   "platform": "PHONE",
+   "result": "PAUSED_UNKNOWN",
+   "lock": "UNKNOWN",
+   "dropsKeys": false
+  },
+  {
+   "name": "website runs whatever the detector says",
+   "op": "RUN",
+   "platform": "WEBSITE",
+   "result": "RUN",
+   "lock": "REMOVED",
+   "dropsKeys": false
+  },
+  {
+   "name": "website runs, unknown",
+   "op": "RUN",
+   "platform": "WEBSITE",
+   "result": "RUN",
+   "lock": "UNKNOWN",
+   "dropsKeys": false
+  }
+ ]
+}

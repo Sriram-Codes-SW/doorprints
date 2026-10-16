@@ -1,0 +1,29 @@
+{
+  "spec": "android/ui/src/androidHostTest/kotlin/app/doorprints/ui/IosVoiceSafetyTest.kt (TC-S-53; S4b-BL-317, S4b-BL-318)",
+  "gradle": [
+    ":ui:testAndroidHostTest",
+    "--rerun",
+    "--tests",
+    "app.doorprints.ui.IosVoiceSafetyTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/ui/src/iosMain/kotlin/app/doorprints/ui/IosPcmSource.kt",
+      "find": "add(UIApplicationWillResignActiveNotification, null) { endEarly() }",
+      "replace": "add(UIApplicationWillResignActiveNotification, null) { close() }",
+      "expect": "anEarlyEndLetsTheMicrophoneGoAtOnce"
+    },
+    {
+      "file": "android/ui/src/iosMain/kotlin/app/doorprints/ui/IosPcmSource.kt",
+      "find": "if (live) early = true",
+      "replace": "if (live) { early = true; queue.clear() }",
+      "expect": "anEarlyEndLetsTheMicrophoneGoAtOnce"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/PcmVoiceRecorder.kt",
+      "find": "withTimeoutOrNull(DRAIN_WAIT) { capturing.join() }",
+      "replace": "Thread.sleep(300)",
+      "expect": "anEarlyEndLetsTheMicrophoneGoAtOnce"
+    }
+  ]
+}

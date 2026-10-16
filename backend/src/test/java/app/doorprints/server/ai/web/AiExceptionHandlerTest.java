@@ -18,10 +18,18 @@
 
 package app.doorprints.server.ai.web;
 
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.google.genai.errors.ClientException;
 import app.doorprints.server.ai.config.AiProperties;
 import app.doorprints.server.ai.embedding.GeminiEmbeddingModel.GeminiEmbeddingException;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.client.HttpClientErrorException;
+
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -45,19 +53,19 @@ class AiExceptionHandlerTest {
 
     @Test
     void chat404PointsToGcpLocation() {
-        var h = hint(new AiExceptionHandler(vertex("asia-south1", null)), new ClientException(404, "Not Found", "x"));
+        var h = hint(AiExceptionHandlers.of(vertex("asia-south1", null)), new ClientException(404, "Not Found", "x"));
         assertThat((String) h).contains("chat model").contains("asia-south1").contains("GCP_LOCATION=global");
     }
 
     @Test
     void chat404OnGlobalSuggestsUsCentral1() {
-        var h = hint(new AiExceptionHandler(vertex("global", null)), new ClientException(404, "Not Found", "x"));
+        var h = hint(AiExceptionHandlers.of(vertex("global", null)), new ClientException(404, "Not Found", "x"));
         assertThat((String) h).contains("GCP_LOCATION=us-central1");
     }
 
     @Test
     void embedding404PointsToEmbeddingLocation() {
-        var h = hint(new AiExceptionHandler(vertex("asia-south1", "us-central1")),
+        var h = hint(AiExceptionHandlers.of(vertex("asia-south1", "us-central1")),
                 new GeminiEmbeddingException("HTTP 404 (NOT_FOUND)", 404, "NOT_FOUND"));
         assertThat((String) h).contains("embedding model").contains("location us-central1")
                 .contains("AI_VERTEX_EMBEDDING_LOCATION=global").doesNotContain("GCP_LOCATION=");
@@ -65,17 +73,126 @@ class AiExceptionHandlerTest {
 
     @Test
     void chat401PointsToCredentials() {
-        var h = hint(new AiExceptionHandler(vertex("asia-south1", null)), new ClientException(401, "Unauthorized", "x"));
+        var h = hint(AiExceptionHandlers.of(vertex("asia-south1", null)), new ClientException(401, "Unauthorized", "x"));
         assertThat((String) h).contains("application-default login");
     }
 
     @Test
     void noHintForQuotaOtherStatusesAiStudioOrNoSettings() {
-        var vertex = new AiExceptionHandler(vertex("asia-south1", null));
+        var vertex = AiExceptionHandlers.of(vertex("asia-south1", null));
         assertThat(hint(vertex, new ClientException(429, "Too Many Requests", "x"))).isNull();
         assertThat(hint(vertex, new ClientException(400, "Bad Request", "x"))).isNull();
-        assertThat(hint(new AiExceptionHandler(AiProperties.defaults()), new ClientException(404, "Not Found", "x")))
+        assertThat(hint(AiExceptionHandlers.of(AiProperties.defaults()), new ClientException(404, "Not Found", "x")))
                 .isNull();
-        assertThat(hint(new AiExceptionHandler(), new ClientException(404, "Not Found", "x"))).isNull();
+        assertThat(hint(AiExceptionHandlers.of(null), new ClientException(404, "Not Found", "x"))).isNull();
+    }
+
+    private static Object cause(Throwable providerError) {
+        var body = AiExceptionHandlers.of(null).aiUnavailable(failure(providerError)).getBody();
+        assertThat(body).isNotNull();
+        assertThat(body.getStatus()).isEqualTo(503);
+        return body.getProperties() == null ? null : body.getProperties().get(AiExceptionHandler.CAUSE_PROPERTY);
+    }
+
+    /** S4b-BL-200: the eval harness (and any client) can tell an outage from unreadable model output without text. */
+    @Test
+    void aProviderFailureCarriesCauseProvider() {
+        assertThat(cause(new ClientException(503, "UNAVAILABLE", "x"))).isEqualTo("provider");
+        assertThat(cause(new ClientException(429, "Too Many Requests", "x"))).isEqualTo("provider");
+        assertThat(cause(new GeminiEmbeddingException("I/O error"))).isEqualTo("provider");
+        assertThat(cause(new java.net.http.HttpTimeoutException("timed out"))).isEqualTo("provider");
+        assertThat(cause(new java.net.ConnectException("refused"))).isEqualTo("provider");
+    }
+
+    @Test
+    void unreadableModelOutputCarriesCauseModelAndNotProvider() {
+        var converter = new org.springframework.ai.converter.BeanOutputConverter<>(
+                app.doorprints.server.ai.agent.PlanModels.AgentPlan.class);
+        var unreadable = org.junit.jupiter.api.Assertions.assertThrows(RuntimeException.class,
+                () -> converter.convert("this is not json"));
+        assertThat(cause(unreadable)).isEqualTo("model");
+    }
+
+    @Test
+    void anUnclassifiedFailureHasNoCauseAndStaysA503() {
+        assertThat(cause(new IllegalStateException("boom"))).isNull();
+        var noCause = AiExceptionHandlers.of(null).aiUnavailable(new AiUnavailableException("Answering failed", null));
+        assertThat(noCause.getStatusCode().value()).isEqualTo(503);
+        assertThat(noCause.getBody().getProperties()).doesNotContainKey(AiExceptionHandler.CAUSE_PROPERTY);
+    }
+
+    @Test
+    void theCauseDoesNotChangeTheQuotaCodeOrTheRetryHeader() {
+        var quota = AiExceptionHandlers.of(null).aiUnavailable(failure(new ClientException(429, "Too Many Requests", "x")));
+        assertThat(quota.getBody().getProperties()).containsEntry("code", AiExceptionHandler.QUOTA_EXHAUSTED_CODE)
+                .containsEntry(AiExceptionHandler.CAUSE_PROPERTY, "provider").containsEntry("retryable", true);
+        assertThat(quota.getHeaders().getFirst("Retry-After")).isEqualTo("60");
+    }
+
+    /** S4b-BL-244: a spent quota or credit is 402 with the quota code, not retryable, no Retry-After and no provider text. */
+    @Test
+    void aSpentQuotaOrCreditIs402WithTheQuotaCodeAndNoRetryAfter() {
+        var handler = AiExceptionHandlers.of(null);
+        for (var spent : List.of(new ClientException(402, "Payment Required", "SECRET-ECHO"),
+                HttpClientErrorException.create(HttpStatus.PAYMENT_REQUIRED, "Payment Required", new HttpHeaders(),
+                        new byte[0], java.nio.charset.StandardCharsets.UTF_8))) {
+            var response = handler.aiUnavailable(failure(spent));
+            assertThat(response.getStatusCode().value()).isEqualTo(402);
+            assertThat(response.getHeaders().getFirst("Retry-After")).isNull();
+            assertThat(response.getBody().getProperties()).containsEntry("code", AiExceptionHandler.QUOTA_EXHAUSTED_CODE)
+                    .containsEntry("retryable", false);
+            assertThat(response.getBody().getDetail()).doesNotContain("SECRET-ECHO");
+        }
+    }
+
+    /** S4b-BL-233: a provider's safety block is 422 AI_DECLINED, not retryable, with none of the provider's words. */
+    @Test
+    void aSafetyBlockIs422DeclinedAndNotRetryableAndCarriesNoProviderText() {
+        var handler = AiExceptionHandlers.of(null);
+        var response = handler.aiUnavailable(failure(new app.doorprints.server.ai.ProviderBlockedException()));
+        assertThat(response.getStatusCode().value()).isEqualTo(422);
+        assertThat(response.getHeaders().getFirst("Retry-After")).isNull();
+        assertThat(response.getBody().getProperties()).containsEntry("code", AiExceptionHandler.DECLINED_CODE)
+                .containsEntry("retryable", false).doesNotContainKey(AiExceptionHandler.CAUSE_PROPERTY);
+        assertThat(response.getBody().getDetail()).contains("declined").doesNotContain("SAFETY", "content_filter");
+        assertThat(AiExceptionHandler.DECLINED_CODE).isEqualTo("AI_DECLINED");
+    }
+
+    @Test
+    void aPerMinuteLimitStaysA503WithRetryAfter() {
+        var response = AiExceptionHandlers.of(null).aiUnavailable(failure(new ClientException(429, "Too Many Requests", "x")));
+        assertThat(response.getStatusCode().value()).isEqualTo(503);
+        assertThat(response.getHeaders().getFirst("Retry-After")).isEqualTo("60");
+        assertThat(response.getBody().getProperties()).containsEntry("retryable", true);
+    }
+
+    /**
+     * SEC-016, PRV-011 (S4b-BL-159): a provider error can echo parts of the prompt, which holds the person's notes, so
+     * the log names only the kind of failure (the cause's class and the provider's HTTP status) and never its text.
+     * The seam is the log output of the handler.
+     */
+    @Test
+    void theLogNamesTheFailureButNeverTheProviderMessage() {
+        var marker = "prompt-echo-" + java.util.UUID.randomUUID();
+        var logger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(AiExceptionHandler.class);
+        var lines = new ListAppender<ILoggingEvent>();
+        lines.start();
+        logger.addAppender(lines);
+        try {
+            var handler = AiExceptionHandlers.of(null);
+            handler.aiUnavailable(new AiUnavailableException("Answering failed",
+                    new ClientException(503, "UNAVAILABLE", marker)));
+            handler.aiUnavailable(new AiUnavailableException("Search failed", new IllegalStateException(marker)));
+            handler.aiUnavailable(new AiUnavailableException("Answering failed", null));
+        } finally {
+            logger.detachAppender(lines);
+        }
+        assertThat(lines.list).hasSize(3);
+        for (var line : lines.list) {
+            assertThat(line.getFormattedMessage()).doesNotContain(marker);
+            assertThat(line.getThrowableProxy()).as("no stack trace, whose message would carry the text").isNull();
+        }
+        assertThat(lines.list.get(0).getFormattedMessage()).contains("ClientException").contains("503");
+        assertThat(lines.list.get(1).getFormattedMessage()).contains("IllegalStateException");
     }
 }

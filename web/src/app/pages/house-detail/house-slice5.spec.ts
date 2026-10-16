@@ -131,7 +131,7 @@ async function open(house: HouseDto, photos: PhotoSummary[] = [], answers: Confi
       { provide: LocalStore, useValue: { lengthUnit: () => Promise.resolve('FT') } },
       { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ id: house.id }), queryParamMap: convertToParamMap({}) } } },
       { provide: GeocodeService, useValue: { reverse: () => of({}) } },
-      { provide: AiService, useValue: { enabled: signal(false), usesOwnKey: signal(false), extractListing: () => of() } },
+      { provide: AiService, useValue: { enabled: signal(false), usesOwnKey: signal(false), ownHost: signal(''), extractListing: () => of() } },
     ],
   });
   await TestBed.inject(TranslationService).setLang('en');

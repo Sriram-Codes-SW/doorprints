@@ -1,0 +1,23 @@
+{
+  "spec": "web/src/app/pages/map/place-check-map.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/pages/map/place-check-map.ts",
+      "find": "if (isNew && !this.onScreen(answer)) this.fit(answer.bounds);",
+      "replace": "if (!this.onScreen(answer)) this.fit(answer.bounds);",
+      "expect": "without framing the same answer again"
+    },
+    {
+      "file": "web/src/app/pages/map/place-check-map.ts",
+      "find": "return corners.every((c) => view.contains(c));",
+      "replace": "return view.contains(corners[0]);",
+      "expect": "frames when only one corner of the box is off screen"
+    },
+    {
+      "file": "web/src/app/pages/map/place-check-map.ts",
+      "find": "    this.marker?.remove();\n    this.marker = null;\n    const isNew",
+      "replace": "    this.marker = null;\n    const isNew",
+      "expect": "replaces the ring when the language changes"
+    }
+  ]
+}

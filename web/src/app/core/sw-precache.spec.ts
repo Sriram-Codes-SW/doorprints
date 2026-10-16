@@ -53,7 +53,6 @@ describe('service worker precache stamp', () => {
     'styles-ZXCV4567.css',
     'chunk-AB_cd-12.js',
     'maplibre-gl-worker.mjs',
-    'maplibre-gl-shared.mjs',
     'manifest.webmanifest',
     'favicon.svg',
     'icons/icon-192.png',
@@ -74,7 +73,6 @@ describe('service worker precache stamp', () => {
         'index.html',
         'main-ABCD2345.js',
         'manifest.webmanifest',
-        'maplibre-gl-shared.mjs',
         'maplibre-gl-worker.mjs',
         'media/font-ABCDEFGH.woff2',
         'polyfills-QWER7890.js',
@@ -98,6 +96,13 @@ describe('service worker precache stamp', () => {
       // the JavaScript, but shipped in public/ too) are precached the same way: nothing under geo/ is left out.
       const geo = ['geo/in-boundaries-soi.json', 'geo/in-soi-corridor.geojson', 'geo/in-held-areas.geojson'];
       for (const file of geo) expect(precacheList([...build, ...geo])).toContain(file);
+    });
+
+    it('precaches the three self-hosted font files but not their licence note', () => {
+      const fonts = ['noto-sans-devanagari.woff2', 'noto-sans-tamil.woff2', 'noto-sans-telugu.woff2'].map((n) => `fonts/${n}`);
+      const list = precacheList([...build, ...fonts, 'fonts/README.txt']);
+      for (const font of fonts) expect(list).toContain(font);
+      expect(list).not.toContain('fonts/README.txt');
     });
 
     it('does not depend on the order or the separator the file system reports', () => {
@@ -316,6 +321,22 @@ describe('service worker precache stamp', () => {
       // Idempotent on a manifest that already has one, and strict about the path.
       expect(JSON.parse(stampManifestId(stampManifestId(manifest, '/a/'), '/b/'))['id']).toBe('/b/');
       expect(() => stampManifestId(manifest, 'doorprints')).toThrow(/bad base path/);
+    });
+  });
+
+  /**
+   * Self-hosted Noto Sans fonts for Indic scripts (S4b-BL-73): fonts come from web/public/fonts/,
+   * not from Google's CDN. CSP must not contain fonts.googleapis.com or fonts.gstatic.com.
+   */
+  describe('self-hosted Noto Sans fonts', () => {
+    it('CSP does not contain fonts.googleapis.com', () => {
+      const csp = cspFromFirebaseConfig(JSON.stringify(firebaseJson));
+      expect(csp).not.toContain('fonts.googleapis.com');
+    });
+
+    it('CSP does not contain fonts.gstatic.com', () => {
+      const csp = cspFromFirebaseConfig(JSON.stringify(firebaseJson));
+      expect(csp).not.toContain('fonts.gstatic.com');
     });
   });
 });

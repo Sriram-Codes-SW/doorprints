@@ -16,6 +16,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+import { readFileSync } from 'node:fs';
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
@@ -26,6 +27,8 @@ import type { PlanResponse } from '../../core/ai.service';
 import { LocalDataService } from '../../core/local-data.service';
 import { TranslationService } from '../../i18n/translation.service';
 import { PlanPage } from './plan-page';
+import { RECORDER_ENV, VoiceInputService } from '../../core/voice/voice-input.service';
+import { fakeMic } from '../../core/voice/testing/voice-fakes';
 
 /**
  * jsdom has no WebGL 2, so the real maplibre-gl map is never made (createMlMap shows "map unavailable" instead).
@@ -109,6 +112,7 @@ vi.mock('maplibre-gl', () => ({
   GeoJSONSource: class {},
   GPUInitializationError: class extends Error {},
   setWorkerUrl: () => undefined,
+  addProtocol: () => undefined,
 }));
 
 /**
@@ -121,6 +125,7 @@ describe('PlanPage', () => {
   let host: HTMLElement;
   let i18n: TranslationService;
   let planVisits: ReturnType<typeof vi.fn>;
+  let aiEnabled: ReturnType<typeof signal<boolean>>;
 
   beforeEach(async () => {
     localStorage.clear();
@@ -140,11 +145,12 @@ describe('PlanPage', () => {
       );
     }
     planVisits = vi.fn(() => new Subject<PlanResponse>());
+    aiEnabled = signal(true);
     TestBed.configureTestingModule({
       imports: [PlanPage],
       providers: [
         provideRouter([]),
-        { provide: AiService, useValue: { enabled: signal(true), usesOwnKey: signal(false), planVisits } },
+        { provide: AiService, useValue: { enabled: aiEnabled, enabledFor: () => aiEnabled(), offReason: () => 'noServer' as const, usesOwnKey: signal(false), ownHost: signal(''), planVisits } },
         // No stored map view and no houses: the start stays unset until the user sets it.
         { provide: LocalDataService, useValue: { houses: () => of([]) } },
       ],
@@ -191,6 +197,19 @@ describe('PlanPage', () => {
     host.querySelector<HTMLFormElement>('form')!.dispatchEvent(new Event('submit', { cancelable: true }));
     await fixture.whenStable();
   }
+
+  it('hides the form while AI is off, and the stylesheet lets [hidden] win over the grid', async () => {
+    const layout = host.querySelector<HTMLElement>('.layout')!;
+    expect(layout.hidden).toBe(false);
+    aiEnabled.set(false);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(layout.hidden).toBe(true);
+    // jsdom does not order author rules against the user-agent [hidden] rule, so the rule itself is read: without it
+    // `.layout { display: grid }` beats [hidden] and the form shows under the no-server note (S4b-BL-61).
+    const css = readFileSync('src/app/pages/plan/plan-page.css', 'utf8');
+    expect(css).toMatch(/\.layout\[hidden\]\s*\{\s*display:\s*none;?\s*\}/);
+  });
 
   it('sets the start from a typed latitude and longitude, with neither field marked', async () => {
     await type('lat', '12.9716');
@@ -269,5 +288,68 @@ describe('PlanPage', () => {
     expect(host.querySelector('#start-msg')).toBeNull();
     expect(state('lat')).toEqual({ invalid: null, describedBy: 'start-hint' });
     expect(state('lon')).toEqual({ invalid: null, describedBy: 'start-hint' });
+  });
+});
+
+/**
+ * Voice input in *Plan notes* (S4b-BL-221, ADR-37): the microphone sits under the request box, the words land in the box
+ * for the person to edit, and planning starts only from the page's own button, with the edited words.
+ */
+describe('PlanPage: voice input', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+    localStorage.clear();
+  });
+
+  async function open(on: boolean) {
+    localStorage.clear();
+    if (typeof ResizeObserver === 'undefined') vi.stubGlobal('ResizeObserver', class { observe(): void { /* jsdom */ } disconnect(): void { /* nothing */ } });
+    const planVisits = vi.fn(() => new Subject<PlanResponse>());
+    const mic = fakeMic();
+    vi.stubGlobal('fetch', async () =>
+      new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify({ text: 'two quiet flats near the metro', language: 'en-IN' }) }] } }] }) ));
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      imports: [PlanPage],
+      providers: [
+        provideRouter([]),
+        {
+          provide: AiService,
+          useValue: {
+            enabled: signal(true), enabledFor: () => true, offReason: () => null, usesOwnKey: signal(true), ownHost: signal('generativelanguage.googleapis.com'),
+            aiConfig: signal({ kind: 'gemini', baseUrl: '', model: '' }), ownKey: () => 'k-not-real', planVisits,
+          },
+        },
+        { provide: RECORDER_ENV, useValue: mic.env },
+        { provide: LocalDataService, useValue: { houses: () => of([]) } },
+      ],
+    });
+    TestBed.inject(VoiceInputService).setEnabled(on);
+    await TestBed.inject(TranslationService).setLang('en');
+    const fixture = TestBed.createComponent(PlanPage);
+    await fixture.whenStable();
+    return { fixture, planVisits, mic, host: fixture.nativeElement as HTMLElement };
+  }
+
+  it('has no microphone while the setting is off', async () => {
+    const { host, mic } = await open(false);
+    expect(host.querySelector('#plan-question-mic')).toBeNull();
+    expect(mic.asked()).toBe(0);
+  });
+
+  it('puts the spoken words in the request box and plans nothing until Plan is pressed', async () => {
+    const { fixture, host, planVisits } = await open(true);
+    const box = host.querySelector<HTMLTextAreaElement>('#plan-question')!;
+    box.value = 'Visit';
+    box.dispatchEvent(new Event('input'));
+    host.querySelector<HTMLButtonElement>('#plan-question-mic')!.click();
+    await vi.waitFor(() => expect(host.querySelector('#plan-question-mic')?.textContent).toContain('Stop'));
+    host.querySelector<HTMLButtonElement>('#plan-question-mic')!.click();
+    await vi.waitFor(async () => {
+      await fixture.whenStable();
+      expect(box.value).toBe('Visit two quiet flats near the metro');
+    });
+    expect(planVisits).not.toHaveBeenCalled();
   });
 });

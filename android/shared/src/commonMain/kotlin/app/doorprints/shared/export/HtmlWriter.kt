@@ -108,7 +108,7 @@ object HtmlWriter {
         for (h in bundle.houses) house(out, bundle, h, photoSrc)
 
         // The brokers (slice 1b), after the houses: each one's fields and the houses of the copy that use it.
-        if (bundle.brokers.isNotEmpty()) {
+        if (bundle.brokers.isNotEmpty() && bundle.shows(null, "field.brokerId")) {
             out.append("<section class=\"page\">\n<h2>").append(esc(s["section.brokers"])).append("</h2>\n")
             for (b in bundle.brokers) {
                 out.append("<h3>").append(esc(b.name)).append("</h3>\n<dl>\n")
@@ -127,7 +127,7 @@ object HtmlWriter {
         h: ExportHouse,
         photoSrc: (ExportPhoto) -> String?,
     ) {
-        val s = bundle.strings
+        val s = bundle.stringsOf(h)
         val o = bundle.options
         out.append("<section class=\"page house\">\n")
         out.append("<h2>").append(esc(h.label)).append("</h2>\n")
@@ -135,28 +135,10 @@ object HtmlWriter {
             .append(" · ").append(esc(s.status(h.status))).append("</p>\n")
 
         out.append("<h3>").append(esc(s["section.details"])).append("</h3>\n<dl>\n")
-        row(out, s["col.score"], bundle.overallOf(h)?.let { ExportRows.fixed(it, 1) } ?: s["none"])
-        for ((term, value) in ExportRows.scoringLines(h, bundle)) row(out, term, value)
-        row(out, s["col.price"], h.price?.let { ExportRows.rupees(it) } ?: s["none"])
-        if (h.price != null) row(out, s["col.priceType"], s.priceType(h.priceType))
-        row(out, s["col.bedrooms"], h.bedrooms?.toString() ?: s["none"])
-        if (h.areaSqft != null) row(out, s["col.areaSqft"], h.areaSqft.toString())
-        if (h.floor != null) row(out, s["col.floor"], s.floor(h.floor))
-        row(out, s["col.rating"], h.rating?.toString() ?: s["none"])
-        row(out, s["col.address"], h.address ?: s["none"])
-        row(out, s["col.street"], h.street ?: s["none"])
-        row(out, s["col.locality"], h.locality ?: s["none"])
-        row(out, s["col.lat"], ExportRows.fixed(h.lat, 6))
-        row(out, s["col.lon"], ExportRows.fixed(h.lon, 6))
-        // Only the approximate case says anything: a reader is warned the marker may be off (FR-068).
-        if (h.locationSource == "APPROX") row(out, s["house.approx"], s["yes"])
-        // The link is shown as text, never as <a href>: the copy must not be a way to reach the network.
-        if (!h.listingUrl.isNullOrEmpty()) row(out, s["col.listingUrl"], h.listingUrl)
-        row(out, s["col.createdAt"], ExportTime.dateTime(h.createdAt, o.utcOffsetMinutes))
-        row(out, s["col.updatedAt"], ExportTime.dateTime(h.updatedAt, o.utcOffsetMinutes))
+        for ((term, value) in ExportRows.detailLines(h, bundle)) row(out, term, value)
         out.append("</dl>\n")
 
-        val cost = ExportRows.costLines(h, s)
+        val cost = ExportRows.costBlock(h, bundle)
         if (cost.isNotEmpty()) {
             out.append("<h3>").append(esc(s["section.cost"])).append("</h3>\n<dl>\n")
             for ((term, value) in cost) row(out, term, value)
@@ -213,7 +195,7 @@ object HtmlWriter {
         table(out, s["section.distances"], ExportRows.distanceColumns(bundle), ExportRows.distanceRows(h, bundle))
 
         // Moving in (slice 5), after the distances and before the checklist: the date, the notes, the ticked list.
-        if (h.moveIn != null) {
+        if (h.moveIn != null && bundle.shows(h, "section.moveIn")) {
             out.append("<h3>").append(esc(s["section.movingIn"])).append("</h3>\n")
             val lines = ExportRows.moveInLines(h, bundle)
             if (lines.isNotEmpty()) {
@@ -229,7 +211,7 @@ object HtmlWriter {
             }
         }
 
-        val keys = ExportRows.orderedChecklistKeys(h)
+        val keys = ExportRows.checklistKeys(h, bundle)
         if (keys.isNotEmpty()) {
             out.append("<h3>").append(esc(s["section.checklist"])).append("</h3>\n")
             out.append("<table>\n<thead><tr><th scope=\"col\">").append(esc(s["col.itemLabel"]))

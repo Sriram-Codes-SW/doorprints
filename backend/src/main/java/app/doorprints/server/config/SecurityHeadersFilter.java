@@ -39,6 +39,11 @@ public class SecurityHeadersFilter extends OncePerRequestFilter {
     public static final String OWNER_CSP = "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; "
             + "connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'";
 
+    /**
+     * Sets the same hardening headers on every response; the owner page gets a CSP that lets it load its own script,
+     * style and QR image, and every other path a CSP that allows nothing. Responses are marked no-store except photo
+     * bytes.
+     */
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {

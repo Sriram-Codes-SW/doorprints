@@ -54,6 +54,9 @@ object AppLocale {
     /** A change older than this is not announced (the app was closed before it came back). */
     private const val ANNOUNCE_WITHIN_MS = 30_000L
 
+    /**
+     * The language the person chose for Doorprints (a code from [SUPPORTED]), or null to follow the system language.
+     */
     fun current(context: Context): String? {
         if (Build.VERSION.SDK_INT >= 33) {
             val locales = context.getSystemService(LocaleManager::class.java)?.applicationLocales
@@ -62,6 +65,10 @@ object AppLocale {
         return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY, null)
     }
 
+    /**
+     * Saves the language chosen in Settings (null for the system default; any code outside [SUPPORTED] counts as
+     * null) and recreates the activity so the screens show it.
+     */
     fun set(activity: Activity, language: String?) {
         val tag = language?.takeIf { it in SUPPORTED }
         // Written before the recreate, read once by Root after it (UX review, whole-app audit): "Language changed to
@@ -115,6 +122,13 @@ object AppLocale {
     }
 
     /**
+     * The language Android resolved for [context]'s resources, one of [SUPPORTED]: the `resolved_language` string each
+     * `values` folder carries. A phone set to [Marathi, Hindi] resolves to Hindi (S4b-BL-22: the export's default
+     * language reads this, as the screens and the dates do, not the configuration's first locale).
+     */
+    fun resolved(context: Context): String = context.getString(R.string.resolved_language)
+
+    /**
      * The UI strings are Compose resources (ADR-23 CMP-2), which take the language from the process's default locale
      * rather than from a configuration, and choose from that one locale only; Android resources choose from the whole
      * list. So the default is set to the language Android resolved for [context]'s resources, read from the
@@ -125,7 +139,7 @@ object AppLocale {
      * DoorprintsApp.onConfigurationChanged.
      */
     fun applyDefault(context: Context) {
-        val chosen = Locale.forLanguageTag(context.getString(R.string.resolved_language))
+        val chosen = Locale.forLanguageTag(resolved(context))
         if (LocaleList.getDefault()[0].language == chosen.language) return
         val list = context.resources.configuration.locales
         val rest = (0 until list.size()).map { list[it] }.filter { it.language != chosen.language }

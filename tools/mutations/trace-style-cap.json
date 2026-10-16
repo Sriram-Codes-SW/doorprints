@@ -1,0 +1,41 @@
+{
+  "spec": "web/src/app/shared/trace-style.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/shared/trace-style.ts",
+      "find": "export const MAX_DRAWN_POINTS = 40_000;",
+      "replace": "export const MAX_DRAWN_POINTS = 50_000;",
+      "expect": "keeps the cap at 40 000"
+    },
+    {
+      "file": "web/src/app/shared/trace-style.ts",
+      "find": "i % stride === 0 || i === last",
+      "replace": "i % stride === 0",
+      "expect": "thinLine keeps every stride-th point"
+    },
+    {
+      "file": "web/src/app/shared/trace-style.ts",
+      "find": "i % stride === 0 || i === last",
+      "replace": "i % stride === 1 || i === last",
+      "expect": "thinLine keeps every stride-th point"
+    },
+    {
+      "file": "web/src/app/shared/trace-style.ts",
+      "find": "Math.ceil(total / maxDrawn)",
+      "replace": "Math.floor(total / maxDrawn)",
+      "expect": "one point over the cap thins by 2"
+    },
+    {
+      "file": "web/src/app/shared/trace-style.ts",
+      "find": "features.push(line([...thinLine(coordinates, stride)], { kind: 'repeat'",
+      "replace": "features.push(line([...coordinates], { kind: 'repeat'",
+      "expect": "thins a repeat stretch with the same stride"
+    },
+    {
+      "file": "web/src/app/shared/trace-style.ts",
+      "find": "for (const l of lines) total += l.length;",
+      "replace": "for (const l of lines) total = l.length;",
+      "expect": "thins every walk by the same stride from the total"
+    }
+  ]
+}

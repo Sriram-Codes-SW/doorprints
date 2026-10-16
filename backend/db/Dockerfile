@@ -21,7 +21,7 @@
 # 18-3.6/Dockerfile), which already has the PGDG apt repository configured, so the matching
 # pgvector package (0.8.x at the time of writing) installs straight from apt.
 # Supabase and most managed Postgres offerings ship both extensions already.
-FROM postgis/postgis:18-3.6
+FROM postgis/postgis:18-3.6@sha256:60f6ad1d21ea86a67d47780b9a0d1e1d200500f62b19293fa834d0dea80b8677
 
 # Package installation needs root; the image switches to the unprivileged user right after.
 RUN apt-get update \

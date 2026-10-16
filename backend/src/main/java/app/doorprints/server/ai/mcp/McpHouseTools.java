@@ -47,13 +47,13 @@ public class McpHouseTools {
             Search the user's saved houses (house hunt in progress) with optional filters. Returns compact \
             summaries: id, label, locality, status, price (rupees), priceType, bedrooms, rating, lat, lon.""")
     public List<HouseSummary> searchHouses(
-            @ToolParam(required = false, description = "Case-insensitive text to find in label, address, street, locality or notes") String text,
+            @ToolParam(required = false, description = "Case-insensitive text to find in label, address, street, locality or notes. Matched literally as one substring: give ONE word, best a city or locality (text=\"Pune\"; \"Pune flats\" matches nothing). Summaries show the locality and street but not the city, so this is how to find a city's houses.") String text,
             @ToolParam(required = false, description = "NEW, SHORTLISTED, REJECTED, TAKEN or NOT_CHOSEN") String status,
             @ToolParam(required = false, description = "RENT or SALE") String priceType,
             @ToolParam(required = false, description = "Maximum price in rupees (monthly rent for RENT)") Long maxPrice,
             @ToolParam(required = false, description = "Minimum number of bedrooms") Integer minBedrooms,
             @ToolParam(required = false, description = "Minimum personal rating 1-5") Integer minRating,
-            @ToolParam(required = false, description = "Maximum results, 1-50 (default 20)") Integer limit) {
+            @ToolParam(required = false, description = "Maximum results, 1-50 (default 50)") Integer limit) {
         return queries.searchHouses(text, status, priceType, maxPrice, minBedrooms, minRating, limit);
     }
 
@@ -75,6 +75,10 @@ public class McpHouseTools {
     @Tool(name = "askDoorprints", description = """
             Ask a natural-language question about the saved houses (e.g. 'which shortlisted 2BHKs had good water \
             pressure?'). Answers only from the user's own records and cites house ids.""")
+    /**
+     * Tool: answers a question from the user's saved houses with citations. When AI is off on this server it returns
+     * an explanatory answer with no citations, so the client falls back to the search tools instead of failing.
+     */
     public AskResponse askDoorprints(@ToolParam(description = "The question") String question) {
         var service = rag.getIfAvailable();
         if (service == null) {

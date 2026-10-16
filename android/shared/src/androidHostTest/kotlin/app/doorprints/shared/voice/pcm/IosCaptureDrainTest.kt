@@ -1,0 +1,184 @@
+/*
+ * Copyright 2026 Sriram (Sriram-Codes-SW)
+ *
+ * This file is part of Doorprints.
+ *
+ * Doorprints is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+ * Public License as published by the Free Software Foundation, version 3 of the License.
+ *
+ * Doorprints is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+ * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Affero General Public License along with Doorprints (the file LICENSE;
+ * the file NOTICE has additional permissions under section 7). If not, see <https://www.gnu.org/licenses/>.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
+package app.doorprints.shared.voice.pcm
+
+import app.doorprints.shared.voice.AudioLimits
+import app.doorprints.shared.voice.PcmSource
+import app.doorprints.shared.voice.PcmVoiceRecorder
+import app.doorprints.shared.voice.VoiceFailure
+import app.doorprints.shared.voice.VoiceLimit
+import app.doorprints.shared.voice.VoiceRecorderException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
+
+/**
+ * The tail of a recording on the iPhone (S4b-BL-223, TC-U-254): the person's Stop must not lose what the source already
+ * holds. A source with `IosPcmSource`'s rules (a blocking `read`, `end()` keeps the queue and hands it out, `close()`
+ * discards it) is run by the shared [PcmVoiceRecorder] on a real thread, with bytes arriving after the loop is already
+ * waiting and a slow reader, and the clip must hold every one of them. Host (JVM) test: it needs threads.
+ */
+class IosCaptureDrainTest {
+    private class DrainSource(private val readDelayMs: Long = 0) : PcmSource {
+        private val lock = Object()
+        private val queue = ByteQueue(8 * 1024 * 1024)
+        private var ended = false
+        var closed = 0
+        var ends = 0
+        private var early = false
+
+        /** What `IosPcmSource` does on a call, a route change or the app leaving the front: capture stops, the queue is kept. */
+        fun endEarly() = synchronized(lock) {
+            early = true
+            ended = true
+            lock.notifyAll()
+        }
+
+        override fun endedEarly(): Boolean = synchronized(lock) { early }
+
+        fun push(samples: Int, value: Short) = synchronized(lock) {
+            repeat(samples) { queue.write(value) }
+            lock.notifyAll()
+        }
+
+        override fun open() = Unit
+
+        override fun read(into: ByteArray, offset: Int, length: Int): Int {
+            val n = synchronized(lock) {
+                while (queue.available == 0 && !ended) lock.wait()
+                if (queue.available == 0) return -1
+                queue.read(into, offset, length)
+            }
+            if (readDelayMs > 0) Thread.sleep(readDelayMs) // a loaded phone: the loop is late with what it has just taken
+            return n
+        }
+
+        override fun end(): Boolean = synchronized(lock) {
+            ends++
+            ended = true
+            lock.notifyAll()
+            true
+        }
+
+        override fun close() {
+            synchronized(lock) {
+                closed++
+                ended = true
+                queue.clear()
+                lock.notifyAll()
+            }
+        }
+    }
+
+    private fun data(clipBytes: ByteArray) = clipBytes.copyOfRange(44, clipBytes.size)
+
+    @Test
+    fun bytesQueuedJustBeforeStopAreInTheClip() = runBlocking<Unit> {
+        val source = DrainSource()
+        val r = PcmVoiceRecorder(source, Dispatchers.Default)
+        r.start()
+        source.push(1_600, 0x1234) // the loop is already waiting in read
+        source.push(1_600, 0x1234)
+        val clip = r.stop()
+        assertEquals(3_200 * 2, data(clip.bytes).size, "every queued byte is in the clip")
+        assertTrue(data(clip.bytes).toList().chunked(2).all { it[0] == 0x34.toByte() && it[1] == 0x12.toByte() })
+        assertNull(clip.limit)
+        assertEquals(1, source.ends)
+        assertEquals(1, source.closed, "the microphone is let go after the drain")
+    }
+
+    @Test
+    fun aSlowReaderStillDeliversTheTailBeforeStopReturns() = runBlocking<Unit> {
+        val source = DrainSource(readDelayMs = 60)
+        val r = PcmVoiceRecorder(source, Dispatchers.Default)
+        r.start()
+        source.push(3_000, 7)
+        Thread.sleep(20) // the loop has taken the first chunk and is late with it
+        source.push(2_000, 7)
+        val clip = r.stop()
+        assertEquals(5_000 * 2, data(clip.bytes).size)
+    }
+
+    @Test
+    fun theCapStillHoldsWhenStopDrainsALotOfAudio() = runBlocking<Unit> {
+        val source = DrainSource()
+        val r = PcmVoiceRecorder(source, Dispatchers.Default)
+        r.start()
+        source.push(AudioLimits.MAX_BYTES / 2 + 50_000, 5) // more than the cap in bytes
+        val clip = r.stop()
+        assertTrue(clip.bytes.size <= AudioLimits.MAX_BYTES, "${clip.bytes.size}")
+        assertEquals(VoiceLimit.SIZE, clip.limit)
+        assertEquals(1, source.closed)
+    }
+
+    @Test
+    fun releaseDiscardsWhatIsQueued() {
+        val source = DrainSource()
+        val r = PcmVoiceRecorder(source, Dispatchers.Default)
+        r.start()
+        source.push(1_000, 9)
+        r.release()
+        assertEquals(0, source.ends, "a discard does not drain")
+        assertEquals(1, source.closed)
+        assertEquals(-1, source.read(ByteArray(16), 0, 16), "nothing is left to read")
+    }
+
+    @Test
+    fun aRecordingCutShortKeepsWhatWasSaidAndReportsEndedEarly() = runBlocking<Unit> {
+        val source = DrainSource()
+        val r = PcmVoiceRecorder(source, Dispatchers.Default)
+        r.start()
+        source.push(4_000, 0x0101)
+        source.endEarly()
+        Thread.sleep(100)
+        assertEquals(VoiceFailure.ENDED_EARLY, r.failure(), "told apart from a fault")
+        val clip = r.stop()
+        assertEquals(4_000 * 2, data(clip.bytes).size, "the words so far are in the clip")
+        assertEquals(1, source.closed)
+    }
+
+    @Test
+    fun aRecordingCutShortBeforeAnyAudioHasNoClip() = runBlocking<Unit> {
+        val source = DrainSource()
+        val r = PcmVoiceRecorder(source, Dispatchers.Default)
+        r.start()
+        source.endEarly()
+        Thread.sleep(100)
+        assertEquals(VoiceFailure.ENDED_EARLY, r.failure())
+        assertFailsWith<VoiceRecorderException> { r.stop() }
+        assertEquals(1, source.closed)
+    }
+
+    @Test
+    fun aRecordingCutShortThenReleasedKeepsNothing() {
+        val source = DrainSource()
+        val r = PcmVoiceRecorder(source, Dispatchers.Default)
+        r.start()
+        source.push(1_000, 9)
+        source.endEarly()
+        Thread.sleep(50)
+        r.release()
+        assertEquals(1, source.closed)
+        assertEquals(-1, source.read(ByteArray(16), 0, 16), "the audio was discarded")
+    }
+}

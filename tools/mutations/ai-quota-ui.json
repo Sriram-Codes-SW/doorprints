@@ -1,0 +1,16 @@
+{
+  "spec": "android/ui/src/commonTest/kotlin/app/doorprints/ui/AiProviderFormTest.kt",
+  "gradle": [
+    ":ui:testAndroidHostTest",
+    "--tests",
+    "app.doorprints.ui.AiProviderFormTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/AiProviderForm.kt",
+      "find": "ApiException.Kind.AI_QUOTA_EXHAUSTED -> QuotaExhausted",
+      "replace": "ApiException.Kind.AI_QUOTA_EXHAUSTED -> Down",
+      "expect": "eachFailureOfATestHasItsOwnWords"
+    }
+  ]
+}

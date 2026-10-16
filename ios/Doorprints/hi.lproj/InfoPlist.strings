@@ -24,5 +24,11 @@
 /* S4b-BL-96, under review. */
 "NSLocationAlwaysAndWhenInUseUsageDescription" = "Doorprints आपकी जगह का इस्तेमाल सहेजे गए मकानों की जगह दर्ज करने, आपकी जगह से दौरों की योजना बनाने और, हंट मोड चालू होने पर, सहेजे मकान के पास से गुज़रने पर आपको बताने के लिए करता है। मेरे खोज वाले इलाक़ों में मुझे जगाएँ चालू होने पर, iOS Doorprints को यह भी बताता है कि आप अपने किसी इलाक़े में पहुँचे हैं, ताकि वह हंट मोड का सुझाव दे सके। Doorprints जगह का कोई इतिहास नहीं रखता।";
 
+/* S4b-BL-136, Hindi, under review. */
+"NSCameraUsageDescription" = "Doorprints आपके दूसरे डिवाइस का Doorprints नामांकन कोड स्कैन करने के लिए कैमरे का इस्तेमाल करता है। कुछ भी सहेजा या भेजा नहीं जाता।";
+
+/* S4b-BL-223, Hindi, under review. */
+"NSMicrophoneUsageDescription" = "Doorprints माइक्रोफ़ोन का इस्तेमाल केवल तब करता है जब आप “बोलें” दबाते हैं, ताकि AI बॉक्स के लिए आपकी बोली को शब्दों में लिखा जा सके। रिकॉर्डिंग आपकी चुनी हुई AI सेवा को आपकी अपनी कुंजी के साथ भेजी जाती है और इस iPhone पर सहेजी नहीं जाती।";
+
 /* S4b-BL-81: the name of the backup document type (Info.plist CFBundleDocumentTypes), under review. */
 "Doorprints backup" = "Doorprints बैकअप";

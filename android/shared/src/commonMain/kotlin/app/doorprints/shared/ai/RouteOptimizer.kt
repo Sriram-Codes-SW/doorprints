@@ -35,11 +35,14 @@ object RouteOptimizer {
     /** Streets are not straight lines: a typical urban detour over the straight-line distance. */
     const val DETOUR_FACTOR = 1.3
 
+    /** A stop: a house id and its coordinates in degrees. */
     data class Point(val id: String, val lat: Double, val lon: Double)
+    /** The walk to [to]: straight-line [meters] from the previous point and the estimated minutes. */
     data class Leg(val to: Point, val meters: Double, val walkMinutes: Int)
 
     private fun rad(d: Double) = d * PI / 180
 
+    /** Great-circle distance in metres between two points given in degrees. */
     fun haversineMeters(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
         val dLat = rad(lat2 - lat1)
         val dLon = rad(lon2 - lon1)
@@ -47,6 +50,7 @@ object RouteOptimizer {
         return 2 * EARTH_RADIUS_M * asin(min(1.0, sqrt(a)))
     }
 
+    /** Whole minutes to walk [meters] in a straight line, with the detour factor, rounded up; 0 for no distance. */
     fun estimateWalkMinutes(meters: Double): Int = if (meters <= 0) 0 else ceil(meters * DETOUR_FACTOR / WALK_M_PER_MIN).toInt()
 
     /** Greedy nearest neighbour from the start; ties go to the earlier point, so the result is deterministic. */

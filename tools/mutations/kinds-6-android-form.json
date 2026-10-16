@@ -1,0 +1,28 @@
+{
+  "spec": "android/app/src/test/java/app/doorprints/HouseFormFieldsTest.kt",
+  "gradle": [
+    ":app:testDebugUnitTest",
+    "--tests",
+    "app.doorprints.HouseFormFieldsTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/KindExtrasFields.kt",
+      "find": "            { v -> update { it.withNumber(f, v) } },",
+      "replace": "            { v -> update { it.withNumber(f, v + \"0\") } },",
+      "expect": "eachFieldKeepsTheDigitsItDidAndTheValueLandsWhereItWas"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/KindExtrasFields.kt",
+      "find": "    for (row in phoneRows(fields.shown(section, Candidates.cadenceOf(d.priceType)))) {",
+      "replace": "    for (row in phoneRows(fields.shown(section, null))) {",
+      "expect": "theFormIsAsItWas"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/HouseEditScreen.kt",
+      "find": "    KindExtrasFields(KindFields.HOUSE, \"cost\", d, update)",
+      "replace": "    KindExtrasFields(KindFields.HOUSE, \"details\", d, update)",
+      "expect": "theFormIsAsItWas"
+    }
+  ]
+}

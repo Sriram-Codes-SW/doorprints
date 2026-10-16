@@ -159,23 +159,27 @@ private class FakeRepository(private val hold: Boolean = false) : Repository {
     val questions = mutableListOf<String>()
     val plans = mutableListOf<PlanRequest>()
 
-    override suspend fun ask(question: String): AskResponseDto {
+    override suspend fun ask(question: String, space: app.doorprints.shared.model.SpaceView?): AskResponseDto {
         questions += question
         if (hold) CompletableDeferred<Unit>().await()
         return AskResponseDto(answer = "Green View", citations = listOf(CitationDto("a", "Green View")), grounded = true)
     }
 
-    override suspend fun planVisits(request: PlanRequest): PlanResponseDto {
+    override suspend fun planVisits(request: PlanRequest, space: app.doorprints.shared.model.SpaceView?): PlanResponseDto {
         plans += request
         return PlanResponseDto(summary = "Two stops", totalMeters = 1_250, totalWalkMinutes = 16)
     }
 
     override val aiEnabled: StateFlow<Boolean> = MutableStateFlow(true)
     override val aiOff: StateFlow<AiOff?> = MutableStateFlow(null)
+    override val aiOwnKey: StateFlow<Boolean> = MutableStateFlow(false)
     override suspend fun refreshAiStatus() = true
     override suspend fun setAiFeatures(on: Boolean) = TODO()
     override suspend fun saveGeminiKey(key: String) = TODO()
     override suspend fun removeGeminiKey() = TODO()
+    override suspend fun setAiQuality(quality: app.doorprints.shared.ai.AiQuality) = TODO()
+    override suspend fun saveAiProviderConfig(config: app.doorprints.shared.ai.AiProviderConfig, key: String) = TODO()
+    override suspend fun testAiProvider(config: app.doorprints.shared.ai.AiProviderConfig, key: String): Result<Unit> = TODO()
     override suspend fun setAiProvider(choice: app.doorprints.data.AiProviderChoice) = TODO()
     override suspend fun testGeminiKey(key: String): Result<Unit> = TODO()
     override suspend fun startPairing(serverUrl: String, deviceName: String): PairStartedDto = TODO()
@@ -196,6 +200,10 @@ private class FakeRepository(private val hold: Boolean = false) : Repository {
     override suspend fun getHouse(id: String): HouseEntity? = TODO()
     override suspend fun saveHouse(house: HouseEntity) = TODO()
     override suspend fun deleteHouse(id: String) = TODO()
+    override suspend fun deleteHouses(ids: List<String>) = TODO()
+    override suspend fun restoreHouse(id: String) = TODO()
+    override suspend fun restoreHouses(ids: List<String>) = TODO()
+    override fun observeDeletedHouses() = TODO()
     override suspend fun saveVisit(visit: VisitEntity) = TODO()
     override suspend fun getVisit(id: String): VisitEntity? = TODO()
     override suspend fun deleteVisit(id: String) = TODO()
@@ -224,7 +232,8 @@ private class FakeRepository(private val hold: Boolean = false) : Repository {
     override suspend fun questions(): List<app.doorprints.shared.model.Question> = TODO()
     override suspend fun seedQuestions(language: String): Int = TODO()
     override suspend fun seedQuestionsOnce(language: String) = TODO()
-    override suspend fun resetQuestions(language: String) = TODO()
+    override suspend fun resetQuestions(language: String, kind: String) = TODO()
+    override suspend fun seedKindQuestionsOnce(kind: String, language: String) = TODO()
     override suspend fun saveQuestion(question: app.doorprints.shared.model.Question) = TODO()
     override suspend fun saveQuestions(questions: List<app.doorprints.shared.model.Question>) = TODO()
     override suspend fun addQuestion(
@@ -232,6 +241,7 @@ private class FakeRepository(private val hold: Boolean = false) : Repository {
         category: app.doorprints.shared.model.QuestionCategory,
         appliesTo: app.doorprints.shared.model.QuestionScope,
         defaultOn: Boolean,
+        kind: String,
     ): String = TODO()
     override suspend fun deleteQuestion(id: String) = TODO()
     override suspend fun saveAnswers(houseId: String, answers: List<app.doorprints.shared.model.HouseAnswer>?) = TODO()

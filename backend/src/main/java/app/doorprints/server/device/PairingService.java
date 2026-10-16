@@ -18,6 +18,7 @@
 
 package app.doorprints.server.device;
 
+import app.doorprints.server.config.AppProperties;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -47,8 +48,8 @@ public class PairingService {
     public static final Duration CODE_LIFETIME = Duration.ofMinutes(10);
     public static final Duration INVITE_LIFETIME = Duration.ofMinutes(10);
     public static final int POLL_INTERVAL_SECONDS = 3;
-    /** Open requests at most; the oldest are dropped first, so a flood of starts cannot fill the table. */
-    static final int MAX_PENDING = 50;
+    /** Any constant: it only serialises the starts (a transaction-scoped advisory lock). */
+    private static final long START_LOCK = 0x70616972L;
     public static final int MAX_NAME_LENGTH = 60;
 
     public record Started(String userCode, String pollToken, long expiresIn, int interval) {
@@ -70,11 +71,15 @@ public class PairingService {
     private final JdbcClient jdbc;
     private final DeviceKeyStore devices;
     private final Clock clock;
+    private final AppProperties.Pairing caps;
+    /** Per run, so a stored client hash cannot be matched against a table of addresses. */
+    private final String clientSalt = Secrets.token();
 
-    public PairingService(JdbcClient jdbc, DeviceKeyStore devices, Clock clock) {
+    public PairingService(JdbcClient jdbc, DeviceKeyStore devices, Clock clock, AppProperties props) {
         this.jdbc = jdbc;
         this.devices = devices;
         this.clock = clock;
+        this.caps = props.pairing();
     }
 
     /** A device name as the owner page shows it: trimmed, control characters dropped, at most 60 characters. */
@@ -84,32 +89,58 @@ public class PairingService {
         return cleaned.length() > MAX_NAME_LENGTH ? cleaned.substring(0, MAX_NAME_LENGTH) : cleaned;
     }
 
+    /**
+     * Opens a pairing request for a device and returns the code to show the owner and the token the device polls
+     * with. Only the poll token's hash is stored, and of the client address only a salted hash (to cap the requests per
+     * source). At most {@code app.pairing.max-open} (default 50) unexpired requests are open, and
+     * {@code app.pairing.max-per-source} (default 5) per source: a start over a cap is refused with
+     * {@link PairingBusyException} and no open request is touched, so a flood cannot push out the code a person is
+     * typing (S4b-BL-161). The table stays bounded: a row is added only while fewer than 50 are open, and the hourly
+     * {@link #purgeExpired} removes old ones. The user code is drawn again until no open request uses it.
+     */
     @Transactional
-    public Started start(String deviceName) {
+    public Started start(String deviceName, String clientAddress) {
         var now = clock.instant();
-        // Keep at most MAX_PENDING open requests (the new one included): drop the oldest.
-        jdbc.sql("""
-                        DELETE FROM pairing_request WHERE id IN (
-                          SELECT id FROM pairing_request WHERE status = 'pending'
-                          ORDER BY created_at DESC OFFSET :keep)""")
-                .param("keep", MAX_PENDING - 1).update();
+        // One start at a time, so two starts cannot both pass the check at 49 open requests.
+        jdbc.sql("SELECT pg_advisory_xact_lock(:key)").param("key", START_LOCK).query().singleValue();
+        var client = Secrets.hash(clientSalt + "|" + (clientAddress == null ? "" : clientAddress));
+        var open = jdbc.sql("""
+                        SELECT count(*) AS total, min(expires_at) AS first_expiry,
+                               count(*) FILTER (WHERE client_hash = :client) AS from_client,
+                               min(expires_at) FILTER (WHERE client_hash = :client) AS client_first_expiry
+                        FROM pairing_request WHERE status = 'pending' AND expires_at > :now""")
+                .param("client", client).param("now", Timestamp.from(now))
+                .query((rs, n) -> new PairingAdmission.Open(rs.getInt("total"),
+                        DeviceKeyStore.instant(rs, "first_expiry"), rs.getInt("from_client"),
+                        DeviceKeyStore.instant(rs, "client_first_expiry")))
+                .single();
+        PairingAdmission.retryAfterSeconds(open, caps.maxOpen(), caps.maxPerSource(), now).ifPresent(wait -> {
+            throw new PairingBusyException(wait);
+        });
         String code;
         do {
             code = Secrets.userCode();
         } while (findPendingRow(code, now).isPresent());
         var poll = Secrets.token();
         jdbc.sql("""
-                        INSERT INTO pairing_request (id, user_code, poll_hash, device_name, status, created_at, expires_at)
-                        VALUES (:id, :code, :poll, :name, 'pending', :now, :expires)""")
+                        INSERT INTO pairing_request (id, user_code, poll_hash, device_name, status, created_at, expires_at,
+                                                     client_hash)
+                        VALUES (:id, :code, :poll, :name, 'pending', :now, :expires, :client)""")
                 .param("id", UUID.randomUUID()).param("code", code).param("poll", Secrets.hash(poll))
                 .param("name", cleanName(deviceName)).param("now", Timestamp.from(now))
-                .param("expires", Timestamp.from(now.plus(CODE_LIFETIME))).update();
+                .param("expires", Timestamp.from(now.plus(CODE_LIFETIME))).param("client", client).update();
         return new Started(Secrets.displayCode(code), poll, CODE_LIFETIME.toSeconds(), POLL_INTERVAL_SECONDS);
     }
 
+    /**
+     * A pairing request row as read back.
+     */
     private record Row(UUID id, String status, String deviceName, Instant createdAt, Instant expiresAt) {
     }
 
+    /**
+     * The open, unexpired request with this user code.
+     */
     private Optional<Row> findPendingRow(String code, Instant now) {
         return jdbc.sql("""
                         SELECT id, status, device_name, created_at, expires_at FROM pairing_request
@@ -134,10 +165,16 @@ public class PairingService {
         return decide(typedCode, "approved");
     }
 
+    /**
+     * The owner refuses the open request with this code. False if there is none.
+     */
     public boolean deny(String typedCode) {
         return decide(typedCode, "denied");
     }
 
+    /**
+     * Sets the status of the open request with this code; only a pending, unexpired one can be decided, once.
+     */
     private boolean decide(String typedCode, String status) {
         var code = Secrets.normalizeCode(typedCode);
         if (code == null) return false;

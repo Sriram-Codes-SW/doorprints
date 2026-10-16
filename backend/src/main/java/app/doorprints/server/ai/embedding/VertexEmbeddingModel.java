@@ -152,6 +152,12 @@ public class VertexEmbeddingModel implements EmbeddingModel {
         return (model.contains("gemini") && !model.contains("gemini-embedding-001")) || model.contains("maas");
     }
 
+    /**
+     * Embeds each text with its own HTTP call, in order, and returns the vectors in input order. All texts are
+     * checked for blankness before the first call is made.
+     * @throws IllegalArgumentException if there is no text or a text is blank
+     * @throws GeminiEmbeddingException if the provider fails or returns a vector of the wrong size
+     */
     @Override
     public EmbeddingResponse call(EmbeddingRequest request) {
         var texts = request.getInstructions();
@@ -190,6 +196,10 @@ public class VertexEmbeddingModel implements EmbeddingModel {
         return embedContentApi;
     }
 
+    /**
+     * Embeds one text with the API the model needs ({@code embedContent} or {@code predict}), checks the vector has
+     * the configured size, and L2-normalises it.
+     */
     private float[] embedOne(String text) {
         List<Double> values;
         if (embedContentApi) {
@@ -216,6 +226,11 @@ public class VertexEmbeddingModel implements EmbeddingModel {
         return GeminiEmbeddingModel.normalize(values);
     }
 
+    /**
+     * Sends one request with a fresh access token for every attempt. Retries 429, 5xx and I/O errors like {@link
+     * GeminiEmbeddingModel}; a missing token is not retried. Messages carry the HTTP status, Google error reason and
+     * a setup hint, never the body or the token.
+     */
     private <T> T post(String method, Object body, Class<T> type) {
         for (int attempt = 0; ; attempt++) {
             Duration wait = backoff.multipliedBy(attempt + 1L);
@@ -291,6 +306,9 @@ public class VertexEmbeddingModel implements EmbeddingModel {
         };
     }
 
+    /**
+     * Waits between attempts; on interrupt it restores the flag and fails the call.
+     */
     private static void sleep(Duration d) {
         if (d.isZero()) return;
         try {

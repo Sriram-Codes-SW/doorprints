@@ -1,0 +1,111 @@
+{
+  "spec": [
+    "web/src/app/core/ai/kind-ai.spec.ts",
+    "web/src/app/pages/house-detail/school-form.spec.ts",
+    "web/src/app/core/ai.service.requests.spec.ts"
+  ],
+  "mutations": [
+    {
+      "file": "web/src/app/core/ai/kind-ai.ts",
+      "find": "  return devKinds && kind ? (Object.prototype.hasOwnProperty.call(BUILT_IN, kind) ? BUILT_IN[kind] : null) : null;",
+      "replace": "  return kind ? (Object.prototype.hasOwnProperty.call(BUILT_IN, kind) ? BUILT_IN[kind] : null) : null;",
+      "expect": "with the flag off, for the house and for a kind that is not built in"
+    },
+    {
+      "file": "web/src/app/core/ai/kind-ai.ts",
+      "find": "    if (k.never.includes(id)) continue;",
+      "replace": "",
+      "expect": "never wins over ask"
+    },
+    {
+      "file": "web/src/app/core/ai/kind-ai.ts",
+      "find": "      if (typeof v !== 'string' || v.length > (e.maxLength ?? 0)) return null;",
+      "replace": "      if (typeof v !== 'string') return null;",
+      "expect": "every document has the vectors"
+    },
+    {
+      "file": "web/src/app/core/ai/kind-ai.ts",
+      "find": "      const t = ((r.freeText(v.trim()) as string | null | undefined) ?? '').replace(/\\s+/g, ' ').trim();",
+      "replace": "      const t = v.trim();",
+      "expect": "every document has the vectors"
+    },
+    {
+      "file": "web/src/app/core/ai/kind-ai.ts",
+      "find": "      if (typeof m !== 'object' || m === null || m.cadence !== e.cadence) return null;",
+      "replace": "      if (typeof m !== 'object' || m === null) return null;",
+      "expect": "never wins over ask"
+    },
+    {
+      "file": "web/src/app/core/ai/kind-ai.ts",
+      "find": "    price: has('money') ? h.price : null, priceType: has('money') ? h.priceType : null, rating: has('rating') ? h.rating : null,",
+      "replace": "    price: h.price, priceType: h.priceType, rating: has('rating') ? h.rating : null,",
+      "expect": "an Ask filter on a field the kind hides never keeps the school"
+    },
+    {
+      "file": "web/src/app/core/ai/kind-ai.ts",
+      "find": "      const hit = Object.entries(e.options ?? {}).find(([id, words]) => id.toLowerCase() === v || words.toLowerCase() === v);",
+      "replace": "      const hit = Object.entries(e.options ?? {}).find(([id]) => id.toLowerCase() === v);",
+      "expect": "Extract prompt, schema and drafts"
+    },
+    {
+      "file": "web/src/app/core/ai/kind-ai.ts",
+      "find": "      return clean(value, e.maxLength ?? 0, e.id, warnings);",
+      "replace": "      return clean(value, 2000, e.id, warnings);",
+      "expect": "Extract prompt, schema and drafts"
+    },
+    {
+      "file": "web/src/app/core/ai/on-device-ai.service.ts",
+      "find": "    const docs = selectForAsk(viewed, question, filters, (h) => aiText(h, dev));",
+      "replace": "    const docs = selectForAsk(viewed, question, filters);",
+      "expect": "Ask sends a school"
+    },
+    {
+      "file": "web/src/app/core/ai/on-device-ai.service.ts",
+      "find": "      checklist: h.checklist, visits: byHouse.get(h.id) ?? [], kind: h.kind, extras: h.extrasOther,",
+      "replace": "      checklist: h.checklist, visits: byHouse.get(h.id) ?? [],",
+      "expect": "Ask sends a school"
+    },
+    {
+      "file": "web/src/app/core/ai/on-device-ai.service.ts",
+      "find": "    if (kind && (!k || !k.extract.length)) throw new Error(`kind ${kind} has no listing extract`);",
+      "replace": "",
+      "expect": "Extract reads a school listing with the flag on"
+    },
+    {
+      "file": "web/src/app/core/ai.service.ts",
+      "find": "    return this.http.post<HouseDraft>('/api/ai/extract-listing', kind ? { text, kind } : { text });",
+      "replace": "    return this.http.post<HouseDraft>('/api/ai/extract-listing', { text });",
+      "expect": "extractListing with a kind"
+    },
+    {
+      "file": "web/src/app/pages/house-detail/house-listing-fill.ts",
+      "find": "    const read = kind.id !== 'house' && kind.extracts ? this.deps.ai.extractListing(text, kind.id) : this.deps.ai.extractListing(text);",
+      "replace": "    const read = this.deps.ai.extractListing(text);",
+      "expect": "sends the school"
+    },
+    {
+      "file": "web/src/app/pages/house-detail/kind-draft-merge.ts",
+      "find": "    if (isEmpty(now)) {",
+      "replace": "    if (true) {",
+      "expect": "sends the school"
+    },
+    {
+      "file": "web/src/app/pages/house-detail/house-listing-fill.ts",
+      "find": "    if (extras.extrasOther) before.extrasOther = d.extrasOther ?? null;",
+      "replace": "",
+      "expect": "sends the school"
+    },
+    {
+      "file": "web/src/app/core/dev-kinds.ts",
+      "find": "const SCHOOL: BuiltInKind = { id: 'school', labels: SCHOOL_LABELS, keys: SCHOOL_KEYS, fields: SCHOOL_FIELDS, extracts: true };",
+      "replace": "const SCHOOL: BuiltInKind = { id: 'school', labels: SCHOOL_LABELS, keys: SCHOOL_KEYS, fields: SCHOOL_FIELDS, extracts: false };",
+      "expect": "sends the school"
+    },
+    {
+      "file": "web/src/app/core/ai/kind-ai.ts",
+      "find": "      warnings.push(`label: truncated to ${LIMITS['label']} characters`);",
+      "replace": "",
+      "expect": "Extract prompt, schema and drafts"
+    }
+  ]
+}

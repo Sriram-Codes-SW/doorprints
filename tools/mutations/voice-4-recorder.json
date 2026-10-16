@@ -1,0 +1,95 @@
+{
+ "spec": "web/src/app/core/voice/audio-recorder.spec.ts",
+ "mutations": [
+  {
+   "file": "web/src/app/core/voice/audio-recorder.ts",
+   "find": "this.timer = setTimeout(() => this.stopFor('time'), this.maxMs);",
+   "replace": "this.timer = setTimeout(() => this.stopFor('time'), this.maxMs * 2);",
+   "expect": "the time limit ends the recording by itself at 60 seconds"
+  },
+  {
+   "file": "web/src/app/core/voice/audio-recorder.ts",
+   "find": "if (this.size + blob.size > MAX_AUDIO_BYTES) {",
+   "replace": "if (this.size + blob.size > MAX_AUDIO_BYTES * 2) {",
+   "expect": "the 2 MB cap ends it"
+  },
+  {
+   "file": "web/src/app/core/voice/audio-recorder.ts",
+   "find": "for (const t of this.stream.getTracks()) {\n        t.onended = null;",
+   "replace": "for (const t of [] as MediaStreamTrack[]) {\n        t.onended = null;",
+   "expect": "cancel keeps nothing, lets every track go"
+  },
+  {
+   "file": "web/src/app/core/voice/audio-recorder.ts",
+   "find": "for (const t of stream.getTracks()) t.stop();",
+   "replace": "/* the stream is kept */",
+   "expect": "a cancel while the permission prompt is open lets the stream go"
+  },
+  {
+   "file": "web/src/app/core/voice/audio-recorder.ts",
+   "find": "window.addEventListener('pagehide', this.hide);",
+   "replace": "void this.hide;",
+   "expect": "the page being closed (pagehide) cancels the recording"
+  },
+  {
+   "file": "web/src/app/core/voice/audio-recorder.ts",
+   "find": "document.addEventListener('visibilitychange', this.visibility);",
+   "replace": "void this.visibility;",
+   "expect": "the tab being hidden cancels the recording"
+  },
+  {
+   "file": "web/src/app/core/voice/audio-recorder.ts",
+   "find": "if (typeof window !== 'undefined') window.removeEventListener('pagehide', this.hide);",
+   "replace": "void 0;",
+   "expect": "removes the page listeners"
+  },
+  {
+   "file": "web/src/app/core/voice/audio-recorder.ts",
+   "find": "if (name === 'NotAllowedError' || name === 'SecurityError' || name === 'PermissionDeniedError') return 'denied';",
+   "replace": "if (name === 'SecurityError') return 'denied';",
+   "expect": "a microphone refused with NotAllowedError is denied"
+  },
+  {
+   "file": "web/src/app/core/voice/audio-recorder.ts",
+   "find": "if (this.active || this.stream !== null) throw new RecorderError('failed');",
+   "replace": "void 0;",
+   "expect": "a second start while recording is refused"
+  },
+  {
+   "file": "web/src/app/core/voice/audio-recorder.ts",
+   "find": "'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus'];",
+   "replace": "'audio/webm', 'audio/ogg;codecs=opus'];",
+   "expect": "Safari gives mp4"
+  },
+  {
+   "file": "web/src/app/core/voice/audio-recorder.ts",
+   "find": "rec.onerror = () => (this.size > 0 ? this.finish(true) : this.end('failed'));",
+   "replace": "rec.onerror = () => undefined;",
+   "expect": "a recorder error ends the recording"
+  },
+  {
+   "file": "web/src/app/core/voice/audio-recorder.ts",
+   "find": "return env.getUserMedia !== null && env.recorder !== null;",
+   "replace": "return env.getUserMedia !== null || env.recorder !== null;",
+   "expect": "canRecord: needs both"
+  },
+  {
+   "file": "web/src/app/core/voice/audio-recorder.ts",
+   "find": "if (getUserMedia === null || Ctor === null) throw new RecorderError('unsupported');",
+   "replace": "if (getUserMedia === null || Ctor === null) throw new RecorderError('failed');",
+   "expect": "no recorder or no microphone API is \"unsupported\""
+  },
+  {
+   "file": "web/src/app/core/voice/audio-recorder.ts",
+   "find": "if (generation !== this.generation) {",
+   "replace": "if (false as boolean) {",
+   "expect": "a cancel while the permission prompt is open"
+  },
+  {
+   "file": "web/src/app/core/voice/audio-recorder.ts",
+   "find": "pending?.reject(new RecorderError('cancelled'));",
+   "replace": "void pending;",
+   "expect": "cancel keeps nothing, lets every track go and rejects a pending stop"
+  }
+ ]
+}

@@ -69,6 +69,11 @@ targets:
         buildPhase: resources
     dependencies:
       - package: MapLibre
+    # Google Drive's two build settings (GOOGLE_IOS_CLIENT_ID, GOOGLE_IOS_URL_SCHEME), empty in the repository; the owner's
+    # values go in Config/Drive.local.xcconfig, which Config/Drive.xcconfig includes when it exists (S4b-BL-117).
+    configFiles:
+      Debug: Config/Drive.xcconfig
+      Release: Config/Drive.xcconfig
     settings:
       base:
         PRODUCT_NAME: Doorprints

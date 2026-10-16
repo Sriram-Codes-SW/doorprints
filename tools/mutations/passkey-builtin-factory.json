@@ -1,0 +1,11 @@
+{
+  "spec": "web/src/app/data/drive/connect/factories/deletion-factory.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/data/drive/connect/factories/deletion-factory.ts",
+      "find": "    async builtInAuthenticator() {\n      return (await getAdapter()).builtInAuthenticator?.() ?? null;\n    },",
+      "replace": "    async builtInAuthenticator() {\n      return null;\n    },",
+      "expect": "forwards builtInAuthenticator when false to underlying adapter"
+    }
+  ]
+}

@@ -65,6 +65,7 @@ import app.doorprints.export.CopyRecord
 import app.doorprints.export.CopyUndoOutcome
 import app.doorprints.ui.res.*
 import app.doorprints.shared.api.IsoTime
+import app.doorprints.shared.model.CompareCriteria
 import app.doorprints.shared.model.CostFilter
 import app.doorprints.shared.model.HouseSearch
 import app.doorprints.shared.model.Area
@@ -74,6 +75,7 @@ import app.doorprints.shared.model.Ranking
 import app.doorprints.shared.model.ScoreResult
 import app.doorprints.shared.model.Scoring
 import app.doorprints.shared.model.HouseStatus
+import app.doorprints.shared.model.KindFilter
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -81,6 +83,7 @@ import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
+/** The house list's sort orders: newest first, best score, lowest price. */
 private enum class Sort(val label: StringResource) {
     RECENT(Res.string.sort_recent), SCORE(Res.string.sort_score), PRICE(Res.string.sort_price)
 }
@@ -238,7 +241,7 @@ fun HouseListScreen(
     }
     // null until Room's first emission: until then neither the first-run hero nor the list chrome is drawn, so
     // neither flashes for a frame on launch.
-    val loadedHouses: List<HouseEntity>? by repo.houses.collectAsStateWithLifecycle(initialValue = null)
+    val loadedHouses: List<HouseEntity>? by rememberSpaceHouses(repo) // the space's candidates (kinds PR C); with one kind on, every one
     // The linked broker's name, agency and fee terms are searched too (docs/11 5.25, slice 1b).
     val brokerText: Map<String, String> by remember(repo) {
         repo.observeBrokers().map { list -> list.associate { (id, b) -> id to b.searchText } }
@@ -246,8 +249,7 @@ fun HouseListScreen(
     // The area notes that reach each house are searched too (docs/11 slice 4a).
     val areas: List<Area> by remember(repo) { repo.observeAreas() }.collectAsStateWithLifecycle(emptyList())
     val areaNotes: List<AreaNote> by remember(repo) { repo.observeAreaNotes() }.collectAsStateWithLifecycle(emptyList())
-    // The effective scoring (docs/11 5.4, slice 2): the card's score, the "Must-have missed" chip and "best first".
-    val scoring: Scoring by remember(repo) { repo.observeScoring() }.collectAsStateWithLifecycle(Scoring.DEFAULT)
+    val scoring = LocalSpace.current.built.let { k -> remember(k.id, repo) { repo.observeScoring().map { CompareCriteria.scoringFor(k, it) } }.collectAsStateWithLifecycle(Scoring.DEFAULT).value }
     val loaded = loadedHouses != null
     val houses = loadedHouses.orEmpty()
     val counts by repo.visitCounts.collectAsStateWithLifecycle(emptyList())
@@ -257,6 +259,8 @@ fun HouseListScreen(
     var query by rememberSaveable { mutableStateOf("") }
     // The ranges over the cost numbers (docs/11 5.21, S4b-BL-84), on top of the status and the search.
     var costFilter by rememberSaveable(stateSaver = CostFilterSaver) { mutableStateOf(CostFilter()) }
+    // The filter by a kind's typed extras (S4b-BL-265): the chip rows under the status chips, none for a house.
+    var extraFilter by rememberSaveable(stateSaver = ExtraFilterSaver) { mutableStateOf<Map<String, String?>>(emptyMap()) }
     val firstRun = loaded && houses.isEmpty()
     // The copy import the list shows (see the KDoc): the one it was opened for, unless a newer one can still be
     // undone, else the newest that can. Read again whenever an undo ends, because the undo deletes or reduces the
@@ -453,33 +457,25 @@ fun HouseListScreen(
             filter = null
             query = ""
             costFilter = CostFilter()
+            extraFilter = emptyMap()
             importedOnly = false
         }
     }
 
-    // The floor is found by the app language's words as well as English (S4b-BL-104 b).
-    val language = uiLanguage()
+    val kindFields = LocalSpace.current.built.fields // the extras the list can filter by (S4b-BL-265)
+    val devKinds = kindsOn() // a kind's extras are searched while the flag allows its kind (S4b-BL-210)
+    val language = uiLanguage() // the floor and those extras are found by the app language's words too (S4b-BL-104 b)
     val shown = houses
         .filter { !onlyImported || importedIds?.contains(it.id) == true }
         .filter { filter == null || it.status == filter }
         .filter { costFilter.matches(it.price, it.priceType, it.areaSqft, it.cost) }
+        .filter { KindFilter.matches(extraFilter, kindFields, it.extrasOther) }
         // The same rule as the website's searchText (HouseSearch; the contact's name since the readiness review, the
         // linked broker since slice 1b, the rooms' names and notes since slice 1c, the questions asked and their answers
         // since slice 3a, the floor in the app's language too since S4b-BL-104).
         .filter {
-            HouseSearch.matches(
-                query,
-                HouseSearch.fields(
-                    it.label, it.address, it.street, it.locality, it.notes, it.contactName,
-                    brokerText = it.brokerId?.let(brokerText::get),
-                    rooms = it.rooms,
-                    answers = it.answers,
-                    moveIn = it.moveIn,
-                    floor = it.floor,
-                    language = language,
-                    noteTexts = if (areaNotes.isEmpty()) emptyList() else AreaNotes.reaching(it.point(), areas, areaNotes).map { n -> n.text },
-                ),
-            )
+            val noteTexts = if (areaNotes.isEmpty()) emptyList() else AreaNotes.reaching(it.point(), areas, areaNotes).map { n -> n.text }
+            HouseSearch.matches(query, it.searchFields(it.brokerId?.let(brokerText::get), language, noteTexts, devKinds))
         }
         .let { list ->
             when (sort) {
@@ -509,7 +505,7 @@ fun HouseListScreen(
                     HeroEmptyState(
                         icon = Icons.Default.Home,
                         title = stringResource(Res.string.app_tagline),
-                        body = stringResource(Res.string.houses_empty_ios),
+                        body = stringResource(LocalSpace.current.words.listEmptyIos),
                         horizontalPadding = 0.dp,
                         action = {
                             Button(onClick = onOpenSettings, modifier = Modifier.heightIn(min = 48.dp)) {
@@ -521,7 +517,7 @@ fun HouseListScreen(
                     HeroEmptyState(
                         icon = Icons.Default.Home,
                         title = stringResource(Res.string.app_tagline),
-                        body = stringResource(Res.string.houses_empty),
+                        body = stringResource(LocalSpace.current.words.empty),
                         horizontalPadding = 0.dp,
                         action = {
                             // IntrinsicSize.Max + fillMaxWidth: both buttons take the wider label's width (capped by the
@@ -532,7 +528,7 @@ fun HouseListScreen(
                                 verticalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
                                 Button(onClick = onOpenMap, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                                    ButtonLabel(stringResource(Res.string.common_add_on_map))
+                                    ButtonLabel(stringResource(LocalSpace.current.words.addOnMap))
                                 }
                                 // Only where the platform imports backups (hidden on iOS for now; PlatformFeatures).
                                 if (platformFeatures.copiesAndImports) {
@@ -557,6 +553,7 @@ fun HouseListScreen(
             }
             else -> HouseList(
                 houses, shown, visitsByHouse, filter, sort, query, scoring = scoring, costFilter = costFilter,
+                extraFilter = extraFilter, onExtraFilter = { extraFilter = it },
                 importedCount = importedCount, importedOnly = onlyImported, undoRow = undoRow,
                 importedChipFocus = importedChipFocus, allChipFocus = allChipFocus, chipFocusable = focusChips,
                 onFilter = { filter = it }, onSort = { sort = it }, onQuery = { query = it }, onCostFilter = { costFilter = it },
@@ -573,9 +570,10 @@ fun HouseListScreen(
     }
 }
 
+/** The *Houses* heading, shared by the empty list and the full one. */
 @Composable
 private fun HousesHeading() {
-    Text(stringResource(Res.string.houses_title), style = MaterialTheme.typography.headlineSmall,
+    Text(stringResource(LocalSpace.current.words.many), style = MaterialTheme.typography.headlineSmall,
         modifier = Modifier.padding(top = 16.dp).semantics { heading() })
 }
 
@@ -601,6 +599,8 @@ private fun HouseList(
     query: String,
     scoring: Scoring,
     costFilter: CostFilter,
+    extraFilter: Map<String, String?>,
+    onExtraFilter: (Map<String, String?>) -> Unit,
     importedCount: Int?,
     importedOnly: Boolean,
     undoRow: (@Composable (Modifier) -> Unit)?,
@@ -620,13 +620,14 @@ private fun HouseList(
     val scope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
     val searchFocus = remember { FocusRequester() }
-    val filtering = query.isNotBlank() || filter != null || importedOnly || costFilter.active > 0
+    val kindFields = LocalSpace.current.built.fields
+    val filtering = query.isNotBlank() || filter != null || importedOnly || costFilter.active > 0 || KindFilter.active(extraFilter, kindFields) > 0
 
     // The results count (docs/05 4.1.3, the web's role="status" "Houses shown: x of y"), always drawn (see the
     // screen's KDoc). The line on screen follows every keystroke; what TalkBack hears waits until typing has paused
     // for COUNT_ANNOUNCE_DELAY_MS, so each letter is not read out (LaunchedEffect restarts on every change, which
     // makes the delay a debounce). Reset to empty whenever no filter is on, so the first filter always changes it.
-    val shownText = stringResource(Res.string.houses_shown, shown.size, houses.size)
+    val shownText = stringResource(LocalSpace.current.words.shown, shown.size, houses.size)
     var announcedText by remember { mutableStateOf("") }
     LaunchedEffect(shownText, filtering) {
         if (!filtering) {
@@ -649,7 +650,7 @@ private fun HouseList(
         item(key = "search") {
             OutlinedTextField(
                 value = query, onValueChange = onQuery,
-                label = { Text(stringResource(Res.string.houses_search)) },
+                label = { Text(stringResource(LocalSpace.current.words.search)) },
                 singleLine = true,
                 // The Search key closes the keyboard, so it no longer covers the results or the no-match hero.
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
@@ -662,7 +663,7 @@ private fun HouseList(
                         }
                     }
                 },
-                modifier = Modifier.fillMaxWidth().focusRequester(searchFocus),
+                modifier = Modifier.fillMaxWidth().tourTarget(TourTargets.HOUSES_SEARCH).focusRequester(searchFocus),
             )
         }
         // The copies of the last copy import (rounds 16 and 18): a filter of its own, applied on top of the status
@@ -721,16 +722,20 @@ private fun HouseList(
                     val n = houses.count { it.status == s }
                     StatusChip(
                         selected = filter == s, onClick = { onFilter(s) },
-                        label = stringResource(Res.string.status_filter, stringResource(s.labelResource), n),
+                        label = stringResource(Res.string.status_filter, stringResource(LocalSpace.current.built.labels.statusText(s)), n),
                     )
                 }
             }
         }
+        // A kind's typed extras (S4b-BL-265): one chip row each; none for a house.
+        if (KindFilter.rows(kindFields).isNotEmpty()) {
+            item(key = "extras") { ExtraFilterRows(kindFields, extraFilter, onExtraFilter, Modifier.animateItem()) }
+        }
         // The sort and, beside it, the cost filters' sheet (S4b-BL-84).
         item(key = "sort") {
             FlowRow(Modifier.animateItem().fillMaxWidth(), verticalArrangement = Arrangement.Center) {
-                SortMenu(sort, onSort)
-                CostFilterButton(costFilter, onCostFilter)
+                if (LocalSpace.current.sortsByScoreAndPrice) SortMenu(sort, onSort) // a kind with no checklist or money sorts by the last change only
+                if (LocalSpace.current.sortsByScoreAndPrice) CostFilterButton(costFilter, onCostFilter)
             }
         }
         // Always composed (round 16), so the node is in place before the first filter makes it a live region.
@@ -753,7 +758,7 @@ private fun HouseList(
                 Box(Modifier.animateItem()) {
                     HeroEmptyState(
                         icon = Icons.Default.Search,
-                        title = stringResource(Res.string.houses_no_match),
+                        title = stringResource(LocalSpace.current.words.noMatch),
                         horizontalPadding = 0.dp,
                         action = {
                             OutlinedButton(
@@ -761,6 +766,7 @@ private fun HouseList(
                                     onFilter(null)
                                     onQuery("")
                                     onCostFilter(CostFilter())
+                                    onExtraFilter(emptyMap())
                                     onImportedOnly(false)
                                     // The button vanishes with the no-match state; put focus (and TalkBack) back in the
                                     // search field rather than letting it drop to the top of the screen.
@@ -780,7 +786,9 @@ private fun HouseList(
             }
         } else {
             items(shown, key = { it.id }) { h ->
-                HouseCard(h, h.scoreResult(scoring), visitsByHouse[h.id]?.visits ?: 0, Modifier.animateItem()) { onOpenHouse(h.id) }
+                // The first row is where the tour points at "open a house".
+                val row = if (h.id == shown.first().id) Modifier.animateItem().tourTarget(TourTargets.HOUSES_FIRST) else Modifier.animateItem()
+                HouseCard(h, h.scoreResult(scoring), visitsByHouse[h.id]?.visits ?: 0, row) { onOpenHouse(h.id) }
             }
         }
     }
@@ -795,7 +803,7 @@ private fun HouseList(
  * [SortMenu]. TalkBack reads "Shortlisted (3), selected, radio button, 3 of 5".
  */
 @Composable
-private fun StatusChip(selected: Boolean, onClick: () -> Unit, label: String, modifier: Modifier = Modifier) {
+internal fun StatusChip(selected: Boolean, onClick: () -> Unit, label: String, modifier: Modifier = Modifier) {
     FilterChip(
         selected = selected,
         onClick = onClick,
@@ -803,120 +811,6 @@ private fun StatusChip(selected: Boolean, onClick: () -> Unit, label: String, mo
         leadingIcon = if (selected) ChipCheck else null,
         border = brandFilterChipBorder(selected),
         modifier = modifier.semantics { role = Role.RadioButton },
-    )
-}
-
-/**
- * The copy import the list shows (round 19): [record] for [runId], read from disk for [requested] (the list's
- * `importedRun` at the time). [runId] stays set after an undo deleted the record, so the row can still say what the
- * undo did.
- */
-private class ShownImport(val requested: String?, val runId: String?, val record: CopyRecord?)
-
-/**
- * The house list's undo, in the same [ResultCard] as the Export and Import results (UX review, rounds 18 and 19; see
- * [HouseListScreen]). NEUTRAL "Imported from your backup at <time>: 40 copies." with "You can undo this until …" while
- * the undo is on offer and while it runs ("Removing the copies…"), SUCCESS with what the undo did, ERROR (warning sign,
- * error colours) when it failed. The card sits in a live region on a [Box] that is there before anything changes
- * (polite; assertive for a failure), so each change is announced. The button is one call site in the card's actions:
- * *Undo this import* ([onUndo], which asks first; disabled while [undoing] or when [canUndo] is false) and, once the
- * copies are gone, *Close* ([onHide]) in the same place, so TalkBack's focus stays in the row. Before an undo the card
- * also has its 48 dp close button ([onHide]), for a user who wants to keep the copies, and so does a failed undo's card
- * (round 20), for a user who does not want to retry. While [takeFocus] is set the button can take focus in touch mode
- * (`canFocus = true`), so the list can put TalkBack back on it after the confirm dialog ([focusRequester]).
- */
-@Composable
-private fun ImportUndoRow(
-    count: Int,
-    importedAt: Long?,
-    until: Long?,
-    undoing: Boolean,
-    outcome: CopyUndoOutcome?,
-    canUndo: Boolean,
-    onUndo: () -> Unit,
-    onHide: () -> Unit,
-    focusRequester: FocusRequester,
-    takeFocus: Boolean,
-    modifier: Modifier = Modifier,
-) {
-    // Not while a retry runs: the last outcome is still the failure until the new one arrives, and the card then shows
-    // "Removing the copies…" as NEUTRAL, with no close button.
-    val failed = outcome?.failed == true && !undoing
-    val done = outcome != null && !failed && !undoing
-    val offered = outcome == null && !undoing
-    val text = when {
-        undoing -> stringResource(Res.string.import_undoing)
-        failed -> stringResource(Res.string.import_undo_failed)
-        outcome != null -> undoneSentence(outcome).orEmpty()
-        else -> pluralStringResource(Res.plurals.houses_imported_row, count, count, importedAt?.dateText().orEmpty())
-    }
-    val tone = when {
-        failed -> ResultTone.ERROR
-        done -> ResultTone.SUCCESS
-        else -> ResultTone.NEUTRAL
-    }
-    Box(
-        modifier.fillMaxWidth().semantics {
-            liveRegion = if (failed) LiveRegionMode.Assertive else LiveRegionMode.Polite
-        },
-    ) {
-        ResultCard(
-            tone = tone,
-            text = text,
-            // Closable before an undo (to keep the copies) and after a failed one (round 20: a user who does not want
-            // to retry can clear the red card); after a successful one the button itself is Close.
-            onDismiss = if (offered || failed) onHide else null,
-            actions = {
-                if (until != null && offered) {
-                    // Under the card's text: the 24 dp icon and its 12 dp gap.
-                    Text(
-                        stringResource(Res.string.import_undo_until, until.dateText()),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(start = 36.dp),
-                    )
-                }
-                ResultActionsRow {
-                    TextButton(
-                        onClick = { if (done) onHide() else onUndo() },
-                        enabled = done || (canUndo && !undoing),
-                        // The target of the list's focusUndoButton (round 20). A button only takes focus in touch
-                        // mode (which TalkBack is) while that is set: canFocus is otherwise left to the system, as for
-                        // every other button, so keyboard and D-pad focus is unchanged.
-                        modifier = Modifier.heightIn(min = 48.dp).focusRequester(focusRequester).then(
-                            if (takeFocus) Modifier.focusProperties { canFocus = true } else Modifier,
-                        ),
-                    ) { ButtonLabel(stringResource(if (done) Res.string.common_close else Res.string.import_undo_copy)) }
-                }
-            },
-        )
-    }
-}
-
-/**
- * "Remove the 40 copies imported at <time>?" (UX review, round 19; UX-005). The undo writes synced tombstones and
- * deletes photo files, so the copies go from this phone, the server and every other device, and nothing brings them
- * back: from the lasting house-list row it is confirmed, like every other bulk or house delete in the app. *Remove
- * copies* is a [DangerButton] (error outline, round 21: the same look as Import's *Replace* and the house form's
- * *Delete*); *Keep them* is the dismiss action, and so are Back and a tap outside.
- */
-@Composable
-private fun ConfirmUndoDialog(count: Int, importedAt: Long, onRemove: () -> Unit, onKeep: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onKeep,
-        title = {
-            Text(pluralStringResource(Res.plurals.houses_undo_confirm_title, count, count, importedAt.dateText()))
-        },
-        text = { Text(stringResource(Res.string.houses_undo_confirm_body)) },
-        confirmButton = {
-            // The app's one look for an irreversible choice (Design review, round 21): as Import's *Replace*.
-            DangerButton(text = stringResource(Res.string.houses_undo_confirm_remove), onClick = onRemove)
-        },
-        dismissButton = {
-            TextButton(onClick = onKeep, modifier = Modifier.heightIn(min = 48.dp)) {
-                ButtonLabel(stringResource(Res.string.houses_undo_confirm_keep))
-            }
-        },
     )
 }
 
@@ -970,9 +864,14 @@ private fun SortMenu(sort: Sort, onSort: (Sort) -> Unit, modifier: Modifier = Mo
     }
 }
 
+/**
+ * One house on the list: name, status (glyph and words, not colour alone), place, price, bedrooms, score and visits,
+ * with a *must-have missed* chip. The whole card is one button for TalkBack.
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun HouseCard(h: HouseEntity, score: ScoreResult, visits: Int, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    val space = LocalSpace.current // the kind's words and what it shows: a school's row has no price, bedrooms or score (S4b-BL-256)
     // clickable merges the card's texts into one TalkBack item: "name, status, place, price, score, visits", and
     // (round 16) says what a double-tap does, "double-tap to open details", with the button role.
     OutlinedCard(
@@ -984,29 +883,24 @@ private fun HouseCard(h: HouseEntity, score: ScoreResult, visits: Int, modifier:
     ) {
         Column(Modifier.padding(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(h.label.ifBlank { stringResource(Res.string.house_unnamed) }, fontWeight = FontWeight.SemiBold,
+                Text(h.label.ifBlank { stringResource(space.words.unnamed) }, fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.weight(1f))
                 // The status glyph (UX-002: ● ★ ✕, so the status is not colour alone), hidden from TalkBack, which
                 // reads the status text in the card's merged description.
-                Text(
-                    h.status.glyph + " ",
-                    color = h.status.color(),
-                    style = MaterialTheme.typography.labelLarge,
-                    modifier = Modifier.clearAndSetSemantics { },
-                )
-                Text(stringResource(h.status.labelResource), color = h.status.color(), style = MaterialTheme.typography.labelLarge)
+                Text(h.status.glyph + " ", color = h.status.color(), style = MaterialTheme.typography.labelLarge, modifier = Modifier.clearAndSetSemantics { })
+                Text(stringResource(space.built.labels.statusText(h.status)), color = h.status.color(), style = MaterialTheme.typography.labelLarge)
             }
             val place = listOfNotNull(h.street, h.locality).joinToString(", ")
             if (place.isNotBlank()) Text(place, style = MaterialTheme.typography.bodySmall)
             // FlowRow wraps at large font scales instead of clipping (A11Y-A03).
             FlowRow(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                priceText(h.price, h.priceType)?.let { Text(it, fontWeight = FontWeight.Medium) }
-                h.bedrooms?.let { Text(stringResource(Res.string.common_bhk, it)) }
-                Text(stringResource(Res.string.common_score_value, score.overall.scoreText()))
+                if (space.shows("field.money")) priceText(h.price, h.priceType)?.let { Text(it, fontWeight = FontWeight.Medium) }
+                if (space.shows("field.bedrooms")) h.bedrooms?.let { Text(stringResource(Res.string.common_bhk, it)) }
+                if (space.shows("section.checklist")) Text(stringResource(Res.string.common_score_value, score.overall.scoreText()))
                 Text(stringResource(Res.string.common_visits_count, visits))
             }
             // A must-have scored below its minimum (slice 2): said in words, not by colour alone.
-            if (score.missedMustHave) MustHaveMissedChip(Modifier.padding(top = 6.dp))
+            if (score.missedMustHave && space.shows("section.checklist")) MustHaveMissedChip(Modifier.padding(top = 6.dp))
         }
     }
 }

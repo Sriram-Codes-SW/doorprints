@@ -75,11 +75,11 @@ class ViewingsTest {
     @Test
     fun theRecordWritesItsKeysInTheFormatsOrderAndTheOptionalOnesOnlyWhenSet() {
         assertEquals(
-            """{"houseId":"$h","startsAt":$t,"durationMin":30,"kind":"FIRST","status":"PLANNED","remindMin":60}""",
+            """{"candidateId":"$h","startsAt":$t,"durationMin":30,"kind":"FIRST","status":"PLANNED","remindMin":60}""",
             ViewingType.encode(v()),
         )
         assertEquals(
-            """{"houseId":"$h","startsAt":$t,"durationMin":45,"kind":"SECOND","status":"DONE","remindMin":30,""" +
+            """{"candidateId":"$h","startsAt":$t,"durationMin":45,"kind":"SECOND","status":"DONE","remindMin":30,""" +
                 """"huntReminder":true,"withWhom":"Ravi","notes":"Bring a tape","visitId":"vis1"}""",
             ViewingType.encode(
                 v(durationMin = 45, status = "DONE").copy(kind = "SECOND", remindMin = 30, huntReminder = true, withWhom = "Ravi", notes = "Bring a tape", visitId = "vis1"),

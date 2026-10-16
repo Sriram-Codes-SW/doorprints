@@ -43,6 +43,8 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.rule.GrantPermissionRule
 import androidx.test.platform.app.InstrumentationRegistry
+import app.doorprints.data.HouseEntity
+import kotlinx.coroutines.runBlocking
 import androidx.test.services.storage.TestStorage
 import android.util.Log
 import android.view.View
@@ -139,6 +141,35 @@ class SmokeTest {
         tab("Houses").performClick()
         waitFor(name)
         shot("12_in_list")
+    }
+
+    /**
+     * CMP-0-BL-6: the other deep links at a cold start, as the notifications send them (the `Root.kt` fix of the cold
+     * start covers them; before this, only the new-house link was opened here). Settings and Export by
+     * `EXTRA_OPEN_SCREEN`, a stored house's page by `EXTRA_OPEN_HOUSE`.
+     */
+    @Test fun settingsOpensFromAnOpenScreenIntentAtColdStart() {
+        launch(Intent(ApplicationProvider.getApplicationContext(), MainActivity::class.java).putExtra(Notifications.EXTRA_OPEN_SCREEN, "settings"))
+        waitFor("Server (optional)")
+        shot("13_open_settings")
+    }
+
+    @Test fun exportOpensFromAnOpenScreenIntentAtColdStart() {
+        launch(Intent(ApplicationProvider.getApplicationContext(), MainActivity::class.java).putExtra(Notifications.EXTRA_OPEN_SCREEN, "export"))
+        waitFor("Save a copy")
+        shot("14_open_export")
+    }
+
+    @Test fun aHousePageOpensFromAnOpenHouseIntentAtColdStart() {
+        val id = java.util.UUID.randomUUID().toString()
+        val at = System.currentTimeMillis()
+        runBlocking {
+            ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository
+                .saveHouse(HouseEntity(id = id, label = "Cold start house", lat = 12.9716, lon = 77.5946, createdAt = at, updatedAt = at))
+        }
+        launch(Intent(ApplicationProvider.getApplicationContext(), MainActivity::class.java).putExtra(Notifications.EXTRA_OPEN_HOUSE, id))
+        waitFor("House details")
+        shot("15_open_house")
     }
 
     /**

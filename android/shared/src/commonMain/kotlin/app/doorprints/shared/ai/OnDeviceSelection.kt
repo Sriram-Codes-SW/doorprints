@@ -36,17 +36,21 @@ data class AskFilters(
 object OnDeviceSelection {
     const val MAX_HOUSES = 40
 
-    fun forAsk(houses: List<AiHouse>, question: String, filters: AskFilters? = null): List<AskDocument> {
+    /**
+      * The documents to send for [question]: the houses that pass [filters], all of them up to [MAX_HOUSES], else the
+      * best matching ones.
+     */
+    fun forAsk(houses: List<AiHouse>, question: String, filters: AskFilters? = null, text: (AiHouse) -> String = HouseDocuments::text): List<AskDocument> {
         val kept = houses.filter { matches(it, filters) }
         val chosen = if (kept.size <= MAX_HOUSES) kept else {
             val q = AskChecks.words(question)
             kept.withIndex()
-                .sortedWith(compareByDescending<IndexedValue<AiHouse>> { (_, h) -> AskChecks.words(HouseDocuments.text(h)).count { it in q } }
+                .sortedWith(compareByDescending<IndexedValue<AiHouse>> { (_, h) -> AskChecks.words(text(h)).count { it in q } }
                     .thenBy { it.index })
                 .take(MAX_HOUSES)
                 .map { it.value }
         }
-        return chosen.map { AskDocument(it.id, HouseDocuments.text(it), HouseDocuments.label(it)) }
+        return chosen.map { AskDocument(it.id, text(it), HouseDocuments.label(it)) }
     }
 
     private fun matches(h: AiHouse, f: AskFilters?): Boolean {
@@ -60,7 +64,13 @@ object OnDeviceSelection {
     }
 
     /** Plan's candidates: every house (Rejected and Not chosen included, the prompt says to skip them unless asked), nearest first. */
-    fun forPlan(houses: List<AiHouse>, startLat: Double, startLon: Double): List<PlanCandidate> =
+    fun forPlan(
+        houses: List<AiHouse>,
+        startLat: Double,
+        startLon: Double,
+        /** A kind's own details for a candidate (S4b-BL-270, `KindAi.planExtras`); null for a house. */
+        extrasOf: (AiHouse) -> Map<String, String>? = { null },
+    ): List<PlanCandidate> =
         houses.map { h ->
             val r = ContactRedactor.forContact(h.contactName, h.contactPhone)
             PlanCandidate(
@@ -76,12 +86,26 @@ object OnDeviceSelection {
                 lat = h.lat,
                 lon = h.lon,
                 distanceMeters = RouteOptimizer.roundHalfUp(RouteOptimizer.haversineMeters(startLat, startLon, h.lat, h.lon)),
+                extras = extrasOf(h),
             )
         }.withIndex().sortedWith(compareBy<IndexedValue<PlanCandidate>> { it.value.distanceMeters }.thenBy { it.index })
             .take(MAX_HOUSES).map { it.value }
 
-    /** One line per candidate for the Plan prompt: `id | label | locality | status | price | bedrooms | rating | metres`. */
+    /**
+     * One line per candidate for the Plan prompt: `id | label | locality | status | price | bedrooms | rating | metres`. A
+     * candidate of a built-in kind (it has `extras`, S4b-BL-270) has no price or bedrooms: its line is id, label, locality,
+     * status, rating, each detail as `<words>: <value>`, then the distance.
+     */
     fun candidateLines(candidates: List<PlanCandidate>): String = candidates.joinToString("\n") { c ->
+        if (c.extras != null) return@joinToString (
+            listOf(
+                "id: ${c.id}",
+                "label: ${c.label}",
+                "locality: ${c.locality ?: c.street ?: "-"}",
+                "status: ${c.status ?: "-"}",
+                "rating: ${c.rating?.let { "$it/5" } ?: "-"}",
+            ) + c.extras.map { (words, value) -> "$words: $value" } + "distance: ${c.distanceMeters} m"
+            ).joinToString(" | ")
         listOf(
             "id: ${c.id}",
             "label: ${c.label}",

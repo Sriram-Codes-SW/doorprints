@@ -18,10 +18,18 @@
 
 package app.doorprints
 
+import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.result.IntentSenderRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import app.doorprints.drive.auth.browser.DriveAuthorizers
+import app.doorprints.drive.wiring.ActivityHooks
+import app.doorprints.drive.wiring.DeferredActivityLauncher
+import app.doorprints.drive.wiring.DriveCadenceGate
+import app.doorprints.drive.wiring.of
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import app.doorprints.data.ConnectLink
@@ -32,13 +40,38 @@ import app.doorprints.shared.records.RecordRules
 import androidx.core.app.NotificationManagerCompat
 import app.doorprints.ui.DeepLink
 import app.doorprints.ui.DoorprintsRoot
+import app.doorprints.ui.HuntSpace
 import app.doorprints.ui.ProvideAppServices
 import kotlinx.coroutines.flow.MutableStateFlow
 import java.util.UUID
 
+/**
+ * The app's one Activity: hosts the common Compose UI behind the app lock, turns notification taps and shared links into
+ * [DeepLink]s, and relays Google Drive's consent and confirm screens to the code that asked for them.
+ * The system starts it from the launcher, a notification, a shared link or the Drive sign-in redirect.
+ */
 class MainActivity : ComponentActivity() {
 
     private val deepLinks = MutableStateFlow<DeepLink?>(null)
+
+    /**
+     * Google Drive's two screens for a result (docs/15 §5.5, §10.2): Google's consent screen and, on Android 8 to 9, the
+     * keyguard's confirm screen. Registered here, before the Activity starts, and answered to the process's one launcher
+     * ([ActivityProvider.results]), which a new Activity after a rotation reaches as well.
+     */
+    private val driveConsent = registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) {
+        activities.results.deliver(it.resultCode, it.data)
+    }
+    private val driveConfirm = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        activities.results.deliver(it.resultCode, it.data)
+    }
+    private val driveStarter = object : DeferredActivityLauncher.Starter {
+        override fun start(consent: PendingIntent) = driveConsent.launch(IntentSenderRequest.Builder(consent).build())
+        override fun start(intent: Intent) = driveConfirm.launch(intent)
+    }
+    /** Where the system browser's Google sign-in comes back to (the intent filter for `app.doorprints:/oauth2redirect`). */
+    private val browserRedirect get() = (applicationContext as DoorprintsApp).container.drive.browserRedirect
+    private val activities get() = (applicationContext as DoorprintsApp).container.activities
 
     override fun attachBaseContext(newBase: Context) {
         super.attachBaseContext(AppLocale.wrap(newBase))
@@ -53,7 +86,8 @@ class MainActivity : ComponentActivity() {
         // (AppLocale.set recreates the activity), a dark-mode change or process death, getIntent() still holds the
         // notification's extras while NavController has already restored its back stack, so handling them again
         // pushed the house (or one more new-house form) on top of it on every recreation.
-        if (savedInstanceState == null) handle(intent)
+        // The Drive sign-in's redirect is the pending request's answer, not a deep link: nothing else is done with it.
+        if (savedInstanceState == null && !DriveAuthorizers.deliver(browserRedirect, intent)) handle(intent)
         setContent {
             // The common UI's seams (ADR-23 CMP-3, CMP-5): the platform's (screen reader, permissions) and the app's
             // (data, backup, language). The root and its graph are common code; the intent is read here and handed
@@ -70,11 +104,30 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+        // The app in front ends the Drive sync's back-off (DriveCadence).
+        DriveCadenceGate.of(this).reset()
+        activities.register(this, ActivityHooks(driveStarter) { deepLinks.value = it })
+    }
+
+    override fun onStop() {
+        activities.unregister(this)
+        super.onStop()
+    }
+
+    override fun onDestroy() {
+        // Finished for good (not a rotation): a screen still waiting for its answer is closed as cancelled.
+        if (isFinishing) activities.results.cancelPending()
+        super.onDestroy()
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         // The new intent becomes getIntent(), so its extras are the ones handle() removes, and a later recreation
         // does not see the launcher intent's (or an older notification's) extras instead.
         setIntent(intent)
+        if (DriveAuthorizers.deliver(browserRedirect, intent)) return
         handle(intent)
     }
 
@@ -94,19 +147,24 @@ class MainActivity : ComponentActivity() {
         intent.data = null
     }
 
+    /**
+     * Reads the intent as one [DeepLink], or null when it carries nothing valid. Checked in order: a connect link, a file
+     * or text shared to the app, then the notification extras. Every id, screen name and coordinate is validated here,
+     * because any app can send this Activity an intent.
+     */
     private fun parse(intent: Intent): DeepLink? {
         // A connect link (doorprints://connect, the owner page's QR code): only a checked one; the app asks first.
         if (intent.action == Intent.ACTION_VIEW) {
             ConnectLink.parse(intent.dataString)?.let { return DeepLink.Connect(it) }
             // A backup or update file opened in Doorprints (docs/11 5.28): a document another app holds. The Import
-            // screen validates it as any picked file; only a content or file reference is taken, never a link.
-            return intent.data?.takeIf { it.scheme == "content" || it.scheme == "file" }?.let { DeepLink.ImportFile(it.toString()) }
+            // screen validates it as any picked file; only a content reference is taken, never a link or a file path.
+            return ImportLink.of(intent.data)
         }
         if (intent.action == Intent.ACTION_SEND) {
             @Suppress("DEPRECATION")
             val stream = intent.getParcelableExtra<android.net.Uri>(Intent.EXTRA_STREAM)
             if (stream != null) {
-                return stream.takeIf { it.scheme == "content" || it.scheme == "file" }?.let { DeepLink.ImportFile(it.toString()) }
+                return ImportLink.of(stream)
             }
             // A listing shared as text (docs/11 5.29, *Add a shared listing*): untrusted text, capped (SEC-043),
             // parsed on the device; the subject line, when the sender gives one, goes first as the listing's title.
@@ -130,20 +188,21 @@ class MainActivity : ComponentActivity() {
         intent.getStringExtra(Notifications.EXTRA_START_HUNT)?.let {
             if (!RecordRules.isValidId(it)) return null
             NotificationManagerCompat.from(this).cancel(Notifications.huntTag(it), Notifications.HUNT_REMINDER_ID)
-            return DeepLink.StartHunt
+            return DeepLink.StartHunt(HuntSpace.Starter.REMINDER)
         }
         // An area wake-up's *Start Hunt mode* without location (slice 4b): the same Map question.
         intent.getStringExtra(Notifications.EXTRA_START_HUNT_AREA)?.let {
             if (!RecordRules.isValidId(it)) return null
             NotificationManagerCompat.from(this).cancel(Notifications.areaTag(it), Notifications.AREA_WAKEUP_ID)
-            return DeepLink.StartHunt
+            return DeepLink.StartHunt(HuntSpace.Starter.AREA)
         }
         if (intent.hasExtra(Notifications.EXTRA_NEW_LAT)) {
             val lat = intent.getDoubleExtra(Notifications.EXTRA_NEW_LAT, Double.NaN)
             val lon = intent.getDoubleExtra(Notifications.EXTRA_NEW_LON, Double.NaN)
             if (lat !in -90.0..90.0 || lon !in -180.0..180.0) return null
             val visitId = intent.getStringExtra(Notifications.EXTRA_VISIT_ID)?.takeIf(::isUuid)
-            return DeepLink.NewHouse(lat, lon, visitId)
+            // The kind of the walk that raised the alert: only one of the app's own kinds is accepted (docs/03 section 18.20).
+            return DeepLink.NewHouse(lat, lon, visitId, HuntSpace.knownKind(intent.getStringExtra(Notifications.EXTRA_NEW_KIND)))
         }
         return null
     }
@@ -160,6 +219,7 @@ class MainActivity : ComponentActivity() {
             Notifications.EXTRA_NEW_LAT,
             Notifications.EXTRA_NEW_LON,
             Notifications.EXTRA_VISIT_ID,
+            Notifications.EXTRA_NEW_KIND,
             Notifications.EXTRA_OPEN_VIEWING,
             Notifications.EXTRA_START_HUNT,
             Notifications.EXTRA_START_HUNT_AREA,

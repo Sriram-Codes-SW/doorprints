@@ -18,9 +18,12 @@
 
 package app.doorprints.server.ai.extract;
 
+import app.doorprints.server.ai.ContactRedactor;
+
 import java.math.BigDecimal;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -44,38 +47,30 @@ public final class DraftSanitizer {
     private static final Pattern PRICE = Pattern.compile(
             "(?i)(\\d+(?:\\.\\d+)?)\\s*(k|thousand|l|lac|lakh|lakhs|lacs|cr|crore|crores|m|mn|million)?\\b");
     private static final Pattern FIRST_INT = Pattern.compile("\\d+");
+    private static final Pattern LINK = Pattern.compile("https?://[A-Za-z0-9\\-._~:/?#@!$&*+,;=%]+", Pattern.CASE_INSENSITIVE);
+    /** What a sentence puts after a link and is not part of it: the full stop, comma and so on, and a WhatsApp bold mark. */
+    private static final String LINK_TAIL = ".,;:!?*";
 
     private DraftSanitizer() {
     }
 
-    public static HouseDraft sanitize(RawListing raw, String sourceText) {
-        var warnings = new ArrayList<String>();
-        if (raw == null) {
-            warnings.add("Model returned nothing usable");
-            return new HouseDraft("Untitled listing", null, null, null, null, null, null, null, null, null, null,
-                    List.of(), warnings);
+    /**
+     * How many different http(s) links the pasted listing text holds (S4b-BL-182; the website's {@code countListingLinks}
+     * and the phones' {@code DraftSanitizer.linkCount} give the same numbers, see the shared vectors). A link ends at the
+     * first character an address cannot hold, so Hindi, Tamil and Telugu text next to it is not part of it, and loses the
+     * punctuation a sentence puts after it; one written twice counts once and a scheme with no host is no link. One pass
+     * with a character class and no nested repeat, so the time is linear.
+     */
+    public static int linkCount(String text) {
+        var seen = new HashSet<String>();
+        var m = LINK.matcher(text);
+        while (m.find()) {
+            var link = m.group();
+            var end = link.length();
+            while (end > 0 && LINK_TAIL.indexOf(link.charAt(end - 1)) >= 0) end--;
+            if (end > link.indexOf("//") + 2) seen.add(link.substring(0, end));
         }
-        var source = sourceText == null ? "" : sourceText;
-
-        var address = clean(raw.address(), ADDRESS_MAX, "address", warnings);
-        var street = clean(raw.street(), STREET_MAX, "street", warnings);
-        var locality = clean(raw.locality(), LOCALITY_MAX, "locality", warnings);
-        var priceType = priceType(raw.priceType(), warnings);
-        var price = price(raw.price(), warnings);
-        var bedrooms = bedrooms(raw.bedrooms(), warnings);
-        var contactName = clean(raw.contactName(), CONTACT_NAME_MAX, "contactName", warnings);
-        var phone = phone(raw.contactPhone(), source, warnings);
-        var url = url(raw.listingUrl(), source, warnings);
-        var notes = clean(raw.notes(), NOTES_MAX, "notes", warnings);
-        var amenities = amenities(raw.amenities(), warnings);
-
-        var label = clean(raw.label(), LABEL_MAX, "label", warnings);
-        if (label == null) {
-            label = defaultLabel(bedrooms, locality, street);
-            warnings.add("label: generated because the model returned none");
-        }
-        return new HouseDraft(label, address, street, locality, price, priceType, bedrooms, contactName, phone, url,
-                notes, amenities, List.copyOf(warnings));
+        return seen.size();
     }
 
     /** Trim, drop control chars, collapse whitespace (except in notes' newlines), clamp length; blank -> null. */
@@ -93,6 +88,10 @@ public final class DraftSanitizer {
         return s;
     }
 
+    /**
+     * Maps the model's wording (rental, lease, buy, resale, ...) to RENT or SALE; anything else is dropped with a
+     * warning.
+     */
     static String priceType(String value, List<String> warnings) {
         if (value == null || value.isBlank()) return null;
         var v = value.strip().toUpperCase(Locale.ROOT);
@@ -104,10 +103,16 @@ public final class DraftSanitizer {
 
     /** Parses "25,000", "₹ 25000/month", "25k", "1.2 Cr", "85 lakh" into whole rupees. */
     static Long price(String value, List<String> warnings) {
+        return price(value, warnings, "price");
+    }
+
+    /** As {@link #price(String, List)}, the warnings naming {@code field} (a kind's money extra, S4b-BL-211). */
+    static Long price(String value, List<String> warnings, String field) {
         if (value == null || value.isBlank()) return null;
-        var m = PRICE.matcher(value.replace(",", "").replace("_", ""));
+        // A price in the digits of an Indian script (S4b-BL-174b) is read as 0-9, character for character.
+        var m = PRICE.matcher(ContactRedactor.asciiDigits(value).replace(",", "").replace("_", ""));
         if (!m.find()) {
-            warnings.add("price: could not read '" + abbreviate(value) + "', dropped");
+            warnings.add(field + ": could not read '" + abbreviate(value) + "', dropped");
             return null;
         }
         try {
@@ -122,21 +127,24 @@ public final class DraftSanitizer {
             };
             var rupees = number.multiply(BigDecimal.valueOf(multiplier)).longValue();
             if (rupees < 0 || rupees > PRICE_MAX) {
-                warnings.add("price: " + rupees + " is out of range, dropped");
+                warnings.add(field + ": " + rupees + " is out of range, dropped");
                 return null;
             }
             return rupees;
         } catch (NumberFormatException | ArithmeticException e) {
-            warnings.add("price: could not read '" + abbreviate(value) + "', dropped");
+            warnings.add(field + ": could not read '" + abbreviate(value) + "', dropped");
             return null;
         }
     }
 
+    /**
+     * Reads the first number in the text; studio and 1RK mean 0. Counts above {@link #BEDROOMS_MAX} are dropped.
+     */
     static Integer bedrooms(String value, List<String> warnings) {
         if (value == null || value.isBlank()) return null;
         var lower = value.toLowerCase(Locale.ROOT);
         if (lower.contains("studio") || lower.contains("1rk")) return 0;
-        var m = FIRST_INT.matcher(value);
+        var m = FIRST_INT.matcher(ContactRedactor.asciiDigits(value));
         if (!m.find()) {
             warnings.add("bedrooms: could not read '" + abbreviate(value) + "', dropped");
             return null;
@@ -157,13 +165,14 @@ public final class DraftSanitizer {
     /** Keeps only phone characters, requires 7-15 digits, and requires the digits to appear in the source text. */
     static String phone(String value, String source, List<String> warnings) {
         if (value == null || value.isBlank()) return null;
-        var kept = value.replaceAll("[^0-9+()\\- ]", "").strip();
+        // Native digits are read as 0-9 in the number and in the text (S4b-BL-174b), so a number copied in them is kept as 0-9.
+        var kept = ContactRedactor.asciiDigits(value).replaceAll("[^0-9+()\\- ]", "").strip();
         var digits = kept.replaceAll("\\D", "");
         if (digits.length() < 7 || digits.length() > 15) {
             warnings.add("contactPhone: not a valid phone number, dropped");
             return null;
         }
-        var sourceDigits = source.replaceAll("\\D", "");
+        var sourceDigits = ContactRedactor.asciiDigits(source).replaceAll("\\D", "");
         // Compare the last 10 digits so "+91 98450 12345" matches "9845012345" in the text.
         var tail = digits.length() > 10 ? digits.substring(digits.length() - 10) : digits;
         if (!sourceDigits.contains(tail)) {
@@ -199,6 +208,9 @@ public final class DraftSanitizer {
         return v;
     }
 
+    /**
+     * Cleans each entry, lower-cases and de-duplicates them, and keeps at most {@link #AMENITIES_MAX}.
+     */
     static List<String> amenities(List<String> values, List<String> warnings) {
         if (values == null) return List.of();
         var out = new LinkedHashSet<String>();
@@ -213,14 +225,18 @@ public final class DraftSanitizer {
         return List.copyOf(out);
     }
 
-    static String defaultLabel(Integer bedrooms, String locality, String street) {
+    /**
+     * Fallback label such as "2BHK in Indiranagar", "Studio" or "House" ({@code noun}), from the bedrooms and the locality (or
+     * else street), cut to {@link #LABEL_MAX} characters.
+     */
+    static String defaultLabel(String noun, Integer bedrooms, String locality, String street) {
         var where = locality != null ? locality : street;
-        var what = bedrooms == null ? "House" : bedrooms == 0 ? "Studio" : bedrooms + "BHK";
+        var what = bedrooms == null ? noun : bedrooms == 0 ? "Studio" : bedrooms + "BHK";
         var label = where == null ? what : what + " in " + where;
         return label.length() > LABEL_MAX ? label.substring(0, LABEL_MAX) : label;
     }
 
-    private static String abbreviate(String s) {
+    static String abbreviate(String s) {
         var t = WS.matcher(s).replaceAll(" ").strip();
         return t.length() <= 40 ? t : t.substring(0, 40) + "…";
     }

@@ -1,0 +1,32 @@
+{
+  "spec": [
+    "web/src/app/shared/viewing-payload-vectors.spec.ts",
+    "web/src/app/export/exporters.spec.ts"
+  ],
+  "mutations": [
+    {
+      "file": "web/src/app/shared/viewing.ts",
+      "find": "  if (hasKey === (VIEWING_OLD_HOUSE_KEY in payload)) return undefined;",
+      "replace": "  if (!hasKey && !(VIEWING_OLD_HOUSE_KEY in payload)) return undefined;",
+      "expect": "both keys with the same id: a bad row"
+    },
+    {
+      "file": "web/src/app/shared/viewing.ts",
+      "find": "  return payload[hasKey ? VIEWING_CANDIDATE_KEY : VIEWING_OLD_HOUSE_KEY];",
+      "replace": "  return payload[VIEWING_CANDIDATE_KEY];",
+      "expect": "a payload written before S4b-BL-247: houseId is read and written back as candidateId"
+    },
+    {
+      "file": "web/src/app/shared/viewing.ts",
+      "find": "    [VIEWING_CANDIDATE_KEY]: v.houseId,",
+      "replace": "    [VIEWING_OLD_HOUSE_KEY]: v.houseId,",
+      "expect": "the key since S4b-BL-247: candidateId, every key set"
+    },
+    {
+      "file": "web/src/app/export/backup-export.ts",
+      "find": "houseId: candidateId as string,",
+      "replace": "houseId: row.id,",
+      "expect": "matches the golden data.json"
+    }
+  ]
+}

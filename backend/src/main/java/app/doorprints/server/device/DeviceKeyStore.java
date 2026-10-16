@@ -96,6 +96,10 @@ public class DeviceKeyStore {
         return caller;
     }
 
+    /**
+     * Records a device's last use, at most once per {@link #TOUCH_EVERY} per key, so a burst of syncs is not a burst
+     * of writes.
+     */
     private void touch(UUID id, String hashHex) {
         var now = clock.instant();
         var last = lastTouched.get(hashHex);

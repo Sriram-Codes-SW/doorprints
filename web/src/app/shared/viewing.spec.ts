@@ -57,12 +57,12 @@ describe('viewingFromPayload (coercion on read)', () => {
     const viewing = viewingFromPayload('v_a1b2c3d4', full);
     expect(viewing).toEqual({ id: 'v_a1b2c3d4', ...full });
     expect(Object.keys(viewingToPayload(viewing!))).toEqual([
-      'houseId', 'startsAt', 'durationMin', 'kind', 'status', 'remindMin', 'huntReminder', 'withWhom', 'notes', 'visitId',
+      'candidateId', 'startsAt', 'durationMin', 'kind', 'status', 'remindMin', 'huntReminder', 'withWhom', 'notes', 'visitId',
     ]);
   });
 
   it('writes only the required keys for a plain viewing, and huntReminder only when true', () => {
-    expect(Object.keys(viewingToPayload(v('v_00000001')))).toEqual(['houseId', 'startsAt', 'durationMin', 'kind', 'status', 'remindMin']);
+    expect(Object.keys(viewingToPayload(v('v_00000001')))).toEqual(['candidateId', 'startsAt', 'durationMin', 'kind', 'status', 'remindMin']);
     expect(Object.keys(viewingToPayload({ ...v('v_00000001'), huntReminder: true }))).toContain('huntReminder');
     expect(viewingFromPayload('v_00000001', { ...good, huntReminder: false })).not.toHaveProperty('huntReminder');
     expect(viewingFromPayload('v_00000001', { ...good, huntReminder: 'yes' })).not.toHaveProperty('huntReminder');

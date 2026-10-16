@@ -1,0 +1,29 @@
+{
+  "spec": "web/src/app/data/device-auth/recovery-factor.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/data/device-auth/recovery-factor.ts",
+      "find": "    { name: 'HMAC', hash: 'SHA-256', length: 256 },\n    false,\n    ['sign'],",
+      "replace": "    { name: 'HMAC', hash: 'SHA-256', length: 256 },\n    true,\n    ['sign'],",
+      "expect": "(d) the key is non-extractable and export fails"
+    },
+    {
+      "file": "web/src/app/data/device-auth/recovery-factor.ts",
+      "find": "  const base = await crypto.subtle.importKey('raw', ab(key.bytes), 'HKDF', false, ['deriveKey']);",
+      "replace": "  const base = await crypto.subtle.importKey('raw', ab(new Uint8Array(16)), 'HKDF', false, ['deriveKey']);",
+      "expect": "(b) a different recovery key gives a different proof"
+    },
+    {
+      "file": "web/src/app/data/device-auth/recovery-factor.ts",
+      "find": "    { name: 'HKDF', hash: 'SHA-256', salt: ab(utf8('doorprints/deletion-proof/recovery')), info: ab(utf8('doorprints/deletion-proof/recovery/1')) },",
+      "replace": "    { name: 'HKDF', hash: 'SHA-256', salt: ab(utf8('doorprints/deletion-proof/recovery')), info: ab(utf8('doorprints/deletion-proof/recovery/0')) },",
+      "expect": "(e-alt) known-answer test: documented HKDF parameters produce expected results"
+    },
+    {
+      "file": "web/src/app/data/device-auth/recovery-factor.ts",
+      "find": "    { name: 'HKDF', hash: 'SHA-256', salt: ab(utf8('doorprints/deletion-proof/recovery')), info: ab(utf8('doorprints/deletion-proof/recovery/1')) },",
+      "replace": "    { name: 'HKDF', hash: 'SHA-256', salt: ab(utf8('doorprints/deletion-proof')), info: ab(utf8('doorprints/deletion-proof/recovery/1')) },",
+      "expect": "(e-alt) known-answer test: documented HKDF parameters produce expected results"
+    }
+  ]
+}

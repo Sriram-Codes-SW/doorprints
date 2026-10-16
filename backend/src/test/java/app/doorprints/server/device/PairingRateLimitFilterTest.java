@@ -18,7 +18,7 @@
 
 package app.doorprints.server.device;
 
-import app.doorprints.server.ai.web.TokenBucketRateLimiter;
+import app.doorprints.server.common.TokenBucketRateLimiter;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -59,7 +59,7 @@ class PairingRateLimitFilterTest {
     @Test
     void otherPathsAndPreflightsAreNotCounted() throws Exception {
         for (int i = 0; i < 10; i++) {
-            assertThat(run("GET", "/api/houses", "203.0.113.8").getStatus()).isEqualTo(200);
+            assertThat(run("GET", "/api/candidates", "203.0.113.8").getStatus()).isEqualTo(200);
         }
         for (int i = 0; i < 10; i++) {
             var preflight = new MockHttpServletRequest("OPTIONS", "/api/pair/start");

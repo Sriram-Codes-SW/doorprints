@@ -1,0 +1,41 @@
+{
+  "spec": "web/src/app/pages/map/place-check-panel.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/pages/map/place-check-panel.ts",
+      "find": "@if (answer().kind === 'here') {",
+      "replace": "@if (true) {",
+      "expect": "Check again is for here only"
+    },
+    {
+      "file": "web/src/app/pages/map/place-check-panel.ts",
+      "find": "@if (showMap()) {",
+      "replace": "@if (true) {",
+      "expect": "not offered while there is no map"
+    },
+    {
+      "file": "web/src/app/pages/map/place-check-panel.ts",
+      "find": "afterNextRender(() => this.title().nativeElement.focus());",
+      "replace": "",
+      "expect": "takes focus on arrival"
+    },
+    {
+      "file": "web/src/app/pages/map/place-check-panel.ts",
+      "find": "    document.getElementById('place-check-open')?.focus();",
+      "replace": "",
+      "expect": "returns focus to Have I been here?"
+    },
+    {
+      "file": "web/src/app/pages/map/place-check-panel.ts",
+      "find": "    this.state.close();\n    document",
+      "replace": "    document",
+      "expect": "Close withdraws the answer and the announcement"
+    },
+    {
+      "file": "web/src/app/pages/map/place-check-panel.ts",
+      "find": "@if (locating()) {\n          <button",
+      "replace": "@if (false) {\n          <button",
+      "expect": "while finding the location it says so with Cancel"
+    }
+  ]
+}

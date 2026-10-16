@@ -19,12 +19,14 @@
 package app.doorprints.server.ai.agent;
 
 import app.doorprints.server.ai.ContactRedactor;
+import app.doorprints.server.ai.PromptSafety;
 import app.doorprints.server.ai.agent.HouseSearchService.Criteria;
 import app.doorprints.server.ai.agent.HouseSearchService.HouseSummary;
 import app.doorprints.server.common.NotFoundException;
 import app.doorprints.server.house.HouseDto;
 import app.doorprints.server.house.HouseStatus;
 import app.doorprints.server.visit.VisitRepository;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -44,6 +46,10 @@ import java.util.UUID;
 @Component
 public class HouseQueries {
 
+    /**
+     * One past visit as the model sees it: arrival, departure and the minutes between them (null while the visit is
+     * still open).
+     */
     public record VisitInfo(Instant arrivedAt, Instant leftAt, Long minutes, String source) {
     }
 
@@ -54,13 +60,27 @@ public class HouseQueries {
      */
     public record HouseDetails(UUID id, String label, String address, String street, String locality, double lat,
                                double lon, HouseStatus status, Long price, String priceType, Integer bedrooms,
-                               Integer rating, Map<String, Integer> checklist, String listingUrl, String notes) {
+                               Integer rating, Map<String, Integer> checklist, String listingUrl, String notes,
+                               @JsonInclude(JsonInclude.Include.NON_NULL) Map<String, String> extras) {
         static final int NOTES_MAX = 2000;
 
+        /** A house's record: {@code extras} null, and then neither the JSON nor {@link #toString} has the key (S4b-BL-270). */
+        HouseDetails(UUID id, String label, String address, String street, String locality, double lat, double lon,
+                     HouseStatus status, Long price, String priceType, Integer bedrooms, Integer rating,
+                     Map<String, Integer> checklist, String listingUrl, String notes) {
+            this(id, label, address, street, locality, lat, lon, status, price, priceType, bedrooms, rating, checklist,
+                    listingUrl, notes, null);
+        }
+
         static HouseDetails of(HouseDto h) {
+            return of(h, null);
+        }
+
+        /** {@code extras}: a built-in kind's extras its {@code ai.ask} slot names (words to value), else null. */
+        static HouseDetails of(HouseDto h, Map<String, String> extras) {
             var r = ContactRedactor.forHouse(h);
             var notes = h.notes() == null || h.notes().length() <= NOTES_MAX ? h.notes()
-                    : h.notes().substring(0, NOTES_MAX) + " …";
+                    : PromptSafety.clipUnits(h.notes(), NOTES_MAX) + " …";
             Map<String, Integer> checklist = null;
             if (h.checklist() != null) {
                 var m = new LinkedHashMap<String, Integer>();
@@ -69,7 +89,17 @@ public class HouseQueries {
             }
             return new HouseDetails(h.id(), r.freeText(h.label()), r.place(h.address()), r.place(h.street()),
                     r.place(h.locality()), h.lat(), h.lon(), h.status(), h.price(), h.priceType(), h.bedrooms(),
-                    h.rating(), checklist, r.freeText(h.listingUrl()), r.freeText(notes));
+                    h.rating(), checklist, r.freeText(h.listingUrl()), r.freeText(notes), extras);
+        }
+
+        /** The text the house pins hash: today's record text while {@code extras} is null (a house). */
+        @Override
+        public String toString() {
+            var s = "HouseDetails[id=" + id + ", label=" + label + ", address=" + address + ", street=" + street
+                    + ", locality=" + locality + ", lat=" + lat + ", lon=" + lon + ", status=" + status + ", price="
+                    + price + ", priceType=" + priceType + ", bedrooms=" + bedrooms + ", rating=" + rating
+                    + ", checklist=" + checklist + ", listingUrl=" + listingUrl + ", notes=" + notes;
+            return extras == null ? s + "]" : s + ", extras=" + extras + "]";
         }
     }
 
@@ -81,23 +111,69 @@ public class HouseQueries {
         this.visits = visits;
     }
 
+    /**
+     * Lets the model filter the saved houses by text status and price type; both are parsed here, then the search
+     * runs on the user's live houses.
+     * Unknown status or price type values raise IllegalArgumentException, whose message names the allowed values so
+     * the model can retry.
+     */
     public List<HouseSummary> searchHouses(String text, String status, String priceType, Long maxPrice,
                                            Integer minBedrooms, Integer minRating, Integer limit) {
+        return searchHouses(text, status, priceType, maxPrice, minBedrooms, minRating, limit, null);
+    }
+
+    /** As above, over the candidates of {@code kind} only (S4b-BL-290; null is every candidate). */
+    public List<HouseSummary> searchHouses(String text, String status, String priceType, Long maxPrice,
+                                           Integer minBedrooms, Integer minRating, Integer limit, String kind) {
         return search.search(new Criteria(text, parseStatus(status), parsePriceType(priceType), null, maxPrice,
-                minBedrooms, null, minRating, limit));
+                minBedrooms, null, minRating, limit), kind);
     }
 
+    /**
+     * Saved houses around a point; the radius defaults to 1000 m when the model leaves it out.
+     */
     public List<HouseSummary> nearbyHouses(double lat, double lon, Double radiusMeters) {
-        return search.nearby(lat, lon, radiusMeters == null ? 1000 : radiusMeters);
+        return nearbyHouses(lat, lon, radiusMeters, null);
     }
 
+    /** As above, over the candidates of {@code kind} only (S4b-BL-290; null is every candidate). */
+    public List<HouseSummary> nearbyHouses(double lat, double lon, Double radiusMeters, String kind) {
+        return search.nearby(lat, lon, radiusMeters == null ? 1000 : radiusMeters, kind);
+    }
+
+    /**
+     * One house with contact names and phone numbers removed from every free-text field (F-30), safe to hand to the
+     * model.
+     * @throws NotFoundException if the house has been deleted
+     */
     public HouseDetails houseDetails(String houseId) {
-        var h = search.details(parseId(houseId));
-        if (h.deleted()) throw new NotFoundException("House " + houseId + " not found");
-        return HouseDetails.of(h);
+        return houseDetails(houseId, null);
     }
 
+    /**
+     * As above, for a plan over one kind (S4b-BL-290): a candidate of another kind is answered as a missing one, so a model
+     * cannot read across spaces with an id it was not given (null is every candidate).
+     */
+    public HouseDetails houseDetails(String houseId, String kind) {
+        var h = search.details(parseId(houseId));
+        if (h.deleted() || !HouseSearchService.inKind(h, kind)) throw new NotFoundException("House " + houseId + " not found");
+        var viewed = search.forDetails(h);
+        return HouseDetails.of(viewed, search.detailsExtras(viewed));
+    }
+
+    /**
+     * The last 20 visits to a house, newest first, so the model can say how long the user stayed. Deleted visits are
+     * left out.
+     */
     public List<VisitInfo> visitHistory(String houseId) {
+        return visitHistory(houseId, null);
+    }
+
+    /** As above, for a plan over one kind (S4b-BL-290): the visits of a candidate of another kind are not given (null is every candidate). */
+    public List<VisitInfo> visitHistory(String houseId, String kind) {
+        if (kind != null && !HouseSearchService.inKind(search.details(parseId(houseId)), kind)) {
+            throw new NotFoundException("House " + houseId + " not found");
+        }
         return visits.findByDeletedFalseAndHouseIdOrderByArrivedAtDesc(parseId(houseId)).stream()
                 .limit(20)
                 .map(v -> new VisitInfo(v.getArrivedAt(), v.getLeftAt(),
@@ -106,6 +182,9 @@ public class HouseQueries {
                 .toList();
     }
 
+    /**
+     * Reads a house id given as text by the model. The error message tells the model where valid ids come from.
+     */
     static UUID parseId(String id) {
         try {
             return UUID.fromString(id == null ? "" : id.strip());
@@ -114,6 +193,9 @@ public class HouseQueries {
         }
     }
 
+    /**
+     * Case-insensitive status name; null or blank means no filter.
+     */
     static HouseStatus parseStatus(String s) {
         if (s == null || s.isBlank()) return null;
         try {
@@ -123,6 +205,9 @@ public class HouseQueries {
         }
     }
 
+    /**
+     * Normalises RENT or SALE to upper case; null or blank means no filter.
+     */
     static String parsePriceType(String s) {
         if (s == null || s.isBlank()) return null;
         var v = s.strip().toUpperCase(Locale.ROOT);

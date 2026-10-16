@@ -22,6 +22,7 @@ import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.longPreferencesKey
+import app.doorprints.shared.model.KindSettingRules
 import kotlinx.cinterop.ByteVar
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.addressOf
@@ -80,14 +81,30 @@ fun iosSettingsStore(): SettingsStore =
     iosSettingsStore(
         iosDataDirectory() + "/" + SettingsStore.FILE_NAME + ".preferences_pb", KeychainSecretStore(),
         KeychainSecretStore(account = "gemini_key", markerName = "geminiKeyKeychain"),
+        KeychainSecretStore(account = "sarvam_key", markerName = "sarvamKeyKeychain"),
+        availableKinds = KindSettingRules.availableOf(IOS_AVAILABLE_KINDS),
     )
+
+/**
+ * The kinds the iPhone build lists (owner, 2026-10-15): the same list as the Android release's `BuildConfig.AVAILABLE_KINDS`
+ * (`ReleaseKindsTest` holds the two equal). The school is compiled in but off: available, not released
+ * ([KindSettingRules.RELEASED] stays the house), so the iPhone is the house app, with no chooser, until the person turns on
+ * *Experimental: more than houses* in Settings. Only [iosSettingsStore] with no path reads it; the simulator tests' store lists the house.
+ */
+internal const val IOS_AVAILABLE_KINDS = "house,school"
 
 /**
  * The iOS settings on the file at [path] with the key in [secrets] (for the simulator tests, S4b-BL-26). [path] must
  * end in `.preferences_pb` and have no other DataStore open on it in the process.
  */
-internal fun iosSettingsStore(path: String, secrets: SecretStore, geminiSecrets: SecretStore? = null): SettingsStore =
-    SettingsStore(PreferenceDataStoreFactory.createWithPath(produceFile = { path.toPath() }), secrets, geminiSecrets = geminiSecrets)
+internal fun iosSettingsStore(
+    path: String, secrets: SecretStore, geminiSecrets: SecretStore? = null, sarvamSecrets: SecretStore? = null,
+    availableKinds: List<String> = listOf(KindSettingRules.HOUSE),
+): SettingsStore =
+    SettingsStore(
+        PreferenceDataStoreFactory.createWithPath(produceFile = { path.toPath() }), secrets, geminiSecrets = geminiSecrets,
+        sarvamSecrets = sarvamSecrets, availableKinds = availableKinds,
+    )
 
 /**
  * The iOS [SecretStore]: the API key as a generic-password Keychain item (service `app.doorprints`, account
@@ -123,6 +140,14 @@ class KeychainSecretStore internal constructor(
     private var inEdit = false
 
     /**
+     * Inside [editing]: the marker the settings held before this edit's first change, and the marker the last change
+     * expects them to hold once committed (null after a [clear]). A cancellation tells whether the settings
+     * committed by comparing them (S4b-BL-57).
+     */
+    private var markerBefore: Long? = null
+    private var markerExpected: Long? = null
+
+    /**
      * The key the settings' marker points at. [get] does not take the [editing] lock, so while an edit is running a
      * reader may briefly see the new key before that edit fails and puts the old one back.
      */
@@ -139,53 +164,92 @@ class KeychainSecretStore internal constructor(
     }
 
     override fun put(settings: MutablePreferences, apiKey: String) {
-        rememberBefore()
+        rememberBefore(settings)
         write(apiKey.encodeToByteArray())
-        settings[marker] = (settings[marker] ?: 0L) + 1
+        val next = (settings[marker] ?: 0L) + 1
+        settings[marker] = next
+        markerExpected = next
     }
 
     override fun clear(settings: MutablePreferences) {
-        rememberBefore()
+        rememberBefore(settings)
         delete()
         settings.remove(marker)
+        markerExpected = null
     }
 
     /**
      * Runs [block] and, when it throws, puts the Keychain item back as it was before the edit's first [put] or [clear].
      * The block runs under [NonCancellable], so cancelling the caller cannot stop the edit half way between the
      * Keychain and the settings. A [CancellationException] that still comes out of [block] (DataStore can throw one
-     * after it has committed the write) does not undo the Keychain change: the settings may already hold the new
-     * marker, and undoing would leave them pointing at the old key. A cancelled caller sees the cancellation once the
-     * edit has finished.
+     * after it has committed the write) undoes the Keychain change only when [readSettings] shows that the settings do
+     * not hold it (S4b-BL-57): if they hold the new marker, undoing would leave them pointing at the old key. Without
+     * [readSettings], or when it fails, the change stays. A cancelled caller sees the cancellation once the edit has
+     * finished.
      */
-    override suspend fun <T> editing(block: suspend () -> T): T = edits.withLock {
-        withContext(NonCancellable) { editUnderLock(block) }
-    }
+    override suspend fun <T> editing(block: suspend () -> T): T = edit(null, block)
 
-    private suspend fun <T> editUnderLock(block: suspend () -> T): T {
+    override suspend fun <T> editing(readSettings: suspend () -> Preferences, block: suspend () -> T): T =
+        edit(readSettings, block)
+
+    private suspend fun <T> edit(readSettings: (suspend () -> Preferences)?, block: suspend () -> T): T =
+        edits.withLock { withContext(NonCancellable) { editUnderLock(readSettings, block) } }
+
+    /**
+     * Runs [block] with the edit flag set; if it throws, restores the item and rethrows (an undo that fails is
+     * added as suppressed).
+     */
+    private suspend fun <T> editUnderLock(readSettings: (suspend () -> Preferences)?, block: suspend () -> T): T {
         inEdit = true
         before = null
+        markerBefore = null
+        markerExpected = null
         try {
             return block()
         } catch (e: CancellationException) {
+            if (readSettings != null && !settingsCommitted(readSettings)) undo(e)
             throw e
         } catch (e: Throwable) {
-            before?.let { old ->
-                try {
-                    if (old.data == null) delete() else write(old.data)
-                } catch (undo: Throwable) {
-                    e.addSuppressed(undo)
-                }
-            }
+            undo(e)
             throw e
         } finally {
             inEdit = false
             before = null
+            markerBefore = null
+            markerExpected = null
         }
     }
 
+    /** Puts the item back as it was before the edit's first change; an undo that fails is added to [cause] as suppressed. */
+    private fun undo(cause: Throwable) {
+        val old = before ?: return
+        try {
+            if (old.data == null) delete() else write(old.data)
+        } catch (failure: Throwable) {
+            cause.addSuppressed(failure)
+        }
+    }
+
+    /**
+     * Whether the settings hold the marker this edit's last change expects. True when they cannot be read, or when the
+     * marker would be the same either way (a [clear] of a key the settings never had a marker for): then the change
+     * is kept, as before S4b-BL-57.
+     */
+    private suspend fun settingsCommitted(readSettings: suspend () -> Preferences): Boolean {
+        if (before == null) return true // no change was made, so there is nothing to undo
+        if (markerExpected == markerBefore) return true
+        val stored = try {
+            readSettings()[marker]
+        } catch (e: CancellationException) {
+            return true
+        } catch (e: Throwable) {
+            return true
+        }
+        return stored == markerExpected
+    }
+
     /** Records the item as it is now, once per [editing], before the first change. */
-    private fun rememberBefore() {
+    private fun rememberBefore(settings: Preferences) {
         if (!inEdit || before != null) return
         val read = keychain.copy(service, account)
         if (read.status == errSecInteractionNotAllowed) {
@@ -195,6 +259,7 @@ class KeychainSecretStore internal constructor(
             "Keychain: the API key could not be read before the change (status ${read.status})"
         }
         before = Before(if (read.status == errSecSuccess) read.data ?: ByteArray(0) else null)
+        markerBefore = settings[marker]
     }
 
     /** Updates the item, or adds it when there is none (never delete-then-add, which could leave no key). */
@@ -210,6 +275,7 @@ class KeychainSecretStore internal constructor(
     /** The item's [data] before a change; null when there was no item. */
     private class Before(val data: ByteArray?)
 
+    /** Deletes the Keychain item; one that is not there is fine. */
     private fun delete() {
         val status = keychain.delete(service, account)
         check(status == errSecSuccess || status == errSecItemNotFound) { "Keychain: delete failed (status $status)" }

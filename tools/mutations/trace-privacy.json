@@ -1,0 +1,23 @@
+{
+  "spec": "web/src/app/data/trace-privacy.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/export/export.service.ts",
+      "find": "    return collect({\n      houses: await this.store.allHouses(),",
+      "replace": "    const walks = JSON.stringify(await (await this.store.database()).getAll('trace_points'));\n    return collect({\n      houses: (await this.store.allHouses()).map((h) => ({ ...h, label: h.label + walks })),",
+      "expect": "backup: the file holds the houses"
+    },
+    {
+      "file": "web/src/app/data/drive/connect/local/local-rows.ts",
+      "find": "    const houses = await this.store.allHouses();\n    for (const house of houses) {\n      rows.push(this.toSyncRow('houses', house.id, house.updatedAt, house.deleted, { ...house }));",
+      "replace": "    const houses = await this.store.allHouses();\n    const walks = JSON.stringify(await (await this.store.database()).getAll('saved_walks'));\n    for (const house of houses) {\n      rows.push(this.toSyncRow('houses', house.id, house.updatedAt, house.deleted, { ...house, walks }));",
+      "expect": "the Drive sync rows and the sync file carry the houses and no walk"
+    },
+    {
+      "file": "web/src/app/data/local-store.service.ts",
+      "find": "  async allVisits(): Promise<VisitRecord[]> {\n",
+      "replace": "  async allVisits(): Promise<VisitRecord[]> {\n    if (Date.now() > 0) return [{ id: 'leak', houseId: 'h1', lat: 1, lon: 1, arrivedAt: JSON.stringify(await (await this.db()).getAll('trace_points')) } as unknown as VisitRecord];\n",
+      "expect": "the server sync reads only the dirty records"
+    }
+  ]
+}

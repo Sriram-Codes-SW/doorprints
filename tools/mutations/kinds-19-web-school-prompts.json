@@ -1,0 +1,127 @@
+{
+  "spec": [
+    "web/src/app/core/ai/kind-ai.spec.ts"
+  ],
+  "mutations": [
+    {
+      "file": "web/src/app/core/ai/kind-ai.ts",
+      "find": "    if (!e || !allows(k, slot, id)) continue;",
+      "replace": "    if (!e) continue;",
+      "expect": "the details of a candidate are in the slot's order"
+    },
+    {
+      "file": "web/src/app/core/ai/kind-ai.ts",
+      "find": "    if (v != null) out[e.words] = v;",
+      "replace": "    out[e.words] = v ?? '';",
+      "expect": "a Plan candidate has only what the plan slot names"
+    },
+    {
+      "file": "web/src/app/core/ai/kind-ai.ts",
+      "find": "  return k ? kindExtras(h, k, k.plan) : undefined;",
+      "replace": "  return k ? kindExtras(h, k, k.ask) : undefined;",
+      "expect": "a Plan candidate has only what the plan slot names"
+    },
+    {
+      "file": "web/src/app/core/ai/kind-ai.ts",
+      "find": "    if (!k || (found && found !== k)) return null;",
+      "replace": "    if (found && found !== k) return null;",
+      "expect": "the prompt speaks in a kind's words only when every record"
+    },
+    {
+      "file": "web/src/app/core/ai/kind-ai.ts",
+      "find": "?.refusal ?? I_DONT_KNOW;",
+      "replace": "?.refusal ?? SCHOOL_I_DONT_KNOW;",
+      "expect": "the prompt speaks in a kind's words only when every record"
+    },
+    {
+      "file": "web/src/app/core/ai/kind-ai.ts",
+      "find": "neutralize(question, k.records)}` };\n}\n\n/** The Plan prompt",
+      "replace": "question}` };\n}\n\n/** The Plan prompt",
+      "expect": "no value of a school and no question can close"
+    },
+    {
+      "file": "web/src/app/core/ai/kind-ai.ts",
+      "find": "${neutralize(d.text, k.records)}",
+      "replace": "${d.text}",
+      "expect": "no value of a school and no question can close"
+    },
+    {
+      "file": "web/src/app/core/ai/kind-ai.ts",
+      "find": "${neutralize(candidates, k.records)}",
+      "replace": "${candidates}",
+      "expect": "no value of a school and no question can close"
+    },
+    {
+      "file": "web/src/app/core/ai/kind-ai.ts",
+      "find": "`[house:${d.id}]\\n${neutralize",
+      "replace": "`[school:${d.id}]\\n${neutralize",
+      "expect": "every document has the vectors"
+    },
+    {
+      "file": "web/src/app/core/ai/kind-ai.ts",
+      "find": "reply exactly: \"${SCHOOL_I_DONT_KNOW}\"",
+      "replace": "reply exactly: \"${I_DONT_KNOW}\"",
+      "expect": "a school's own words"
+    },
+    {
+      "file": "web/src/app/core/ai/kind-ai.ts",
+      "find": "lat: number, lon: number, maxStops: number, candidates: string, n: string): Built {\n  const tag = `${k.records}-${n}`;\n  return {\n    system: k.planSystem(tag, lat.toFixed(6)",
+      "replace": "lat: number, lon: number, maxStops: number, candidates: string, n: string): Built {\n  const tag = `${k.records}-${n}`;\n  return {\n    system: k.planSystem(tag, lat.toFixed(2)",
+      "expect": "a school's own words"
+    },
+    {
+      "file": "web/src/app/core/ai/kind-ai.ts",
+      "find": "'locality', 'street', 'board', 'medium', 'grades', 'commuteMinutes', 'busService', 'fees'],",
+      "replace": "'locality', 'street', 'board', 'medium', 'grades', 'commuteMinutes', 'fees'],",
+      "expect": "the copy is the kind file's slots"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-core.ts",
+      "find": "  return candidates.map((c) => c.extras ? kindCandidateLine(c) : [",
+      "replace": "  return candidates.map((c) => c.extras && Object.keys(c.extras).length > 99 ? kindCandidateLine(c) : [",
+      "expect": "a Plan candidate has only what the plan slot names"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-core.ts",
+      "find": "...(extrasOf?.(h) ? { extras: extrasOf(h) } : {}),",
+      "replace": "extras: extrasOf?.(h) ?? {},",
+      "expect": "a Plan candidate has only what the plan slot names"
+    },
+    {
+      "file": "web/src/app/core/ai/plan-fallback.ts",
+      "find": "[I_DONT_KNOW, SCHOOL_I_DONT_KNOW].includes(",
+      "replace": "[I_DONT_KNOW].includes(",
+      "expect": "the prompt speaks in a kind's words only when every record"
+    },
+    {
+      "file": "web/src/app/core/ai/on-device-ai.service.ts",
+      "find": "    const k = promptKind(docs.map((d) => d.id), viewed, dev);",
+      "replace": "    const k = null as ReturnType<typeof promptKind>;",
+      "expect": "Ask speaks in the school's words"
+    },
+    {
+      "file": "web/src/app/core/ai/on-device-ai.service.ts",
+      "find": "    const k = promptKind(candidates.map((c) => c.id), viewed, dev);",
+      "replace": "    const k = null as ReturnType<typeof promptKind>;",
+      "expect": "Plan speaks in the school's words"
+    },
+    {
+      "file": "web/src/app/core/ai/on-device-ai.service.ts",
+      "find": "return { answer: refusalOf(kind, dev), citations",
+      "replace": "return { answer: I_DONT_KNOW, citations",
+      "expect": "with nothing to send, or an answer that is unusable"
+    },
+    {
+      "file": "web/src/app/core/ai/on-device-ai.service.ts",
+      "find": "answer: k?.refusal ?? I_DONT_KNOW, citations",
+      "replace": "answer: I_DONT_KNOW, citations",
+      "expect": "with nothing to send, or an answer that is unusable"
+    },
+    {
+      "file": "web/src/app/core/ai/on-device-ai.service.ts",
+      "find": "selectForPlan(viewed, request.startLat, request.startLon, (h) => planExtras(h, dev));",
+      "replace": "selectForPlan(viewed, request.startLat, request.startLon);",
+      "expect": "Plan speaks in the school's words"
+    }
+  ]
+}

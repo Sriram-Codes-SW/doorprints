@@ -19,10 +19,10 @@
 <div class="page">
   <header class="page-head">
     <p><a routerLink="/data">{{ 'viewings.back' | t }}</a></p>
-    <h1>{{ 'viewings.title' | t }}</h1>
-    <p class="muted">{{ 'viewings.intro' | t }}</p>
+    <h1>{{ space.kindWord('viewings.title') | t }}</h1>
+    <p class="muted">{{ space.kindWord('viewings.intro') | t }}</p>
     <p>
-      <a class="btn btn-primary" routerLink="/viewings/new" [queryParams]="houseId ? { houseId: houseId } : {}">{{ 'viewings.plan' | t }}</a>
+      <a class="btn btn-primary" routerLink="/viewings/new" [queryParams]="houseId ? { houseId: houseId } : {}">{{ space.kindWord('viewings.plan') | t }}</a>
     </p>
     <div class="remind">
       <label for="viewings-remind" class="remind-label">
@@ -147,7 +147,7 @@
         </ul>
       </section>
     } @empty {
-      <p id="viewings-empty" class="muted">{{ (filtering() ? 'viewings.noMatch' : 'viewings.empty') | t }}</p>
+      <p id="viewings-empty" class="muted">{{ (filtering() ? 'viewings.noMatch' : space.kindWord('viewings.empty')) | t }}</p>
     }
   }
 

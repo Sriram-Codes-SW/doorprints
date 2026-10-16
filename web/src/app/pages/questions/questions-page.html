@@ -20,7 +20,7 @@
   <header class="page-head">
     <p><a routerLink="/data">{{ 'questions.back' | t }}</a></p>
     <h1>{{ 'questions.title' | t }}</h1>
-    <p class="muted">{{ 'questions.intro' | t }}</p>
+    <p class="muted">{{ space.kindWord('questions.intro') | t }}</p>
   </header>
 
   @if (error(); as card) {
@@ -49,7 +49,7 @@
   } @else {
     @for (g of groups(); track g.category) {
       <section [attr.aria-labelledby]="'questions-group-' + g.category">
-        <h2 [id]="'questions-group-' + g.category">{{ categoryKey(g.category) | t }}</h2>
+        <h2 [id]="'questions-group-' + g.category">{{ categoryText(g.category) }}</h2>
         <ul class="list">
           @for (q of g.questions; track q.id; let first = $first; let last = $last) {
             <li class="card question">
@@ -76,10 +76,11 @@
                     (change)="setCategory(q, $event)"
                   >
                     @for (c of categories; track c) {
-                      <option [value]="c" [selected]="q.category === c">{{ categoryKey(c) | t }}</option>
+                      <option [value]="c" [selected]="q.category === c">{{ categoryText(c) }}</option>
                     }
                   </select>
                 </div>
+                @if (scopes().length > 1) {
                 <div class="field">
                   <label [for]="'question-scope-' + q.id">{{ 'questions.appliesTo' | t }}</label>
                   <select
@@ -88,11 +89,12 @@
                     [value]="q.appliesTo"
                     (change)="setScope(q, $event)"
                   >
-                    @for (s of scopes; track s) {
+                    @for (s of scopes(); track s) {
                       <option [value]="s" [selected]="q.appliesTo === s">{{ scopeKey(s) | t }}</option>
                     }
                   </select>
                 </div>
+                }
                 <label class="check">
                   <input
                     type="checkbox"
@@ -164,7 +166,7 @@
           <label for="questions-new-category">{{ 'questions.categoryLabel' | t }}</label>
           <select id="questions-new-category" name="newCategory" [(ngModel)]="newCategory" [disabled]="atCap()">
             @for (c of categories; track c) {
-              <option [value]="c">{{ categoryKey(c) | t }}</option>
+              <option [value]="c">{{ categoryText(c) }}</option>
             }
           </select>
         </div>

@@ -23,7 +23,7 @@ import type { BackupBroker, BackupCriterion, BackupData, BackupHouse, BackupPhot
 import { photoEntry } from './photo-names';
 import { MAX_FLOOR, MIN_FLOOR } from '../data/records';
 
-/**
+/*
  * The pure part of importing a backup on the website (S4b-BL-75): the TypeScript port of Kotlin's `ImportPlan`
  * (`android/shared/.../export/ImportPlan.kt`), so a file previews and merges the same in a browser as on a phone. It
  * never touches IndexedDB, a file or a clock. **The preview promises exactly what the plan writes**: every filter of
@@ -31,6 +31,7 @@ import { MAX_FLOOR, MIN_FLOOR } from '../data/records';
  * an import never deletes, except an update file's deletions applied by an update import (S4b-BL-82).
  * `docs/schemas/import-vectors.json` holds the cases both stacks run.
  */
+/** How an import treats houses that are already here: MERGE by id (newest edit wins), or COPY, which adds everything under fresh ids. */
 export type ImportMode = 'MERGE' | 'COPY';
 
 /** What is already in this browser, tombstones included (`updatedAt` in epoch ms by id). */
@@ -56,6 +57,7 @@ export interface LocalVersions {
   liveCriteria: ReadonlySet<string>;
 }
 
+/** The local state of a browser with nothing in it; the starting point for tests. */
 export const EMPTY_LOCAL: LocalVersions = {
   houses: new Map(), visits: new Map(), photoIds: new Set(), deletedHouseIds: new Set(), scoredHouseIds: new Set(),
   unlinkedVisitIds: new Set(), syncedDeletedHouseIds: null, brokers: new Map(), criteria: new Map(), preferences: new Map(),
@@ -63,6 +65,7 @@ export const EMPTY_LOCAL: LocalVersions = {
   liveQuestions: new Set(), liveCriteria: new Set(),
 };
 
+/** The person's choices on the import review, plus whether the file is an update file whose deletions apply. */
 export interface ImportFlags {
   mode: ImportMode;
   /** MERGE: bring back the houses deleted here that the file has. */
@@ -162,6 +165,9 @@ function compare(local: number | undefined, incoming: number): Verdict {
   return incoming === local ? 'SAME' : 'LOCAL_NEWER';
 }
 
+/**
+ * What happens to one house of the file: new, updated, brought back over a deletion here, kept as it is here, or unchanged. Both `preview` and `plan` use it so they cannot disagree.
+ */
 function houseOutcome(h: BackupHouse, local: LocalVersions, restore: boolean, skip: boolean): HouseOutcome {
   const verdict = compare(local.houses.get(h.id), h.updatedAt);
   const deletedHere = local.deletedHouseIds.has(h.id);
@@ -173,6 +179,9 @@ function houseOutcome(h: BackupHouse, local: LocalVersions, restore: boolean, sk
   return verdict === 'LOCAL_NEWER' ? 'NEWER_HERE' : 'SAME';
 }
 
+/**
+ * What happens to one visit of the file; as for a house, plus RELINK for a visit the server unlinked from a house that comes back.
+ */
 function visitOutcome(v: BackupVisit, local: LocalVersions, overTombstone: ReadonlySet<string>, skip: boolean): VisitOutcome {
   const verdict = compare(local.visits.get(v.id), v.updatedAt);
   if (verdict === 'NEW') return 'NEW';
@@ -205,6 +214,9 @@ function settingWrites(key: string, at: number, local: ReadonlyMap<string, numbe
   return v === 'NEW' || (v === 'INCOMING_NEWER' && !skip);
 }
 
+/**
+ * Keeps the rows that fit under a cap on live rows: rows already here count and are kept, new ones are kept until the cap is reached.
+ */
 function withinCap<T>(rows: readonly T[], id: (r: T) => string, live: ReadonlySet<string>, max: number, start = live.size): T[] {
   let count = start;
   const added = new Set<string>();

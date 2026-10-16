@@ -25,6 +25,7 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.isPopup
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -90,7 +91,7 @@ class AreasScreenTest {
     }
 
     private fun waitFor(text: String) =
-        compose.waitUntil(5_000) { compose.onAllNodesWithText(text, substring = true).fetchSemanticsNodes().isNotEmpty() }
+        compose.waitUntil(15_000) { compose.onAllNodesWithText(text, substring = true).fetchSemanticsNodes().isNotEmpty() }
 
     @Test
     fun addingAnAreaSavesTheNamePointRadiusAndTheWakeSwitch() {
@@ -107,7 +108,7 @@ class AreasScreenTest {
         compose.onNodeWithText("Used by Wake me in my hunting areas.").assertExists()
         compose.onNodeWithText("Wake me here").performScrollTo().performClick()
         compose.onNodeWithText("Save").performScrollTo().performClick()
-        compose.waitUntil(5_000) { done }
+        compose.waitUntil(15_000) { done }
         val area = runBlocking { repo.areas() }.single()
         assertEquals(listOf("Adyar", "13.0067", "80.2574", "1200", "false"), listOf(area.name, area.lat.toString(), area.lon.toString(), area.radiusM.toString(), area.enabled.toString()))
         assertTrue(area.id, Regex("a_[0-9a-f]{8}").matches(area.id))
@@ -131,7 +132,7 @@ class AreasScreenTest {
         compose.onNodeWithText("Latitude").performScrollTo().performTextInput("13.0827")
         compose.onNodeWithText("Longitude").performScrollTo().performTextInput("80.2707")
         compose.onNodeWithText("Save").performScrollTo().performClick()
-        compose.waitUntil(5_000) { done }
+        compose.waitUntil(15_000) { done }
         assertEquals(listOf("Office"), runBlocking { repo.places() }.map { it.name })
     }
 
@@ -156,12 +157,12 @@ class AreasScreenTest {
         compose.onNodeWithText("An area that is gone").assertExists()
         compose.onNodeWithContentDescription("Show notes for: All notes").performClick()
         compose.onNode(hasText("Street: MG Road") and hasAnyAncestor(isPopup())).performClick()
-        compose.waitUntil(5_000) { compose.onAllNodesWithText("Water tanker every morning").fetchSemanticsNodes().isEmpty() }
+        compose.waitUntil(15_000) { compose.onAllNodesWithText("Water tanker every morning").fetchSemanticsNodes().isEmpty() }
         compose.onNodeWithText("Noisy after 9 pm").assertExists()
         compose.onNodeWithContentDescription("Note: Noisy after 9 pm").performClick()
         compose.onNode(hasText("Delete note") and hasAnyAncestor(isPopup())).performClick()
         compose.onNode(hasText("Delete") and hasAnyAncestor(isDialog())).performClick()
-        compose.waitUntil(5_000) { runBlocking { repo.areaNotes() }.none { it.id == "n_00000002" } }
+        compose.waitUntil(15_000) { runBlocking { repo.areaNotes() }.none { it.id == "n_00000002" } }
     }
 
     @Test
@@ -172,18 +173,26 @@ class AreasScreenTest {
             repo.savePlace(Place("p_0a1b2c3d", "Office", 13.0827, 80.2707))
         }
         compose.setContent { ProvideAppServices { HouseEditScreen(houseId = "h1", newLat = null, newLon = null, visitId = null, onDone = {}) } }
+        // S4b-BL-189: the notes, the places (Distances) and the dialogs' contents each arrive from Room or DataStore on
+        // their own threads, which Compose's idling does not wait for; every assertion on one waits for it first.
         waitFor("Water tanker every morning")
+        waitFor("Area: Adyar")
         compose.onNodeWithText("Area: Adyar").performScrollTo().assertExists()
+        waitFor("8.6 km · about 141 min on foot")
         compose.onNodeWithText("Distances").performScrollTo().assertExists()
         compose.onNodeWithText("8.6 km · about 141 min on foot", substring = true).performScrollTo().assertExists()
+        waitFor("Add a note for this street")
         compose.onNodeWithText("Add a note for this street").performScrollTo().performClick()
+        waitFor("Street: MG Road")
         compose.onNodeWithText("Street: MG Road").assertExists()
         compose.onNode(hasText("Note") and hasAnyAncestor(isDialog())).performTextInput("Floods in the monsoon")
         compose.onNode(hasText("Save") and hasAnyAncestor(isDialog())).performClick()
-        compose.waitUntil(5_000) { runBlocking { repo.areaNotes() }.any { it.street == "MG Road" && it.text == "Floods in the monsoon" } }
+        compose.waitUntil(15_000) { runBlocking { repo.areaNotes() }.any { it.street == "MG Road" && it.text == "Floods in the monsoon" } }
         waitFor("Floods in the monsoon")
         // For an area: the area this house is in comes first and is marked.
+        waitFor("Add a note for an area")
         compose.onNodeWithText("Add a note for an area").performScrollTo().performClick()
+        compose.waitUntil(15_000) { compose.onAllNodesWithContentDescription("Area: Adyar (this house is in it)").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithContentDescription("Area: Adyar (this house is in it)").assertExists()
     }
 
@@ -206,7 +215,7 @@ class AreasScreenTest {
         compose.setContent { ProvideAppServices { HouseListScreen(onOpenHouse = {}) } }
         waitFor("Blue Gate")
         compose.onNodeWithText("Search name, street, notes").performTextInput("monsoon")
-        compose.waitUntil(5_000) { compose.onAllNodesWithText("Blue Gate").fetchSemanticsNodes().isEmpty() }
+        compose.waitUntil(15_000) { compose.onAllNodesWithText("Blue Gate").fetchSemanticsNodes().isEmpty() }
         compose.onNodeWithText("Green View", substring = true).assertExists()
     }
 
@@ -219,7 +228,7 @@ class AreasScreenTest {
         }
         // One TalkBack item per row: the place, then each house's km.
         val row = "Office: Blue Gate, 290.1 km; Green View, 8.6 km"
-        compose.waitUntil(5_000) {
+        compose.waitUntil(15_000) {
             compose.onAllNodes(androidx.compose.ui.test.hasContentDescription(row)).fetchSemanticsNodes().isNotEmpty()
         }
     }

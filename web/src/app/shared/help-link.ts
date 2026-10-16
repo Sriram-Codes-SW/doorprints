@@ -30,3 +30,8 @@ export const GUIDE_URL = 'https://sriram-codes-sw.github.io/doorprints/';
 export function guideUrl(lang: Lang): string {
   return lang === 'en' ? GUIDE_URL : `${GUIDE_URL}${lang}/`;
 }
+
+/** The guide's section *Is AI worth it for me?* in `lang` (S4b-BL-215), linked from the AI features card. */
+export function aiWorthItUrl(lang: Lang): string {
+  return `${guideUrl(lang)}settings-and-privacy.html#is-ai-worth-it`;
+}

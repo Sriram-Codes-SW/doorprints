@@ -18,6 +18,7 @@
 
 package app.doorprints.server.config;
 
+import app.doorprints.server.common.Problems;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ReadListener;
 import jakarta.servlet.ServletException;
@@ -68,15 +69,17 @@ public class RequestSizeLimitFilter extends OncePerRequestFilter {
         return type != null && type.regionMatches(true, 0, "multipart/", 0, 10);
     }
 
+    /**
+     * Refuses a body whose declared length is over the cap with 413. A body without a declared length is wrapped so
+     * reading stops once the cap is passed.
+     */
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
         long limit = limitFor(request);
         long declared = request.getContentLengthLong();
         if (declared > limit) {
-            response.setStatus(413);
-            response.setContentType("application/problem+json");
-            response.getWriter().write("{\"status\":413,\"detail\":\"Request body too large (max " + limit + " bytes)\"}");
+            Problems.write(response, 413, "Request body too large (max " + limit + " bytes)");
             return;
         }
         chain.doFilter(declared >= 0 ? request : new Limited(request, limit), response);
@@ -99,6 +102,9 @@ public class RequestSizeLimitFilter extends OncePerRequestFilter {
         }
     }
 
+    /**
+     * Counts the bytes handed out and throws IOException once more than the cap has been read.
+     */
     private static final class CountingStream extends ServletInputStream {
         private final ServletInputStream in;
         private final long max;

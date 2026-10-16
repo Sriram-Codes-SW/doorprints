@@ -1,0 +1,138 @@
+{
+ "note": "The allow-list of tools/check-kind-literals.mjs (kinds PR 32, docs/03 section 18.26): the source files that may name the house kind. Only a kind's registry, the record format of a candidate, a wire adapter and a generated file belong here; a feature asks the kind's capability (isBaselineKind, capabilitiesOf, kindOfCandidate, Candidates.kindOf). `size` is the number of files and `max` the most literals each may have; both only go down without a conscious edit.",
+ "size": 33,
+ "files": {
+  "android/shared/src/commonMain/kotlin/app/doorprints/data/AppDatabase.kt": {
+   "max": 1,
+   "reason": "The Room migration that adds the kind column: existing rows are the baseline kind's."
+  },
+  "android/shared/src/commonMain/kotlin/app/doorprints/data/Entities.kt": {
+   "max": 1,
+   "reason": "The Room entity's default kind (door 3)."
+  },
+  "android/shared/src/commonMain/kotlin/app/doorprints/data/ExportMappers.kt": {
+   "max": 2,
+   "reason": "The sync and export mapper: the baseline kind is not written on a record (door 3)."
+  },
+  "android/shared/src/commonMain/kotlin/app/doorprints/data/Mappers.kt": {
+   "max": 1,
+   "reason": "The Room mapper: a row with no valid kind is the baseline kind's (door 3)."
+  },
+  "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/KindAi.kt": {
+   "max": 1,
+   "reason": "The AI prompt pack of the school: its text names the wire marker `[house:<id>]`, whose name is fixed."
+  },
+  "android/shared/src/commonMain/kotlin/app/doorprints/shared/api/ApiModels.kt": {
+   "max": 1,
+   "reason": "The sync wire model's default kind (door 3)."
+  },
+  "android/shared/src/commonMain/kotlin/app/doorprints/shared/export/BackupWire.kt": {
+   "max": 7,
+   "reason": "The backup wire adapter: the `search` object and the deleted rows name the house kind as the format does (door 10)."
+  },
+  "android/shared/src/commonMain/kotlin/app/doorprints/shared/export/ExportModel.kt": {
+   "max": 1,
+   "reason": "The update file's deletion rows name their row kind (`house`) as the format does (docs/schemas section 3.13)."
+  },
+  "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/Candidates.kt": {
+   "max": 2,
+   "reason": "The candidate record format: a record that says no kind is the baseline kind's (door 3); the one place the phones name it."
+  },
+  "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/KindCapabilities.kt": {
+   "max": 3,
+   "reason": "The capability registry: the built-in kinds' sets and the question seeds a kind may name."
+  },
+  "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/KindLabels.kt": {
+   "max": 2,
+   "reason": "The label registry: the house's table (a copy of house.json)."
+  },
+  "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/KindSetting.kt": {
+   "max": 8,
+   "reason": "The kind settings rules: the baseline kind is always available and enabled, the stored default and list (docs/03 section 18.12)."
+  },
+  "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/KindWordData.kt": {
+   "max": 1,
+   "reason": "Generated from the kind files by tools/gen-kind-words.mjs: the kinds that have words."
+  },
+  "android/shared/src/iosMain/kotlin/app/doorprints/data/SettingsIos.kt": {
+   "max": 1,
+   "reason": "The iPhone's settings store lists the baseline kind when told no more (IosKindsGateTest pins this line): the kinds the iPhone offers are this file's alone."
+  },
+  "backend/src/main/java/app/doorprints/server/ai/kind/AiKinds.java": {
+   "max": 7,
+   "reason": "The server's kind loader: the baseline kind is always available and loaded first."
+  },
+  "backend/src/main/java/app/doorprints/server/ai/kind/KindFiles.java": {
+   "max": 1,
+   "reason": "The kind file reader: the seed ids a `viewings.questionsSeed` may name."
+  },
+  "backend/src/main/java/app/doorprints/server/backup/BackupMapper.java": {
+   "max": 1,
+   "reason": "The backup wire adapter: a house carries no kind on the wire."
+  },
+  "backend/src/main/java/app/doorprints/server/backup/BackupService.java": {
+   "max": 1,
+   "reason": "The backup wire adapter: a row with no valid kind is the baseline kind's."
+  },
+  "backend/src/main/java/app/doorprints/server/backup/BackupWire.java": {
+   "max": 6,
+   "reason": "The backup wire adapter: the `search` object and the deleted rows name the house kind as the format does (door 10)."
+  },
+  "backend/src/main/java/app/doorprints/server/house/House.java": {
+   "max": 4,
+   "reason": "The entity: the table, the kind column's default and its constants (door 3)."
+  },
+  "web/src/app/core/ai/kind-ai.ts": {
+   "max": 1,
+   "reason": "The AI prompt pack of the school: its text names the wire marker `[house:<id>]`, whose name is fixed."
+  },
+  "web/src/app/core/candidate.ts": {
+   "max": 5,
+   "reason": "The candidate record format: a record that says no kind is the baseline kind's (door 3); the one place the website names it."
+  },
+  "web/src/app/core/dev-kinds.ts": {
+   "max": 1,
+   "reason": "The built-in kind registry: the house."
+  },
+  "web/src/app/core/kind-capabilities.ts": {
+   "max": 3,
+   "reason": "The capability registry: the built-in kinds' sets and the question seeds a kind may name."
+  },
+  "web/src/app/core/kind-labels.ts": {
+   "max": 2,
+   "reason": "The label registry: the house's table (a copy of house.json)."
+  },
+  "web/src/app/core/kind-setting.ts": {
+   "max": 6,
+   "reason": "The kind settings rules: the baseline kind is always available and enabled, the stored default and list (docs/03 section 18.12)."
+  },
+  "web/src/app/core/kind-words.generated.ts": {
+   "max": 1,
+   "reason": "Generated from the kind files by tools/gen-kind-words.mjs: the kinds that have words."
+  },
+  "web/src/app/data/records.ts": {
+   "max": 2,
+   "reason": "The record reader: the baseline kind is not written on a record (door 3)."
+  },
+  "web/src/app/export/backup-check.ts": {
+   "max": 1,
+   "reason": "The backup check reads the update file's deletion rows, which name their row kind (`house`) as the format does."
+  },
+  "web/src/app/export/backup-family.ts": {
+   "max": 7,
+   "reason": "The backup family wire: the `search` object and the deleted rows name the house kind as the format does (door 10)."
+  },
+  "web/src/app/export/import-plan.ts": {
+   "max": 1,
+   "reason": "The update file's deletion rows name their row kind (`house`) as the format does (docs/schemas section 3.13)."
+  },
+  "web/src/app/pages/house-detail/house-check-card.ts": {
+   "max": 2,
+   "reason": "The place check's subject types (`here`, `house`, `spot`) are names pinned by trace-place-check-vectors.json, not a candidate's kind."
+  },
+  "web/src/app/shared/trace-place-text.ts": {
+   "max": 1,
+   "reason": "The place check's subject types (`here`, `house`, `spot`) are names pinned by trace-place-check-vectors.json, not a candidate's kind."
+  }
+ }
+}

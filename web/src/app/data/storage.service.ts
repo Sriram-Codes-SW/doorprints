@@ -47,6 +47,7 @@ function readRiskDismissal(): string | null {
   }
 }
 
+/** The browser's estimate of how much this site stores and how much it may. */
 export interface StorageEstimate2 {
   usageBytes: number;
   quotaBytes: number;

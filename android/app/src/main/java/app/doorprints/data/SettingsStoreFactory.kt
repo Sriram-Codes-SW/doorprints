@@ -19,6 +19,8 @@
 package app.doorprints.data
 
 import android.content.Context
+import app.doorprints.BuildConfig
+import app.doorprints.shared.model.KindSettingRules
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
@@ -42,6 +44,9 @@ fun SettingsStore.Companion.create(context: Context): SettingsStore =
     SettingsStore(
         openSettingsDataStore(context), KeystoreSecretStore(),
         geminiSecrets = KeystoreSecretStore(entry = KeystoreSecretStore.GEMINI_ENTRY),
+        sarvamSecrets = KeystoreSecretStore(entry = KeystoreSecretStore.SARVAM_ENTRY),
+        // The kinds this build ships (kinds PR C, S4b-BL-274): a release lists the house and the school, compiled in and off.
+        availableKinds = KindSettingRules.availableOf(BuildConfig.AVAILABLE_KINDS),
     )
 
 /** `files/datastore/settings.preferences_pb`: the settings file of every install since v0.1. Do not rename it. */

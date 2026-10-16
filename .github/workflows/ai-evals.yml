@@ -25,8 +25,15 @@
 #   aistudio (default until the owner has finished docs/ai/vertex-setup.md steps 1-8 and step 10 has confirmed the
 #     trial credit is applied; then change the default below to vertex): Gemini Developer API; needs the repository
 #     secret AI_API_KEY (https://aistudio.google.com/apikey).
+# 2026-10-10 (S4b-BL-217): the suite `key-check` (job at the end) asks the Gemini Developer API which models AI_API_KEY can
+#   use and whether the model pinned in the apps (GEMINI_MODEL in web/src/app/core/ai/on-device-ai.service.ts, MODEL in
+#   android/shared/.../ai/GeminiClient.kt, both read from the source) still answers. Only curl and jq; the key goes in a
+#   header file, never the URL; the job passes whenever it can report.
 # Quota-aware: on HTTP 429 / RESOURCE_EXHAUSTED the harness stops, the scorecard says
 # "STOPPED: provider quota exhausted" and the job fails with an explicit error annotation.
+# Time-budgeted (S4b-BL-202): the test stops between cases after AI_EVAL_DEADLINE_MS (default 35 minutes), writes the
+# scorecard after every case ("PARTIAL (n of N cases)" until the run completes) and says "STOPPED: time budget"; the
+# verdict is INCOMPLETE, never PASS. The mvn step has its own timeout (41 minutes), below the job's 45.
 # Ownership: the workflow file belongs to DevSecOps (owner of .github/**, adopted 2026-09-22, reviewed against the
 # repo's CI rules: manual trigger only, permissions {} with job-level contents: read, persist-credentials: false,
 # untrusted inputs passed through env and validated, never interpolated into scripts). The eval harness and golden
@@ -61,19 +68,63 @@
 #   provider `github-web-deploy` inside the Firebase project, whose attribute condition accepts only web.yml on
 #   main (push or workflow_dispatch); a token from this workflow is refused there. Reason: this job runs Maven and
 #   test code while OIDC tokens can be obtained (see above), so it must not be able to replace the public website.
+# 2026-10-07 (S4b-BL-153, optional): the suite `own-provider` (job below) runs the same golden set through the website's own
+#   TypeScript adapters (web/src/app/core/ai/, ADR-35) against the provider the owner picks in the inputs ai_kind,
+#   ai_base_url and ai_model (or the repository variables AI_EVAL_BASE_URL and AI_EVAL_MODEL), with the repository secret
+#   AI_EVAL_API_KEY. The owner may never set the secret: the job then prints "skipped: no key" and succeeds without
+#   installing anything. No model name or key is in the repository. Free providers and synthetic data only (PRV-022).
+# 2026-10-10 (S4b-BL-226): the input `address_set` (default `default`) picks a set of docs/ai/evals/address-variants.json for the
+# 2026-10-10 (S4b-BL-239): the `canary` input has a fourth live choice, `no-wrapping` (the nonce tag and the neutraliser off, one
+#   Ask rule removed, scored on six delimiter cases); its value is in the Validate-inputs regex below like the other three.
+# 2026-10-15 (S4b-BL-224, voice PR 7): the suite `voice` (job below) sends the eight audio clips of docs/ai/evals/voice/ (synthetic speech, CC0,
+#   about 115 KB, fake phone numbers) to the speech provider the owner picks in `voice_provider` (gemini with AI_API_KEY, sarvam with the
+#   optional repository secret SARVAM_EVAL_API_KEY, openai-compatible with AI_EVAL_API_KEY, `voice_base_url` and `voice_model`) and
+#   reports entity error on price, BHK and locality, phone digits heard and then redacted, and (with AI_API_KEY) one end-to-end Extract
+#   per clip and one Ask. Without a key for the chosen provider it prints "skipped: no key" and succeeds without installing anything.
+#   No paid service is added; Vertex is not used for audio (the website's Gemini adapter takes the AI Studio key). Informational: the stop
+#   rule of docs/ai/voice-input.md section 6 is printed as a line, not enforced.
+# 2026-10-15 (S4b-BL-220): `eval_set` has a fourth choice, `spoken-set` (docs/ai/evals/spoken-set.json: spoken-style text cases, no punctuation,
+#   number words, fillers, Hinglish and Hindi/Tamil/Telugu code-switching, homophones; the golden set's fixtures; informational, no
+#   thresholds). The server and the website (own-provider and local-model) read it; there is no phone side and the kinds stay as they are
+#   (KINDS_AVAILABLE is school-set's alone). golden-set, hard-set and school-set runs are unchanged.
+# 2026-10-14 (S4b-BL-268): `eval_set` has a third choice, `school-set` (docs/ai/evals/school-set.json: its own schools in the candidate
+#   shape, informational). The golden-set job gives the server KINDS_AVAILABLE=house,school for it only; the own-provider and
+#   local-model jobs (the website) pass AI_EVAL_SET too and read it (golden-set or school-set; hard-set is the server's alone).
+#   The keyless injection run is the local-model suite: Ollama, no key, no secret, free.
+# 2026-10-10 (S4b-BL-236, S4b-BL-237): the inputs `eval_set` (golden-set | hard-set: the additive case file of docs/ai/evals,
+#   run against the golden set's fixtures, informational) and `canary` (none | a live canary of docs/ai/evals/canaries.json:
+#   an eval-only degraded configuration whose metric must drop, printed as "CANARY: ... seen / NOT seen", informational),
+#   golden-set suite only, validated in the first job and passed through the environment (AI_EVAL_SET, AI_EVAL_CANARY). The
+#   Metrics table shows a Wilson 95% interval after every value, and tools/ai-eval-compare.mjs prints a paired sign-test
+#   verdict for two scorecards. The model-spread matrix (docs/ai/ai-design.md 8.6) is `chat_model` on the hard set.
+#   golden-set, own-provider and local-model suites; it is validated against the set names in the first job and passed through
+#   the environment (AI_EVAL_ADDRESS_SET), never interpolated into a script. Only the default run has a verdict; the other sets
+#   are informational (docs/ai/ai-design.md 8.3b), so this file's result steps are unchanged: a run under a set never reads
+#   `Result: INCOMPLETE`, and still reports a quota stop, a time-budget stop and an unfinished scorecard.
+# 2026-10-08 (S4b-BL-175, keyless): the suite `local-model` (job below) installs Ollama on the runner from the official release,
+#   pinned by version and by the sha256 the release publishes (no `curl | sh`), pulls a small model and runs the same golden
+#   set through the website's openai-compatible adapter against http://127.0.0.1:11434/v1 with no key. It exists because the
+#   only real key the owner has is Gemini's: this exercises the openai-compatible kind (ladder, strict schema, fences, errors)
+#   against a real model server for nothing. No secret, no new permission, no paid service. Its first real run is CI's
+#   (docs/ai/ai-design.md 8.1). llama.cpp's server is a documented follow-up (it needs its own pinned release and a pinned GGUF
+#   file); there is no `local_server` input until it exists.
 name: AI evals
 
 on:
   workflow_dispatch:
     inputs:
       suites:
-        description: What to run. golden-set = the server's eval (below); on-device = one real Extract, Ask and Plan through the phones' and the website's own-key AI (needs AI_API_KEY whatever the provider)
+        description: What to run. golden-set = the server's eval (below); on-device = one real Extract, Ask and Plan through the phones' and the website's own-key AI (needs AI_API_KEY whatever the provider); own-provider = the golden set through the website's adapters and the provider chosen below (optional; needs AI_EVAL_API_KEY, else "skipped - no key"); local-model = the golden set through the website's openai-compatible adapter against a small model that Ollama runs on the runner (no key, no secret, free)
         type: choice
         default: golden-set,on-device
         options:
           - golden-set,on-device
           - golden-set
           - on-device
+          - own-provider
+          - local-model
+          - voice
+          - key-check
       types:
         description: Case types to run
         type: choice
@@ -88,6 +139,60 @@ on:
         description: Pause between cases in ms (free-tier requests-per-minute limits)
         type: string
         default: "4000"
+      repeats:
+        description: "golden-set only: trials per plan case, 1 to 5 (S4b-BL-203). Trial 1 is scored and gated as always; trials 2 and later only fill the report's stability table (informational). Each repeat is one more plan pass of 10 cases and the same model calls, so run it with types = plan"
+        type: string
+        default: "1"
+      repeat_types:
+        description: "golden-set only: which case types the repeats (input repeats) run (S4b-BL-227). plan = what the repeats always were. Others also repeat that type, one more pass of its cases per trial (extract 34, ask 31, plan 10), and the scorecard gains the agreement across trials (informational)"
+        type: choice
+        default: plan
+        options:
+          - plan
+          - extract
+          - ask
+          - extract,ask
+          - extract,ask,plan
+      address_set:
+        description: "Address set (S4b-BL-226, docs/ai/ai-design.md 8.3b): which addresses the fixture houses have. default = the golden set as it is, the only run with a verdict. Any other set is informational: the metrics are shown as 'not gated', the cases the set cannot ask about are listed, and the run fails only on a harness error or a stop. Works with every suite that runs the golden set"
+        type: choice
+        default: default
+        options:
+          - default
+          - known
+          - known-alt
+          - unknown-invented
+          - landmark-pin
+          - vernacular
+          - vernacular-strict
+          - messy
+          - hostile
+      eval_set:
+        description: "golden-set, own-provider and local-model suites (S4b-BL-236, S4b-BL-268, docs/ai/ai-design.md 8.6 and 8.7): which case file runs. golden-set = the golden set, the only run with a verdict. hard-set (golden-set suite only) = docs/ai/evals/hard-set.json, additive cases against the golden set's fixtures, informational (no thresholds, every metric 'not gated'). school-set = docs/ai/evals/school-set.json, its own schools in the candidate shape with the kinds available on (the server: KINDS_AVAILABLE=house,school; the website: the developer flag), informational. spoken-set (S4b-BL-220) = docs/ai/evals/spoken-set.json, the spoken form of golden-set cases (text a transcriber would produce) against the golden set's fixtures, informational, server and website. Not combined with address_set"
+        type: choice
+        default: golden-set
+        options:
+          - golden-set
+          - hard-set
+          - school-set
+          - spoken-set
+      category:
+        description: "own-provider and local-model suites (S4b-BL-268): all = every case of the set; prompt-injection = only the prompt-injection cases (the keyless injection run on a local model; informational). The golden-set suite runs every case"
+        type: choice
+        default: all
+        options:
+          - all
+          - prompt-injection
+      canary:
+        description: "golden-set only (S4b-BL-237, docs/ai/ai-design.md 8.6): the canary suite. none = a normal run. A name turns on that eval-only degraded configuration of docs/ai/evals/canaries.json for this run (the seam is set by test code, never by configuration), runs only the canary's case types (no-wrapping: only its six listed cases), gates nothing and prints 'CANARY: <name> expected drop seen / NOT seen' with the characters it removed from each system text. The keyless canaries run in every build (CanariesTest), not here"
+        type: choice
+        default: none
+        options:
+          - none
+          - no-sanitizer
+          - no-citation-filter
+          - prompt-without-rules
+          - no-wrapping
       provider:
         description: Model provider. aistudio = AI_API_KEY secret. vertex = Google Cloud Vertex AI; needs docs/ai/vertex-setup.md steps 1-8 done first (secrets GCP_WIF_PROVIDER, GCP_SA_EMAIL, variable GCP_PROJECT_ID)
         type: choice
@@ -95,6 +200,16 @@ on:
         options:
           - aistudio
           - vertex
+      thinking_level:
+        description: "golden-set only: the model's thinking level (S4b-BL-198). default = the model's own, unchanged. The others set SPRING_AI_GOOGLE_GENAI_CHAT_THINKING_LEVEL (vertex) or SPRING_AI_OPENAI_CHAT_REASONING_EFFORT (aistudio) for the server; the scorecard header shows it"
+        type: choice
+        default: default
+        options:
+          - default
+          - minimal
+          - low
+          - medium
+          - high
       chat_model:
         description: Chat model override, e.g. gemini-3.5-flash-lite (empty = AI_CHAT_MODEL default from application.yml)
         type: string
@@ -103,6 +218,42 @@ on:
         description: Embedding model override, e.g. gemini-embedding-001 (empty = default gemini-embedding-2; must give 768 dims)
         type: string
         default: ""
+      ai_kind:
+        description: "own-provider only: the kind of provider (docs/03 ADR-35). Its key is the repository secret AI_EVAL_API_KEY; the gemini kind uses AI_API_KEY first"
+        type: choice
+        default: openai-compatible
+        options:
+          - openai-compatible
+          - anthropic
+          - gemini
+      ai_base_url:
+        description: "own-provider only: base URL of an OpenAI-compatible provider, e.g. https://api.groq.com/openai/v1 (empty = repository variable AI_EVAL_BASE_URL; not used for gemini)"
+        type: string
+        default: ""
+      ai_model:
+        description: "own-provider only: model name (empty = repository variable AI_EVAL_MODEL; not used for gemini)"
+        type: string
+        default: ""
+      voice_provider:
+        description: "voice suite only (S4b-BL-224): the speech provider. gemini = AI_API_KEY; sarvam = the optional repository secret SARVAM_EVAL_API_KEY (the owner's own Sarvam key, 30 s clips); openai-compatible = AI_EVAL_API_KEY with the address and model below"
+        type: choice
+        default: gemini
+        options:
+          - gemini
+          - sarvam
+          - openai-compatible
+      voice_base_url:
+        description: "voice suite, openai-compatible only: base URL, e.g. https://api.groq.com/openai/v1 (https only; the transcription path is added)"
+        type: string
+        default: ""
+      voice_model:
+        description: "voice suite, openai-compatible only: the transcription model, e.g. whisper-large-v3-turbo"
+        type: string
+        default: ""
+      local_model:
+        description: "local-model only: the Ollama library tag to pull. The default qwen2.5:0.5b (about 400 MB) is the one the 3-core runner answers in time; qwen2.5:1.5b (about 1 GB) did not (S4b-BL-190). Keep it under about 2.5 GB, the runner has no GPU. Tip: choose types = extract for a first run"
+        type: string
+        default: "qwen2.5:0.5b"
 
 # Least privilege: nothing by default; the job only reads the repository.
 permissions: {}
@@ -129,9 +280,26 @@ jobs:
         env:
           DELAY_MS: ${{ inputs.delay_ms }}
           PROVIDER: ${{ inputs.provider }}
+          THINKING_LEVEL: ${{ inputs.thinking_level }}
+          ADDRESS_SET: ${{ inputs.address_set }}
+          EVAL_SET: ${{ inputs.eval_set }}
+          CANARY: ${{ inputs.canary }}
+          REPEAT_TYPES: ${{ inputs.repeat_types }}
           CHAT_MODEL_INPUT: ${{ inputs.chat_model }}
           EMBEDDING_MODEL_INPUT: ${{ inputs.embedding_model }}
         run: |
+          if ! [[ "$EVAL_SET" =~ ^(golden-set|hard-set|school-set|spoken-set)$ ]]; then
+            echo "::error::eval_set must be golden-set, hard-set, school-set or spoken-set (a file in docs/ai/evals)"
+            exit 1
+          fi
+          if ! [[ "$CANARY" =~ ^(none|no-sanitizer|no-citation-filter|prompt-without-rules|no-wrapping)$ ]]; then
+            echo "::error::canary must be none or a live canary of docs/ai/evals/canaries.json"
+            exit 1
+          fi
+          if [ "$EVAL_SET" != "golden-set" ] && [ "$ADDRESS_SET" != "default" ]; then
+            echo "::error::eval_set and address_set cannot be combined (the address fingerprints are the golden set's); run them apart"
+            exit 1
+          fi
           if ! [[ "$DELAY_MS" =~ ^[0-9]{1,6}$ ]]; then
             echo "::error::delay_ms must be a whole number of milliseconds"
             exit 1
@@ -140,12 +308,41 @@ jobs:
             echo "::error::provider must be vertex or aistudio"
             exit 1
           fi
+          if ! [[ "$THINKING_LEVEL" =~ ^(default|minimal|low|medium|high)$ ]]; then
+            echo "::error::thinking_level must be default, minimal, low, medium or high"
+            exit 1
+          fi
+          if ! [[ "$ADDRESS_SET" =~ ^(default|known|known-alt|unknown-invented|landmark-pin|vernacular|vernacular-strict|messy|hostile)$ ]]; then
+            echo "::error::address_set must be one of the sets in docs/ai/evals/address-variants.json (or default)"
+            exit 1
+          fi
+          if ! [[ "$REPEAT_TYPES" =~ ^(plan|extract|ask|extract,ask|extract,ask,plan)$ ]]; then
+            echo "::error::repeat_types must be plan, extract, ask, extract,ask or extract,ask,plan"
+            exit 1
+          fi
           for m in "$CHAT_MODEL_INPUT" "$EMBEDDING_MODEL_INPUT"; do
             if [ -n "$m" ] && ! [[ "$m" =~ ^[a-z0-9][a-z0-9.-]{0,63}$ ]]; then
               echo "::error::model names may only contain lower-case letters, digits, dots and hyphens"
               exit 1
             fi
           done
+
+      # Vertex AI is paid from the Google Cloud trial credit, which ends on 22 Dec 2026 (docs/08 10.4). A rerun by anyone
+      # with write access must not be able to spend beyond it: Vertex needs the repository variable VERTEX_EVAL_ENABLED=true
+      # (the owner sets it for a run and deletes it afterwards) and is refused from 15 Dec 2026 whatever the variable says.
+      - name: Vertex AI trial guard
+        if: ${{ inputs.provider == 'vertex' }}
+        env:
+          VERTEX_EVAL_ENABLED: ${{ vars.VERTEX_EVAL_ENABLED }}
+        run: |
+          if [ "$VERTEX_EVAL_ENABLED" != "true" ]; then
+            echo "::error::Vertex AI evals are switched off. The owner turns them on with the repository variable VERTEX_EVAL_ENABLED=true (Settings > Secrets and variables > Actions > Variables) while the Google Cloud trial credit lasts. Or run with provider=aistudio."
+            exit 1
+          fi
+          if [[ "$(date -u +%F)" > "2026-12-14" ]]; then
+            echo "::error::Vertex AI evals are closed from 2026-12-15: the Google Cloud trial credit ends on 2026-12-22 (docs/08-operations-runbook.md 10.4). Run with provider=aistudio."
+            exit 1
+          fi
 
       - name: Check the provider's secrets are set
         env:
@@ -187,11 +384,31 @@ jobs:
           service_account: ${{ secrets.GCP_SA_EMAIL }}
           project_id: ${{ vars.GCP_PROJECT_ID || secrets.GCP_PROJECT_ID }}
 
+      # Docker Hub rate limit (docs/07 section 7.3): optional login with a read-only access token. Without the two secrets
+      # (forks, Dependabot, not yet set, expired) the step is skipped or fails softly and the pulls stay anonymous.
+      - name: Docker Hub secrets present?
+        id: dockerhub
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          if [ -n "$DOCKERHUB_USERNAME" ] && [ -n "$DOCKERHUB_TOKEN" ]; then echo "present=true" >> "$GITHUB_OUTPUT"; fi
+      - name: Log in to Docker Hub (pull rate limit)
+        if: ${{ steps.dockerhub.outputs.present == 'true' }}
+        continue-on-error: true
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
       # Same database as backend.yml: service containers cannot be built from a Dockerfile, so build backend/db
       # (postgis/postgis + pgvector) and run it by hand. A fresh database per run keeps retrieval scores comparable.
       - name: Build database image (PostGIS + pgvector)
         run: docker build -t doorprints-db:ci backend/db
 
+      # Before repository code runs: remove the Docker Hub credential from ~/.docker/config.json.
+      - name: Log out of Docker Hub
+        if: ${{ always() }}
+        run: docker logout || true
       - name: Start database
         run: |
           docker run -d --name db \
@@ -215,12 +432,20 @@ jobs:
 
       - name: Run GoldenSetEvalTest
         working-directory: backend
+        # Below the job's 45 minutes (S4b-BL-202): if the run is still going, this step is cancelled and the steps below
+        # (all `if: always()`) still publish the scorecard, which the test rewrites after every case ("PARTIAL (n of N
+        # cases)"). The test's own time budget (AI_EVAL_DEADLINE_MS, default 35 minutes) stops the run cleanly before this.
+        timeout-minutes: 41
         env:
           DB_URL: jdbc:postgresql://127.0.0.1:5432/doorprints
           DB_USER: doorprints
           DB_PASSWORD: doorprints
           APP_AI_ENABLED: "true"
           APP_MCP_ENABLED: "false"
+          # DEBUG for one class only, RagService: one line per ask with the retrieved house ids, so a failed case shows
+          # whether the house was retrieved (S4b-BL-194). Ids only. SPRING_APPLICATION_JSON because an env-var name
+          # binds in lower case (a logger name is case-sensitive) and a package name would also raise HouseIndexer.
+          SPRING_APPLICATION_JSON: '{"logging":{"level":{"app.doorprints.server.ai.rag.RagService":"DEBUG"}}}'
           AI_PROVIDER: ${{ inputs.provider }}
           # The key is only handed to the aistudio path; Vertex AI uses the federated credentials instead.
           AI_API_KEY: ${{ inputs.provider == 'aistudio' && secrets.AI_API_KEY || '' }}
@@ -229,12 +454,36 @@ jobs:
           AI_VERTEX_EMBEDDING_LOCATION: ${{ vars.AI_VERTEX_EMBEDDING_LOCATION }}
           AI_EVAL_TYPES: ${{ inputs.types }}
           AI_EVAL_DELAY_MS: ${{ inputs.delay_ms }}
+          AI_EVAL_REPEATS: ${{ inputs.repeats }}
+          AI_EVAL_REPEAT_TYPES: ${{ inputs.repeat_types }}
+          AI_EVAL_ADDRESS_SET: ${{ inputs.address_set }}
+          # The additive eval set and the live canary (S4b-BL-236, S4b-BL-237): validated above, read by the test from the
+          # environment, never interpolated into a script. Both are informational: the verdict stays the golden set's.
+          AI_EVAL_SET: ${{ inputs.eval_set }}
+          AI_EVAL_CANARY: ${{ inputs.canary }}
+          # S4b-BL-268: the school set is read by the server's kind-aware AI, which exists only while the kind is available.
+          # Any other run keeps the default (the house alone), so the golden set and the hard set are as before.
+          KINDS_AVAILABLE: ${{ inputs.eval_set == 'school-set' && 'house,school' || 'house' }}
+          THINKING_LEVEL: ${{ inputs.thinking_level }}
           CHAT_MODEL_INPUT: ${{ inputs.chat_model }}
           EMBEDDING_MODEL_INPUT: ${{ inputs.embedding_model }}
         run: |
           # Only override when set: an empty value would replace the application.yml default.
           if [ -n "$CHAT_MODEL_INPUT" ]; then export AI_CHAT_MODEL="$CHAT_MODEL_INPUT"; fi
           if [ -n "$EMBEDDING_MODEL_INPUT" ]; then export AI_EMBEDDING_MODEL="$EMBEDDING_MODEL_INPUT"; fi
+          # Thinking level (S4b-BL-198): only when chosen; "default" leaves the model's own level. Spring Boot's relaxed
+          # binding reads these environment variables straight into spring.ai.google.genai.chat.thinking-level (an enum,
+          # MINIMAL | LOW | MEDIUM | HIGH, upper case) and spring.ai.openai.chat.reasoning-effort (a string, lower case);
+          # no SPRING_APPLICATION_JSON is needed, so it cannot clash with one set for another purpose. The scorecard
+          # header ("Thinking level") reads the same two properties back from the running server.
+          if [ "$THINKING_LEVEL" != "default" ]; then
+            if [ "$AI_PROVIDER" = "vertex" ]; then
+              SPRING_AI_GOOGLE_GENAI_CHAT_THINKING_LEVEL="$(printf '%s' "$THINKING_LEVEL" | tr '[:lower:]' '[:upper:]')"
+              export SPRING_AI_GOOGLE_GENAI_CHAT_THINKING_LEVEL
+            else
+              export SPRING_AI_OPENAI_CHAT_REASONING_EFFORT="$THINKING_LEVEL"
+            fi
+          fi
           if [ -n "$GCP_LOCATION_SETTING" ]; then export GCP_LOCATION="$GCP_LOCATION_SETTING"; fi
           if [ -z "$AI_VERTEX_EMBEDDING_LOCATION" ]; then unset AI_VERTEX_EMBEDDING_LOCATION; fi
           # No -Dsurefire.failIfNoSpecifiedTests=false: if the test class is renamed or removed, Surefire fails the
@@ -252,6 +501,30 @@ jobs:
         run: |
           if [ -f backend/target/ai-eval-report.md ] && grep -q "STOPPED: provider quota exhausted" backend/target/ai-eval-report.md; then
             echo "::error title=AI eval STOPPED::Provider quota exhausted (HTTP 429 / RESOURCE_EXHAUSTED). The remaining cases were not run. Wait for the per-minute/daily quota to reset, check Billing, or lower the load (types, delay_ms), then re-run."
+            exit 1
+          fi
+
+      - name: Report a time-budget stop
+        if: always()
+        run: |
+          if [ -f backend/target/ai-eval-report.md ] && grep -q "STOPPED: time budget" backend/target/ai-eval-report.md; then
+            echo "::error title=AI eval STOPPED::The time budget (AI_EVAL_DEADLINE_MS, default 35 minutes) was used up. The remaining cases were not run and the run is not a PASS (INCOMPLETE). Run fewer types, a lower thinking level or a shorter delay_ms, then re-run."
+            exit 1
+          fi
+
+      - name: Report an unfinished scorecard
+        if: always()
+        run: |
+          if [ -f backend/target/ai-eval-report.md ] && grep -q '^\*\*PARTIAL (' backend/target/ai-eval-report.md && ! grep -q "STOPPED: " backend/target/ai-eval-report.md; then
+            echo "::error title=AI eval PARTIAL::The run ended before every case was scored (the job or the step was cancelled or killed). The scorecard covers only the cases scored so far and is not a PASS."
+            exit 1
+          fi
+
+      - name: Report provider or infrastructure errors
+        if: always()
+        run: |
+          if [ -f backend/target/ai-eval-report.md ] && grep -q '^\*\*Result: INCOMPLETE\*\*' backend/target/ai-eval-report.md; then
+            echo "::error title=AI eval INCOMPLETE::The model provider or the infrastructure failed for some cases (see Infrastructure errors in the scorecard). They are not scored and the run is not a PASS. Re-run once the provider is healthy."
             exit 1
           fi
 
@@ -274,11 +547,12 @@ jobs:
           retention-days: 30
 
       - name: Upload test reports
-        if: failure()
+        if: always()
         uses: actions/upload-artifact@v7
         with:
           name: ai-eval-test-reports
           path: backend/target/surefire-reports/
+          if-no-files-found: ignore
           retention-days: 7
 
       - name: Database logs
@@ -337,6 +611,24 @@ jobs:
             echo "::error::The phones' live test failed (see the report artifact)"; exit 1
           fi
 
+      # S4b-BL-268: eval_set=school-set also runs the phone's school test (SchoolSetLiveTest: the set's own schools, the kinds on,
+      # one case of each feature). Any other value leaves this step out, so the job's quota use is as it was.
+      - name: School set on the phone (real key)
+        if: ${{ inputs.eval_set == 'school-set' }}
+        working-directory: android
+        env:
+          DOORPRINTS_LIVE_GEMINI_KEY: ${{ secrets.AI_API_KEY }}
+        run: |
+          ./gradlew --no-daemon :shared:testAndroidHostTest --tests 'app.doorprints.shared.ai.SchoolSetLiveTest' --rerun -i \
+            | grep -E '^School (extract|ask|plan):|SchoolSetLiveTest' || true
+          report=shared/build/test-results/testAndroidHostTest/TEST-app.doorprints.shared.ai.SchoolSetLiveTest.xml
+          test -f "$report" || { echo "::error::The phones' school test did not run"; exit 1; }
+          if grep -q '<skipped' "$report"; then echo "::error::The phones' school test was skipped (no key reached it)"; exit 1; fi
+          if grep -q '<failure' "$report"; then
+            grep -o 'message="[^"]*"' "$report" | head -3
+            echo "::error::The phones' school test failed (see the report)"; exit 1
+          fi
+
       - uses: actions/setup-node@v7
         with:
           node-version: "24"
@@ -366,3 +658,441 @@ jobs:
           path: android/shared/build/test-results/testAndroidHostTest/TEST-app.doorprints.shared.ai.OnDeviceAiLiveTest.xml
           if-no-files-found: ignore
           retention-days: 7
+
+  # The golden set through the website's adapters and a provider of the owner's choice (S4b-BL-153; docs/06 TC-AI-23;
+  # docs/ai/ai-design.md 8.4). Optional: without the secret AI_EVAL_API_KEY it says "skipped: no key", installs nothing
+  # and succeeds. Runs ai-provider.live.spec.ts (Vitest) with the key in the environment of that one step; npm ci runs
+  # before, without it. Only the manual trigger reaches it (this file has no pull_request or push trigger). Read-only
+  # token, no id-token. Reported, not gating: the summary lists what passed; the job fails only when the setting is
+  # wrong or no case got an answer.
+  own-provider:
+    name: Golden set through the chosen provider (website adapters, optional)
+    if: inputs.suites == 'own-provider'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - name: Skip cleanly without a key
+        id: key
+        env:
+          # The Gemini kind reuses the repository secret AI_API_KEY the other suites already use.
+          AI_EVAL_API_KEY: ${{ (inputs.ai_kind == 'gemini' && secrets.AI_API_KEY) || secrets.AI_EVAL_API_KEY || '' }}
+        run: |
+          if [ -z "$AI_EVAL_API_KEY" ]; then
+            echo "skipped: no key" | tee -a "$GITHUB_STEP_SUMMARY"
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v7
+        if: steps.key.outputs.run == 'true'
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        if: steps.key.outputs.run == 'true'
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install the website's packages (no key in this step)
+        if: steps.key.outputs.run == 'true'
+        working-directory: web
+        run: npm ci --no-audit --no-fund
+
+      - name: Run the golden set
+        if: steps.key.outputs.run == 'true'
+        working-directory: web
+        env:
+          DOORPRINTS_EVAL_KEY: ${{ (inputs.ai_kind == 'gemini' && secrets.AI_API_KEY) || secrets.AI_EVAL_API_KEY || '' }}
+          AI_EVAL_KIND: ${{ inputs.ai_kind }}
+          AI_EVAL_BASE_URL: ${{ inputs.ai_base_url || vars.AI_EVAL_BASE_URL }}
+          AI_EVAL_MODEL: ${{ inputs.ai_model || vars.AI_EVAL_MODEL }}
+          AI_EVAL_TYPES: ${{ inputs.types }}
+          AI_EVAL_DELAY_MS: ${{ inputs.delay_ms }}
+          AI_EVAL_ADDRESS_SET: ${{ inputs.address_set }}
+          AI_EVAL_SET: ${{ inputs.eval_set }}
+          AI_EVAL_CATEGORY: ${{ inputs.category }}
+        run: |
+          export DOORPRINTS_EVAL_SUMMARY="$RUNNER_TEMP/ai-eval-summary.md"
+          npx ng test --watch=false --include src/app/core/ai/ai-provider.live.spec.ts
+
+      - name: Publish the summary
+        if: always() && steps.key.outputs.run == 'true'
+        run: |
+          if [ -f "$RUNNER_TEMP/ai-eval-summary.md" ]; then
+            cat "$RUNNER_TEMP/ai-eval-summary.md" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No summary was written: the setting was refused or the run failed before the first case (see the log)." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  # The audio clips through a speech provider (S4b-BL-224; docs/06 TC-AI-53; docs/ai/voice-input.md section 5). Read-only token, no
+  # id-token. The key of the chosen provider is passed to the one step that runs the spec, as DOORPRINTS_VOICE_KEY; the spec sends the
+  # clips only to that provider's own host (the website's adapters) and never prints a key. Without the key: "skipped: no key".
+  voice:
+    name: Audio clips through a speech provider (website adapters, optional)
+    if: inputs.suites == 'voice'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Validate inputs and skip cleanly without a key
+        id: key
+        env:
+          VOICE_PROVIDER: ${{ inputs.voice_provider }}
+          VOICE_BASE_URL: ${{ inputs.voice_base_url }}
+          VOICE_MODEL: ${{ inputs.voice_model }}
+          DELAY_MS: ${{ inputs.delay_ms }}
+          VOICE_KEY: ${{ (inputs.voice_provider == 'gemini' && secrets.AI_API_KEY) || (inputs.voice_provider == 'sarvam' && secrets.SARVAM_EVAL_API_KEY) || (inputs.voice_provider == 'openai-compatible' && secrets.AI_EVAL_API_KEY) || '' }}
+        run: |
+          if ! [[ "$VOICE_PROVIDER" =~ ^(gemini|sarvam|openai-compatible)$ ]]; then
+            echo "::error::voice_provider must be gemini, sarvam or openai-compatible"
+            exit 1
+          fi
+          if ! [[ "$DELAY_MS" =~ ^[0-9]{1,6}$ ]]; then
+            echo "::error::delay_ms must be a whole number of milliseconds"
+            exit 1
+          fi
+          if [ -z "$VOICE_KEY" ]; then
+            echo "skipped: no key" | tee -a "$GITHUB_STEP_SUMMARY"
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v7
+        if: steps.key.outputs.run == 'true'
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        if: steps.key.outputs.run == 'true'
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install the website's packages (no key in this step)
+        if: steps.key.outputs.run == 'true'
+        working-directory: web
+        run: npm ci --no-audit --no-fund
+
+      - name: Run the clips
+        if: steps.key.outputs.run == 'true'
+        working-directory: web
+        env:
+          DOORPRINTS_VOICE_KEY: ${{ (inputs.voice_provider == 'gemini' && secrets.AI_API_KEY) || (inputs.voice_provider == 'sarvam' && secrets.SARVAM_EVAL_API_KEY) || (inputs.voice_provider == 'openai-compatible' && secrets.AI_EVAL_API_KEY) || '' }}
+          # The chat key for the end-to-end Extract and Ask rows (Gemini's); without it those rows say "not run".
+          DOORPRINTS_EVAL_KEY: ${{ secrets.AI_API_KEY }}
+          VOICE_EVAL_PROVIDER: ${{ inputs.voice_provider }}
+          VOICE_EVAL_BASE_URL: ${{ inputs.voice_base_url }}
+          VOICE_EVAL_MODEL: ${{ inputs.voice_model }}
+          VOICE_EVAL_DELAY_MS: ${{ inputs.delay_ms }}
+        run: |
+          export DOORPRINTS_EVAL_SUMMARY="$RUNNER_TEMP/voice-eval-summary.md"
+          npx ng test --watch=false --include src/app/core/voice/voice-clips.live.spec.ts
+
+      - name: Publish the summary
+        if: always() && steps.key.outputs.run == 'true'
+        run: |
+          if [ -f "$RUNNER_TEMP/voice-eval-summary.md" ]; then
+            cat "$RUNNER_TEMP/voice-eval-summary.md" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No summary was written: the setting was refused or the run failed before the first clip (see the log)." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  # The golden set through a small real model that runs on the runner, with no key (S4b-BL-175; docs/06 TC-AI-25;
+  # docs/ai/ai-design.md 8.1). Ollama is installed from the official release, not with `curl | sh`: the tarball comes from the
+  # release of the pinned version, and its sha256 must equal both the digest pinned here and the one in the release's own
+  # sha256sum.txt (a mismatch stops the job before anything is unpacked). To move the pin: pick a release at
+  # https://github.com/ollama/ollama/releases, read the line of ollama-linux-amd64.tar.zst in its sha256sum.txt, change the two
+  # env values below together (Dependabot does not track this), and say so in docs/07 SEC-030.
+  # Model (S4b-BL-190): the default is qwen2.5:0.5b (about 400 MB, 32K context, same library, takes the JSON response format
+  # the ladder asks for). The first real run (2026-10-08) of qwen2.5:1.5b on the 3-core runner answered one case and the next
+  # request hit the 60 s limit. The suite checks that the adapters and the ladder work against a real server, so the model
+  # need not be good, only answer in time; qwen2.5:1.5b and :3b stay typeable in `local_model`. Any Ollama library tag works.
+  # Time (S4b-BL-190), assumed, not measured: the harness gives each request 180 s here (AI_EVAL_TIMEOUT_MS; honoured by the
+  # harness only for a server on localhost, the app's own limit stays 60 s). The longest prompt of the 75 cases is 14,256
+  # characters (an Ask case: system text, the saved houses and the question), 10,648 for Extract and 7,477 for Plan with the
+  # schema trailer of tier 2, measured by building every prompt; that is about 3,600 to 4,800 tokens at 3 to 4 characters per
+  # token, plus up to 2,048 tokens of answer, so the 8192 context below holds with margin and is not lowered (Ollama cuts the
+  # front of a prompt that does not fit without saying so). Most of a case's time on a CPU is reading that prompt. The job
+  # allows 150 minutes: about 10 for the downloads and the build, 120 for the golden set (the live spec's own cap is
+  # 7,200,000 ms), 20 margin; 75 cases at an average of 96 s fit, and a model that needs more is not for this runner. A timed-out
+  # request is reported as unreachable and stops the run (S4b-BL-184), so a run that is too slow ends after one 180 s wait,
+  # not after 75 of them. `types` is shared by every suite, so it cannot default differently here: choose `extract` (34 cases)
+  # for a first run. Expect the first real run to show whether the tier-1 `json_schema` request is accepted or refused by this
+  # Ollama build (a refusal sends the ladder to tier 2, which is what it is for). Ollama checks the layer digests of the model
+  # it pulls. Reported, not gating: the job fails only on a wrong setting, a run that stopped early, or when no case got an
+  # answer, like own-provider. Read-only token, no secrets, no id-token.
+  local-model:
+    name: Golden set through a local model (Ollama on the runner, no key)
+    if: inputs.suites == 'local-model'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 150
+    permissions:
+      contents: read
+    env:
+      OLLAMA_VERSION: v0.40.1
+      # The line of ollama-linux-amd64.tar.zst in that release's sha256sum.txt (read 2026-10-08).
+      OLLAMA_SHA256: a7aebbe3dd76ccf1351a56a3e57218ad4863cb5f9a9938c58de87a37555e355d
+      OLLAMA_HOST: 127.0.0.1:11434
+      # envconfig/config.go on main (read 2026-10-08): the default context is 4k to 256k by memory, so say it; the Ask prompt
+      # carries house notes. And no cloud features: nothing leaves the runner but the model download.
+      OLLAMA_CONTEXT_LENGTH: "8192"
+      # One request at a time (the harness is sequential): Ollama sizes the context memory for each parallel slot, and
+      # the model stays loaded for the whole run (S4b-BL-190).
+      OLLAMA_NUM_PARALLEL: "1"
+      OLLAMA_KEEP_ALIVE: "1h"
+      OLLAMA_NO_CLOUD: "1"
+    steps:
+      - name: Validate inputs
+        env:
+          LOCAL_MODEL: ${{ inputs.local_model }}
+        run: |
+          if ! [[ "$LOCAL_MODEL" =~ ^[a-z0-9][a-z0-9._/-]{0,62}(:[A-Za-z0-9._-]{1,32})?$ ]]; then
+            echo "::error::local_model must be an Ollama library tag such as qwen2.5:1.5b"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install the website's packages
+        working-directory: web
+        run: npm ci --no-audit --no-fund
+
+      - name: Install Ollama (pinned release, checksum verified)
+        run: |
+          set -euo pipefail
+          command -v zstd >/dev/null || sudo apt-get install -y --no-install-recommends zstd
+          dir="$RUNNER_TEMP/ollama-download"
+          mkdir -p "$dir"
+          base="https://github.com/ollama/ollama/releases/download/${OLLAMA_VERSION}"
+          curl -fsSL --retry 3 -o "$dir/ollama-linux-amd64.tar.zst" "$base/ollama-linux-amd64.tar.zst"
+          curl -fsSL --retry 3 -o "$dir/sha256sum.txt" "$base/sha256sum.txt"
+          published="$(awk '$2 == "./ollama-linux-amd64.tar.zst" { print $1 }' "$dir/sha256sum.txt")"
+          if [ "$published" != "$OLLAMA_SHA256" ]; then
+            echo "::error::The release ${OLLAMA_VERSION} now publishes a different sha256 ($published) than the one pinned in this workflow. Check the release, then update OLLAMA_SHA256."
+            exit 1
+          fi
+          echo "$OLLAMA_SHA256  $dir/ollama-linux-amd64.tar.zst" | sha256sum --check --strict -
+          sudo tar --zstd -xf "$dir/ollama-linux-amd64.tar.zst" -C /usr/local
+          rm -rf "$dir"
+          ollama --version
+
+      - name: Start Ollama on 127.0.0.1 only
+        run: |
+          nohup ollama serve > "$RUNNER_TEMP/ollama.log" 2>&1 &
+          for _ in $(seq 1 60); do
+            if curl -fsS "http://127.0.0.1:11434/api/version" >/dev/null 2>&1; then echo "ollama is up"; exit 0; fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/ollama.log"
+          echo "::error::ollama serve did not come up"
+          exit 1
+
+      - name: Pull the model and load it once
+        timeout-minutes: 25
+        env:
+          LOCAL_MODEL: ${{ inputs.local_model }}
+        run: |
+          ollama pull "$LOCAL_MODEL"
+          # One tiny request loads the model and keeps it in memory for an hour, so the first case does not spend its time
+          # on loading it; it asks for the JSON format as the cases do, so that part is set up before the first case too.
+          curl -fsS --max-time 600 "http://127.0.0.1:11434/api/generate" \
+            -d "$(jq -cn --arg m "$LOCAL_MODEL" '{model: $m, prompt: "Reply with {\"ok\": true}.", format: "json", stream: false, keep_alive: "1h", options: {num_predict: 16}}')" >/dev/null
+
+      - name: Run the golden set (openai-compatible kind, no key)
+        working-directory: web
+        env:
+          # No key: Ollama ignores it. ai-eval.ts runs a key-less setting only for an openai-compatible server on localhost.
+          DOORPRINTS_EVAL_KEY: ""
+          AI_EVAL_KIND: openai-compatible
+          AI_EVAL_BASE_URL: http://127.0.0.1:11434/v1
+          AI_EVAL_MODEL: ${{ inputs.local_model }}
+          AI_EVAL_TYPES: ${{ inputs.types }}
+          AI_EVAL_DELAY_MS: "0"
+          AI_EVAL_ADDRESS_SET: ${{ inputs.address_set }}
+          AI_EVAL_SET: ${{ inputs.eval_set }}
+          AI_EVAL_CATEGORY: ${{ inputs.category }}
+          # 180 s a request instead of the app's 60 s; the harness honours it only for a server on this machine (S4b-BL-190).
+          AI_EVAL_TIMEOUT_MS: "180000"
+        run: |
+          export DOORPRINTS_EVAL_SUMMARY="$RUNNER_TEMP/ai-eval-summary.md"
+          npx ng test --watch=false --include src/app/core/ai/ai-provider.live.spec.ts
+
+      - name: Publish the summary
+        if: always()
+        run: |
+          {
+            echo "Ollama ${OLLAMA_VERSION} (sha256 pinned), CPU only, no key. A model this small is far weaker than the providers the app is used with: read this as a check that the adapter and the ladder work against a real server, not as the quality of any model."
+            echo
+            if [ -f "$RUNNER_TEMP/ai-eval-summary.md" ]; then
+              cat "$RUNNER_TEMP/ai-eval-summary.md"
+            else
+              echo "No summary was written: the setting was refused or the run failed before the first case (see the log)."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Ollama log
+        if: failure()
+        run: tail -100 "$RUNNER_TEMP/ollama.log" || true
+
+  # S4b-BL-217: facts about the key, not guesses. Fails only when AI_API_KEY is unset or the model list call itself fails;
+  # a 404 or 429 for a model is reported (annotation and summary), not a failure of the job.
+  key-check:
+    name: Which models the AI_API_KEY can use (Gemini Developer API)
+    if: inputs.suites == 'key-check'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: List the models and try the pinned one
+        env:
+          AI_API_KEY: ${{ secrets.AI_API_KEY }}
+        shell: bash
+        run: |
+          set +x
+          set -uo pipefail
+          if [ -z "$AI_API_KEY" ]; then
+            echo "::error::Repository secret AI_API_KEY is not set (Settings > Secrets and variables > Actions). Nothing to check."
+            exit 1
+          fi
+          api="https://generativelanguage.googleapis.com/v1beta"
+          work="$(mktemp -d)"
+          umask 077
+          # The key goes to curl in a header file: not in the URL, not in a logged command line.
+          printf 'x-goog-api-key: %s\n' "$AI_API_KEY" > "$work/hdr"
+          summary="$GITHUB_STEP_SUMMARY"
+
+          # The pinned model, read from both apps so a rename cannot drift.
+          web_model="$(sed -n "s/.*GEMINI_MODEL = '\([^']*\)'.*/\1/p" web/src/app/core/ai/on-device-ai.service.ts | head -1)"
+          and_model="$(sed -n 's/.*const val MODEL = "\([^"]*\)".*/\1/p' android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/GeminiClient.kt | head -1)"
+          for m in "$web_model" "$and_model"; do
+            if ! [[ "$m" =~ ^[a-z0-9][a-z0-9.-]{0,63}$ ]]; then
+              echo "::error::Could not read the pinned model from the sources (got '$m')."
+              exit 1
+            fi
+          done
+          echo "Pinned in the website: $web_model; pinned in the Android app: $and_model"
+
+          # 1. The model list (all pages; a page token is not a secret).
+          : > "$work/all.json"
+          token=""
+          for page in 1 2 3 4 5 6 7 8; do
+            url="$api/models?pageSize=200"
+            [ -n "$token" ] && url="$url&pageToken=$token"
+            code="$(curl -sS -o "$work/page.json" -w '%{http_code}' -H @"$work/hdr" "$url")" || code="000"
+            if [ "$code" != "200" ]; then
+              echo "::error::The model list call failed: HTTP $code $(jq -r '.error.status // empty' "$work/page.json" 2>/dev/null) $(jq -r '.error.message // empty' "$work/page.json" 2>/dev/null)"
+              exit 1
+            fi
+            jq -c '.models[]?' "$work/page.json" >> "$work/all.json"
+            token="$(jq -r '.nextPageToken // empty' "$work/page.json")"
+            [ -z "$token" ] && break
+          done
+          jq -r 'select((.supportedGenerationMethods // []) | index("generateContent")) | .name | sub("^models/"; "")' \
+            "$work/all.json" | sort -u > "$work/names.txt"
+          total="$(wc -l < "$work/names.txt" | tr -d ' ')"
+          echo "Models that support generateContent: $total"
+          echo "--- gemini-*"; grep '^gemini-' "$work/names.txt" || echo "(none)"
+          echo "--- other"; grep -v '^gemini-' "$work/names.txt" || echo "(none)"
+
+          # 2. One tiny request per model.
+          body='{"contents":[{"parts":[{"text":"Reply with the single word ok"}]}],"generationConfig":{"maxOutputTokens":256}}'
+          declare -A result
+          try_model() {
+            local m="$1" code msg
+            code="$(curl -sS -o "$work/r.json" -w '%{http_code}' -H @"$work/hdr" -H 'content-type: application/json' \
+              -d "$body" "$api/models/$m:generateContent")" || code="000"
+            if [ "$code" = "200" ]; then
+              result[$m]="200 | $(jq -r '"prompt " + ((.usageMetadata.promptTokenCount // 0)|tostring) + ", answer " + ((.usageMetadata.candidatesTokenCount // 0)|tostring) + ", thoughts " + ((.usageMetadata.thoughtsTokenCount // 0)|tostring) + ", total " + ((.usageMetadata.totalTokenCount // 0)|tostring)' "$work/r.json")"
+            else
+              msg="$(jq -r '(.error.status // "?") + ": " + (.error.message // "no message")' "$work/r.json" 2>/dev/null | head -c 300)"
+              case "$code" in
+                429) msg="quota/rate limited. $msg" ;;
+                404) msg="model not served for this key. $msg" ;;
+                402) msg="the key's prepaid AI Studio credit is used up (not a model-name problem). $msg" ;;
+              esac
+              result[$m]="$code | $msg"
+            fi
+            echo "$m -> $code: ${result[$m]#* | }"
+          }
+          tested=""
+          for m in "$web_model" "$and_model" gemini-3.5-flash-lite; do
+            case " $tested " in *" $m "*) continue ;; esac
+            if [ "$m" = "gemini-3.5-flash-lite" ] && ! grep -qx "$m" "$work/names.txt"; then
+              echo "$m is not in the list: not tried."
+              continue
+            fi
+            tested="$tested $m"
+            try_model "$m"
+          done
+
+          # 3. Annotations and the summary.
+          verdict=""
+          for m in $tested; do
+            [ "$m" = "gemini-3.5-flash-lite" ] && continue
+            c="${result[$m]%% | *}"
+            if [ "$c" = "404" ]; then
+              echo "::warning::The pinned model $m is NOT served for this key (HTTP 404). Change GEMINI_MODEL / MODEL to one from the list in the summary."
+            elif [ "$c" = "429" ]; then
+              echo "::warning::The pinned model $m is quota/rate limited for this key (HTTP 429); the key may be on a tier with no quota for it."
+            elif [ "$c" = "402" ]; then
+              echo "::warning::The pinned model $m answered HTTP 402: the key's prepaid AI Studio credit is used up (RESOURCE_EXHAUSTED, prepayment credits depleted). The model name is fine."
+            elif [ "$c" != "200" ]; then
+              echo "::warning::The pinned model $m answered HTTP $c."
+            fi
+          done
+          c="${result[$web_model]%% | *}"
+          if [ "$c" = "200" ]; then
+            verdict="$web_model still answers for this key: keep GEMINI_MODEL."
+          elif [ "$c" = "404" ]; then
+            verdict="$web_model is not served for this key: change GEMINI_MODEL (web) and MODEL (Android) to a model from the list above."
+          elif [ "$c" = "402" ]; then
+            verdict="$web_model answered HTTP 402: the key's prepaid AI Studio credit is used up. This is not a model-name problem, so keep GEMINI_MODEL; top up the credit or use another key. The Vertex path (provider=vertex, billed to the Google Cloud trial credit) is unaffected."
+          elif [ "$c" = "429" ]; then
+            verdict="$web_model is quota/rate limited for this key: the model exists but this key has no free quota for it now; try later or pick another model from the list."
+          else
+            verdict="$web_model answered HTTP $c: see the table; no conclusion about the model name."
+          fi
+          [ "$web_model" != "$and_model" ] && verdict="$verdict WARNING: the website pins $web_model but Android pins $and_model."
+          {
+            echo "## AI_API_KEY: models and the pinned model"
+            echo
+            echo "Models that support generateContent: **$total**"
+            echo
+            echo "**gemini-\***"
+            echo
+            echo '```'; grep '^gemini-' "$work/names.txt" || echo "(none)"; echo '```'
+            echo
+            echo "<details><summary>Other models</summary>"
+            echo
+            echo '```'; grep -v '^gemini-' "$work/names.txt" || echo "(none)"; echo '```'
+            echo "</details>"
+            echo
+            echo "| Model | HTTP | Result |"
+            echo "|---|---|---|"
+            for m in $tested; do
+              echo "| $m | ${result[$m]%% | *} | ${result[$m]#* | } |"
+            done
+            echo
+            echo "**What it means:** $verdict"
+          } >> "$summary"

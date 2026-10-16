@@ -38,6 +38,26 @@ export const API_CONFIG_KEY = `${STORAGE_PREFIX}api-config`;
 /** This browser's *AI features* switch (localStorage, '1' when on; off until the person turns it on). See AiService. */
 export const AI_OPT_IN_KEY = `${STORAGE_PREFIX}ai-features`;
 
+/**
+ * This browser's *Voice input* switch (localStorage, '1' when on; off until the person turns it on; ADR-37). A preference,
+ * not a secret: no audio and no transcript is ever kept under it or anywhere else, and it is never in a backup, copy, sync
+ * or share file. "Remove all data" sweeps it with the other `doorprints.` keys. See core/voice/voice-input.service.ts.
+ */
+export const VOICE_INPUT_KEY = `${STORAGE_PREFIX}voice-input`;
+
+/**
+ * Which service writes out the spoken words, 'own' (the person's AI provider, the default) or 'sarvam' (localStorage; ADR-37,
+ * voice PR 7). A preference, never in a backup, copy, sync or share file; "Remove all data" sweeps it.
+ */
+export const VOICE_PROVIDER_KEY = `${STORAGE_PREFIX}voice-provider`;
+
+/**
+ * The person's own Sarvam key for speech to text (localStorage when remembered, else sessionStorage), a slot of its own beside
+ * {@link GEMINI_KEY_KEY}: never the AI key, never in a backup, copy, sync or share file, sent only to api.sarvam.ai
+ * (ADR-37, TC-U-170 pattern). "Remove all data" sweeps it with the other `doorprints.` keys. See core/voice/voice-input.service.ts.
+ */
+export const SARVAM_KEY_KEY = `${STORAGE_PREFIX}sarvam-key`;
+
 /** Who answers AI requests, 'server' or 'device' (localStorage; docs/03 §13.1). See AiService. */
 export const AI_PROVIDER_KEY = `${STORAGE_PREFIX}ai-provider`;
 
@@ -45,11 +65,38 @@ export const AI_PROVIDER_KEY = `${STORAGE_PREFIX}ai-provider`;
 export const GEMINI_KEY_KEY = `${STORAGE_PREFIX}gemini-key`;
 
 /**
+ * Which AI the person's own device uses, 'gemini' or 'openai-compatible' (localStorage; docs/03 §13.2, ADR-35). Absent
+ * means 'gemini' (the read-time migration of ADR-26 users). Not a secret, and never in a backup, copy, sync or share
+ * file; "Remove all data" and *Remove key* delete it. See core/ai/ai-provider-config.ts.
+ */
+export const AI_KIND_KEY = `${STORAGE_PREFIX}ai-kind`;
+
+/** The OpenAI-compatible base URL the person typed, normalised (localStorage; same rules as {@link AI_KIND_KEY}). */
+export const AI_BASE_URL_KEY = `${STORAGE_PREFIX}ai-base-url`;
+
+/** The model name the person typed for an OpenAI-compatible provider (localStorage; same rules as {@link AI_KIND_KEY}). */
+export const AI_MODEL_KEY = `${STORAGE_PREFIX}ai-model`;
+
+/**
+ * The *AI speed and cost* choice, 'quality', 'balanced' or 'economy' (localStorage; S4b-BL-198, docs/ai/ai-design.md 13.2).
+ * Absent or anything else means 'quality'. Kept while AI is off or another service is chosen, but then ignored; not a
+ * secret, and never in a backup, copy, sync or share file; *Remove key* and "Remove all data" delete it.
+ * See core/ai/ai-quality.ts.
+ */
+export const AI_QUALITY_KEY = `${STORAGE_PREFIX}ai-quality`;
+
+/**
  * The map areas saved for offline use (localStorage, JSON; S4b-BL-79): a name, a box and the files' addresses. The
  * tiles themselves are in Cache Storage (`offline/offline-protocol.ts`). The name and place are the person's, so
  * "Remove all data" sweeps this key with the others and deletes the cache beside it.
  */
 export const OFFLINE_AREAS_KEY = `${STORAGE_PREFIX}offlineAreas`;
+
+/**
+ * Set (sessionStorage, '1') once this tab has reloaded itself after a page's code failed to load twice, so that the
+ * recovery cannot loop (core/chunk-recovery.ts). Gone when the tab closes.
+ */
+export const CHUNK_RELOAD_KEY = `${STORAGE_PREFIX}chunk-reloaded`;
 
 /**
  * Stored names from before the rename, kept only so {@link migrateLegacyStorage} can find them: a key in this
@@ -117,3 +164,9 @@ export function migrateLegacyStorage(): void {
     }
   }
 }
+
+/**
+ * Whether the person has finished or skipped the guided tour (localStorage: 'done' or 'skipped'). Absent means the
+ * tour is still to be offered, once, on the Map. A preference, kept by "Remove all data" like the language.
+ */
+export const TOUR_KEY = `${STORAGE_PREFIX}tour`;

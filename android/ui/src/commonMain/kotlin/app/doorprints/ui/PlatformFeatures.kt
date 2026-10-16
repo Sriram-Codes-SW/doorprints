@@ -58,19 +58,40 @@ data class PlatformFeatures(
      * regions (since S4b-BL-96).
      */
     val areaWakeup: Boolean = true,
+    /**
+     * Android's own phone-to-phone transfer copies the whole database, saved walks included (docs/11 5.27.7), so
+     * Settings > Hunt mode says so; the iPhone keeps its data out of iCloud and computer backups, so it has no such note.
+     */
+    val deviceTransferNote: Boolean = true,
+    /**
+     * Settings > Google Drive (docs/15): connect, backups, sync, deletion, devices. On since the iPhone's Drive wiring
+     * (S4b-BL-117: `ASWebAuthenticationSession` and the Secure Enclave key); where the build has no Google client id the
+     * card itself says Drive is not available, so the section stays in both apps and a switch off here is for a platform that
+     * has no wiring at all.
+     */
+    val googleDrive: Boolean = true,
+    /**
+     * The Android emulator's name for its computer, `10.0.2.2`, may be an AI service's address over plain `http`
+     * (S4b-BL-150, the one place `BaseUrlValidator`'s Android flag is true; the repository's `emulatorHostAllowed` is the
+     * same switch). The iPhone has no such address.
+     */
+    val emulatorHost: Boolean = true,
 ) {
     companion object {
         /**
          * The iPhone app: since CMP-8c the map (with India's boundary rules, adding a house on it), since S4b-BL-69 Hunt
          * mode (`IosHunt`, the adapter around the common `HuntEngine`), since S4b-BL-96 the area wake-up
          * (`IosAreaWakeup`), since S4b-BL-81 *Save a copy* (every copy but the PDF) and *Import a backup* (`IosCopies`),
-         * and since CMP-8b the list, the house form without new photos, Compare, the Assistant and Settings.
+         * and since CMP-8b the list, the house form without new photos, Compare, the Assistant and Settings; since
+         * S4b-BL-117 Google Drive (`IosDriveServices`), which says it is not available when the build has no Google client.
          */
         val Ios = PlatformFeatures(
             addPhotos = false,
             pdfCopies = false,
             weeklyBackup = false,
             inAppLanguage = false,
+            deviceTransferNote = false,
+            emulatorHost = false,
         )
     }
 }

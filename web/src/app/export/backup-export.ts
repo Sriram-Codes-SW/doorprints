@@ -16,8 +16,9 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+import { CURRENT_FORMAT, currentManifestOf, currentOf } from './backup-family';
 import { COST_FIELDS } from '../core/models';
-import type { HouseAnswer, HouseCost, HouseRoom, MoveIn } from '../core/models';
+import type { HouseAnswer, HouseCost, HouseDto, HouseRoom, MoveIn } from '../core/models';
 import { cleanAnswers, cleanCost, cleanMoveIn, cleanRooms, photoMetaOf } from '../data/records';
 import type { PhotoRecord } from '../data/records';
 import { hasMeta } from '../shared/photo-tags';
@@ -73,15 +74,17 @@ export const BACKUP_FORMAT_V2 = 'doorprints-backup/2';
  * S4b-BL-75) accepts exactly these. Kotlin: `BackupFormat.READ_IDS`.
  */
 export const BACKUP_FORMATS_READ: readonly string[] = ['doorprints-backup/1', 'doorprints-backup/2', 'doorprints-backup/3'];
+/** Path of the manifest inside a backup ZIP. */
 export const MANIFEST_ENTRY = 'manifest.json';
+/** Path of the data file inside a backup ZIP. */
 export const DATA_ENTRY = 'data.json';
 
 /**
  * Limits an importer checks before unpacking anything (zip bombs, nonsense files). Mirrors Kotlin `BackupFormat`
  * value for value: `MAX_ENTRIES`, `MAX_UNCOMPRESSED_BYTES` (1 GiB), `MAX_COMPRESSION_RATIO` and
- * `MAX_DATA_JSON_BYTES` (**16 MiB**, the cap docs/01 SEC-041 and docs/02 T-T8 state). The web has no importer yet
- * (S4-04, Sprint 4b), so nothing reads these today; they are kept equal to Kotlin so the web reader, when it lands,
- * refuses exactly what Android refuses (`exporters.spec.ts` pins them). The server's own limit on
+ * `MAX_DATA_JSON_BYTES` (**16 MiB**, the cap docs/01 SEC-041 and docs/02 T-T8 state). The website's reader
+ * (`backup-reader.ts`) checks them before it unpacks anything; they are kept equal to Kotlin so it refuses exactly what
+ * Android refuses (`exporters.spec.ts` pins them). The server's own limit on
  * `POST /api/import` is its request body cap (`app.limits.max-import-bytes`), which the Backend team owns.
  */
 export const BACKUP_LIMITS = {
@@ -96,8 +99,11 @@ export const BACKUP_APP = 'Doorprints';
 /** Bumped with the web app's package version; never used to gate an import. */
 export const BACKUP_APP_VERSION = '1.0.0';
 
+/** A house as `data.json` holds it. Properties are in the contract's order; unset ones are left out of the file. */
 export interface BackupHouse {
   id: string;
+  /** The candidate's kind when it is not the baseline kind (the house); a house's file has none (door 3). Written since kinds PR 32: a school's backup used to lose it. */
+  kind?: string;
   label: string;
   address?: string;
   street?: string;
@@ -130,6 +136,8 @@ export interface BackupHouse {
   checklist: Record<string, number>;
   createdAt: number;
   updatedAt: number;
+  /** The extras a newer app wrote, kept (kinds step 3); in the file they are part of `extras` (`backup-family.ts`). */
+  extrasOther?: HouseDto['extrasOther'];
 }
 
 /** The eleven cost fields, only the set ones, in `COST_FIELDS` order; the object itself is left out when empty. */
@@ -148,6 +156,7 @@ export type BackupAnswer = { [K in keyof HouseAnswer]?: Exclude<HouseAnswer[K], 
 /** Moving in in the backup: `date`, `notes` and `items` (id, text, `done` only when true, sort), only what is set. */
 export type BackupMoveIn = { [K in keyof MoveIn]?: NonNullable<MoveIn[K]> };
 
+/** A visit as `data.json` holds it; times are epoch milliseconds. */
 export interface BackupVisit {
   id: string;
   houseId?: string;
@@ -160,6 +169,7 @@ export interface BackupVisit {
   updatedAt: number;
 }
 
+/** A photo row of `data.json`: its metadata and the file name inside the ZIP, not the bytes. */
 export interface BackupPhoto {
   id: string;
   houseId: string;
@@ -270,6 +280,10 @@ export interface BackupAreaNote {
   updatedAt: number;
 }
 
+/**
+ * The content of `data.json`, the whole re-importable backup.
+ * Lists after `photos` are present only when they have rows, and a file that has any of them is written as the next format number.
+ */
 export interface BackupData {
   format: string;
   exportedAt: number;
@@ -301,6 +315,9 @@ export interface BackupDeletion {
   updatedAt: number;
 }
 
+/**
+ * How many rows of each list the data file holds; written to the manifest so a reader can see what the file should hold.
+ */
 export interface BackupCounts {
   houses: number;
   visits: number;
@@ -317,12 +334,16 @@ export interface BackupCounts {
   deleted?: number;
 }
 
+/** One entry of the manifest's file list: its path, size and SHA-256, which the importer verifies. */
 export interface BackupFile {
   path: string;
   sizeBytes: number;
   sha256: string;
 }
 
+/**
+ * `manifest.json`: where the backup came from, which options made it, the counts, and a SHA-256 for every other entry of the ZIP.
+ */
 export interface BackupManifest {
   format: string;
   app: string;
@@ -343,6 +364,10 @@ export interface BackupManifest {
   sharedTo?: string;
 }
 
+/**
+ * Turns the export bundle into `data.json`'s content.
+ * The format number is the lowest that holds everything in the copy, so an older app can still read a simple copy. Tombstones and sync state are never written, and a copy made without contacts has no broker or contact fields.
+ */
 export function buildBackupData(bundle: ExportBundle): BackupData {
   const brokers = bundle.brokers.length > 0 ? bundle.brokers.map(backupBroker) : undefined;
   const hasRooms = bundle.houses.some((h) => h.house.rooms && h.house.rooms.length > 0);
@@ -426,9 +451,13 @@ function backupAreaNote(row: AreaNoteRow): BackupAreaNote {
   return { id: row.id, ...(areaNoteToPayload(row.note) as Omit<BackupAreaNote, 'id' | 'updatedAt'>), updatedAt: millisOf(row.updatedAt) };
 }
 
-/** `id`, then the set payload keys in the contract's order (`viewingToPayload`), then `updatedAt`. */
+/**
+ * `id`, then the set payload keys in the contract's order (`viewingToPayload`), then `updatedAt`. The row is of the
+ * family before, so the payload's `candidateId` is its `houseId` here (`backup-family.ts` writes it as `candidateId`).
+ */
 function backupViewing(row: ViewingRow): BackupViewing {
-  return { id: row.id, ...(viewingToPayload(row.viewing) as Omit<BackupViewing, 'id' | 'updatedAt'>), updatedAt: millisOf(row.updatedAt) };
+  const { candidateId, ...rest } = viewingToPayload(row.viewing);
+  return { id: row.id, houseId: candidateId as string, ...(rest as Omit<BackupViewing, 'id' | 'houseId' | 'updatedAt'>), updatedAt: millisOf(row.updatedAt) };
 }
 
 /** `id`, then the payload keys in the contract's order (`questionToPayload`), then `updatedAt`. */
@@ -457,6 +486,7 @@ function backupBroker(entry: ExportBroker): BackupBroker {
 function backupHouse({ house }: BundleHouse): BackupHouse {
   return {
     id: house.id,
+    ...(house.kind ? { kind: house.kind } : {}),
     label: house.label,
     address: house.address ?? undefined,
     street: house.street ?? undefined,
@@ -483,6 +513,8 @@ function backupHouse({ house }: BundleHouse): BackupHouse {
     checklist: sortedChecklist(house.checklist),
     createdAt: millisOf(house.createdAt),
     updatedAt: millisOf(house.updatedAt),
+    // The extras a newer app wrote (kinds step 3): `currentOf` writes them after the known ones, never on their own.
+    ...(house.extrasOther ? { extrasOther: house.extrasOther } : {}),
   };
 }
 
@@ -548,13 +580,15 @@ export function buildBackupZip(
   modifiedAt: Date,
 ): Uint8Array {
   const data = buildBackupData(bundle);
+  // Written in the new family (kinds step 3): `/1`, `search`, `candidates` with `kind`, `money` and `extras`.
+  const current = currentOf(data as unknown as Record<string, unknown>, bundle.spaces);
   // `Doorprints-copy-<date>.html`, the same name as the HTML download. Only the readers' *view* of a backup: no
   // importer reads this entry (Android's `BackupValidation` only checks that its path is safe), so the rename from
   // `Doorprints-<date>.html` cannot break an import either way; Android's `ExportFormat.HTML` follows it (handover).
   const htmlName = htmlCopyName(bundle.exportedAt);
 
   const contents: ZipEntry[] = [
-    { path: DATA_ENTRY, data: utf8(backupJson(data)) },
+    { path: DATA_ENTRY, data: utf8(backupJson(current)) },
     { path: htmlName, data: utf8(html) },
   ];
   // Photos in the bundle's own order; a photo whose bytes this browser does not have is simply not written, and
@@ -565,7 +599,7 @@ export function buildBackupZip(
   }
 
   const manifest: BackupManifest = {
-    format: data.format,
+    format: CURRENT_FORMAT,
     app: BACKUP_APP,
     appVersion: BACKUP_APP_VERSION,
     createdAt: isoUtc(bundle.exportedAt),
@@ -594,7 +628,12 @@ export function buildBackupZip(
     })),
   };
 
-  return zip([...contents, { path: MANIFEST_ENTRY, data: utf8(backupJson(manifest)) }], modifiedAt);
+  return zip([...contents, { path: MANIFEST_ENTRY, data: utf8(backupJson(currentManifestOf(manifest))) }], modifiedAt);
+}
+
+/** `data.json` of a copy as the file holds it: the rows of {@link buildBackupData} in the new family (`backup-family.ts`). */
+export function backupDataJson(bundle: ExportBundle): string {
+  return backupJson(currentOf(buildBackupData(bundle) as unknown as Record<string, unknown>, bundle.spaces));
 }
 
 /**

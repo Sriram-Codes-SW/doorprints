@@ -1,0 +1,78 @@
+{
+  "spec": [
+    "android/ui/src/commonTest/kotlin/app/doorprints/ui/HuntSpaceTest.kt"
+  ],
+  "gradle": [
+    ":ui:testAndroidHostTest",
+    "--tests",
+    "app.doorprints.ui.HuntSpaceTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/HuntSpace.kt",
+      "find": "active && walkKind != null && walkKind == was && now != was",
+      "replace": "active && walkKind != null && now != was",
+      "expect": "aWalkStartedWhileAnotherSpaceIsOnScreenIsNotStoppedByLeavingThatSpace"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/HuntSpace.kt",
+      "find": "active && walkKind != null && walkKind == was && now != was",
+      "replace": "active && walkKind != null && walkKind == was",
+      "expect": "staysInTheWalksSpaceTheWalkGoesOn"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/HuntSpace.kt",
+      "find": "active && walkKind != null && walkKind == was && now != was",
+      "replace": "walkKind != null && walkKind == was && now != was",
+      "expect": "noWalkNothingToStop"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/HuntSpace.kt",
+      "find": "Starter.REMINDER -> caps.viewings != null",
+      "replace": "Starter.REMINDER -> false",
+      "expect": "aRemindersWalkIsTheKindWithViewingsAndAnAreasWalkIsTheDefaultKindFirst"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/HuntSpace.kt",
+      "find": "Starter.AREA -> hunt.areas",
+      "replace": "Starter.AREA -> false",
+      "expect": "aRemindersWalkIsTheKindWithViewingsAndAnAreasWalkIsTheDefaultKindFirst"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/HuntSpace.kt",
+      "find": "(listOf(setting.default) + setting.enabled).firstOrNull",
+      "replace": "setting.enabled.firstOrNull",
+      "expect": "aRemindersWalkIsTheKindWithViewingsAndAnAreasWalkIsTheDefaultKindFirst"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/HuntSpace.kt",
+      "find": "SpaceScope.createKind(walkKind, setting.enabled, setting.default)",
+      "replace": "setting.default",
+      "expect": "aHuntAlertMakesAnEntryOfTheWalksKindWhileItIsOnAndTheDefaultKindsWhenItIsOff"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/HuntSpace.kt",
+      "find": "raw?.takeIf { it in KindSettingRules.BUILT_IN }",
+      "replace": "raw",
+      "expect": "aKindIdOffTheWireIsBelievedOnlyWhenItIsOneOfTheAppsOwn"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/HuntSpace.kt",
+      "find": "kind in setting.enabled && has(kind)",
+      "replace": "has(kind)",
+      "expect": "huntModeStartsOnlyInAKindThatIsOnAndHasIt"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/HuntSpace.kt",
+      "find": "fun has(kind: String): Boolean = of(kind) != null",
+      "replace": "fun has(kind: String): Boolean = true",
+      "expect": "aKindHasHuntModeWhenItsFileSaysSo"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/Space.kt",
+      "find": "fun of(kind: String): HuntWords = BY_KIND[kind] ?: HOUSE",
+      "replace": "fun of(kind: String): HuntWords = HOUSE",
+      "expect": "theHuntWordsAreTheKindFilesAndTheHousesAreTheStringsHuntModeAlwaysHad"
+    }
+  ]
+}

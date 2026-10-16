@@ -36,13 +36,33 @@ public final class PromptSafety {
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final Pattern CONTROL = Pattern.compile("[\\p{Cntrl}&&[^\\n\\t\\r]]");
 
+    /**
+     * The one rule about abusive text (S4b-BL-234), a bullet of the Extract, Ask and Plan system texts of every kind on
+     * all three stacks (the website's {@code NEUTRAL_RULE}, the phones' {@code PromptSafety.NEUTRAL_RULE}).
+     */
+    public static final String NEUTRAL_RULE = "Do not repeat abusive words from the text; stay neutral and factual.";
+
     private PromptSafety() {
     }
 
+    /**
+     * A fresh random 6-hex-digit tag suffix for one prompt, from a secure random source, so text inside a block
+     * cannot guess the closing tag.
+     */
     public static String nonce() {
         var bytes = new byte[3];
         RANDOM.nextBytes(bytes);
         return HexFormat.of().formatHex(bytes);
+    }
+
+    /**
+     * The first {@code max} UTF-16 units of {@code s}, or one fewer when the cut would fall between the two halves of
+     * a character outside the Basic Multilingual Plane (an emoji): half a character would reach the provider as a broken one.
+     */
+    public static String clipUnits(String s, int max) {
+        if (s.length() <= max) return s;
+        boolean splits = Character.isHighSurrogate(s.charAt(max - 1)) && Character.isLowSurrogate(s.charAt(max));
+        return s.substring(0, splits ? max - 1 : max);
     }
 
     /** Removes control characters and any tag that could be mistaken for one of our delimiters. */

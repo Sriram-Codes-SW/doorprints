@@ -18,6 +18,7 @@
 
 package app.doorprints.server.ai.agent;
 
+import app.doorprints.server.house.House;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
@@ -25,6 +26,7 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 import java.util.List;
@@ -36,24 +38,46 @@ public final class PlanModels {
     private PlanModels() {
     }
 
+    /**
+     * Body of the plan-visits call: the user's request in words, where they start, and an optional cap on stops
+     * (1..25; the server's own cap still applies).
+     */
     public record PlanRequest(
             @NotBlank @Size(max = 4000) String question,
             @NotNull @DecimalMin("-90") @DecimalMax("90") Double startLat,
             @NotNull @DecimalMin("-180") @DecimalMax("180") Double startLon,
-            @Min(1) @Max(25) Integer maxStops) {
+            @Min(1) @Max(25) Integer maxStops,
+            /* S4b-BL-290: the kind of the space planned over; absent is today's call (every candidate). Checked against
+               app.kinds.available (a 400) before any tool runs. */
+            @Pattern(regexp = House.KIND_PATTERN) String kind) {
+        /** A request that names no kind. */
+        public PlanRequest(String question, Double startLat, Double startLon, Integer maxStops) {
+            this(question, startLat, startLon, maxStops, null);
+        }
     }
 
+    /**
+     * One stop of the answer: its place in the order, the house, why it was chosen, and the walk from the previous
+     * stop (or the start point).
+     */
     public record PlannedStop(int order, UUID houseId, String label, double lat, double lon, String reason,
                               long legMeters, int walkMinutes) {
     }
 
     /**
      * {@code fallback} is true when the agent ran out of budget or returned an unusable plan and the server built a
-     * deterministic nearest-neighbour route from the houses the agent had found.
+     * deterministic nearest-neighbour route from the houses the agent had found. {@code fallbackCause} (S4b-BL-200)
+     * says why, and is null when {@code fallback} is false: {@link #FALLBACK_PROVIDER} (the model provider failed
+     * mid-plan), {@link #FALLBACK_PARSE} (unreadable output or no usable stop) or {@link #FALLBACK_LIMIT} (the tool
+     * budget ran out and the wrap-up call did not give a plan). An additive field: clients ignore what they do not know.
      */
     public record PlanResponse(String summary, List<PlannedStop> stops, long totalMeters, int totalWalkMinutes,
-                               List<String> toolCalls, boolean fallback) {
+                               List<String> toolCalls, boolean fallback, String fallbackCause) {
     }
+
+    public static final String FALLBACK_PROVIDER = "provider";
+    public static final String FALLBACK_PARSE = "parse";
+    public static final String FALLBACK_LIMIT = "limit";
 
     /** Structured output target for the model. */
     public record AgentPlan(
@@ -61,6 +85,9 @@ public final class PlanModels {
             @JsonPropertyDescription("Houses to visit, in visiting order") List<AgentStop> stops) {
     }
 
+    /**
+     * One stop as the model proposes it. The house id is checked against the tool results before it is trusted.
+     */
     public record AgentStop(
             @JsonPropertyDescription("House id exactly as returned by a tool") String houseId,
             @JsonPropertyDescription("Why this house is in the plan, one sentence") String reason) {

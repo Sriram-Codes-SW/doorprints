@@ -18,7 +18,8 @@
 
 package app.doorprints.server.device;
 
-import app.doorprints.server.ai.web.TokenBucketRateLimiter;
+import app.doorprints.server.common.Problems;
+import app.doorprints.server.common.TokenBucketRateLimiter;
 import app.doorprints.server.config.RequestPaths;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -27,6 +28,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Map;
 
 /**
  * The calls anyone can make without a key, {@code /api/pair/**} and signing in to the owner page, get their own bucket
@@ -47,6 +49,10 @@ public class PairingRateLimitFilter extends OncePerRequestFilter {
         return !RequestPaths.isUnder(path, "/api/pair") && !path.equals("/owner/api/session");
     }
 
+    /**
+     * Answers 429 with Retry-After when the client address has used up its pairing allowance; preflights are not
+     * counted.
+     */
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
@@ -56,11 +62,8 @@ public class PairingRateLimitFilter extends OncePerRequestFilter {
         }
         var decision = limiter.tryAcquire("pair:" + request.getRemoteAddr());
         if (!decision.allowed()) {
-            response.setStatus(429);
-            response.setHeader("Retry-After", Long.toString(decision.retryAfterSeconds()));
-            response.setContentType("application/problem+json");
-            response.getWriter().write("{\"status\":429,\"detail\":\"Too many pairing requests, retry in "
-                    + decision.retryAfterSeconds() + "s\"}");
+            Problems.write(response, 429, "Too many pairing requests, retry in " + decision.retryAfterSeconds() + "s",
+                    Map.of("Retry-After", Long.toString(decision.retryAfterSeconds())));
             return;
         }
         chain.doFilter(request, response);

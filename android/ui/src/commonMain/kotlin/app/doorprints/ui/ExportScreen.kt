@@ -78,6 +78,7 @@ import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
+/** One file format on the Export screen with its label and one-line hint. */
 private data class FormatChoice(val format: ExportFormat, val label: StringResource, val hint: StringResource)
 
 private val formatChoices = listOf(
@@ -178,12 +179,12 @@ private enum class ExportStatus { RUNNING, MESSAGE, RESULT, COUNTS, NOTHING_MATC
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ExportScreen(onBack: () -> Unit, onOpenMap: () -> Unit = onBack) {
+fun ExportScreen(onBack: () -> Unit, onOpenMap: () -> Unit = onBack, onPickSpace: (String) -> Unit = {}) {
     val services = LocalAppServices.current
     val platform = LocalPlatformServices.current
     val repo = services.repository
     val exports = services.exportScreen
-    val defaults = exports.rememberDefaultOptions()
+    val defaults = rememberKindsCopyOptions(exports)
     val fileActions = exports.rememberFileActions()
 
     var format by rememberSaveable { mutableStateOf(ExportFormat.HTML) }
@@ -245,12 +246,17 @@ fun ExportScreen(onBack: () -> Unit, onOpenMap: () -> Unit = onBack) {
     // Files shared earlier are removed after a day (docs/11 section 5.2); this is the only place they pile up.
     LaunchedEffect(Unit) { exports.cleanShareCopies() }
 
+    // With two or more kinds on, a readable copy holds the space on screen; the full backup stays whole (kinds PR C, S4b-BL-289).
+    val space = LocalSpace.current
+    // The Full backup acts on every list, so with two or more kinds on its options, counts and gaps name no kind (S4b-BL-291).
+    val backupAny = space.multi && format == ExportFormat.BACKUP
     fun options(): ExportOptions = defaults().copy(
         scope = scope,
         includeRejected = includeRejected,
         photos = if (format.usesPhotos) photos else PhotoScope.NONE,
         includeContacts = includeContacts,
         language = language,
+        space = if (space.multi && format != ExportFormat.BACKUP) space.view else null,
     )
 
     // Every row, read again whenever the houses, visits or photos tables change (Android review, 2026-09-22):
@@ -447,10 +453,10 @@ fun ExportScreen(onBack: () -> Unit, onOpenMap: () -> Unit = onBack) {
                                 onDismiss = { dismiss(run.id) },
                             )
                         }
-                        ExportStatus.COUNTS -> counts?.let { CountChips(it) }
+                        ExportStatus.COUNTS -> counts?.let { CountChips(it, if (space.multi && format != ExportFormat.BACKUP) space else null, backupAny) }
                         // Houses exist, but none survives these options: say so rather than make an empty file.
                         ExportStatus.NOTHING_MATCHES -> {
-                            StatusLine(stringResource(Res.string.export_nothing_matches))
+                            StatusLine(stringResource(if (backupAny) Res.string.export_nothing_matches_any else Res.string.export_nothing_matches))
                             // The web page's recovery: "Shortlisted only" with nothing shortlisted is one tap from
                             // a useful copy. So is "All houses" without rejected ones when every house is rejected
                             // (UX review, round 16): the switch that caused it may be scrolled out of view.
@@ -576,16 +582,20 @@ fun ExportScreen(onBack: () -> Unit, onOpenMap: () -> Unit = onBack) {
                 // houses are added. No options and no disabled buttons: there is nothing for them to act on.
                 HeroEmptyState(
                     icon = Icons.Default.Home,
-                    title = stringResource(Res.string.export_empty),
+                    title = stringResource(space.words.exportEmpty),
                     action = {
                         // An action, not the bare noun "Map": it says what the tap is for.
                         Button(onClick = onOpenMap, modifier = Modifier.heightIn(min = 48.dp)) {
-                            ButtonLabel(stringResource(Res.string.common_add_on_map))
+                            ButtonLabel(stringResource(space.words.addOnMap))
                         }
                     },
                 )
             } else {
                 Text(stringResource(Res.string.export_intro), style = MaterialTheme.typography.bodyMedium, modifier = inset)
+                // With two or more kinds on, the card says which list a readable copy holds and that a backup holds all (kinds PR C).
+                if (space.multi) SpaceScopeNote(space, format, counts?.houses, inset)
+                // The list a copy is made of is a choice here, not only the chooser's (S4b-BL-292).
+                if (space.multi) SpacePick(space.setting.enabled, space.kind, enabled = !running, onPick = onPickSpace, modifier = inset.padding(top = 8.dp))
 
                 // The options apply to the next copy; while one is being made they are locked, so they cannot look
                 // as if they changed the running one.
@@ -615,7 +625,7 @@ fun ExportScreen(onBack: () -> Unit, onOpenMap: () -> Unit = onBack) {
                 }
                 // Directly under the cards, where "Full backup" was just chosen: what this backup will not hold.
                 val partialNote = remember { arrayOfNulls<String>(1) }
-                if (gaps.isNotEmpty()) partialNote[0] = partialBackupText(gaps)
+                if (gaps.isNotEmpty()) partialNote[0] = partialBackupText(gaps, backupAny)
                 AnimatedVisibility(visible = gaps.isNotEmpty(), enter = motionIn, exit = motionOut) {
                     Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp)) {
                         partialNote[0]?.let { WarnNote(it) }
@@ -635,13 +645,13 @@ fun ExportScreen(onBack: () -> Unit, onOpenMap: () -> Unit = onBack) {
                 }
 
                 HorizontalDivider(divider)
-                SectionHeading(stringResource(Res.string.export_scope), heading)
+                SectionHeading(stringResource(if (backupAny) Res.string.export_scope_any else space.words.exportScope), heading)
                 // docs/11 section 5.2 lists a third scope, "selected houses". ExportScope.SELECTED is implemented
                 // and tested in :shared, but picking individual houses needs a checkable list (the Compare screen's
                 // multi-select is the pattern) and is deferred to Sprint 4b — see android/shared/README.md section 8.
                 Column(Modifier.selectableGroup()) {
                     RadioRow(
-                        AnnotatedString(stringResource(Res.string.export_scope_all)), null, scope == ExportScope.ALL, editable,
+                        AnnotatedString(stringResource(if (backupAny) Res.string.export_scope_all_any else space.words.exportScopeAll)), null, scope == ExportScope.ALL, editable,
                     ) {
                         scope = ExportScope.ALL
                         optionChanged()
@@ -657,7 +667,7 @@ fun ExportScreen(onBack: () -> Unit, onOpenMap: () -> Unit = onBack) {
                 // Only where it changes something; the stored choice is kept while it is hidden.
                 AnimatedVisibility(visible = scope == ExportScope.ALL, enter = motionIn, exit = motionOut) {
                     SwitchRow(
-                        text = stringResource(Res.string.export_include_rejected),
+                        text = stringResource(if (backupAny) Res.string.export_include_rejected_any else space.words.exportIncludeRejected),
                         hint = null,
                         checked = includeRejected,
                         enabled = editable,
@@ -682,7 +692,7 @@ fun ExportScreen(onBack: () -> Unit, onOpenMap: () -> Unit = onBack) {
                                 optionChanged()
                             }
                             RadioRow(
-                                AnnotatedString(stringResource(Res.string.export_photos_shortlisted)), null,
+                                AnnotatedString(stringResource(if (backupAny) Res.string.export_photos_shortlisted_any else space.words.exportPhotosShortlisted)), null,
                                 photos == PhotoScope.SHORTLISTED, editable,
                             ) {
                                 photos = PhotoScope.SHORTLISTED
@@ -744,8 +754,8 @@ fun ExportScreen(onBack: () -> Unit, onOpenMap: () -> Unit = onBack) {
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun CountChips(c: ExportCounts) {
-    val houses = pluralStringResource(Res.plurals.count_houses, c.houses, c.houses)
+private fun CountChips(c: ExportCounts, space: SpaceUi? = null, entries: Boolean = false) {
+    val houses = if (entries) pluralStringResource(Res.plurals.count_entries, c.houses, c.houses) else if (space == null) pluralStringResource(Res.plurals.count_houses, c.houses, c.houses) else stringResource(Res.string.export_count_kind, stringResource(space.words.many), c.houses)
     val visits = pluralStringResource(Res.plurals.count_visits, c.visits, c.visits)
     val photos = pluralStringResource(Res.plurals.count_photos, c.photos, c.photos)
     val sentence = stringResource(Res.string.export_counts, houses, visits, photos)
@@ -835,14 +845,14 @@ private fun RunResult(info: ExportRun, onMessage: (String?) -> Unit, onDismiss: 
  * will not bring those back." — every [BackupGap] named, in the language's own list pattern.
  */
 @Composable
-private fun partialBackupText(gaps: List<BackupGap>): String {
+private fun partialBackupText(gaps: List<BackupGap>, neutral: Boolean = false): String {
     val items = gaps.map { gap ->
         stringResource(
             when (gap) {
-                BackupGap.HOUSES_NOT_SHORTLISTED -> Res.string.export_gap_not_shortlisted
-                BackupGap.HOUSES_NOT_SELECTED -> Res.string.export_gap_not_selected
-                BackupGap.REJECTED_HOUSES -> Res.string.export_gap_rejected
-                BackupGap.PHOTOS_NOT_SHORTLISTED -> Res.string.export_gap_photos_not_shortlisted
+                BackupGap.HOUSES_NOT_SHORTLISTED -> if (neutral) Res.string.export_gap_not_shortlisted_any else Res.string.export_gap_not_shortlisted
+                BackupGap.HOUSES_NOT_SELECTED -> if (neutral) Res.string.export_gap_not_selected_any else Res.string.export_gap_not_selected
+                BackupGap.REJECTED_HOUSES -> if (neutral) Res.string.export_gap_rejected_any else Res.string.export_gap_rejected
+                BackupGap.PHOTOS_NOT_SHORTLISTED -> if (neutral) Res.string.export_gap_photos_not_shortlisted_any else Res.string.export_gap_photos_not_shortlisted
                 BackupGap.PHOTOS -> Res.string.export_gap_photos
                 BackupGap.CONTACTS -> Res.string.export_gap_contacts
             }

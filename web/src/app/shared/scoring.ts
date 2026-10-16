@@ -61,6 +61,10 @@ const KEY_PATTERN = /^[A-Za-z0-9._-]{1,64}$/;
 /** A custom criterion's key: `c_` and 8 lowercase hex characters. */
 const CUSTOM_KEY_PATTERN = /^c_[0-9a-f]{8}$/;
 
+/**
+ * One thing the checklist scores a house on: a built-in criterion or a custom one with its own label, how much it
+ * counts, and whether it is a must-have.
+ */
 export interface Criterion {
   key: string;
   /** Custom criteria only (at most 60 characters); a built-in's translated name stays in the apps. */
@@ -104,10 +108,12 @@ const DEFAULT_CRITERIA: readonly Criterion[] = BUILT_IN_KEYS.map((key, index) =>
 
 export const DEFAULT_SCORING: Scoring = { criteria: DEFAULT_CRITERIA, ratingShare: DEFAULT_RATING_SHARE };
 
+/** Whether the key is one of the ten built-in criteria. */
 export function isBuiltInKey(key: string): boolean {
   return (BUILT_IN_KEYS as readonly string[]).includes(key);
 }
 
+/** Whether the key has the shape of a custom criterion's key (`c_` and 8 hex characters). */
 export function isCustomKey(key: string): boolean {
   return CUSTOM_KEY_PATTERN.test(key);
 }
@@ -300,6 +306,7 @@ export function compareRanked(a: RankedHouse, b: RankedHouse): number {
   return b.updatedAt - a.updatedAt || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 }
 
+/** Orders larger numbers first and unknown (null) values last. */
 function descNullLast(a: number | null, b: number | null): number {
   if (a === b) return 0;
   if (a === null) return 1;
@@ -314,10 +321,12 @@ export function newCustomKey(): string {
   return 'c_' + Array.from(bytes, (x) => x.toString(16).padStart(2, '0')).join('');
 }
 
+/** Whether the value is one of the four weights. */
 function isWeight(value: unknown): value is Weight {
   return value === 0 || value === 1 || value === 2 || value === 3;
 }
 
+/** The value if it is a whole number from `min` to `max`, else undefined. */
 function intIn(value: unknown, min: number, max: number): number | undefined {
   return typeof value === 'number' && Number.isInteger(value) && value >= min && value <= max ? value : undefined;
 }

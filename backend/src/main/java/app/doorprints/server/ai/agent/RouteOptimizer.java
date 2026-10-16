@@ -37,12 +37,21 @@ public final class RouteOptimizer {
     private RouteOptimizer() {
     }
 
+    /**
+     * A place on the route; the id is the house id as text.
+     */
     public record Point(String id, double lat, double lon) {
     }
 
+    /**
+     * One walk to a stop: the straight-line distance in metres and the estimated minutes including the street detour.
+     */
     public record Leg(Point to, double meters, int walkMinutes) {
     }
 
+    /**
+     * Great-circle distance in metres between two WGS84 points.
+     */
     public static double haversineMeters(double lat1, double lon1, double lat2, double lon2) {
         double dLat = Math.toRadians(lat2 - lat1);
         double dLon = Math.toRadians(lon2 - lon1);
@@ -51,6 +60,10 @@ public final class RouteOptimizer {
         return 2 * EARTH_RADIUS_M * Math.asin(Math.min(1.0, Math.sqrt(a)));
     }
 
+    /**
+     * Walking minutes for a straight-line distance: the distance times the detour factor, at walking speed, rounded
+     * up. A zero or negative distance gives 0.
+     */
     public static int estimateWalkMinutes(double meters) {
         if (meters <= 0) return 0;
         return (int) Math.ceil(meters * DETOUR_FACTOR / WALK_M_PER_MIN);

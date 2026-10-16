@@ -30,11 +30,10 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
-import { Location } from '@angular/common';
+import { Location, NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
-import type { Subscription } from 'rxjs';
 import { LocalDataService } from '../../core/local-data.service';
 import { GeocodeService } from '../../core/geocode.service';
 import {
@@ -44,7 +43,6 @@ import {
   STATUSES,
   STATUS_COLOR,
   STATUS_ICON,
-  STATUS_KEY,
   VisitDto,
   newHouse,
   uuid,
@@ -53,80 +51,84 @@ import { errorMsg, telHref } from '../../core/format';
 import type { TKey } from '../../i18n/en';
 import { MAX_ANSWERS, MAX_ANSWER, MAX_ANSWER_TEXT, cleanAnswers, cleanCost, cleanMoveIn, cleanRooms } from '../../data/records';
 import { LocalStore } from '../../data/local-store.service';
-import { ROOM_TYPES, ROOM_TYPE_KEY } from '../../core/models';
-import type { HouseAnswer, HouseRoom, MoveIn, RoomType } from '../../core/models';
-import type { PhotoSummary } from '../../core/local-data.service';
-import { MOVE_IN_TAG, photoTagKey } from '../../shared/photo-tags';
-import type { PhotoMeta } from '../../shared/photo-tags';
-import { HouseMoveInCard } from './house-move-in-card';
-import type { OpenedPhoto } from './house-move-in-card';
+import type { HouseAnswer, MoveIn } from '../../core/models';
+import { MOVE_IN_TAG } from '../../shared/photo-tags';
+import type { PhotoMetaInput } from '../../data/photo-store';
+import { HouseMoveInCard, type OpenedPhoto } from './house-move-in-card';
+import { HouseCheckCard } from './house-check-card';
+import { HouseWalksCard } from './house-walks-card';
+import { TraceStore } from '../../data/trace-store';
 import { PhotoMetaEditor } from './photo-meta-editor';
-import { QUESTION_CATEGORIES } from '../../shared/question';
-import type { Question, QuestionCategory } from '../../shared/question';
+import { HousePhotos, isStorageFull } from './house-photos';
+import { HouseRooms } from './house-rooms';
+import { HouseFloor, floorOf } from './house-floor';
+import { type KindExtras, MONEY_SECTION, extrasFor } from './kind-extras';
+import { type KindKeys, statusKeys } from '../../core/kind-labels';
+import { drawnKind, ofKind } from '../../core/kind-setting';
+import { SpaceService } from '../../core/space.service';
+import { type SpaceWords, spaceWords } from '../../core/space-words';
+import { toolWord } from '../../core/space-tool-words';
+import { blankToNull, clone, sharedFromNavigation, sortBrokers, toWholeNumber, withCost } from './house-page-input';
+import { QUESTION_CATEGORIES, questionCategoryLabel, questionsOfKind, type Question, type QuestionCategory } from '../../shared/question';
 import { HouseViewingsCard } from '../viewings/house-viewings-card';
 import { HouseAreaNotesCard, HouseDistancesCard } from '../areas/house-area-cards';
 import { addUsual, answerFor, ordered, usualQuestions } from '../../shared/house-answers';
-import {
-  areaNumber,
-  areaSqCm,
-  cmToFeetInches,
-  metresText,
-  moveRoom,
-  parseFeetInches,
-  parseMetres,
-  totalAreaSqCm,
-} from '../../shared/room-sizes';
 import { duplicateFlats } from '../../shared/duplicate-flat';
-import { parseFloor } from '../../shared/house-floor';
-import type { LengthUnit } from '../../shared/room-sizes';
 import { costSummary } from '../../shared/house-cost';
 import { brokerLine } from '../../shared/broker';
-import { criterionName } from '../../shared/criterion-name';
 import { DEFAULT_SCORING, evaluateScore } from '../../shared/scoring';
+import { kindCriterionName, scoringForKind } from '../../shared/compare-criteria';
 import type { Criterion, ScoreResult, Scoring } from '../../shared/scoring';
 import type { BrokerRow } from '../../shared/broker';
 import { LocalDataError } from '../../core/local-error';
 import { Announcer } from '../../core/announcer.service';
-import { resizeImage } from '../../core/image-resize';
-import { LatLon, LocationMap, round6 } from '../../shared/location-map';
+import { DeleteUndoService, nameOfRow } from '../../core/delete-undo.service';
+import { LocationMap, round6 } from '../../shared/location-map';
+import type { MapOverlay } from '../../shared/location-map';
 import { AuthImage } from '../../shared/auth-image';
 import { Msg, TranslationService } from '../../i18n/translation.service';
 import { TitleOverride } from '../../i18n/i18n-title.strategy';
 import { ConfirmService } from '../../core/confirm.service';
-import { AI_MAX_LISTING_CHARS, AiService, HouseDraft, aiErrorMsg } from '../../core/ai.service';
+import { AI_MAX_LISTING_CHARS, AiService } from '../../core/ai.service';
 import { TPipe } from '../../i18n/t.pipe';
 import { UnsavedChanges } from '../../core/unsaved-changes.service';
-import { COUNTRY_VIEW, loadStartPoint, locationErrorKey, parseCoordinate } from '../../shared/map-center';
-import { locateOnce } from '../../shared/locate-once';
-import { AddressLookup, FIELD_LABEL, FillField, addressFill, mergeListingDraft } from './house-draft-merge';
+import { COUNTRY_VIEW, loadStartPoint } from '../../shared/map-center';
+import { HouseListingCard, HouseListingFill } from './house-listing-card';
+import { HouseLocation } from './house-location';
 import { clearDraft, draftKey, readDraft, writeDraft } from './draft-store';
 import { type BackKey, HOUSE_BACK_STATE, backTarget, exitAfterRemoval } from './back-target';
 import { ListReturn } from '../map/list-return';
 import { GLYPHS } from '../../shared/glyphs';
 import { parseListingText } from '../../shared/listing-text';
 import { RunResult, runResult } from '../../shared/run-result';
+import { isBaselineKind } from '../../core/kind-capabilities';
 
 interface OpenPhoto {
   src: string;
   alt: string;
 }
 
-/** A photo that could not be added, named in the photos card. */
 /** Said while a save runs; withdrawn on failure (persist()). */
 const SAVING: Msg = { key: 'house.saving' };
-
-interface PhotoFailure {
-  file: string;
-  reason: Msg;
-}
 
 /** How long typing pauses before the unsaved draft is written to sessionStorage. */
 const DRAFT_SAVE_MS = 500;
 
+/**
+ * The page to view, add or edit one house (`/houses/:id` and `/houses/new`): the form with its cost, rooms, questions,
+ * checklist and score, the location map, visits, photos and the cards for viewings, area notes, move-in and walks. It
+ * is the one place a house is changed by hand.
+ *
+ * Edits go to a local `draft` signal and only {@link persist} writes them to the local store; sync to a server happens
+ * later and elsewhere. While there are unsaved edits the draft is kept in sessionStorage (draft-store.ts), the router
+ * guard and the reload banner ask before leaving, and a new house opened without a position cannot be saved until the
+ * pin is put. States: loading, not found, error, saving, just saved.
+ */
 @Component({
   selector: 'app-house-detail-page',
   imports: [
     FormsModule,
+    NgTemplateOutlet,
     RouterLink,
     LocationMap,
     AuthImage,
@@ -134,7 +136,9 @@ const DRAFT_SAVE_MS = 500;
     HouseViewingsCard,
     HouseAreaNotesCard,
     HouseDistancesCard,
-    HouseMoveInCard,
+    HouseMoveInCard, HouseListingCard,
+    HouseCheckCard,
+    HouseWalksCard,
     PhotoMetaEditor,
   ],
   templateUrl: './house-detail-page.html',
@@ -149,7 +153,9 @@ export class HouseDetailPage implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly location = inject(Location);
   private readonly announcer = inject(Announcer);
+  private readonly deleteUndo = inject(DeleteUndoService);
   private readonly confirm = inject(ConfirmService);
+  private readonly traces = inject(TraceStore);
   private readonly unsaved = inject(UnsavedChanges);
   private readonly pageTitle = inject(TitleOverride);
   private readonly injector = inject(Injector);
@@ -159,33 +165,39 @@ export class HouseDetailPage implements OnInit, OnDestroy {
   protected readonly ai = inject(AiService);
   protected readonly i18n = inject(TranslationService);
 
-  // "Fill in from listing text" (AI, new houses only; hidden unless the server has AI enabled).
-  protected listingText = '';
-  /** The listing box starts open when the house came from a shared listing (the text is already in it). */
-  protected listingOpen = false;
-  protected readonly listingMax = AI_MAX_LISTING_CHARS;
-  protected readonly filling = signal(false);
-  protected readonly fillWarnings = signal<string[]>([]);
-  /** Typed values the fill kept, with what the listing says instead ("Kept your Name; the listing says …"). */
-  protected readonly keptWarnings = signal<Msg[]>([]);
-  /**
-   * Why the listing could not be read: shown in the listing card, next to the button. Every message a button can
-   * produce twice in a row with the same words is keyed on its run ({@link RunResult}), so the second one is a new
-   * node in its live region and is read again (web UX gate R9).
-   */
-  protected readonly fillError = signal<RunResult<Msg> | null>(null);
+  /** "Fill in from listing text" (AI, new houses only; hidden unless the server has AI enabled) (house-listing-fill.ts). */
+  protected readonly listing = new HouseListingFill({
+    ai: this.ai, i18n: this.i18n, announcer: this.announcer, draft: () => this.draft(), patch: (changes) => this.patch(changes),
+  });
 
   protected readonly draft = signal<HouseDto | null>(null);
-  /** Rooms (slice 1c): the length unit is a local display preference; the draft always holds centimetres. */
-  protected readonly lengthUnit = signal<LengthUnit>('FT');
-  protected readonly roomTypes = ROOM_TYPES;
-  protected readonly roomTypeKey = ROOM_TYPE_KEY;
-  protected readonly maxRooms = MAX_ROOMS;
-  protected readonly conditions = [1, 2, 3, 4, 5];
-  protected readonly dims = [
-    { key: 'lengthCm', label: 'rooms.length' },
-    { key: 'widthCm', label: 'rooms.width' },
-  ] as const;
+  /** The rooms of this house: the list in the draft, the sizes in the chosen unit (house-rooms.ts). */
+  protected readonly rooms = new HouseRooms({
+    i18n: this.i18n,
+    injector: this.injector,
+    draft: () => this.draft(),
+    patch: (changes) => this.patch(changes),
+  });
+  /** The floor of this house: the level, the Basement switch and whether it is a floor (house-floor.ts). */
+  protected readonly floor = new HouseFloor({ patch: (changes) => this.patch(changes) });
+  /** The candidate's kind: its own when built in (S4b-BL-209); a new one is of the data set's kind (Settings, S4b-BL-212). */
+  protected readonly kind = computed(() => drawnKind(this.draft()?.kind));
+  protected readonly space = inject(SpaceService);
+  /** The kind's words for the save button and the area-notes line (a school's, S4b-BL-212). */
+  protected get W(): SpaceWords { return spaceWords(this.kind().id); }
+  protected readonly isBaseline = computed(() => isBaselineKind(this.kind().id)); // the checklist links to the person's own criteria only for the baseline kind
+  /**
+   * A house word of the page in the kind's own (S4b-BL-259): the house's key for a house, a school's for a school; with no
+   * candidate loaded (the *not found* card) the kind of the space on screen.
+   */
+  protected w(key: TKey): TKey { return toolWord(this.draft() ? this.kind().id : this.space.kind(), key); }
+  private readonly extrasOf = extrasFor({ patch: (changes) => this.patch(changes) });
+  /** The typed extras of the Details and Cost cards, drawn from the kind file (kind-extras.ts, S4b-BL-208). */
+  protected get extras(): KindExtras { return this.extrasOf(this.kind().fields); }
+  protected readonly moneySection = MONEY_SECTION;
+  /** The kind's keys for the page's field and section labels (S4b-BL-255), and whether it shows a place (S4b-BL-209). */
+  protected get L(): KindKeys { return this.kind().keys; }
+  protected readonly shows = (ref: string): boolean => this.kind().labels.isVisible(ref);
   /** The brokers the Broker select offers (slice 1b), by name. */
   protected readonly brokers = signal<BrokerRow[]>([]);
   /** Every house in this browser, for the duplicate-flat warning under the floor (S4b-BL-85). */
@@ -197,6 +209,8 @@ export class HouseDetailPage implements OnInit, OnDestroy {
   });
   protected readonly brokerLine = (row: BrokerRow): string => brokerLine(row.broker);
   protected readonly isNew = signal(false);
+  /** Walks and the place check's halo drawn on this page's own map (docs/11 5.27.6, 5.27.13); never a navigation, never kept. */
+  protected readonly overlay = signal<MapOverlay | null>(null);
   protected readonly loading = signal(true);
   protected readonly saving = signal(false);
   protected readonly dirty = signal(false);
@@ -204,27 +218,18 @@ export class HouseDetailPage implements OnInit, OnDestroy {
   protected readonly nameError = signal(false);
   /** Save failures only (name or location missing, the save itself failed) and a failed load; at the top. */
   protected readonly error = signal<RunResult<Msg> | null>(null);
-  protected readonly geocoding = signal(false);
-  /** *Find “Indiranagar” on the map* is running (S4b-BL-83). */
-  protected readonly finding = signal(false);
-  /** What *Find* put on the map, said under the buttons until the pin is moved or the page is left. */
-  protected readonly placeMsg = signal<RunResult<Msg> | null>(null);
-  /**
-   * False for a new house opened without a position (the share target, a bookmarked /houses/new) until the user
-   * has put the pin: chosen a spot on the map, typed coordinates, or used their location. Saving is refused until
-   * then — a house saved at the starting view would be a house in the wrong place.
-   */
-  protected readonly locationSet = signal(true);
-  protected readonly locationError = signal(false);
-  protected readonly locating = signal(false);
-  /** A failure of "Use my location" or "Fill address from map", shown under those buttons. */
-  protected readonly locationMsg = signal<RunResult<Msg> | null>(null);
-  /** Typed coordinates that are not valid; the typed text stays in the field and the pin stays where it was. */
-  protected readonly coordsInvalid = signal<{ lat: boolean; lon: boolean }>({ lat: false, lon: false });
-  protected readonly coordsError = computed(() => this.coordsInvalid().lat || this.coordsInvalid().lon);
-  /** Zoom the location map opens at: street level for a known position, wider for a starting guess. */
-  protected readonly startZoom = signal(16);
-  protected readonly canLocate = typeof navigator !== 'undefined' && 'geolocation' in navigator;
+  /** Where the house is: the pin, the typed coordinates, Use my location, Find, Fill address from map (house-location.ts). */
+  protected readonly position = new HouseLocation({
+    geocode: this.geocode,
+    i18n: this.i18n,
+    announcer: this.announcer,
+    confirm: this.confirm,
+    draft: () => this.draft(),
+    patch: (changes) => this.patch(changes),
+    error: this.error,
+    gone: () => this.destroyed,
+    word: (key) => this.w(key),
+  });
   /** Unsaved edits from an earlier visit to this page (a discarded tab) were put back; offer to discard them. */
   protected readonly restored = signal(false);
   /** "Back" goes back in history (to Compare, an Ask answer, a Plan stop, the filtered list), not always to "/". */
@@ -240,15 +245,17 @@ export class HouseDetailPage implements OnInit, OnDestroy {
   protected readonly markingVisit = signal(false);
   protected readonly visitsMsg = signal<RunResult<Msg> | null>(null);
 
-  protected readonly photoIds = signal<string[]>([]);
-  /** The photos' room, tags and caption by photo id (slice 5); read again with the photo list. */
-  protected readonly photoInfo = signal<ReadonlyMap<string, PhotoSummary>>(new Map());
-  /** The photo whose details editor is open, if any. */
-  protected readonly editingPhoto = signal<string | null>(null);
-  protected readonly uploading = signal(0);
-  /** The files of the current batch that could not be added; one run per batch, so a batch failing again is read. */
-  protected readonly photoFailures = signal<RunResult<readonly PhotoFailure[]> | null>(null);
-  protected readonly photosMsg = signal<RunResult<Msg> | null>(null);
+  /** The photos of this house: the list, the uploads, the details editor (house-photos.ts). */
+  protected readonly photos = new HousePhotos({
+    api: this.api,
+    announcer: this.announcer,
+    confirm: this.confirm,
+    i18n: this.i18n,
+    house: () => this.draft(),
+    isNew: () => this.isNew(),
+    onDeleted: () => this.lightbox.set(null),
+  });
+  /** The photo open in the large view: one of the photos card, or a condition photo of the Moving in card. */
   protected readonly lightbox = signal<OpenPhoto | null>(null);
   /** A failed delete, shown next to the delete button. */
   protected readonly dangerMsg = signal<RunResult<Msg> | null>(null);
@@ -259,8 +266,9 @@ export class HouseDetailPage implements OnInit, OnDestroy {
   private shortQuery: MediaQueryList | null = null;
   private onShortChange: (() => void) | null = null;
 
-  /** The question bank (slice 3a), archived questions included; empty until it is read. */
-  private readonly bank = signal<Question[]>([]);
+  /** The question bank (slice 3a), archived included, of every kind, empty until read; `bank` is the candidate's kind's own, seeded when its page first opens (PR 29, §18.23). */
+  private readonly allQuestions = signal<Question[]>([]);
+  private readonly bank = computed(() => questionsOfKind(this.allQuestions(), this.kind().id));
   protected readonly maxAnswers = MAX_ANSWERS;
   protected readonly maxAnswerText = MAX_ANSWER_TEXT;
   protected readonly maxAnswer = MAX_ANSWER;
@@ -282,15 +290,16 @@ export class HouseDetailPage implements OnInit, OnDestroy {
   });
   /** The ids of the answers in the order the cards are shown; kept while typing so a card does not jump when it turns Answered. */
   private answerIds: string[] = [];
-  /** The effective scoring (slice 2); the defaults until it is read. */
-  private readonly scoring = signal<Scoring>(DEFAULT_SCORING);
+  /** The person's effective scoring (slice 2), the defaults until it is read; the kind's own checklist scores a school (kinds PR 27, §18.21). */
+  private readonly personScoring = signal<Scoring>(DEFAULT_SCORING);
   /**
    * The criteria the checklist asks about: the active ones in the person's order, custom ones by label, weight-0 ones
    * marked "ignored". Archived criteria are hidden here but their stored scores stay on the house.
    */
-  protected readonly checklist = computed<Criterion[]>(() => this.scoring().criteria.filter((c) => c.archived !== true));
+  protected readonly checklist = computed<Criterion[]>(() => scoringForKind(this.kind(), this.personScoring()).criteria.filter((c) => c.archived !== true));
   protected readonly statuses = STATUSES;
-  protected readonly statusKey = STATUS_KEY;
+  /** The status words of the candidate's kind (S4b-BL-256). */
+  protected readonly statusKey = computed(() => statusKeys(this.kind().labels));
   protected readonly statusIcon = STATUS_ICON;
   protected readonly statusColor = STATUS_COLOR;
   protected readonly checkValues: readonly number[] = [0, 1, 2, 3, 4, 5];
@@ -303,16 +312,7 @@ export class HouseDetailPage implements OnInit, OnDestroy {
   private draftTimer: ReturnType<typeof setTimeout> | undefined;
   /** The house as loaded, for "Discard" on restored edits. */
   private pristine: { draft: HouseDto; dirty: boolean; locationSet: boolean } | null = null;
-  /** Upload results of the files chosen together, announced once when the last one is done. */
-  private batch = { added: 0, failed: 0 };
-  /**
-   * The listing read and the address lookup in flight, and whether the page is gone. Leaving the page is one of the
-   * ends of "Reading the listing…", "Filling address…" and "Locating…": their late result must not fill a form,
-   * open a question or announce "Form filled in" / "Location found" on whatever page the user went to.
-   */
-  private fillRequest: Subscription | null = null;
-  private lookupRequest: Subscription | null = null;
-  private findRequest: Subscription | null = null;
+  /** Set first thing in `ngOnDestroy`: the late answer of a read, a lookup or a location request is dropped. */
   private destroyed = false;
   /**
    * Set just before this page calls `Location.back()` itself, once leaving has been settled (asked and answered in
@@ -340,14 +340,13 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     });
     this.unsaved.register(this, () => this.persist());
     afterNextRender(() => this.watchToolbar());
-    this.store.lengthUnit().then((u) => this.lengthUnit.set(u), () => undefined);
+    this.store.lengthUnit().then((u) => this.rooms.lengthUnit.set(u), () => undefined);
   }
 
   ngOnDestroy(): void {
     this.destroyed = true;
-    this.fillRequest?.unsubscribe();
-    this.lookupRequest?.unsubscribe();
-    this.findRequest?.unsubscribe();
+    this.listing.stop();
+    this.position.stop();
     this.unsaved.release(this);
     this.toolbarObserver?.disconnect();
     if (this.shortQuery && this.onShortChange) this.shortQuery.removeEventListener('change', this.onShortChange);
@@ -389,20 +388,24 @@ export class HouseDetailPage implements OnInit, OnDestroy {
 
   /** Browser reload or tab close with unsaved edits or photos still uploading: the browser's own "Leave site?". */
   protected onBeforeUnload(event: BeforeUnloadEvent): void {
-    if ((!this.dirty() && this.uploading() === 0) || this.unsaved.leaving) return;
+    if ((!this.dirty() && this.photos.uploading() === 0) || this.unsaved.leaving) return;
     event.preventDefault();
     // Older browsers only show the prompt when returnValue is set; the text itself is never displayed.
     event.returnValue = '';
   }
 
+  /**
+   * Loads what the form needs (question bank, scoring, brokers, other houses) and then either starts a new house (from
+   * a position in the URL, a shared listing, or none) or reads the house, its visits and its photos. Shared listing
+   * text arrives in navigation state, never in the URL, because it often holds a phone number.
+   */
   ngOnInit(): void {
-    this.api.questions().subscribe({
-      next: (list) => this.bank.set(list),
-      error: () => this.bank.set([]),
-    });
+    const readQuestions = () => this.api.questions().subscribe({ next: (list) => this.allQuestions.set(list), error: () => this.allQuestions.set([]) });
+    readQuestions();
+    if (!isBaselineKind(this.space.kind())) this.api.seedKindQuestions(this.space.kind(), this.i18n.lang()).subscribe({ next: readQuestions, error: () => undefined });
     this.api.scoring().subscribe({
-      next: (scoring) => this.scoring.set(scoring),
-      error: () => this.scoring.set(DEFAULT_SCORING),
+      next: (scoring) => this.personScoring.set(scoring),
+      error: () => this.personScoring.set(DEFAULT_SCORING),
     });
     this.api.brokers().subscribe({
       next: (rows) => this.brokers.set(sortBrokers(rows)),
@@ -428,10 +431,11 @@ export class HouseDetailPage implements OnInit, OnDestroy {
       // an owner's or broker's phone number, and a query parameter would put it in the URL bar and in browser
       // history, which is exactly the shared-computer case docs/11 §5.10 is about. Read now, synchronously: the
       // navigation is only "current" during this call.
-      const shared = String(sharedFromNavigation(this.router) ?? '').slice(0, AI_MAX_LISTING_CHARS);
+      const sharedAll = String(sharedFromNavigation(this.router) ?? '');
+      const shared = sharedAll.slice(0, AI_MAX_LISTING_CHARS);
       if (shared) {
-        this.listingText = shared;
-        this.listingOpen = true;
+        // The box gets all of it, so the hint says how much Extract leaves out; the notes keep the first part, as before.
+        this.listing.show(sharedAll);
       }
       if (hasPosition) {
         // Placed by a tap or the crosshair on the map (MapPage.createAt): the source is MAP until the person says
@@ -440,7 +444,7 @@ export class HouseDetailPage implements OnInit, OnDestroy {
       } else {
         // No position (share target, bookmark): never 0°, 0°. Start from the last map view, or the newest house,
         // or the country, and require the pin to be put before saving.
-        this.locationSet.set(false);
+        this.position.placed.set(false);
         void this.startWithoutPosition(shared);
       }
       return;
@@ -463,22 +467,7 @@ export class HouseDetailPage implements OnInit, OnDestroy {
       next: (v) => this.visits.set(v),
       error: () => this.visits.set([]),
     });
-    this.refreshPhotos(id);
-  }
-
-  /** Reads the house's photos with their meta (the list under the thumbnails, the details editor). */
-  private refreshPhotos(id: string | undefined = this.draft()?.id): void {
-    if (!id) return;
-    this.api.photos(id).subscribe({
-      next: (list) => {
-        this.photoIds.set(list.map((p) => p.id));
-        this.photoInfo.set(new Map(list.map((p) => [p.id, p])));
-      },
-      error: () => {
-        this.photoIds.set([]);
-        this.photoInfo.set(new Map());
-      },
-    });
+    this.photos.refresh(id);
   }
 
   /**
@@ -521,7 +510,7 @@ export class HouseDetailPage implements OnInit, OnDestroy {
 
   /** To the list as the user left it (search, filter, sort), not the plain list: a bookmark, a reload. */
   private toList(): void {
-    void this.router.navigate(['/'], { queryParams: this.listReturn.queryParams() });
+    void this.router.navigate([this.space.home()], { queryParams: this.listReturn.queryParams() });
   }
 
   /**
@@ -534,16 +523,20 @@ export class HouseDetailPage implements OnInit, OnDestroy {
       this.location.back();
       return;
     }
-    void this.router.navigate(['/'], { queryParams: this.listReturn.queryParams(), replaceUrl: true });
+    void this.router.navigate([this.space.home()], { queryParams: this.listReturn.queryParams(), replaceUrl: true });
   }
 
+  /**
+   * Starts a new house at the given position. A shared listing is first read by the no-AI parser, and the draft then
+   * counts as edited.
+   */
   private openDraft(lat: number, lon: number, shared: string, source: LocationSource | null = null): void {
-    const draft = withCost(newHouse(lat, lon, source));
+    const draft = withCost(ofKind(newHouse(lat, lon, source), this.space.newKind()));
     this.draft.set(draft);
     if (shared) {
       // The no-AI parser first (docs/11 5.29): the price, BHK, locality, link and phone the share text says, and the
       // whole text in the notes so nothing shared is lost; *Fill in from listing text* (AI) stays the second pass.
-      this.applyDraft(parseListingText(shared));
+      this.listing.apply(parseListingText(shared));
       this.dirty.set(true);
     }
     this.loading.set(false);
@@ -558,7 +551,7 @@ export class HouseDetailPage implements OnInit, OnDestroy {
   private async startWithoutPosition(shared: string): Promise<void> {
     const view = loadStartPoint();
     if (view) {
-      this.startZoom.set(Math.max(view.zoom, 12));
+      this.position.startZoom.set(Math.max(view.zoom, 12));
       this.openDraft(round6(view.lat), round6(view.lon), shared);
       return;
     }
@@ -572,7 +565,7 @@ export class HouseDetailPage implements OnInit, OnDestroy {
         .filter((h) => !h.deleted)
         .sort((a, b) => Date.parse(b.createdAt ?? '') - Date.parse(a.createdAt ?? ''))[0];
       if (newest) {
-        this.startZoom.set(13);
+        this.position.startZoom.set(13);
         this.openDraft(newest.lat, newest.lon, shared);
         return;
       }
@@ -581,7 +574,7 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     }
     // A failed read can also answer after the page is gone.
     if (this.destroyed) return;
-    this.startZoom.set(COUNTRY_VIEW.zoom);
+    this.position.startZoom.set(COUNTRY_VIEW.zoom);
     this.openDraft(COUNTRY_VIEW.lat, COUNTRY_VIEW.lon, shared);
   }
 
@@ -592,11 +585,11 @@ export class HouseDetailPage implements OnInit, OnDestroy {
   private afterLoad(): void {
     const d = this.draft();
     if (!d) return;
-    this.pristine = { draft: clone(d), dirty: this.dirty(), locationSet: this.locationSet() };
+    this.pristine = { draft: clone(d), dirty: this.dirty(), locationSet: this.position.placed() };
     const stored = readDraft(this.storeKey);
     if (stored && (this.isNew() || stored.draft.id === d.id)) {
       this.draft.set(withCost(stored.draft));
-      this.locationSet.set(stored.locationSet);
+      this.position.placed.set(stored.locationSet);
       this.dirty.set(true);
       this.restored.set(true);
       this.announcer.announce({ key: 'house.draftRestored' });
@@ -612,8 +605,8 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     clearDraft(this.storeKey);
     this.draft.set(clone(p.draft));
     this.dirty.set(p.dirty);
-    this.locationSet.set(p.locationSet);
-    this.coordsInvalid.set({ lat: false, lon: false });
+    this.position.placed.set(p.locationSet);
+    this.position.coordsInvalid.set({ lat: false, lon: false });
     this.restored.set(false);
     this.announcer.announce({ key: 'house.draftDiscarded' });
     // The note and its button are gone: focus goes to the page title rather than to <body>.
@@ -626,65 +619,6 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     if (!d || this.isNew()) return;
     const name: Msg | string = d.label.trim() || { key: 'common.untitled' };
     this.pageTitle.message.set({ key: 'title.houseNamed', params: { name } });
-  }
-
-  /** "Use my location" (Permissions-Policy allows geolocation for this origin): puts the pin where the user is. */
-  protected useMyLocation(): void {
-    if (!this.canLocate || this.locating()) return;
-    this.locating.set(true);
-    // The last failure under the buttons stays, drawn as being updated, until this run ends (S4b-BL-2).
-    // locateOnce drops the answer, found or failed, when this page is gone by then (the destroyed guard).
-    locateOnce({
-      gone: () => this.destroyed,
-      found: (pos) => {
-        this.locating.set(false);
-        this.locationMsg.set(null);
-        this.coordsInvalid.set({ lat: false, lon: false });
-        this.placePin(round6(pos.coords.latitude), round6(pos.coords.longitude), 'GPS');
-        this.announcer.announce({ key: 'house.locationFound' });
-      },
-      failed: (err) => {
-        this.locating.set(false);
-        this.locationMsg.set(runResult({ key: locationErrorKey(err) }));
-      },
-    });
-  }
-
-  /**
-   * The user put the pin somewhere: the position now counts as set, and the source says how (a drag, a tap or typed
-   * coordinates are MAP; *Use my location* is GPS). Moving the pin of a house marked approximate keeps it approximate:
-   * the person said the spot is rough, and a nudge does not make it the building. GPS always wins.
-   */
-  private placePin(lat: number, lon: number, source: LocationSource = 'MAP'): void {
-    this.locationSet.set(true);
-    if (this.locationError()) {
-      this.locationError.set(false);
-      if (this.error()?.value.key === 'house.locationRequired') this.error.set(null);
-    }
-    const current = this.draft()?.locationSource ?? null;
-    this.patch({ lat, lon, locationSource: current === 'APPROX' && source === 'MAP' ? 'APPROX' : source });
-  }
-
-  /** The source before *Approximate location* was switched on, put back when it is switched off (MAP by default). */
-  private sourceBeforeApprox: LocationSource | null = null;
-
-  /** The *Approximate location* switch (FR-068): on sets `APPROX`; off goes back to what it was. */
-  protected setApprox(event: Event): void {
-    const on = (event.target as HTMLInputElement).checked;
-    const current = this.draft()?.locationSource ?? null;
-    if (on) {
-      if (current !== 'APPROX') this.sourceBeforeApprox = current;
-      this.patch({ locationSource: 'APPROX' });
-    } else {
-      this.patch({ locationSource: this.sourceBeforeApprox ?? 'MAP' });
-    }
-  }
-
-  /** The *Included in the rent* switch of the Cost section. */
-  protected setIncluded(event: Event): void {
-    const d = this.draft();
-    if (!d) return;
-    this.patch({ cost: { ...d.cost, maintenanceIncluded: (event.target as HTMLInputElement).checked } });
   }
 
   /**
@@ -716,12 +650,16 @@ export class HouseDetailPage implements OnInit, OnDestroy {
       this.leaveApproved = false;
       return true;
     }
-    if (this.uploading() === 0 && !this.dirty()) return true;
+    if (this.photos.uploading() === 0 && !this.dirty()) return true;
     return this.askToLeave();
   }
 
+  /**
+   * The three-way question before leaving with unsaved edits or photos still uploading: stay, leave, or save first
+   * (which leaves only if the save succeeds).
+   */
   private async askToLeave(): Promise<boolean> {
-    if (this.uploading() > 0) {
+    if (this.photos.uploading() > 0) {
       const go = await this.confirm.ask({ key: 'confirm.leaveUploading' }, { confirmKey: 'confirm.leaveAnyway', danger: true });
       if (!go) return false;
     }
@@ -737,86 +675,37 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     return true;
   }
 
-  /**
-   * Sends pasted listing text to POST /api/ai/extract-listing and fills the **empty** form fields; a typed value is
-   * never replaced, and every one the listing disagrees with is named. Nothing is saved: the user reviews, picks
-   * the map location and presses Add (docs/ai AI-004 human confirmation).
-   */
-  protected fillFromListing(): void {
-    const text = this.listingText.trim();
-    if (!text || this.filling()) return;
-    this.filling.set(true);
-    // The last failure stays, drawn as being updated, until this read ends and replaces or removes it (S4b-BL-2).
-    this.fillWarnings.set([]);
-    this.keptWarnings.set([]);
-    this.fillRequest = this.ai.extractListing(text).subscribe({
-      next: (draft) => {
-        this.fillRequest = null;
-        this.fillError.set(null);
-        this.applyDraft(draft);
-        this.fillWarnings.set(draft.warnings ?? []);
-        this.filling.set(false);
-        this.announcer.announce({
-          key: this.keptWarnings().length > 0 ? 'listingFill.doneKept' : 'listingFill.done',
-          params: { n: this.keptWarnings().length },
-        });
-        document.getElementById('house-name')?.focus();
-      },
-      error: (err: unknown) => {
-        this.fillRequest = null;
-        this.fillError.set(runResult({ key: 'listingFill.failed', params: { reason: aiErrorMsg(err) } }));
-        this.filling.set(false);
-      },
-    });
-  }
-
-  private applyDraft(a: HouseDraft): void {
-    const d = this.draft();
-    if (!d) return;
-    const result = mergeListingDraft(d, a);
-    this.patch(result.changes);
-    this.keptWarnings.set(
-      result.kept.map((k) => ({
-        key: 'listingFill.kept',
-        params: { field: { key: FIELD_LABEL[k.field] }, value: this.shownValue(k.field, k.incoming) },
-      })),
-    );
-  }
-
-  /** A listing value as the form would show it: a price in rupees, a price type in words. */
-  private shownValue(field: FillField, value: string | number): Msg | string {
-    if (field === 'price' && typeof value === 'number') return this.i18n.price(value, null);
-    if (field === 'priceType') return { key: value === 'SALE' ? 'price.sale' : 'price.rent' };
-    if (field === 'areaSqft') return { key: 'common.sqft', params: { n: value } };
-    return String(value);
-  }
-
   protected score(h: HouseDto): number | null {
     return this.result(h).overall;
   }
 
   /** The score result of the house as edited: overall, coverage and the must-haves it misses or has not checked. */
   protected result(h: HouseDto): ScoreResult {
-    return evaluateScore(h.checklist, h.rating, this.scoring());
+    return evaluateScore(h.checklist, h.rating, scoringForKind(this.kind(), this.personScoring()));
   }
 
   /** A criterion's name: a built-in's translation, a custom criterion's own label. */
   protected nameOf(c: Pick<Criterion, 'key' | 'label'>): string {
-    return criterionName(c, (key) => this.i18n.t(key));
+    return kindCriterionName(this.kind(), c, (key) => this.i18n.t(key));
   }
 
   /** The names of some criterion keys, for the must-have lines. */
   protected namesOf(keys: readonly string[]): string {
-    return keys.map((key) => this.nameOf(this.scoring().criteria.find((c) => c.key === key) ?? { key })).join(', ');
+    return keys.map((key) => this.nameOf(scoringForKind(this.kind(), this.personScoring()).criteria.find((c) => c.key === key) ?? { key })).join(', ');
   }
 
+  /**
+   * Records that the form has unsaved edits: clears the saved notice and the name error, withdraws the leave approval
+   * and schedules the sessionStorage copy.
+   */
   protected markDirty(): void {
     this.dirty.set(true);
+    this.listing.touched(); // an edit may take a "from the listing" mark away (S4b-BL-238)
     this.justSaved.set(false);
     this.leaveApproved = false;
     if (this.nameError() && this.draft()?.label.trim()) {
       this.nameError.set(false);
-      if (this.error()?.value.key === 'house.nameRequired') this.error.set(null);
+      if (this.error()?.value.key === this.w('house.nameRequired')) this.error.set(null);
     }
     this.scheduleDraftSave();
   }
@@ -826,10 +715,11 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     clearTimeout(this.draftTimer);
     this.draftTimer = setTimeout(() => {
       const d = this.draft();
-      if (d && this.dirty() && this.storeKey) writeDraft(this.storeKey, { draft: d, locationSet: this.locationSet() });
+      if (d && this.dirty() && this.storeKey) writeDraft(this.storeKey, { draft: d, locationSet: this.position.placed() });
     }, DRAFT_SAVE_MS);
   }
 
+  /** The one way the form changes the draft: merges the fields in and marks the page dirty. */
   private patch(changes: Partial<HouseDto>): void {
     const d = this.draft();
     if (!d) return;
@@ -859,6 +749,7 @@ export class HouseDetailPage implements OnInit, OnDestroy {
 
   private say = (key: TKey, params?: Readonly<Record<string, string | number>>): string => this.i18n.t(key, params);
 
+  /** Adds the bank's usual questions this house does not have yet, and moves focus to the first new one. */
   protected addUsualQuestions(): void {
     const d = this.draft();
     if (!d) return;
@@ -920,93 +811,11 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     afterNextRender(() => document.getElementById('questions-add')?.focus(), { injector: this.injector });
   }
 
-  protected categoryKey(category: QuestionCategory): TKey {
-    return `questions.category.${category}` as TKey;
+  protected categoryText(category: QuestionCategory): string {
+    return questionCategoryLabel(this.kind().id, category, this.i18n.lang()) ?? this.i18n.t(`questions.category.${category}` as TKey);
   }
 
-  // ---- Rooms (slice 1c, docs/11 5.6) ----
-
-  protected rooms(d: HouseDto): HouseRoom[] {
-    return d.rooms ?? [];
-  }
-
-  /** The name typed, else the type's translated name; with the room's position so every control's name is unique. */
-  protected roomTitle(r: HouseRoom, index: number): string {
-    return `${index + 1}. ${r.name?.trim() || this.i18n.t(ROOM_TYPE_KEY[r.type])}`;
-  }
-
-  protected addRoom(): void {
-    const d = this.draft();
-    if (!d) return;
-    const rooms = this.rooms(d);
-    if (rooms.length >= MAX_ROOMS) return;
-    const sort = rooms.reduce((max, r) => Math.max(max, (r.sort ?? 0) + 1), 0);
-    const room: HouseRoom = { id: uuid(), type: 'BEDROOM', sort };
-    this.patch({ rooms: [...rooms, room] });
-    afterNextRender(() => document.getElementById('room-type-' + room.id)?.focus(), { injector: this.injector });
-  }
-
-  protected editRoom(id: string, changes: Partial<HouseRoom>): void {
-    const d = this.draft();
-    if (!d) return;
-    this.patch({ rooms: this.rooms(d).map((r) => (r.id === id ? { ...r, ...changes } : r)) });
-  }
-
-  /** Up (-1) or down (+1) in the order shown, every sort renumbered (S4b-BL-87); focus stays on the button pressed. */
-  protected moveRoom(id: string, by: -1 | 1): void {
-    const d = this.draft();
-    if (!d) return;
-    this.patch({ rooms: moveRoom(this.rooms(d), id, by) });
-    const button = `room-${by < 0 ? 'up' : 'down'}-${id}`;
-    afterNextRender(() => {
-      const el = document.getElementById(button) as HTMLButtonElement | null;
-      // At the top or the bottom the pressed button is disabled: the other one takes the focus.
-      (el && !el.disabled ? el : document.getElementById(`room-${by < 0 ? 'down' : 'up'}-${id}`))?.focus();
-    }, { injector: this.injector });
-  }
-
-  // ---- The floor and the duplicate-flat warning (S4b-BL-87, S4b-BL-85) ----
-
-  /**
-   * The Basement switch under Floor set with no level to carry the sign (blank or 0), by house id (S4b-BL-104 c). A
-   * level other than 0 carries the sign itself, so this only matters until one is typed.
-   */
-  private readonly basementSet = signal<{ id: string; on: boolean } | null>(null);
-
-  /** The Basement switch: the floor's sign once a level is typed, else what the switch was last set to. */
-  protected floorBasement(d: HouseDto): boolean {
-    if (typeof d.floor === 'number' && d.floor !== 0) return d.floor < 0;
-    const set = this.basementSet();
-    return set !== null && set.id === d.id && set.on;
-  }
-
-  /** What Floor shows: the level without its sign, which the Basement switch holds. */
-  protected floorShown(d: HouseDto): unknown {
-    return typeof d.floor === 'number' ? Math.abs(d.floor) : d.floor;
-  }
-
-  /** A level typed in Floor: below the ground while the switch is on; a minus typed anyway turns the switch on. */
-  protected typeFloor(d: HouseDto, value: unknown): void {
-    const typed = typeof value === 'number' && Number.isFinite(value) ? value : null;
-    // Clearing the level keeps the switch as it was, so "2" can become "3" of a basement without it turning off.
-    const below = (typed !== null && typed < 0) || this.floorBasement(d);
-    this.basementSet.set({ id: d.id, on: below });
-    if (typed === null) this.patch({ floor: value as number | null });
-    else this.patch({ floor: below && typed !== 0 ? -Math.abs(typed) : typed });
-  }
-
-  /** The Basement switch: turns the typed level into a basement level or back. */
-  protected setBasement(d: HouseDto, event: Event): void {
-    const on = (event.target as HTMLInputElement).checked;
-    this.basementSet.set({ id: d.id, on });
-    if (typeof d.floor === 'number' && d.floor !== 0) this.patch({ floor: on ? -Math.abs(d.floor) : Math.abs(d.floor) });
-  }
-
-  /** Something is typed in Floor that is not a floor from -5 to 200, or a basement level that is not 1 to 5. */
-  protected floorInvalid(d: HouseDto): boolean {
-    if (d.floor == null || (d.floor as unknown) === '') return false;
-    return (d.floor === 0 && this.floorBasement(d)) || floorOf(d.floor) === null;
-  }
+  // ---- The duplicate-flat warning (S4b-BL-85) ----
 
   /**
    * "Maybe the same flat as …": the other houses within about 30 m with the same bedrooms and floor as what is typed
@@ -1019,64 +828,6 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     if (ids.length === 0) return null;
     const names = ids.map((id) => others.find((h) => h.id === id)?.label?.trim() || this.i18n.t('common.untitled'));
     return this.i18n.t('house.duplicateFlat', { names: this.i18n.list(names) });
-  }
-
-  protected deleteRoom(id: string): void {
-    const d = this.draft();
-    if (!d) return;
-    this.patch({ rooms: this.rooms(d).filter((r) => r.id !== id) });
-    // The focus goes to Add room, not to the top of the page.
-    afterNextRender(() => document.getElementById('rooms-add')?.focus(), { injector: this.injector });
-  }
-
-  protected setRoomType(id: string, type: string): void {
-    this.editRoom(id, { type: ROOM_TYPES.includes(type as RoomType) ? (type as RoomType) : 'OTHER' });
-  }
-
-  protected setRoomCondition(id: string, value: string): void {
-    this.editRoom(id, { condition: value === '' ? null : Number(value) });
-  }
-
-  /** Feet mode: the two boxes (feet, inches) make one size in cm; both blank is unknown. */
-  protected setRoomFeet(id: string, key: 'lengthCm' | 'widthCm', feet: string, inches: string): void {
-    const blank = feet.trim() === '' && inches.trim() === '';
-    this.editRoom(id, { [key]: blank ? null : parseFeetInches(feet, inches) });
-  }
-
-  /** Metres mode: one decimal number is one size in cm; blank or out of range is unknown. */
-  protected setRoomMetres(id: string, key: 'lengthCm' | 'widthCm', metres: string): void {
-    this.editRoom(id, { [key]: parseMetres(metres) });
-  }
-
-  protected feetOf(cm: number | null | undefined): number | '' {
-    return cm == null ? '' : cmToFeetInches(cm).feet;
-  }
-
-  protected inchesOf(cm: number | null | undefined): number | '' {
-    return cm == null ? '' : cmToFeetInches(cm).inches;
-  }
-
-  protected metresOf(cm: number | null | undefined): string {
-    return cm == null ? '' : metresText(cm);
-  }
-
-  /** "Area: 156 sq ft" (or "14.5 m²") once both sizes are known; the area of the stored centimetres, whatever the unit. */
-  protected roomAreaLine(r: HouseRoom): string | null {
-    const sq = areaSqCm(r);
-    return sq === null ? null : this.i18n.t('rooms.area', { v: this.areaText(sq) });
-  }
-
-  /** "Total area: 312 sq ft" below the list, when at least one room has both sizes. */
-  protected roomsTotalLine(d: HouseDto): string | null {
-    const { total, sized } = totalAreaSqCm(this.rooms(d));
-    return sized === 0 ? null : this.i18n.t('rooms.total', { v: this.areaText(total) });
-  }
-
-  private areaText(sqCm: number): string {
-    const unit = this.lengthUnit();
-    return unit === 'M'
-      ? this.i18n.t('rooms.sqm', { v: areaNumber(sqCm, unit) })
-      : this.i18n.t('rooms.sqft', { v: this.i18n.number(Number(areaNumber(sqCm, unit))) });
   }
 
   /** The Broker select: a broker fills the contact name and phone from it; None keeps what is there and unlinks. */
@@ -1134,32 +885,6 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     this.lightbox.set(photo);
   }
 
-  // ---- Photo details (slice 5, docs/11 5.7) ----
-
-  protected roomNameOf(p: PhotoMeta): string {
-    const room = p.roomId ? (this.draft()?.rooms ?? []).find((r) => r.id === p.roomId) : undefined;
-    return room ? room.name?.trim() || this.i18n.t(ROOM_TYPE_KEY[room.type]) : '';
-  }
-
-  protected tagLabel(tag: string): string {
-    const key = photoTagKey(tag);
-    return key ? this.i18n.t(key) : tag;
-  }
-
-  protected tagsOf(p: PhotoMeta): string {
-    return p.tags.map((t) => this.tagLabel(t)).join(', ');
-  }
-
-  protected editPhoto(id: string): void {
-    this.editingPhoto.set(this.editingPhoto() === id ? null : id);
-  }
-
-  protected photoDetailsSaved(id: string): void {
-    this.editingPhoto.set(null);
-    this.refreshPhotos();
-    setTimeout(() => document.getElementById('photo-details-' + id)?.focus());
-  }
-
   protected setRating(n: number | null): void {
     this.patch({ rating: n });
   }
@@ -1187,132 +912,7 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     this.patch({ checklist });
   }
 
-  protected onMoved(p: LatLon): void {
-    this.coordsInvalid.set({ lat: false, lon: false });
-    this.placePin(p.lat, p.lon);
-  }
-
-  /**
-   * Typed coordinates: the keyboard alternative to dragging the pin. An invalid value is kept in the field (the user
-   * corrects it rather than retyping it), the field is marked invalid with the reason under the fields, and the pin
-   * stays where it was until the value is valid.
-   */
-  protected onCoord(axis: 'lat' | 'lon', event: Event): void {
-    const input = event.target as HTMLInputElement;
-    const value = parseCoordinate(input.value, axis === 'lat' ? 90 : 180);
-    const d = this.draft();
-    if (!d) return;
-    if (value === null) {
-      this.coordsInvalid.update((c) => ({ ...c, [axis]: true }));
-      return;
-    }
-    this.coordsInvalid.update((c) => ({ ...c, [axis]: false }));
-    const lat = axis === 'lat' ? round6(value) : d.lat;
-    const lon = axis === 'lon' ? round6(value) : d.lon;
-    this.placePin(lat, lon);
-  }
-
-  protected coordsDescribedBy(axis: 'lat' | 'lon'): string | null {
-    const ids = [this.locationSet() ? null : 'location-unset', this.coordsInvalid()[axis] ? 'coords-error' : null];
-    return ids.filter((x) => !!x).join(' ') || null;
-  }
-
-  /**
-   * "Fill address from map" fills the empty Address, Street and Locality (and the name from the street when there is
-   * none). A value the user typed is only replaced after asking, with the old and new values shown; afterwards the
-   * filled fields are named.
-   */
-  /**
-   * The place name a shared listing (or the person) gave, while the house has no position yet: *Find* looks it up
-   * (S4b-BL-83, docs/11 5.29 item 4). The locality first, else the address.
-   */
-  protected placeQuery(): string | null {
-    // A method, not a computed: the form's fields write into the draft object in place (ngModel).
-    const d = this.draft();
-    if (!d || this.locationSet()) return null;
-    return d.locality?.trim() || d.address?.trim() || null;
-  }
-
-  /**
-   * *Find “…” on the map*, on the person's tap only: Nominatim's `/search` (one request a second, `GeocodeService`)
-   * puts the pin at the place, marked approximate, for the person to drag to the house; a name it does not know says so.
-   */
-  protected findPlace(): void {
-    const place = this.placeQuery();
-    if (!place || this.finding()) return;
-    this.finding.set(true);
-    this.findRequest = this.geocode.search(place, this.i18n.lang()).subscribe({
-      next: (found) => {
-        this.findRequest = null;
-        this.finding.set(false);
-        if (!found) {
-          this.locationMsg.set(runResult({ key: 'house.placeNotFound', params: { place } }));
-          return;
-        }
-        this.locationMsg.set(null);
-        this.placePin(round6(found.lat), round6(found.lon), 'APPROX');
-        this.placeMsg.set(runResult({ key: 'house.placeFound', params: { place } }));
-        this.announcer.announce({ key: 'house.placeFound', params: { place } });
-      },
-      error: (err: unknown) => {
-        this.findRequest = null;
-        this.finding.set(false);
-        this.locationMsg.set(runResult({ key: 'house.lookupFailed', params: { reason: errorMsg(err) } }));
-      },
-    });
-  }
-
-  protected fillAddress(): void {
-    const d = this.draft();
-    if (!d || this.geocoding() || !this.locationSet()) return;
-    this.geocoding.set(true);
-    // As for "Use my location": the last failure stays, drawn as being updated, until the lookup ends (S4b-BL-2).
-    this.lookupRequest = this.geocode.reverse(d.lat, d.lon).subscribe({
-      next: (r) => {
-        this.lookupRequest = null;
-        this.geocoding.set(false);
-        this.locationMsg.set(null);
-        void this.applyAddress(r);
-      },
-      error: (err: unknown) => {
-        this.lookupRequest = null;
-        this.locationMsg.set(runResult({ key: 'house.lookupFailed', params: { reason: errorMsg(err) } }));
-        this.geocoding.set(false);
-      },
-    });
-  }
-
-  private async applyAddress(found: AddressLookup): Promise<void> {
-    const cur = this.draft();
-    if (!cur) return;
-    const fill = addressFill(cur, found);
-    const changes: Partial<HouseDto> = { ...fill.emptyOnly };
-    const filled: FillField[] = [...fill.filled];
-    if (fill.conflicts.length > 0) {
-      const lines = fill.conflicts
-        .map((c) => this.i18n.t('house.addressChange', { field: { key: FIELD_LABEL[c.field] }, old: c.old, new: c.incoming }))
-        .join('\n');
-      const answer = await this.confirm.choose(
-        { key: 'house.addressReplaceAsk', params: { changes: lines } },
-        { confirmKey: 'house.addressReplace', altKey: filled.length > 0 ? 'house.addressFillEmpty' : null },
-      );
-      if (answer === 'cancel') return;
-      if (answer === 'confirm') {
-        for (const c of fill.conflicts) {
-          changes[c.field] = c.incoming;
-          filled.push(c.field);
-        }
-      }
-    }
-    if (filled.length === 0) {
-      this.announcer.announce({ key: 'house.addressNothing' });
-      return;
-    }
-    this.patch(changes);
-    const fields = this.i18n.list(filled.map((f) => this.i18n.t(FIELD_LABEL[f])));
-    this.announcer.announce({ key: 'house.addressFilledFields', params: { fields } });
-  }
-
+  /** The Save button; see {@link persist}. */
   protected save(): void {
     void this.persist();
   }
@@ -1328,20 +928,20 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     const label = d.label.trim();
     if (!label) {
       this.nameError.set(true);
-      this.error.set(runResult({ key: 'house.nameRequired' }));
+      this.error.set(runResult({ key: this.w('house.nameRequired') }));
       document.getElementById('house-name')?.focus();
       return false;
     }
     this.nameError.set(false);
-    if (!this.locationSet()) {
-      this.locationError.set(true);
-      this.error.set(runResult({ key: 'house.locationRequired' }));
+    if (!this.position.placed()) {
+      this.position.required.set(true);
+      this.error.set(runResult({ key: this.w('house.locationRequired') }));
       const lat = document.getElementById('house-lat');
       lat?.scrollIntoView({ block: 'center' });
       lat?.focus({ preventScroll: true });
       return false;
     }
-    const invalid = this.coordsInvalid();
+    const invalid = this.position.coordsInvalid();
     if (invalid.lat || invalid.lon) {
       // A typed coordinate is not valid: saving now would keep the old pin without saying so.
       this.error.set(runResult({ key: 'house.coordsInvalid' }));
@@ -1350,10 +950,10 @@ export class HouseDetailPage implements OnInit, OnDestroy {
       field?.focus({ preventScroll: true });
       return false;
     }
-    if (this.floorInvalid(d)) {
+    if (this.floor.invalid(d)) {
       // Not a floor from -5 to 200: saving would drop what was typed without a word, so the field's message stays and
       // focus goes to it (WCAG 3.3.1, 3.3.3), as for the name and the position above.
-      this.error.set(runResult({ key: this.floorBasement(d) ? 'house.floorBasementInvalid' : 'house.floorInvalid' }));
+      this.error.set(runResult({ key: this.floor.basement(d) ? 'house.floorBasementInvalid' : 'house.floorInvalid' }));
       const field = document.getElementById('house-floor');
       field?.scrollIntoView({ block: 'center' });
       field?.focus({ preventScroll: true });
@@ -1408,7 +1008,7 @@ export class HouseDetailPage implements OnInit, OnDestroy {
       if (this.isNew()) {
         if (navigateAfterCreate) {
           // The form's history entry is replaced: its Back decision goes with it to the saved house's page.
-          void this.router.navigate(['/houses', saved.id], {
+          void this.router.navigate(this.space.detailLink(saved.id, this.kind().id), {
             replaceUrl: true,
             state: this.backToPrevious() ? { [HOUSE_BACK_STATE]: this.backKey() } : undefined,
           });
@@ -1441,6 +1041,16 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     }
   }
 
+  /** A saved walk (or null) for the page's own map; the map is brought into view so *Show on map* shows something. */
+  protected showOverlay(overlay: MapOverlay | null): void {
+    this.overlay.set(overlay);
+    if (overlay?.fit) document.querySelector('app-location-map')?.scrollIntoView({ block: 'nearest' });
+  }
+
+  /**
+   * Deletes the house at once with *Undo* (a question only when saved walks go with it), or for a new house discards the form.
+   * Either way the page leaves without staying in history.
+   */
   protected async deleteHouse(): Promise<void> {
     const d = this.draft();
     if (!d) return;
@@ -1458,25 +1068,31 @@ export class HouseDetailPage implements OnInit, OnDestroy {
       this.leaveAfterRemoval();
       return;
     }
-    const name = d.label || this.i18n.t('house.thisHouse');
-    const ok = await this.confirm.ask({ key: 'confirm.deleteHouse', params: { name } }, {
-      confirmKey: 'house.delete',
-      danger: true,
-    });
-    if (!ok) return;
-    this.api.deleteHouse(d.id).subscribe({
-      next: () => {
-        this.dirty.set(false);
-        clearTimeout(this.draftTimer);
-        clearDraft(this.storeKey);
-        this.announcer.announce({ key: 'house.deleted' });
-        this.leaveAfterRemoval();
-      },
-      error: (err: unknown) =>
-        this.dangerMsg.set(runResult({ key: 'house.deleteFailed', params: { reason: errorMsg(err) } })),
-    });
+    const name = nameOfRow(d) || this.i18n.t('delete.unnamed');
+    // No question for a delete that Undo takes back. The one exception: saved walks go with the house and have no tombstone.
+    let walks = 0;
+    try {
+      walks = await this.traces.savedCount(d.id);
+    } catch {
+      walks = -1; // Unreadable: the walks may be there, so the question is asked without their number.
+    }
+    if (walks !== 0) {
+      const msg: Msg = walks > 0 ? { key: 'delete.walksQuestion', params: { name, n: this.i18n.number(walks) } } : { key: 'trace.houseDelete.confirm', params: { name } };
+      if (!(await this.confirm.ask(msg, { confirmKey: this.L.ref('kind.delete'), danger: true }))) return;
+    }
+    try {
+      await this.deleteUndo.remove(d.id, name);
+    } catch (err: unknown) {
+      this.dangerMsg.set(runResult({ key: 'house.deleteFailed', params: { reason: errorMsg(err) } }));
+      return;
+    }
+    this.dirty.set(false);
+    clearTimeout(this.draftTimer);
+    clearDraft(this.storeKey);
+    this.leaveAfterRemoval();
   }
 
+  /** Records a manual visit to this house now, at its position. */
   protected markVisited(): void {
     const d = this.draft();
     if (!d || this.isNew() || this.markingVisit()) return;
@@ -1528,63 +1144,12 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     return this.onFiles(event, { roomId: null, tags: [MOVE_IN_TAG], caption: null });
   }
 
-  /**
-   * Adds the chosen photos one by one. The result is said **once**, when the last file is done ("Photos added: 3.
-   * Not added: 1"), not once per photo, and every file that failed is listed in the photos card with its reason.
-   */
-  protected async onFiles(event: Event, meta?: Pick<PhotoMeta, 'roomId' | 'tags' | 'caption'>): Promise<void> {
+  /** The files chosen in a photo input are added to the house (the input is emptied, so the same file can be chosen again). */
+  protected onFiles(event: Event, meta?: PhotoMetaInput): Promise<void> {
     const input = event.target as HTMLInputElement;
     const files: File[] = input.files ? Array.from(input.files) : [];
     input.value = '';
-    const d = this.draft();
-    if (!d || this.isNew() || files.length === 0) return;
-    if (this.uploading() === 0) {
-      // A new batch: the previous one's results are no longer news.
-      this.batch = { added: 0, failed: 0 };
-      this.photoFailures.set(null);
-      this.photosMsg.set(null);
-    }
-    this.uploading.update((n) => n + files.length);
-    for (const file of files) {
-      try {
-        const blob = await resizeImage(file, 1600, 0.8);
-        const res = await firstValueFrom(this.api.uploadPhoto(d.id, blob, undefined, meta));
-        this.photoIds.update((ids) => (ids.includes(res.id) ? ids : [...ids, res.id]));
-        this.refreshPhotos();
-        this.batch.added++;
-      } catch (err: unknown) {
-        this.batch.failed++;
-        // The batch's first failure starts its run; later ones join it, so the list grows in the same node.
-        const failure: PhotoFailure = { file: file.name, reason: errorMsg(err) };
-        this.photoFailures.update((r) =>
-          r === null ? runResult<readonly PhotoFailure[]>([failure]) : { value: [...r.value, failure], run: r.run },
-        );
-      } finally {
-        this.uploading.update((n) => n - 1);
-      }
-    }
-    if (this.uploading() > 0) return;
-    const { added, failed } = this.batch;
-    this.announcer.announce(
-      failed > 0 ? { key: 'house.photosResult', params: { added, failed } } : { key: 'house.photosAdded', params: { n: added } },
-    );
-  }
-
-  protected async deletePhoto(id: string): Promise<void> {
-    const ok = await this.confirm.ask({ key: 'confirm.deletePhoto' }, { confirmKey: 'common.delete', danger: true });
-    if (!ok) return;
-    this.photosMsg.set(null);
-    this.api.deletePhoto(id).subscribe({
-      next: () => {
-        this.photoIds.update((ids) => ids.filter((x) => x !== id));
-        if (this.editingPhoto() === id) this.editingPhoto.set(null);
-        this.lightbox.set(null);
-        this.announcer.announce({ key: 'house.photoDeleted' });
-        document.getElementById('photos-heading')?.focus();
-      },
-      error: (err: unknown) =>
-        this.photosMsg.set(runResult({ key: 'house.deletePhotoFailed', params: { reason: errorMsg(err) } })),
-    });
+    return this.photos.add(files, meta);
   }
 
   protected openPhoto(src: string, n: number): void {
@@ -1602,69 +1167,19 @@ export class HouseDetailPage implements OnInit, OnDestroy {
     if (dialog && event.target === dialog) dialog.close();
   }
 
-  /** A save or photo failed because the browser is out of space (directly, or as the reason of a wrapper message). */
-  protected isStorageFull(m: Msg): boolean {
-    if (m.key === 'error.storageFull') return true;
-    const reason = m.params?.['reason'];
-    return typeof reason === 'object' && reason !== null && reason.key === 'error.storageFull';
-  }
+  protected readonly isStorageFull = isStorageFull;
 
-  protected anyStorageFull(failures: readonly PhotoFailure[]): boolean {
-    return failures.some((f) => this.isStorageFull(f.reason));
-  }
-
-  protected listingHref(url: string | null | undefined): string {
+  /**
+   * The listing link for the page: http(s) as typed, a bare domain with `https://` added, and null for any other scheme
+   * (such as javascript:), so a saved link can never run code.
+   */
+  protected listingHref(url: string | null | undefined): string | null {
     const u = (url ?? '').trim();
-    return /^[a-z][a-z0-9+.-]*:/i.test(u) ? u : `https://${u}`;
+    // Match http:// or https://
+    if (/^https?:\/\//i.test(u)) return u;
+    // Block malicious schemes (javascript:, intent:, ms-word:, data:, file:, etc)
+    if (/^[a-z][a-z0-9+.-]*:/i.test(u)) return null;
+    // Bare domain without scheme: add https://
+    return `https://${u}`;
   }
-}
-
-function clone(h: HouseDto): HouseDto {
-  return JSON.parse(JSON.stringify(h)) as HouseDto;
-}
-
-/** The most rooms a house holds (the server and Android agree). */
-const MAX_ROOMS = 30;
-
-/** A typed floor (a number input gives a number, or "" when cleared) as -5..200, else null (S4b-BL-87). */
-function floorOf(value: unknown): number | null {
-  return typeof value === 'number' && Number.isFinite(value) ? parseFloor(String(value)) : null;
-}
-
-/** The form binds the Cost fields to `cost.*`, so a draft always carries an object there (null on the wire). */
-function withCost(h: HouseDto): HouseDto {
-  return h.cost ? h : { ...h, cost: {} };
-}
-
-function blankToNull(s: string | null | undefined): string | null {
-  const t = (s ?? '').trim();
-  return t ? t : null;
-}
-
-function toWholeNumber(n: number | null | undefined): number | null {
-  if (n === null || n === undefined || typeof n !== 'number' || !Number.isFinite(n)) return null;
-  return Math.max(0, Math.round(n));
-}
-
-/**
- * The listing text the share target handed over, from the navigation state.
- *
- * `Router.currentNavigation()` is only non-null while a navigation is in flight, which it is **not** any more by the
- * target component's `ngOnInit` (the zoneless scheduler runs the first change detection in a later task); the last
- * successful navigation is the same navigation by then. `history.state` covers a restored or re-entered route. All
- * are read defensively because anything can be in `history.state`.
- */
-export function sharedFromNavigation(router: Router): string | null {
-  const fromNavigation = (router.currentNavigation() ?? router.lastSuccessfulNavigation())?.extras.state;
-  const state: unknown = fromNavigation ?? (typeof history === 'undefined' ? null : history.state);
-  if (!state || typeof state !== 'object') return null;
-  const shared = (state as { shared?: unknown }).shared;
-  return typeof shared === 'string' && shared !== '' ? shared : null;
-}
-
-/** Brokers by name for the select, then by id, so equal names keep a fixed order. */
-export function sortBrokers(rows: readonly BrokerRow[]): BrokerRow[] {
-  return [...rows].sort(
-    (a, b) => a.broker.name.localeCompare(b.broker.name) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
-  );
 }

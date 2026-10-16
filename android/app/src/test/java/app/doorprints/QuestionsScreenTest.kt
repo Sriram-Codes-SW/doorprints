@@ -22,6 +22,7 @@ import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -46,8 +47,11 @@ import app.doorprints.shared.model.DefaultQuestions
 import app.doorprints.shared.model.HouseAnswer
 import app.doorprints.shared.model.HouseAnswers
 import app.doorprints.shared.model.HouseCost
+import app.doorprints.shared.model.KindSetting
 import app.doorprints.shared.model.Question
 import app.doorprints.ui.HouseEditScreen
+import app.doorprints.ui.LocalSpace
+import app.doorprints.ui.SpaceUi
 import app.doorprints.ui.ProvideAppServices
 import app.doorprints.ui.QuestionsScreen
 import app.doorprints.ui.QuestionsSection
@@ -109,6 +113,25 @@ class QuestionsScreenTest {
 
     // ---- Settings > Questions ----
 
+    /**
+     * S4b-BL-254: a screen's effect that waits for Room must continue on the main thread, as in the app. When Room ran on
+     * its own threads under the rule's unconfined effect dispatcher, the continuation stayed on Room's thread, wrote its state
+     * and applied the snapshot there, and Compose invalidated its views from that thread (`CalledFromWrongThreadException`,
+     * now and then). The test application now runs Room on the calling thread (`ScreenshotTestApp.databaseExecutor`).
+     */
+    @Test
+    fun aScreensEffectContinuesOnTheMainThreadAfterRoomAnswers() {
+        var thread: Thread? = null
+        compose.setContent {
+            androidx.compose.runtime.LaunchedEffect(Unit) {
+                repo.addQuestion("Is there a lift?")
+                thread = Thread.currentThread()
+            }
+        }
+        compose.waitUntil(5_000) { thread != null }
+        assertEquals(android.os.Looper.getMainLooper().thread, thread)
+    }
+
     @Test
     fun editingTheTextCategoryScopeAndDefaultSavesTheOneRecord() {
         val (lift, _) = addTwo()
@@ -167,6 +190,28 @@ class QuestionsScreenTest {
         compose.onNodeWithText("Reset").performClick()
         until { q -> q.any { it.id == "qd_pets" } }
         assertEquals(DefaultQuestions.ALL.map { it.id } + mine, bank().map { it.id })
+    }
+
+    /** The school's Questions screen heads its groups with the school's own words (kinds PR 29), never "Water & power" or "Money". */
+    @Test
+    fun aSchoolsQuestionsAreGroupedUnderTheSchoolsOwnHeadings() {
+        runBlocking { repo.seedKindQuestionsOnce("school", "en") }
+        val on = KindSetting(listOf("house", "school"), experimental = "1", enabledText = "[\"house\",\"school\"]")
+        compose.setContent {
+            CompositionLocalProvider(LocalSpace provides SpaceUi(on, "school"), app.doorprints.ui.LocalDevKinds provides true) {
+                ProvideAppServices { QuestionsScreen(onBack = {}) }
+            }
+        }
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("Fees and money").fetchSemanticsNodes().isNotEmpty() }
+        for (heading in listOf("Fees and money", "Admission", "Teaching", "Safety and facilities", "Water and toilets", "Daily routine and other")) {
+            compose.onNodeWithText(heading).assertExists()
+        }
+        // The category menu of a card says the school's word too.
+        assertTrue(compose.onAllNodesWithText("Category: Fees and money", useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty())
+        assertTrue(compose.onAllNodesWithText("Category: Money", useUnmergedTree = true).fetchSemanticsNodes().isEmpty())
+        for (house in listOf("Money", "Water & power", "Rules", "Building", "Legal (buy)", "Other")) {
+            assertTrue(house, compose.onAllNodesWithText(house).fetchSemanticsNodes().isEmpty())
+        }
     }
 
     // ---- the house form's Questions to ask ----

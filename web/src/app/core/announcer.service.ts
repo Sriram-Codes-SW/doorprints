@@ -31,6 +31,10 @@ export class Announcer {
   private pending: Msg | null = null;
   private timer: ReturnType<typeof setTimeout> | undefined;
 
+  /**
+   * Queues the message for the live region after 100 ms, emptying the region first so the same message said twice is
+   * read twice. A newer message replaces one still waiting.
+   */
   announce(message: Msg): void {
     // Clear first so repeating the same message is announced again.
     this.current.set(null);

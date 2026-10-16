@@ -81,6 +81,16 @@ class ExportStrings internal constructor(
             else -> EN
         }
 
+        /**
+         * The words of [language]; with a [kind] other than the house, a copy that speaks in that kind (S4b-BL-266) has the
+         * kind's words for the keys it names ([KindExportWords]) and the house's for the rest. A bundle keeps the one it needs.
+         */
+        fun of(language: String, kind: String?): ExportStrings {
+            val base = of(language)
+            val own = KindExportWords.of(kind, base.language) ?: return base
+            return ExportStrings(base.language, base.values + own)
+        }
+
         val EN = ExportStrings(
             "en",
             mapOf(

@@ -91,7 +91,7 @@ import kotlin.uuid.Uuid
 @Composable
 fun RoomsSection(rooms: List<HouseRoom>?, unit: LengthUnit, onChange: (List<HouseRoom>?) -> Unit) {
     val list = rooms.orEmpty().sortedWith(HouseRooms.ORDER)
-    SectionHeading(stringResource(Res.string.house_rooms))
+    SectionHeading(stringResource(kindSection("rooms")))
     if (list.isEmpty()) Text(stringResource(Res.string.house_rooms_empty), style = MaterialTheme.typography.bodySmall)
     list.forEachIndexed { index, room ->
         key(room.id) {
@@ -132,6 +132,10 @@ fun RoomsSection(rooms: List<HouseRoom>?, unit: LengthUnit, onChange: (List<Hous
     }
 }
 
+/**
+ * One room of the house: its type and optional name, length and width (the area follows), condition, notes, move up and
+ * down, and delete. The title is the room's name, or its type when it has none.
+ */
 @Composable
 private fun RoomCard(
     room: HouseRoom,

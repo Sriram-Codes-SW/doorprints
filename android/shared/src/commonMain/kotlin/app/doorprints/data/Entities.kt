@@ -21,13 +21,17 @@ package app.doorprints.data
 import androidx.room.ColumnInfo
 import androidx.room.Embedded
 import androidx.room.Entity
+import androidx.room.Ignore
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import app.doorprints.shared.model.Candidates
 import app.doorprints.shared.model.FlatFacts
 import app.doorprints.shared.model.HouseAnswer
 import app.doorprints.shared.model.HouseCost
+import app.doorprints.shared.model.HouseExtras
 import app.doorprints.shared.model.HouseRoom
 import app.doorprints.shared.model.HouseScore
+import app.doorprints.shared.model.Money
 import app.doorprints.shared.model.MoveIn
 import app.doorprints.shared.model.PhotoMeta
 import app.doorprints.shared.model.RankedHouse
@@ -36,14 +40,22 @@ import app.doorprints.shared.model.Scoring
 import app.doorprints.shared.model.HouseStatus
 import app.doorprints.shared.model.VisitSource
 import app.doorprints.shared.sync.SyncRecord
+import kotlinx.serialization.json.JsonObject
 
-// Room entities, in :shared commonMain since CMP-4 P4a (Room KMP; this file was :app's data/Models.kt). The table and
-// column layout is the one shipped as database version 2: HouseStatus and VisitSource are stored by their constant
-// names, and RoomSchemaTest pins the identity hash. The package stays app.doorprints.data, so :app's imports and the
-// schema folder name do not change.
+// Room entities, in :shared commonMain since CMP-4 P4a (Room KMP; this file was :app's data/Models.kt). HouseStatus and
+// VisitSource are stored by their constant names, and RoomSchemaTest pins the identity hash of every version. The
+// package stays app.doorprints.data, so :app's imports and the schema folder name do not change.
 
-@Entity(tableName = "houses", indices = [Index("street")])
-data class HouseEntity(
+/**
+ * A house, stored as a candidate since Room version 12 (kinds step 4, S4b-BL-206; docs/03 ADR-36 §18.4 doors 3, 5 and
+ * 7): the `houses` table holds [kind], [money] (`money_amount`, `money_cadence`) and [extras] (JSON text) in place of
+ * the price, its type, the bedrooms, the area, the floor and the `cost_*` columns. The screens, the rules and the
+ * copies still read those values here, so nothing above the store changes: the primary constructor takes them (Room
+ * ignores it) and derives [money] and [extras] from them ([Candidates]); Room reads a row through the secondary
+ * constructor, which reads them back out. Internal names (`houses`, `houseId`) stay, as on the website.
+ */
+@Entity(tableName = "houses", indices = [Index("street"), Index("kind")])
+data class HouseEntity @Ignore constructor(
     @PrimaryKey val id: String,
     val label: String,
     val address: String? = null,
@@ -52,20 +64,19 @@ data class HouseEntity(
     val lat: Double,
     val lon: Double,
     val status: HouseStatus = HouseStatus.NEW,
-    val price: Long? = null,
-    val priceType: String? = "RENT",
-    val bedrooms: Int? = null,
+    @Ignore val price: Long? = null,
+    @Ignore val priceType: String? = "RENT",
+    @Ignore val bedrooms: Int? = null,
     val rating: Int? = null,
     val contactName: String? = null,
     val contactPhone: String? = null,
     val listingUrl: String? = null,
     val notes: String? = null,
-    // The house's own values of docs/11 5.30 item 1 (slice 1a, Room version 5): carpet area, how the point was set
-    // (`LocationSource`; null for a house saved before) and the cost as `cost_*` columns, all optional. Room reads an
-    // embedded object whose columns are all null as null, so an empty cost never comes back as an empty object.
-    val areaSqft: Int? = null,
+    // The house's own values of docs/11 5.30 item 1 (slice 1a): carpet area, how the point was set (`LocationSource`;
+    // null for a house saved before) and the cost, all optional. An empty cost is written as none.
+    @Ignore val areaSqft: Int? = null,
     val locationSource: String? = null,
-    @Embedded(prefix = "cost_") val cost: HouseCost? = null,
+    @Ignore val cost: HouseCost? = null,
     // The rooms (slice 1c, Room version 7) as JSON text in `rooms` ([Converters]), like the checklist; null for none,
     // never an empty list. The repository's save coerces them (`HouseRooms.coerced`).
     val rooms: List<HouseRoom>? = null,
@@ -75,18 +86,62 @@ data class HouseEntity(
     // Moving in (docs/11 5.24, slice 5, Room version 9) as JSON text in `moveIn` ([Converters]); null when it has no
     // date, notes or items. The repository's save coerces it (`MoveIn.coerced`).
     val moveIn: MoveIn? = null,
-    // The floor the flat is on (S4b-BL-87, Room version 10): -5..200, 0 the ground floor; null when unknown.
-    val floor: Int? = null,
+    // The floor the flat is on (S4b-BL-87): -5..200, 0 the ground floor; null when unknown.
+    @Ignore val floor: Int? = null,
     // The broker's record id (slice 1b, Room version 6): no foreign key, a dangling id reads as no broker. The
     // contact fields stay as copies of the broker's name and phone (`CommonRepository.saveHouse`).
     val brokerId: String? = null,
     val checklist: Map<String, Int> = emptyMap(),
     val createdAt: Long,
     override val updatedAt: Long,
-    val deleted: Boolean = false,
+    override val deleted: Boolean = false,
     /** True while this row has local changes the server hasn't seen yet. */
     override val dirty: Boolean = true,
+    /** The kind id (Room version 12, door 3): `house` for every candidate today. */
+    val kind: String = Candidates.HOUSE_KIND,
+    /**
+     * The extras a newer app wrote that this one does not know ([Candidates.cleanOtherExtras]): never shown or
+     * searched, kept in [extras] after the known ones and written back with them (door 5).
+     */
+    @Ignore val extrasOther: JsonObject? = null,
 ) : SyncRecord {
+    /** The candidate's money (Room version 12, `money_amount` and `money_cadence`), from [price] and [priceType]. */
+    @Embedded(prefix = "money_")
+    val money: Money? = Candidates.moneyOf(price, priceType)
+
+    /** The candidate's extras (Room version 12, JSON text): the house's values in the kind file's order, then [extrasOther]. */
+    val extras: JsonObject? = Candidates.extrasOf(bedrooms, areaSqft, floor, cost?.orNull(), money?.cadence, extrasOther)
+
+    /** Room's constructor: a stored candidate read back as the house it is (its values coerced by type, not by range). */
+    constructor(
+        id: String, label: String, address: String?, street: String?, locality: String?, lat: Double, lon: Double,
+        status: HouseStatus, rating: Int?, contactName: String?, contactPhone: String?, listingUrl: String?,
+        notes: String?, locationSource: String?, rooms: List<HouseRoom>?, answers: List<HouseAnswer>?, moveIn: MoveIn?,
+        brokerId: String?, checklist: Map<String, Int>, createdAt: Long, updatedAt: Long, deleted: Boolean,
+        dirty: Boolean, kind: String, money: Money?, extras: JsonObject?,
+    ) : this(
+        id, label, address, street, locality, lat, lon, status, rating, contactName, contactPhone, listingUrl, notes,
+        locationSource, rooms, answers, moveIn, brokerId, checklist, createdAt, updatedAt, deleted, dirty, kind,
+        Candidates.moneyValue(money), Candidates.houseExtrasOf(extras),
+    )
+
+    @Ignore
+    private constructor(
+        id: String, label: String, address: String?, street: String?, locality: String?, lat: Double, lon: Double,
+        status: HouseStatus, rating: Int?, contactName: String?, contactPhone: String?, listingUrl: String?,
+        notes: String?, locationSource: String?, rooms: List<HouseRoom>?, answers: List<HouseAnswer>?, moveIn: MoveIn?,
+        brokerId: String?, checklist: Map<String, Int>, createdAt: Long, updatedAt: Long, deleted: Boolean,
+        dirty: Boolean, kind: String, money: Money?, values: HouseExtras,
+    ) : this(
+        id = id, label = label, address = address, street = street, locality = locality, lat = lat, lon = lon,
+        status = status, price = money?.amount, priceType = Candidates.priceTypeOf(money?.cadence),
+        bedrooms = values.bedrooms, rating = rating, contactName = contactName, contactPhone = contactPhone,
+        listingUrl = listingUrl, notes = notes, areaSqft = values.areaSqft, locationSource = locationSource,
+        cost = values.cost, rooms = rooms, answers = answers, moveIn = moveIn, floor = values.floor,
+        brokerId = brokerId, checklist = checklist, createdAt = createdAt, updatedAt = updatedAt, deleted = deleted,
+        dirty = dirty, kind = kind, extrasOther = values.other,
+    )
+
     /** The house's score under [scoring] (the repository's `observeScoring`), see [HouseScore.evaluate]. Not stored. */
     fun scoreResult(scoring: Scoring): ScoreResult = HouseScore.evaluate(checklist, rating, scoring)
 
@@ -111,7 +166,7 @@ data class VisitEntity(
     val leftAt: Long? = null,
     val source: VisitSource = VisitSource.MANUAL,
     override val updatedAt: Long,
-    val deleted: Boolean = false,
+    override val deleted: Boolean = false,
     override val dirty: Boolean = true,
 ) : SyncRecord
 
@@ -149,6 +204,7 @@ data class PhotoEntity(
     }
 }
 
+/** A house's count of live visits and the time of the latest, a Room query projection. */
 data class HouseVisitCount(val houseId: String, val visits: Int, val lastVisit: Long)
 
 /**
@@ -163,7 +219,7 @@ data class RowVersion(val id: String, val updatedAt: Long)
  * thinned to about [app.doorprints.location.TrackRecorder] and deleted after 30 days (`Repository.pruneTrack`). Room
  * version 3 (`AppDatabase.MIGRATION_2_3`); the table name and columns are stored names.
  */
-@Entity(tableName = "track_points", indices = [Index("at")])
+@Entity(tableName = "track_points", indices = [Index("at"), Index("walkId")])
 data class TrackPointEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     /** When the fix was taken (epoch milliseconds, the fix's own time). */
@@ -172,6 +228,48 @@ data class TrackPointEntity(
     val lon: Double,
     /** The fix's reported accuracy in metres, for the map to know how rough the line is. */
     val accuracyM: Float,
+    /**
+     * The walk this point belongs to: the `at` of the walk's first kept point (docs/11 5.27.2). **0 is no id**: a row
+     * from before Room 11 is split by the 30-minute gap rule alone. Room version 11 (`MIGRATION_10_11`).
+     */
+    @ColumnInfo(defaultValue = "0") val walkId: Long = 0,
+)
+
+/**
+ * A saved walk (docs/11 5.27.6, docs/03 §6.2 *Room 11*): a walk the person linked to a house, moved out of
+ * `track_points` so the 30-day prune cannot touch it. **Local only, on purpose**: no `dirty`, `updatedAt` or `deleted`
+ * column, so nothing can be pushed; no export, backup or sync path reads this table (PRV-028, PRV-030, T-I30;
+ * `WalkPrivacySourceTest`). No foreign key (as visits and photos have none for `houseId`): a phone never hard-deletes a
+ * house, so the walks of a tombstoned house are hidden by the DAO's join and removed by
+ * [SavedWalkDao.sweepOfDeletedHouses].
+ */
+@Entity(tableName = "saved_walks", indices = [Index("houseId"), Index("startedAt")])
+class SavedWalkEntity(
+    @PrimaryKey val id: String,
+    val houseId: String,
+    /** The first point's time (epoch ms), also the walk id. */
+    val startedAt: Long,
+    val endedAt: Long,
+    val savedAt: Long,
+    /** At most `TraceConstants.MAX_WALK_POINTS`. */
+    val pointCount: Int,
+    /** Rounded metres, for lists. */
+    val lengthM: Int,
+    /** The `WalkCodec/1` bytes. */
+    val points: ByteArray,
+)
+
+/** A saved walk's id and start, no bytes: what the place check lists before it reads the walks one at a time. A Room projection. */
+data class SavedWalkRef(val id: String, val startedAt: Long)
+
+/** A saved walk without its bytes, for the lists. Not a table: a Room query projection. */
+data class SavedWalkSummary(
+    val id: String,
+    val houseId: String,
+    val startedAt: Long,
+    val endedAt: Long,
+    val pointCount: Int,
+    val lengthM: Int,
 )
 
 /**
@@ -190,6 +288,6 @@ data class RecordEntity(
     /** The record as JSON object text, at most `RecordRules.MAX_PAYLOAD_BYTES` of UTF-8. */
     val payload: String,
     override val updatedAt: Long,
-    val deleted: Boolean = false,
+    override val deleted: Boolean = false,
     override val dirty: Boolean = true,
 ) : SyncRecord

@@ -19,17 +19,19 @@
 package app.doorprints.server.ai.rag;
 
 import app.doorprints.server.record.Record;
+import app.doorprints.server.record.ViewingPayload;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /**
  * What the AI document keeps of one viewing record (slice 3b-1): when, kind, status and notes. Never {@code withWhom}
  * (contact data) and never the reminder or the visit link. The server does not read inside a record elsewhere, so a
- * payload that is not a viewing of a house is skipped, and a bad kind or status reads as the clients read it.
+ * payload that is not a viewing of a house is skipped, and a bad kind or status reads as the clients read it. The house
+ * is the payload's {@code candidateId}, or its {@code houseId} when written before S4b-BL-247 ({@link ViewingPayload}).
  */
 record ViewingLine(String id, String houseId, long startsAt, String kind, String status, String notes) {
 
-    /** {@code null} for a record that is not a usable viewing (no house, no positive start, not JSON). */
+    /** {@code null} for a record that is not a usable viewing (no house or both keys, no positive start, not JSON). */
     static ViewingLine from(Record r, ObjectMapper json) {
         JsonNode p;
         try {
@@ -37,16 +39,13 @@ record ViewingLine(String id, String houseId, long startsAt, String kind, String
         } catch (RuntimeException e) {
             return null;
         }
-        var houseId = p.path("houseId");
+        var houseId = ViewingPayload.candidateOf(p);
         var startsAt = p.path("startsAt");
-        if (!houseId.isString() || houseId.asString().isBlank() || !startsAt.isIntegralNumber()
-                || startsAt.asLong() <= 0) {
-            return null;
-        }
+        if (houseId == null || !startsAt.isIntegralNumber() || startsAt.asLong() <= 0) return null;
         var kind = p.path("kind");
         var status = p.path("status");
         var notes = p.path("notes");
-        return new ViewingLine(r.getKey().id(), houseId.asString(), startsAt.asLong(),
+        return new ViewingLine(r.getKey().id(), houseId, startsAt.asLong(),
                 kind.isString() && ("SECOND".equals(kind.asString()) || "FOLLOW_UP".equals(kind.asString()))
                         ? kind.asString() : "FIRST",
                 status.isString() && ("DONE".equals(status.asString()) || "CANCELLED".equals(status.asString()))

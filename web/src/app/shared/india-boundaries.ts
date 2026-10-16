@@ -820,6 +820,7 @@ function overlayIndex(layers: LayerSpecification[], country: number): number {
   return symbol >= 0 ? symbol : layers.length;
 }
 
+/** A line layer drawn from the India boundary data, filtered to one kind of line (world, claim or state). */
 function overlayLayer(
   id: string,
   source: string,
@@ -886,6 +887,7 @@ export function isLegacyFilter(filter: unknown): boolean {
   return classify(filter) === 'legacy';
 }
 
+/** The filter's syntax: expression, deprecated, or neutral (valid in both). */
 function classify(filter: unknown): 'expression' | 'legacy' | 'neutral' {
   if (typeof filter === 'boolean') return 'neutral';
   if (!Array.isArray(filter) || filter.length === 0) return 'legacy';
@@ -921,6 +923,7 @@ function classify(filter: unknown): 'expression' | 'legacy' | 'neutral' {
   }
 }
 
+/** Whether the layer is shown; anything but an explicit `none` counts as visible. */
 function visibilityOf(layer: LayerSpecification): 'visible' | 'none' {
   const layout = read(layer, 'layout') as Record<string, unknown> | undefined;
   return layout?.['visibility'] === 'none' ? 'none' : 'visible';
@@ -936,6 +939,7 @@ function patch(layer: LayerSpecification, change: Record<string, unknown>): Laye
   return { ...(layer as unknown as Record<string, unknown>), ...change } as unknown as LayerSpecification;
 }
 
+/** The value if it is a finite number, else the fallback. */
 function numberOr(value: unknown, fallback: number): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 }

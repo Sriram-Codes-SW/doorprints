@@ -46,7 +46,14 @@
          cannot open its prompt (found by AppLockEmulatorTest on the API 34 and 36 emulators, S4b-BL-67). -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
 
+    <!-- Voice input (docs/03 ADR-37, S4b-BL-222): the microphone button in Ask, Plan and Fill in from listing text, off by
+         default. RECORD_AUDIO is a runtime permission, asked only when the person taps the microphone and has read why
+         (never at install or start-up); nothing is recorded in the background, and nothing is stored (T-I47, T-I48). -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
     <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <!-- RECORD_AUDIO would otherwise make the microphone a required feature: a phone without one still runs the app. -->
+    <uses-feature android:name="android.hardware.microphone" android:required="false" />
 
     <application
         android:name=".DoorprintsApp"
@@ -73,14 +80,29 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="doorprints" android:host="connect" />
             </intent-filter>
+            <!-- The way back from the system browser's Google sign-in (docs/15 §5.5, phones without Google Play
+                 services): app.doorprints:/oauth2redirect?code=…&state=…. Any app can send this intent, so
+                 BrowserRedirect completes a request only for the pending request's own state and refuses the rest. -->
+            <!-- Lint's AppLinkUrlError ("at least one host must be specified") is ignored here on purpose (S4b-BL-170): the
+                 return address is a private-use scheme with a single slash, app.doorprints:/oauth2redirect (RFC 8252
+                 section 7.1, the form Google accepts for this client), so it has no host by design; a host would change
+                 the redirect URI and break the sign-in. The system does not match the path without a host, so this
+                 filter takes every app.doorprints: link, and BrowserRedirect acts only on the pending request's own state. -->
+            <intent-filter tools:ignore="AppLinkUrlError">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="app.doorprints" android:path="/oauth2redirect" />
+            </intent-filter>
             <!-- A backup or update file opened in Doorprints (docs/11 5.28, S4b-FR-3): "open with" from a file app or
                  a chat's attachment (VIEW), or "share to Doorprints" (SEND). ZIP and JSON, the two forms a backup
-                 takes; the Import screen validates the file as any picked one and refuses anything else. -->
+                 takes; the Import screen validates the file as any picked one and refuses anything else. Only content://: another app
+                 cannot hand over a readable file:// path (scoped storage; since API 24 the sender gets a
+                 FileUriExposedException), so that scheme only widened what the app claims to open (S4b-BL-169). -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:scheme="content" />
-                <data android:scheme="file" />
                 <data android:mimeType="application/zip" />
                 <data android:mimeType="application/json" />
             </intent-filter>

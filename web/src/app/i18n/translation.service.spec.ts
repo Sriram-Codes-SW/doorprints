@@ -20,6 +20,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { LANGUAGES, Lang } from './languages';
 import { DICTIONARIES } from './all-dictionaries';
 import { TranslationService } from './translation.service';
+import vectors from '../core/ai/parity-vectors.json';
 
 const LANG_STORAGE_KEY = 'doorprints.lang';
 
@@ -147,6 +148,15 @@ describe('TranslationService', () => {
       expect(service.price(25000, 'RENT')).toContain(base);
     });
 
+    // S4b-BL-174: the amounts of the shared vectors (docs/ai/evals/parity-vectors.json, `rupees`), written out by hand in
+    // the Indian grouping (12,34,567), not read back from Intl as the test above does. The Android app's Formats.rupees
+    // is checked against the same list (FormatsParityTest).
+    it.each(LANGUAGES.map((l) => l.code))('writes the shared regional amounts with lakh and crore grouping in %s', (code) => {
+      const rupees = vectors.rupees as { amount: number; expected: string }[];
+      expect(rupees.length).toBe(17);
+      for (const c of rupees) expect(serviceIn(code).price(c.amount).replace(/\s/g, ''), String(c.amount)).toBe(c.expected);
+    });
+
     it('rounds to whole rupees', () => {
       expect(serviceIn('en').price(999.6)).toMatch(/^₹\s?1,000$/);
     });
@@ -174,6 +184,98 @@ describe('TranslationService', () => {
       const service = serviceIn('en');
       expect(service.score(null)).toBe('–');
       expect(service.score(undefined)).toBe('–');
+    });
+  });
+
+  describe('dateOnly() and timeOnly() (no Angular locale data: the Drive backups table used the date pipe, which throws for hi, ta and te)', () => {
+    const at = Date.UTC(2026, 9, 1, 10, 0, 0);
+
+    it('are dashes for nothing', () => {
+      const service = serviceIn('en');
+      expect(service.dateOnly(null)).toBe('–');
+      expect(service.timeOnly(undefined)).toBe('–');
+      expect(service.dateOnly(Number.NaN)).toBe('–');
+    });
+
+    for (const lang of ['en', 'hi', 'ta', 'te'] as const) {
+      it(`${lang}: a date and a time that are the Intl text of that language`, () => {
+        const service = serviceIn(lang);
+        const locale = service.locale();
+        expect(service.dateOnly(at)).toBe(new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(new Date(at)));
+        expect(service.timeOnly(at)).toBe(new Intl.DateTimeFormat(locale, { timeStyle: 'short' }).format(new Date(at)));
+        expect(service.dateOnly(at)).not.toBe('–');
+      });
+    }
+
+    it('differ between English and Hindi', () => {
+      expect(serviceIn('hi').dateOnly(at)).not.toBe(serviceIn('en').dateOnly(at));
+    });
+  });
+
+  describe('dateWithWeekday() and metres() (the place check, docs/11 5.27.13: Intl, no date pipe)', () => {
+    const NOW = Date.UTC(2026, 9, 10, 12, 0, 0);
+    // 2026-10-06 23:50 UTC is Tue 6 Oct in UTC and Los Angeles, and already Wed 7 Oct in Kolkata.
+    const lateTuesday = Date.UTC(2026, 9, 6, 23, 50, 0);
+
+    it('is a dash for nothing', () => {
+      const service = serviceIn('en');
+      expect(service.dateWithWeekday(null)).toBe('–');
+      expect(service.dateWithWeekday(undefined)).toBe('–');
+      expect(service.dateWithWeekday(Number.NaN)).toBe('–');
+    });
+
+    it('writes a short weekday, the day and the month, and no year in the current year', () => {
+      const text = serviceIn('en').dateWithWeekday(lateTuesday, 'UTC', NOW);
+      expect(text).toMatch(/Tue/);
+      expect(text).toMatch(/6/);
+      expect(text).toMatch(/Oct/);
+      expect(text).not.toMatch(/2026/);
+    });
+
+    it('adds the year when it is not the current year', () => {
+      const text = serviceIn('en').dateWithWeekday(Date.UTC(2025, 11, 30, 12, 0, 0), 'UTC', NOW);
+      expect(text).toMatch(/2025/);
+      expect(text).toMatch(/Tue/);
+    });
+
+    it('uses the calendar day in the time zone it is given (a walk at 23:50 against two zones)', () => {
+      const service = serviceIn('en');
+      expect(service.dateWithWeekday(lateTuesday, 'UTC', NOW)).toMatch(/Tue/);
+      expect(service.dateWithWeekday(lateTuesday, 'America/Los_Angeles', NOW)).toMatch(/Tue/);
+      expect(service.dateWithWeekday(lateTuesday, 'Asia/Kolkata', NOW)).toMatch(/Wed/);
+      expect(service.dateWithWeekday(lateTuesday, 'Asia/Kolkata', NOW)).toMatch(/7/);
+    });
+
+    it('decides the current year in that zone too (New Year in Kolkata is still the old year in UTC)', () => {
+      const service = serviceIn('en');
+      const at = Date.UTC(2026, 0, 1, 1, 0, 0); // 1 Jan 2026 01:00 UTC, 06:30 in Kolkata
+      const newYearEveUtc = Date.UTC(2025, 11, 31, 20, 0, 0); // "now": 31 Dec in UTC, 1 Jan 2026 in Kolkata
+      expect(service.dateWithWeekday(at, 'Asia/Kolkata', newYearEveUtc)).not.toMatch(/2026/);
+      expect(service.dateWithWeekday(at, 'UTC', newYearEveUtc)).toMatch(/2026/);
+    });
+
+    for (const lang of ['en', 'hi', 'ta', 'te'] as const) {
+      it(`${lang}: the Intl text of that language with a short weekday`, () => {
+        const service = serviceIn(lang);
+        const expected = new Intl.DateTimeFormat(service.locale(), { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(lateTuesday));
+        expect(service.dateWithWeekday(lateTuesday, 'UTC', NOW)).toBe(expected);
+        expect(expected).not.toBe('');
+      });
+    }
+
+    it('differs between English and Tamil and Telugu and Hindi', () => {
+      const en = serviceIn('en').dateWithWeekday(lateTuesday, 'UTC', NOW);
+      for (const lang of ['hi', 'ta', 'te'] as const) expect(serviceIn(lang).dateWithWeekday(lateTuesday, 'UTC', NOW), lang).not.toBe(en);
+    });
+
+    it('writes a distance in whole metres with the unit written the language\'s own way', () => {
+      for (const lang of ['en', 'hi', 'ta', 'te'] as const) {
+        const service = serviceIn(lang);
+        const expected = new Intl.NumberFormat(service.locale(), { style: 'unit', unit: 'meter', maximumFractionDigits: 0 }).format(25);
+        expect(service.metres(25), lang).toBe(expected);
+      }
+      expect(serviceIn('en').metres(25)).toMatch(/25\s?m/);
+      expect(serviceIn('en').metres(1234)).toMatch(/1,234/);
     });
   });
 

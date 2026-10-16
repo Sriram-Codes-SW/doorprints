@@ -19,7 +19,10 @@
 package app.doorprints.data
 
 import android.util.Log
+import app.doorprints.shared.ai.AiQuality
 import app.doorprints.shared.ai.GeminiClient
+import app.doorprints.shared.ai.AnthropicClient
+import app.doorprints.shared.ai.OpenAiCompatClient
 import app.doorprints.shared.api.AndroidApiHttp
 import app.doorprints.shared.api.ApiClient
 import io.ktor.client.HttpClient
@@ -35,6 +38,13 @@ object Api {
     /** One pool and dispatcher for the whole app, created on first use. */
     private val http: HttpClient by lazy { AndroidApiHttp.create() }
 
+    /** The app-wide HTTP client, for Google Drive (`HttpDriveClient`): the same pool and the same no-redirect rule. */
+    fun httpClient(): HttpClient = http
+
+    /**
+     * An [ApiClient] for the person's own Doorprints server at [baseUrl], sending [apiKey]; the sync loop and
+     * Settings' *Save and test* use it.
+     */
     fun client(baseUrl: String, apiKey: String): ApiClient = ApiClient(
         baseUrl = baseUrl,
         apiKey = apiKey,
@@ -44,5 +54,11 @@ object Api {
     )
 
     /** Gemini with the person's own key, for on-device AI (docs/03 §13.1), on the same pool. Nothing is logged. */
-    fun gemini(apiKey: String): GeminiClient = GeminiClient(http, apiKey)
+    fun gemini(apiKey: String, quality: AiQuality): GeminiClient = GeminiClient(http, apiKey, quality = quality)
+
+    /** An OpenAI-compatible endpoint with the person's own key (docs/03 §13.2), on the same pool. Nothing is logged. */
+    fun openAi(baseUrl: String, model: String, apiKey: String): OpenAiCompatClient = OpenAiCompatClient(http, baseUrl, model, apiKey)
+
+    /** Anthropic with the person's own key (docs/03 §13.2), on the same pool. Nothing is logged. */
+    fun anthropic(baseUrl: String, model: String, apiKey: String): AnthropicClient = AnthropicClient(http, model, apiKey, baseUrl)
 }

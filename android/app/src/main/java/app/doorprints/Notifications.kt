@@ -18,6 +18,7 @@
 
 package app.doorprints
 
+import app.doorprints.shared.model.KindCapabilities
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -30,6 +31,7 @@ import androidx.core.net.toUri
 import app.doorprints.data.HouseEntity
 import app.doorprints.location.HuntService
 import app.doorprints.shared.model.Area
+import app.doorprints.shared.model.KindSettingRules
 import app.doorprints.shared.model.LocationSource
 import app.doorprints.shared.model.Viewing
 import app.doorprints.shared.model.ViewingReminders
@@ -37,6 +39,11 @@ import app.doorprints.ui.Formats
 import app.doorprints.ui.Routes
 import app.doorprints.ui.canPostNotifications
 
+/**
+ * Every notification the app posts: the channels, the fixed ids and tags that keep two features from replacing each
+ * other's notification, the intent extras that carry a tap back into [MainActivity], and the builders for each kind.
+ * House names, areas and routes are private, so every channel that could show them hides them on a locked screen (F-14).
+ */
 object Notifications {
     const val CHANNEL_HUNT = "hunt"
     const val CHANNEL_ALERTS = "alerts"
@@ -48,6 +55,11 @@ object Notifications {
     const val CHANNEL_HUNT_REMINDERS = "hunt_reminders"
     /** The area wake-up (docs/11 5.17, slice 4b): default importance, private on the lock screen, no DND bypass. */
     const val CHANNEL_AREA_WAKEUP = "area_wakeup"
+    /**
+     * The repeated-path alert (docs/11 5.27.5): default importance (the phone's own notification sound, no heads-up), no
+     * vibration, no badge, private on a lock screen; the person mutes it, or changes its sound, in Android's settings.
+     */
+    const val CHANNEL_REPEAT_PATH = "repeat_path"
     // Every fixed notification id the app uses lives here, so two features cannot pick the same number. (The
     // per-house, per-street and per-visit alerts use hash codes and cannot be reserved; they are rare and
     // short-lived.)
@@ -113,6 +125,12 @@ object Notifications {
      */
     const val AREA_WAKEUP_ID = 11
 
+    /** "Google Drive backup is paused because this phone no longer has a screen lock" (docs/15 §10.3): one, replaced by a later one. */
+    const val DRIVE_LOCK_ID = 12
+
+    /** "You have walked this way before" (docs/11 5.27.5): one at a time, a second replaces the first. */
+    const val REPEAT_PATH_ID = 13
+
     /** The tag of area [areaId]'s wake-up notification, posted under [AREA_WAKEUP_ID]. */
     fun areaTag(areaId: String) = "area:$areaId"
 
@@ -135,10 +153,14 @@ object Notifications {
     const val SCREEN_EXPORT = Routes.EXPORT
     const val SCREEN_IMPORT = Routes.IMPORT
     const val SCREEN_SETTINGS = Routes.SETTINGS
-    val SCREENS = setOf(SCREEN_EXPORT, SCREEN_IMPORT, SCREEN_SETTINGS)
+    const val SCREEN_MAP = Routes.MAP
+    val SCREENS = setOf(SCREEN_EXPORT, SCREEN_IMPORT, SCREEN_SETTINGS, SCREEN_MAP)
     const val EXTRA_NEW_LAT = "newLat"
     const val EXTRA_NEW_LON = "newLon"
     const val EXTRA_VISIT_ID = "visitId"
+
+    /** The kind of the walk that raised a "stay here?" alert (docs/03 section 18.20); MainActivity accepts only a built-in kind id. */
+    const val EXTRA_NEW_KIND = "newKind"
 
     /** A viewing to open (a Hunt mode reminder's body, slice 3c); MainActivity accepts only a valid record id. */
     const val EXTRA_OPEN_VIEWING = "openViewing"
@@ -155,7 +177,11 @@ object Notifications {
      */
     const val EXTRA_START_HUNT_AREA = "startHuntArea"
 
-    /** Pass a localised context (an Activity, or AppLocale.wrap(app)) so channel names follow the app language. */
+    /**
+     * Creates (or renames, if they exist) the notification channels the person can mute or reshape in Android's settings.
+     * Safe to call at every start: Android keeps the person's own channel settings and only updates the names and
+     * descriptions. Pass a localised context (an Activity, or AppLocale.wrap(app)) so channel names follow the app language.
+     */
     fun createChannels(context: Context) {
         val nm = context.getSystemService(NotificationManager::class.java)
         nm.createNotificationChannel(
@@ -193,6 +219,16 @@ object Notifications {
             }
         )
         nm.createNotificationChannel(
+            NotificationChannel(CHANNEL_REPEAT_PATH, context.getString(R.string.notif_channel_repeat), NotificationManager.IMPORTANCE_DEFAULT).apply {
+                description = context.getString(R.string.notif_channel_repeat_desc)
+                // The phone's default notification sound (the importance gives it); no vibration, no badge (5.27.5).
+                enableVibration(false)
+                setShowBadge(false)
+                // Where she walked is private: a locked screen shows the public version (F-14).
+                lockscreenVisibility = Notification.VISIBILITY_PRIVATE
+            }
+        )
+        nm.createNotificationChannel(
             NotificationChannel(CHANNEL_ALERTS, context.getString(R.string.notif_channel_alerts), NotificationManager.IMPORTANCE_HIGH).apply {
                 description = context.getString(R.string.notif_channel_alerts_desc)
                 // House names, prices and streets are private: hide them on a locked screen (threat model F-14).
@@ -201,6 +237,28 @@ object Notifications {
         )
     }
 
+    /**
+     * The alerts channel of a walk of [kind] (docs/03 section 18.20): the house's is [CHANNEL_ALERTS], created at start; any other
+     * kind's is `alerts_<kind>`, created here the first time its walk alerts, named and described in the kind's own words
+     * ([name], [description]: `huntChannelAlerts`, `huntChannelAlertsDesc`) and as private on a locked screen as the house's.
+     * Returns the channel id to post on.
+     */
+    fun alertsChannel(context: Context, kind: String, name: String, description: String): String {
+        if (KindCapabilities.of(kind).baseline) return CHANNEL_ALERTS
+        val id = "alerts_$kind"
+        context.getSystemService(NotificationManager::class.java)?.createNotificationChannel(
+            NotificationChannel(id, name, NotificationManager.IMPORTANCE_HIGH).apply {
+                this.description = description
+                lockscreenVisibility = android.app.Notification.VISIBILITY_PRIVATE
+            }
+        )
+        return id
+    }
+
+    /**
+     * The tap action for a notification: brings [MainActivity] to the front (one instance) with [extras], which the
+     * activity validates before acting. Immutable, and one [requestCode] per distinct target so the intents stay apart.
+     */
     fun openAppIntent(context: Context, requestCode: Int, extras: Intent.() -> Unit = {}): PendingIntent {
         val intent = Intent(context, MainActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
@@ -303,23 +361,26 @@ object Notifications {
      * house, scrolled to its questions; [EXTRA_OPEN_QUESTIONS]). Private on a locked screen. Every
      * PendingIntent is immutable (T-E8); the request codes come from the viewing id, one per action.
      */
-    fun viewingReminder(context: Context, viewing: Viewing, house: HouseEntity?, nowMs: Long): Notification {
-        val name = house?.label?.ifBlank { null } ?: context.getString(R.string.notif_viewing_house_gone)
+    fun viewingReminder(context: Context, viewing: Viewing, house: HouseEntity?, nowMs: Long, texts: ViewingTexts? = null): Notification {
+        // A kind other than the house words the reminder with its own texts and its own channel (kinds PR 29, docs/03 §18.23); the house's
+        // are the app's strings and the `viewings` channel, so a house reminder is what it always was.
+        val channel = texts?.let { viewingsChannel(context, it) } ?: CHANNEL_VIEWINGS
+        val name = house?.label?.ifBlank { null } ?: (texts?.gone ?: context.getString(R.string.notif_viewing_house_gone))
         val minutes = ViewingReminders.minutesUntil(viewing.startsAt, nowMs)
         val title = if (minutes <= SOON_MINUTES) {
-            context.getString(R.string.notif_viewing_soon, name, minutes)
+            texts?.soon?.invoke(name, minutes) ?: context.getString(R.string.notif_viewing_soon, name, minutes)
         } else {
-            context.getString(R.string.notif_viewing_title, name)
+            texts?.title?.invoke(name) ?: context.getString(R.string.notif_viewing_title, name)
         }
         val text = context.getString(R.string.notif_viewing_text, Formats.dateTime(viewing.startsAt))
-        val publicVersion = NotificationCompat.Builder(context, CHANNEL_VIEWINGS)
+        val publicVersion = NotificationCompat.Builder(context, channel)
             .setSmallIcon(SMALL_ICON)
             .setContentTitle(context.getString(R.string.notif_viewing_public))
             .build()
         val openHouse = house?.let { h ->
             openAppIntent(context, ("open:" + viewing.id).hashCode()) { putExtra(EXTRA_OPEN_HOUSE, h.id) }
         }
-        return NotificationCompat.Builder(context, CHANNEL_VIEWINGS)
+        return NotificationCompat.Builder(context, channel)
             .setSmallIcon(SMALL_ICON)
             .setContentTitle(title)
             .setContentText(text)
@@ -331,9 +392,9 @@ object Notifications {
             .setContentIntent(openHouse ?: openAppIntent(context, ("open:" + viewing.id).hashCode()))
             .apply {
                 if (house != null && openHouse != null) {
-                    addAction(0, context.getString(R.string.notif_viewing_open), openHouse)
+                    addAction(0, texts?.open ?: context.getString(R.string.notif_viewing_open), openHouse)
                     if (house.locationSource != LocationSource.APPROX) {
-                        addAction(0, context.getString(R.string.notif_viewing_directions), directionsIntent(context, viewing.id, house))
+                        addAction(0, texts?.directions ?: context.getString(R.string.notif_viewing_directions), directionsIntent(context, viewing.id, house))
                     }
                     addAction(
                         0, context.getString(R.string.notif_viewing_questions),
@@ -345,6 +406,33 @@ object Notifications {
                 }
             }
             .build()
+    }
+
+    /**
+     * The texts of a viewing reminder of a kind other than the house (kinds PR 29, docs/03 §18.23), read from the kind file's
+     * `viewingChannel`, `viewingChannelDesc`, `viewingSoon`, `viewingTitle`, `viewingOpen`, `viewingGone` and `viewingDirections`
+     * words by the scheduler. [channelId] is `viewings_<kind>`; the lock-screen public text stays "Doorprints reminder" for every kind.
+     */
+    class ViewingTexts(
+        val channelId: String,
+        val channelName: String,
+        val channelDescription: String,
+        val soon: (name: String, minutes: Int) -> String,
+        val title: (name: String) -> String,
+        val open: String,
+        val gone: String,
+        val directions: String,
+    )
+
+    /** Creates (idempotently) the viewings channel of a kind other than the house, private on a locked screen like the house's, and returns its id. */
+    fun viewingsChannel(context: Context, texts: ViewingTexts): String {
+        context.getSystemService(NotificationManager::class.java)?.createNotificationChannel(
+            NotificationChannel(texts.channelId, texts.channelName, NotificationManager.IMPORTANCE_DEFAULT).apply {
+                description = texts.channelDescription
+                lockscreenVisibility = Notification.VISIBILITY_PRIVATE
+            }
+        )
+        return texts.channelId
     }
 
     /**
@@ -478,14 +566,17 @@ object Notifications {
      * even where the phone is set to show all notification content, which would show a private one whole and name the
      * house; it still sounds and shows once the phone is unlocked.
      */
-    fun alert(context: Context, id: Int, title: String, text: String, tap: PendingIntent?, hideOnLockScreen: Boolean = false) {
+    fun alert(
+        context: Context, id: Int, title: String, text: String, tap: PendingIntent?, hideOnLockScreen: Boolean = false,
+        channel: String = CHANNEL_ALERTS,
+    ) {
         if (!canPost(context)) return
         // What a locked screen shows instead of the house details (threat model F-14, SEC-022).
         val publicVersion = NotificationCompat.Builder(context, CHANNEL_ALERTS)
             .setSmallIcon(SMALL_ICON)
             .setContentTitle(context.getString(R.string.notif_public))
             .build()
-        val n = NotificationCompat.Builder(context, CHANNEL_ALERTS)
+        val n = NotificationCompat.Builder(context, channel)
             .setSmallIcon(SMALL_ICON)
             .setContentTitle(title)
             .setContentText(text)
@@ -501,4 +592,43 @@ object Notifications {
         } catch (_: SecurityException) {
         }
     }
+
+    /**
+     * The repeated-path alert (docs/11 5.27.5): *You have walked this way before* on [CHANNEL_REPEAT_PATH], a tap opens the
+     * Map, auto-cancelled and gone after two minutes. Private on a locked screen with the public version of the Hunt
+     * alerts ("Doorprints alert", so no new string reaches the lock screen); [hideOnLockScreen] (the app lock is on,
+     * S4b-BL-68) makes it secret. It holds no place, distance or count. Dropped quietly when notifications are not allowed.
+     */
+    fun repeatPath(context: Context, hideOnLockScreen: Boolean): Notification {
+        val publicVersion = NotificationCompat.Builder(context, CHANNEL_ALERTS)
+            .setSmallIcon(SMALL_ICON)
+            .setContentTitle(context.getString(R.string.notif_public))
+            .build()
+        return NotificationCompat.Builder(context, CHANNEL_REPEAT_PATH)
+            .setSmallIcon(SMALL_ICON)
+            .setContentTitle(context.getString(R.string.notif_repeat_title))
+            .setContentText(context.getString(R.string.notif_repeat_text))
+            .setCategory(NotificationCompat.CATEGORY_STATUS)
+            .setAutoCancel(true)
+            .setTimeoutAfter(REPEAT_PATH_TIMEOUT_MS)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setVisibility(if (hideOnLockScreen) NotificationCompat.VISIBILITY_SECRET else NotificationCompat.VISIBILITY_PRIVATE)
+            .setPublicVersion(publicVersion)
+            .setContentIntent(openScreenIntent(context, SCREEN_MAP))
+            .build()
+    }
+
+    /** Posts [repeatPath]; false when notifications are not allowed or the post failed. */
+    fun alertRepeatPath(context: Context, hideOnLockScreen: Boolean): Boolean {
+        if (!canPost(context)) return false
+        return try {
+            NotificationManagerCompat.from(context).notify(REPEAT_PATH_ID, repeatPath(context, hideOnLockScreen))
+            true
+        } catch (_: SecurityException) {
+            false
+        }
+    }
+
+    /** The alert goes by itself after two minutes (docs/11 5.27.5). */
+    const val REPEAT_PATH_TIMEOUT_MS = 120_000L
 }

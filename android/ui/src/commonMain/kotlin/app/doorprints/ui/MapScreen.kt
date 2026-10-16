@@ -64,16 +64,30 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.doorprints.data.AppSettings
+import app.doorprints.data.Repository
+import app.doorprints.data.SaveWalkResult
+import app.doorprints.shared.model.HouseStatus
+import app.doorprints.shared.model.KindLabels
+import app.doorprints.shared.trace.TraceConstants
 import app.doorprints.data.HouseEntity
+import app.doorprints.shared.trace.RepeatLook
 import app.doorprints.location.HuntState
 import app.doorprints.ui.res.*
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import app.doorprints.shared.location.PlaceLookup
 import kotlinx.coroutines.withTimeoutOrNull
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
+
+/** How long the outline of a place check's stretches stays after *Show on map* closed the sheet. */
+private const val CHECK_OUTLINE_SECONDS = 10
 
 /** How long *Save house here* and *My location* wait for a GPS fix before giving up. */
 private const val LOCATE_TIMEOUT_MS = 15_000L
@@ -82,7 +96,7 @@ private const val LOCATE_TIMEOUT_MS = 15_000L
 private const val STALE_FIX_MS = 120_000L
 
 /** What to do once the location permission has been granted. */
-private enum class AfterGrant { HUNT, SAVE_HERE, MY_LOCATION }
+private enum class AfterGrant { HUNT, SAVE_HERE, MY_LOCATION, CHECK_HERE }
 
 /**
  * The map. Common since CMP-7 (ADR-23; was `:app`'s `MapScreen`): this is the chrome (the Hunt card, the notes, the
@@ -171,9 +185,8 @@ private enum class AfterGrant { HUNT, SAVE_HERE, MY_LOCATION }
  * draws at the bottom start ([attributionBottomDp]: the legend while it is drawn, or a row of controls that reaches
  * it), 4 dp from the bare map edge otherwise, as the web lifts its corner controls with `--map-stack-h`, so no Compose
  * surface hides it or takes its taps. While a snackbar sits beside the landscape row, in the legend's place, the "i"
- * is hidden along with the legend and comes back in the same place when it goes (round 10), never half covered. Its
- * logo is off (the BSD licence does not ask for it; the web shows none). The
- * map is north-up ([MAP_NORTH_UP], round 8): rotation, tilt and the compass are off, as on the web, so no rotated map
+ * is lifted above the snackbar, never hidden or covered (S4b-BL-4, [attributionOverlayTopDp]). Its logo is off (the
+ * BSD licence does not ask for it; the web shows none). The map is north-up ([MAP_NORTH_UP], round 8): rotation, tilt and the compass are off, as on the web, so no rotated map
  * is ever left without a visible way back to north (WCAG 2.5.1), and a camera saved before is restored at bearing 0.
  *
  * **Gutters (round 6).** The Hunt card's edge, the bottom controls, the legend and the snackbar are all 16 dp from the
@@ -217,12 +230,12 @@ fun MapScreen(
     val repo = services.repository
     val scope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
-    val addTip = stringResource(if (addTipForListing) Res.string.map_add_tip_listing else Res.string.map_add_tip)
-    val addTipA11y = stringResource(if (addTipForListing) Res.string.map_add_tip_listing_a11y else Res.string.map_add_tip_a11y)
+    val addTip = stringResource(LocalSpace.current.words.let { if (addTipForListing) it.addTipListing else it.addTip })
+    val addTipA11y = stringResource(LocalSpace.current.words.let { if (addTipForListing) it.addTipListingA11y else it.addTipA11y })
     val findingText = stringResource(Res.string.common_finding_location)
     val waitingGps = stringResource(Res.string.map_waiting_gps)
     val longPressTip = stringResource(Res.string.map_long_press_tip)
-    val needsLocation = stringResource(Res.string.map_save_needs_location)
+    val needsLocation = stringResource(LocalSpace.current.words.saveNeedsLocation)
     val locationNeeded = stringResource(Res.string.map_location_needed)
     val myLocationLabel = stringResource(Res.string.map_my_location)
     LaunchedEffect(showAddTip) {
@@ -241,11 +254,51 @@ fun MapScreen(
         scope.launch { offerDeletedHouseUndo(repo, snackbar, id) }
     }
     // null until Room answers, so the first framing knows "no houses" from "not loaded yet".
-    val loadedHouses: List<HouseEntity>? by repo.houses.collectAsStateWithLifecycle(initialValue = null)
+    val loadedHouses: List<HouseEntity>? by rememberSpaceHouses(repo) // the space's candidates (kinds PR C); with one kind on, every one
     val houses = loadedHouses.orEmpty()
-    // The path trace (docs/11 5.27): the last 30 days, drawn under the houses; empty while off.
-    val track by repo.trackPoints.collectAsStateWithLifecycle(initialValue = emptyList())
+    // The person's walks (docs/11 5.27.4): the last 30 days and the saved walks, drawn under the houses. Built off the
+    // main thread (the repeat detection) at each change of the stored walks; the look is separate, so it is live.
+    // At most one redraw every 5 s while a walk records (docs/11 5.27.3), and an unchanged set of walks (same ids and
+    // point counts) is not detected again; houses changes do not wake it.
+    val track by produceState(TraceDrawing.EMPTY, repo) {
+        val cache = TraceDrawingCache()
+        repo.walksChanged().throttleRedraw().collectLatest { value = withContext(Dispatchers.Default) { cache.of(repo.walks()) } }
+    }
     val hunt by mapServices.hunt.collectAsStateWithLifecycle()
+    val repeatLook = repo.settings.settings.collectAsStateWithLifecycle(AppSettings()).value.repeatLook
+    // *Save this walk?* (docs/11 5.27.6): the walk to ask about, asked once, when a walk ends (*Finish walk*, Hunt mode
+    // stopped) and when the Map opens (Hunt mode stopped by itself, or the app was killed). Never the walk being recorded.
+    // *Have I been here?* (docs/11 5.27.13): on demand only; the answer is held in memory and dropped when the sheet closes.
+    val placeCheck = remember(repo, services) {
+        PlaceCheckController(scope, repo, { services.location.best() }, { HuntState.state.value.walkId })
+    }
+    var checkMenuOpen by remember { mutableStateOf(false) }
+    var pickingSpot by remember { mutableStateOf(false) }
+    var longPressAt by remember { mutableStateOf<Pair<Double, Double>?>(null) }
+    var askedWalk by remember { mutableStateOf<WalkSummary?>(null) }
+    var askRefusal by remember { mutableStateOf<String?>(null) }
+    val alertRadiusM = repo.settings.settings.collectAsStateWithLifecycle(AppSettings()).value.alertRadiusM
+    fun askAboutWalk() {
+        if (askedWalk != null) return
+        scope.launch { askedWalk = walkToAskAbout(repo, HuntState.state.value.walkId) }
+    }
+    LaunchedEffect(Unit) {
+        // The 30-day rule also runs when the Map opens (docs/11 5.27.6), then the walk a stop or a kill left unasked.
+        repo.pruneTrack(nowMillis() - Repository.TRACK_KEPT_MS)
+        askAboutWalk()
+    }
+    var huntWasActive by remember { mutableStateOf(hunt.active) }
+    LaunchedEffect(hunt.active) {
+        if (huntWasActive && !hunt.active) askAboutWalk()
+        huntWasActive = hunt.active
+    }
+    var finishRequests by remember { mutableIntStateOf(0) }
+    LaunchedEffect(finishRequests) {
+        if (finishRequests == 0) return@LaunchedEffect
+        // The service ends the walk a moment after the request: wait for the live walk id to go to 0, then ask.
+        withTimeoutOrNull(3_000) { HuntState.state.first { it.walkId == 0L } }
+        askAboutWalk()
+    }
     var map by remember { mutableStateOf<MapControl?>(null) }
     // Offline maps (docs/11 5.20): the dialog over the box the map shows, and the area whose outcome the snackbar
     // reports (saved with its size, or failed).
@@ -368,6 +421,7 @@ fun MapScreen(
         if (permissionGranted) {
             grantedFor = next
         } else {
+            if (next == AfterGrant.CHECK_HERE) placeCheck.denied(PlaceKind.HERE)
             // The Hunt card's note appears now (asked is set), with *Allow location*, *Turn on precise location* or,
             // after a second refusal, *Open settings*; its LiveMessage reads it, and the band scrolls to it.
             revealLocationNote(focus = false)
@@ -388,6 +442,7 @@ fun MapScreen(
                 requestLocation()
             }
             LocationStart.SHOW_NOTE -> {
+                if (next == AfterGrant.CHECK_HERE) placeCheck.denied(PlaceKind.HERE)
                 revealLocationNote(focus = true)
                 if (!platform.isScreenReaderOn()) answerRefusedTap()
             }
@@ -400,13 +455,13 @@ fun MapScreen(
         notificationsReach = mapServices.notificationsReachUser()
     }
     // Notifications are asked for in context, when Hunt mode is turned on; Hunt mode starts whatever the answer.
-    val notifyAsk = rememberNotificationAsk(rationale = Res.string.map_hunt_notify_rationale)
-
+    val notifyAsk = rememberNotificationAsk(rationale = LocalSpace.current.hunt.notifyRationale)
+    val huntKind = LocalSpace.current.kind // the walk belongs to the space it is started in (docs/03 section 18.20)
     fun startHunt() {
         if (needsLocation(AfterGrant.HUNT)) return
         notifyAsk {
             // start() returns false when the permission was revoked since this screen last checked.
-            if (!mapServices.startHunt()) {
+            if (!mapServices.startHunt(huntKind)) {
                 permissionGranted = hasPreciseLocation(platform)
                 scope.launch { snackbar.showSnackbar(locationNeeded, withDismissAction = true) }
             }
@@ -443,6 +498,10 @@ fun MapScreen(
         if (needsLocation(AfterGrant.SAVE_HERE)) return
         locate { (lat, lon) -> currentOnNewHouse(lat, lon) }
     }
+    fun checkHere() {
+        if (needsLocation(AfterGrant.CHECK_HERE)) return
+        placeCheck.start(PlaceKind.HERE)
+    }
     fun goToMe() {
         if (needsLocation(AfterGrant.MY_LOCATION)) return
         locate { (lat, lon) ->
@@ -461,6 +520,7 @@ fun MapScreen(
             AfterGrant.HUNT -> startHunt()
             AfterGrant.SAVE_HERE -> saveHere()
             AfterGrant.MY_LOCATION -> goToMe()
+            AfterGrant.CHECK_HERE -> checkHere()
         }
     }
     // A reminder's *Start Hunt mode* (docs/11 5.16, 5.18): the same path as the Hunt switch, location question first.
@@ -517,7 +577,31 @@ fun MapScreen(
         m.camera()?.let { camera = it }
     }
 
-    val mapDescription = stringResource(Res.string.map_region_desc)
+    // *Show on map* of a saved walk or a place check (docs/11 5.27.6): fit the view to the outline, draw it for a while.
+    var focusOverlay by remember { mutableStateOf<CheckOverlay?>(null) }
+    val pendingFocus by ShowOnMap.pending.collectAsStateWithLifecycle()
+    LaunchedEffect(pendingFocus, map) {
+        val focus = pendingFocus ?: return@LaunchedEffect
+        val m = map ?: return@LaunchedEffect
+        ShowOnMap.consume()
+        framed = true
+        focusOverlay = focus.overlay
+        m.frame(focus.overlay.points, framePaddingPx, maxZoom = 18.0)
+        scope.launch {
+            delay(focus.seconds * 1_000L)
+            if (focusOverlay === focus.overlay) focusOverlay = null
+        }
+    }
+    val mapDescription = stringResource(LocalSpace.current.words.regionDesc)
+    val traceDescription = stringResource(Res.string.trace_a11y_map)
+    // The repeated-path alert (docs/11 5.27.5): the notification is the platform's; with the app in front the Map says it too.
+    val repeatAlertText = stringResource(Res.string.trace_alert_banner)
+    LaunchedEffect(Unit) {
+        RepeatAlerts.events.collect {
+            snackbar.currentSnackbarData?.dismiss()
+            scope.launch { snackbar.showSnackbar(repeatAlertText, withDismissAction = true) }
+        }
+    }
     // The bottom controls' height as last measured, one per layout (0 until then; a larger font makes them taller),
     // so a rotation never sizes the band from the other layout's height. The snackbar is not in it (round 4). The
     // row's width too (round 5), to decide whether the snackbar fits beside it.
@@ -529,11 +613,13 @@ fun MapScreen(
     var fabHeightPx by remember { mutableIntStateOf(0) }
     // The legend's own height at the bottom start (round 7), to lift MapLibre's attribution above it.
     var legendHeightPx by remember { mutableIntStateOf(0) }
+    // The snackbar host's measured height (0 with none showing), for lifting the attribution above a snackbar beside the row.
+    var snackbarHeightPx by remember { mutableIntStateOf(0) }
     // The status names measured at the legend's style, one line, for this locale and font scale (as ActionBar measures
     // its labels): the narrowest legend that breaks no name (round 7: the widest name, its dot box, gap and padding),
     // and its width with all three on one line (round 8: one line or one item per line, never a mix).
     val legendStyle = legendTextStyle()
-    val legendLabels = LEGEND_DOTS.map { stringResource(statusLabel(it.status)) }
+    val legendLabels = LEGEND_DOTS.map { stringResource(statusLabel(it.status, LocalSpace.current.built.labels)) }
     val textMeasurer = rememberTextMeasurer()
     val legendLabelWidthsDp = remember(textMeasurer, legendLabels, legendStyle, density) {
         legendLabels.map { label ->
@@ -550,6 +636,99 @@ fun MapScreen(
     // With TalkBack on, the location note can take focus (see "A refusal is said once"); otherwise it is no tab stop.
     val noteModifier = Modifier.bringIntoViewRequester(noteView).focusRequester(noteFocus)
         .then(if (platform.isScreenReaderOn()) Modifier.focusable() else Modifier)
+    val savedSnack = stringResource(Res.string.trace_saved_snack, "%1")
+    val keptSnack = stringResource(Res.string.trace_kept_snack)
+    val deletedSnack = stringResource(Res.string.trace_deleted_snack)
+    val tooLongText = stringResource(Res.string.trace_save_too_long, TraceConstants.MAX_WALK_POINTS)
+    val houseFullText = stringResource(LocalSpace.current.words.traceSaveFull, TraceConstants.MAX_WALKS_PER_HOUSE)
+    val allFullText = stringResource(Res.string.trace_save_all_full, TraceConstants.MAX_SAVED_WALKS)
+    val failedWalkText = stringResource(Res.string.trace_save_failed_walk)
+    val failedHouseText = stringResource(Res.string.trace_save_failed_house)
+    val unnamedHouse = stringResource(LocalSpace.current.words.unnamed)
+    askedWalk?.let { walk ->
+        WalkEndSheet(
+            summary = walk,
+            houses = houses,
+            alertRadiusM = alertRadiusM,
+            refusal = askRefusal,
+            onKeep = {
+                scope.launch { WalkEndAnswers.keep(repo, walk.walkId); snackbar.showSnackbar(keptSnack) }
+                askedWalk = null; askRefusal = null
+            },
+            onDelete = {
+                scope.launch { WalkEndAnswers.delete(repo, walk.walkId); snackbar.showSnackbar(deletedSnack) }
+                askedWalk = null; askRefusal = null
+            },
+            onSave = { houseId ->
+                scope.launch {
+                    when (val answer = WalkEndAnswers.save(repo, walk.walkId, houseId)) {
+                        WalkAnswer.Done -> {
+                            val label = houses.firstOrNull { it.id == houseId }?.label?.ifBlank { null } ?: unnamedHouse
+                            askedWalk = null; askRefusal = null
+                            snackbar.showSnackbar(savedSnack.replace("%1", label))
+                        }
+                        is WalkAnswer.Refused -> {
+                            val text = when (answer.reason) {
+                                SaveWalkResult.TooLong -> tooLongText
+                                SaveWalkResult.HouseFull -> houseFullText
+                                SaveWalkResult.DeviceFull -> allFullText
+                                SaveWalkResult.NoSuchHouse -> failedHouseText
+                                else -> failedWalkText
+                            }
+                            if (answer.reason == SaveWalkResult.HouseFull || answer.reason == SaveWalkResult.DeviceFull ||
+                                answer.reason == SaveWalkResult.NoSuchHouse
+                            ) {
+                                askRefusal = text // the sheet stays: another house may take it
+                            } else {
+                                askedWalk = null; askRefusal = null
+                                snackbar.showSnackbar(text, withDismissAction = true)
+                            }
+                        }
+                    }
+                }
+            },
+        )
+    }
+    longPressAt?.let { (lat, lon) ->
+        LongPressMenu(
+            onSave = { longPressAt = null; currentOnNewHouse(lat, lon) },
+            onCheck = { longPressAt = null; placeCheck.start(PlaceKind.SPOT, lat, lon) },
+            onDismiss = { longPressAt = null },
+        )
+    }
+    val checkState = placeCheck.state
+    if (checkState != null) {
+        PlaceCheckSheet(
+            state = checkState,
+            onShowOnMap = { overlay ->
+                placeCheck.close()
+                // Closing discards the answer; the outline stays on the map a while longer, then goes.
+                ShowOnMap.show(MapFocus(overlay, seconds = CHECK_OUTLINE_SECONDS))
+            },
+            onAgain = { checkHere() },
+            onClose = { placeCheck.close() },
+        )
+    }
+    // The answer's stretches and ring on the map while the sheet is open; the view fits them when they are off screen.
+    val labelHere = stringResource(Res.string.trace_here_label_here)
+    val labelHouse = stringResource(Res.string.trace_here_label_house)
+    val labelSpot = stringResource(Res.string.trace_here_label_spot)
+    val checkOverlay = remember(checkState) {
+        (checkState as? PlaceCheckState.Answer)?.let {
+            val label = when (it.kind) { PlaceKind.HERE -> labelHere; PlaceKind.HOUSE -> labelHouse; PlaceKind.SPOT -> labelSpot }
+            CheckOverlay.of(it.lat, it.lon, label, it.result, it.walks)
+        }
+    }
+    LaunchedEffect(checkOverlay, map) {
+        val overlay = checkOverlay ?: return@LaunchedEffect
+        val m = map ?: return@LaunchedEffect
+        val bounds = m.visibleBounds()
+        val inView = bounds != null && overlay.points.all { (la, lo) -> la in bounds.south..bounds.north && lo in bounds.west..bounds.east }
+        if (!inView) {
+            framed = true
+            if (overlay.points.size > 1) m.frame(overlay.points, framePaddingPx, maxZoom = 18.0) else overlay.lat?.let { m.moveTo(it, overlay.lon!!, 17.0, animate = !noAnimations) }
+        }
+    }
     BoxWithConstraints(Modifier.fillMaxSize()) {
         // A short map (landscape, split-screen, a half-open foldable) lays the controls out in one row (MapRules).
         val controlsInRow = mapControlsInRow(maxHeight.value)
@@ -570,8 +749,7 @@ fun MapScreen(
             LegendPlace.IN_BAND, null -> 0.dp
         }
         // A snackbar beside the row sits where the row layout's legend is, so the legend fades out while it shows
-        // (round 7; round 8 fades instead of cutting). The attribution stays above the legend's place (round 9), and
-        // is hidden while the snackbar is there (round 10).
+        // (round 7; round 8 fades instead of cutting). The attribution is lifted above it (S4b-BL-4).
         val snackbarAtStart = controlsInRow && snackbarBesideRow(maxWidth.value, rowWidthDp.value) &&
             snackbar.currentSnackbarData != null
         // The top of the legend's place at the bottom start, or 0 when it has none (or is not measured yet). The band
@@ -597,18 +775,18 @@ fun MapScreen(
         // otherwise. The legend's place, not whether it is shown (round 9): the margin is set without animation, so
         // following the fade made the "i" jump down and up with every snackbar. The logo is off: MapLibre's BSD
         // licence does not ask for it, and the web shows none.
-        val attributionOverlayTop = when {
+        val legendOrRowTop = when {
             legendAt != null && legendAt != LegendPlace.IN_BAND && legendPlaceTop > 0.dp -> legendPlaceTop.value
             controlsInRow && rowReachesAttribution(maxWidth.value, rowWidthDp.value) -> (rowHeightDp - 16.dp).value
             else -> 0f
         }
+        // S4b-BL-4: while a snackbar sits beside the row the "i" is lifted above it, by the snackbar's measured top.
+        val attributionOverlayTop = attributionOverlayTopDp(
+            legendOrRowTop,
+            if (snackbarAtStart) with(density) { snackbarHeightPx.toDp() }.value else 0f,
+        )
         val attributionBottomPx = with(density) { attributionBottomDp(attributionOverlayTop).dp.roundToPx() }
         val gutterPx = with(density) { MAP_GUTTER_DP.dp.roundToPx() }
-        // Round 10: while a snackbar sits beside the landscape row, in the legend's place, the "i" is hidden with the
-        // legend instead of being left half covered (a one-line snackbar 48 dp tall from 16 dp up cuts through a
-        // 21 dp "i" about 54-75 dp up, which looks like a rendering bug; "Finding your location…" can stay 15 s). It
-        // is not moved, so it comes back in the same place, whole and tappable, as soon as the snackbar goes; the
-        // credits are one tap away again then (MapLibre's setAttributionEnabled only toggles the view's visibility).
         // The snackbar's width (its host less the margins), for where its action goes (round 8).
         val snackbarWidthDp = if (controlsInRow && snackbarBesideRow(maxWidth.value, rowWidthDp.value)) {
             maxWidth - 16.dp - rowWidthDp - 8.dp
@@ -620,9 +798,11 @@ fun MapScreen(
         PlatformMap(
             houses = houses,
             track = track,
+            repeatLook = repeatLook,
+            check = checkOverlay ?: focusOverlay,
             labelSizeSp = markerLabelSizeSp(labelFontScale),
             showLocation = permissionGranted,
-            attribution = MapAttribution(gutterPx, attributionBottomPx, shown = !snackbarAtStart),
+            attribution = MapAttribution(gutterPx, attributionBottomPx, shown = true),
             events = object : MapEvents {
                 override fun onReady(control: MapControl) {
                     map = control
@@ -659,10 +839,15 @@ fun MapScreen(
 
                 override fun onHouseTap(id: String) = onOpenHouse(id)
 
-                override fun onLongPress(lat: Double, lon: Double) = currentOnNewHouse(lat, lon)
+                // A small menu: *Save house here* or *Did I walk here?* (docs/11 5.27.13).
+                override fun onLongPress(lat: Double, lon: Double) {
+                    longPressAt = lat to lon
+                }
             },
             // The canvas itself is not navigable with TalkBack; every house is also in the Houses tab (A11Y-B02).
-            modifier = Modifier.fillMaxSize().semantics { contentDescription = mapDescription },
+            modifier = Modifier.fillMaxSize().semantics {
+                contentDescription = if (!track.isEmpty && repeatLook != RepeatLook.OFF) "$mapDescription $traceDescription" else mapDescription
+            },
         )
 
         // The top band ends above the bottom controls and scrolls within that (see "Large text" and "Short map"). The
@@ -684,7 +869,7 @@ fun MapScreen(
                 afterGrant = null
                 requestLocation()
             }
-            if (platformFeatures.huntMode) {
+            if (platformFeatures.huntMode && LocalSpace.current.huntHere) { // a space whose kind has Hunt (docs/03 section 18.20)
                 HuntCard(
                     hunt = hunt,
                     onToggle = { on -> if (!on) mapServices.stopHunt() else startHunt() },
@@ -696,6 +881,11 @@ fun MapScreen(
                     notificationsOff = hunt.active && !notificationsReach,
                     onAllowNotifications = allowNotifications,
                     onCloseStopReason = { mapServices.clearHuntStopReason() },
+                    onFinishWalk = {
+                        mapServices.finishWalk()
+                        finishRequests++
+                    },
+                    modifier = Modifier.tourTarget(TourTargets.MAP_HUNT),
                 )
             } else {
                 // No Hunt mode on this platform (iOS, CMP-8c): no card, only the location note when it applies, in a
@@ -705,8 +895,8 @@ fun MapScreen(
                         ElevatedCard(Modifier.fillMaxWidth()) {
                             LocationPermissionNote(
                                 ask = locationAsk,
-                                deniedText = stringResource(Res.string.map_location_off_no_hunt),
-                                approximateText = approximateLocationText(Res.string.map_needs_precise_no_hunt),
+                                deniedText = stringResource(LocalSpace.current.words.locationOffNoHunt),
+                                approximateText = approximateLocationText(LocalSpace.current.words.needsPreciseNoHunt),
                                 launchRequest = onRequestLocation,
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp).then(noteModifier),
                             )
@@ -777,6 +967,10 @@ fun MapScreen(
                     }
                 }
             }
+            // The trace's legend while there is a trace (docs/11 5.27.4): a card of its own, under the Hunt card.
+            if (mapUsable && !track.isEmpty) {
+                TraceLegend(repeatLook, Modifier.padding(top = 8.dp))
+            }
             // No room for the legend at the bottom (round 7): the band's last item, full width under the Hunt card.
             if (legendAt == LegendPlace.IN_BAND) {
                 MapLegend(legendOneLineWidth, Modifier.padding(top = 8.dp).fillMaxWidth())
@@ -823,17 +1017,27 @@ fun MapScreen(
                 }
             }
         }
+        val checkButton: @Composable () -> Unit = {
+            CheckButton(
+                open = checkMenuOpen,
+                onOpen = { checkMenuOpen = true },
+                onDismiss = { checkMenuOpen = false },
+                onHere = { checkMenuOpen = false; checkHere() },
+                onSpot = { checkMenuOpen = false; pickingSpot = true },
+                modifier = Modifier.tourTarget(TourTargets.MAP_CHECK),
+            )
+        }
         val saveAreaButton: @Composable () -> Unit = {
             // Offline maps (docs/11 5.20): the box on screen, kept on the phone; only where the phone has the store.
             if (offline.supported) {
                 SmallFloatingActionButton(
                     onClick = { map?.visibleBounds()?.let { saveAreaBounds = it } },
-                    modifier = Modifier.size(48.dp),
+                    modifier = Modifier.size(48.dp).tourTarget(TourTargets.MAP_OFFLINE),
                 ) { Icon(DownloadIcon, contentDescription = stringResource(Res.string.map_save_area)) }
             }
         }
         val saveHereButton: @Composable () -> Unit = {
-            val saveHereLabel = stringResource(Res.string.map_save_here)
+            val saveHereLabel = stringResource(LocalSpace.current.words.saveHere)
             // Only the icon changes while locating: the label stays, so the button keeps its width (round 3).
             ExtendedFloatingActionButton(
                 onClick = { saveHere() },
@@ -846,6 +1050,7 @@ fun MapScreen(
                 },
                 text = { Text(saveHereLabel) },
                 modifier = Modifier
+                    .tourTarget(TourTargets.MAP_SAVE)
                     .onSizeChanged {
                         fabWidthPx = it.width
                         fabHeightPx = it.height
@@ -894,6 +1099,7 @@ fun MapScreen(
                 zoomInButton()
                 saveAreaButton()
                 myLocationButton()
+                checkButton()
                 saveHereButton()
             }
         } else {
@@ -924,8 +1130,22 @@ fun MapScreen(
                 zoomOutButton()
                 saveAreaButton()
                 myLocationButton()
+                checkButton()
                 saveHereButton()
             }
+        }
+        // *Have I been here?* (docs/11 5.27.13): the cross and its card while a spot is picked.
+        if (pickingSpot) {
+            SpotCross(Modifier.align(Alignment.Center))
+            SpotPickerCard(
+                onConfirm = {
+                    val spot = map?.camera()
+                    pickingSpot = false
+                    if (spot != null) placeCheck.start(PlaceKind.SPOT, spot.lat, spot.lon)
+                },
+                onCancel = { pickingSpot = false },
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = controlsDp).padding(horizontal = 16.dp),
+            )
         }
         // The snackbar is not part of the controls' measured height (round 4): it is transient, so the band does not
         // grow and shrink each time one comes and goes. Beside the row when the map is wide enough (round 5; a phone
@@ -936,13 +1156,13 @@ fun MapScreen(
         // on its own line (rounds 7 and 8), so it does not squeeze the message into a narrow column.
         SnackbarHost(
             snackbar,
-            if (controlsInRow && snackbarBesideRow(maxWidth.value, rowWidthDp.value)) {
+            (if (controlsInRow && snackbarBesideRow(maxWidth.value, rowWidthDp.value)) {
                 Modifier.align(Alignment.BottomStart).fillMaxWidth()
                     .padding(start = 16.dp, bottom = 16.dp, end = rowWidthDp + 8.dp)
             } else {
                 Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(bottom = controlsDp)
                     .padding(horizontal = 16.dp)
-            },
+            }).onSizeChanged { snackbarHeightPx = it.height },
         ) { data ->
             val actionWidthDp = data.visuals.actionLabel?.let { label ->
                 val px = textMeasurer.measure(label, snackbarActionStyle, softWrap = false, maxLines = 1).size.width
@@ -990,7 +1210,7 @@ private fun MapNotOnThisPhone(onOpenHouses: () -> Unit) {
             modifier = Modifier.widthIn(max = ContentMaxWidth).fillMaxWidth(),
         ) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(stringResource(Res.string.map_not_on_this_phone), style = MaterialTheme.typography.bodyLarge)
+                Text(stringResource(LocalSpace.current.words.mapNotHere), style = MaterialTheme.typography.bodyLarge)
                 Button(onClick = onOpenHouses, modifier = Modifier.heightIn(min = 48.dp)) {
                     ButtonLabel(stringResource(Res.string.map_open_houses))
                 }
@@ -1030,6 +1250,7 @@ private fun HuntCard(
     notificationsOff: Boolean,
     onAllowNotifications: () -> Unit,
     onCloseStopReason: () -> Unit,
+    onFinishWalk: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val now by produceState(nowMillis()) {
@@ -1045,7 +1266,7 @@ private fun HuntCard(
     val weak = !stale && accuracyM != null && accuracyM > HuntState.MAX_ACCURACY_M
     val streetText = hunt.street?.let { street ->
         if (hunt.streetHouses + hunt.streetVisits > 0) {
-            stringResource(Res.string.map_street_seen, street, hunt.streetHouses, hunt.streetVisits)
+            stringResource(LocalSpace.current.hunt.streetSeen, street, hunt.streetHouses, hunt.streetVisits)
         } else {
             stringResource(Res.string.map_street_new, street)
         }
@@ -1093,6 +1314,12 @@ private fun HuntCard(
                                 Text(stringResource(Res.string.map_nearest, h.label, hunt.nearestDistanceM?.toInt() ?: 0))
                             }
                         }
+                        // *Finish walk* (docs/11 5.27.6): the walk ends, Hunt mode keeps running, the next kept point starts a new one.
+                        TextButton(
+                            onClick = onFinishWalk,
+                            contentPadding = PaddingValues(0.dp),
+                            modifier = Modifier.heightIn(min = 48.dp),
+                        ) { Text(stringResource(Res.string.trace_walk_finish)) }
                         // A weak or missing fix is a condition, not a failure: muted, never error red (round 5).
                         when {
                             stale -> Text(
@@ -1127,8 +1354,8 @@ private fun HuntCard(
                     if (showLocationNote) {
                         LocationPermissionNote(
                             ask = locationAsk,
-                            deniedText = stringResource(Res.string.map_location_off),
-                            approximateText = approximateLocationText(Res.string.map_needs_precise),
+                            deniedText = stringResource(LocalSpace.current.words.locationOff),
+                            approximateText = approximateLocationText(LocalSpace.current.words.needsPrecise),
                             launchRequest = onRequestLocation,
                             modifier = Modifier.padding(top = 8.dp).then(noteModifier),
                         )
@@ -1138,7 +1365,7 @@ private fun HuntCard(
                     if (notificationsOff) {
                         // bodyMedium, as the location note above it (round 7): both are blocking messages.
                         WarnNote(
-                            stringResource(Res.string.map_notifications_off),
+                            stringResource(LocalSpace.current.hunt.notificationsOff),
                             Modifier.padding(top = 8.dp),
                             action = stringResource(Res.string.notify_allow),
                             onAction = onAllowNotifications,
@@ -1199,7 +1426,7 @@ private fun MapLegend(oneLineWidthDp: Float, modifier: Modifier = Modifier) {
                             LegendDotMark(dot)
                         }
                         // labelMedium: 12/16 sp Latin, 12/20 sp for Indic scripts (IndicTypography), SemiBold.
-                        Text(stringResource(statusLabel(dot.status)), style = style, softWrap = false, maxLines = 1)
+                        Text(stringResource(statusLabel(dot.status, LocalSpace.current.built.labels)), style = style, softWrap = false, maxLines = 1)
                     }
                 }
             }
@@ -1221,15 +1448,9 @@ private fun MapLegend(oneLineWidthDp: Float, modifier: Modifier = Modifier) {
 @Composable
 private fun legendTextStyle(): TextStyle = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold)
 
-/** The status name for a [LegendDot.status]. */
-private fun statusLabel(status: String): StringResource = when (status) {
-    "SHORTLISTED" -> Res.string.status_SHORTLISTED
-    "REJECTED" -> Res.string.status_REJECTED
-    "TAKEN" -> Res.string.status_TAKEN
-    "NOT_CHOSEN" -> Res.string.status_NOT_CHOSEN
-    "APPROX" -> Res.string.legend_approx
-    else -> Res.string.status_NEW
-}
+/** The status name for a [LegendDot.status], in the words of the kind on screen's labels (S4b-BL-256). */
+private fun statusLabel(status: String, labels: KindLabels): StringResource =
+    if (status == "APPROX") Res.string.legend_approx else labels.statusText(HouseStatus.entries.firstOrNull { it.name == status } ?: HouseStatus.NEW)
 
 /** One legend dot: the web's `.dot` (map-page.css), a fill inside a white ring, a dark hairline outside it. */
 @Composable
@@ -1274,8 +1495,8 @@ fun PlaceLookupCard(
     note: String?,
     onFind: (foundText: String, notFoundText: String) -> Unit,
 ) {
-    val foundText = stringResource(Res.string.map_place_found, place)
-    val notFoundText = stringResource(Res.string.map_place_not_found, place)
+    val foundText = stringResource(LocalSpace.current.pages.placeFound, place)
+    val notFoundText = stringResource(LocalSpace.current.pages.placeNotFound, place)
     ElevatedCard(Modifier.padding(top = 8.dp).fillMaxWidth()) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             LiveMessage {
@@ -1291,3 +1512,4 @@ fun PlaceLookupCard(
         }
     }
 }
+

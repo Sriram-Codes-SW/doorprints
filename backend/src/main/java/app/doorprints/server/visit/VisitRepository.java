@@ -28,6 +28,9 @@ import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Queries on visits: the sync change feed, live listings (all, or per house), and the purge of old tombstones.
+ */
 public interface VisitRepository extends JpaRepository<Visit, UUID> {
 
     List<Visit> findByDeletedFalseOrderByArrivedAtDesc();
@@ -48,6 +51,9 @@ public interface VisitRepository extends JpaRepository<Visit, UUID> {
             where v.houseId = :houseId""")
     int unlinkHouse(@Param("houseId") UUID houseId, @Param("now") Instant now, @Param("version") long version);
 
+    /**
+     * Permanently removes tombstones last updated before the cut-off; returns how many.
+     */
     @Modifying
     @Query("delete from Visit v where v.deleted = true and v.updatedAt < :before")
     int purgeTombstonesBefore(@Param("before") Instant before);

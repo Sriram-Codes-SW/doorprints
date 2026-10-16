@@ -1,0 +1,93 @@
+{
+  "spec": [
+    "android/ui/src/commonTest/kotlin/app/doorprints/ui/WalkEndLogicTest.kt",
+    "android/ui/src/commonTest/kotlin/app/doorprints/ui/KindListingMergeTest.kt",
+    "android/ui/src/commonTest/kotlin/app/doorprints/ui/KindExtrasRangeTest.kt",
+    "android/ui/src/commonTest/kotlin/app/doorprints/ui/ImportPreviewGroupsTest.kt",
+    "android/ui/src/commonTest/kotlin/app/doorprints/ui/SpaceUiTest.kt",
+    "android/ui/src/androidHostTest/kotlin/app/doorprints/ui/SchoolPageWordsTest.kt"
+  ],
+  "gradle": [
+    ":ui:testAndroidHostTest",
+    "--tests",
+    "app.doorprints.ui.WalkEndLogicTest",
+    "--tests",
+    "app.doorprints.ui.KindListingMergeTest",
+    "--tests",
+    "app.doorprints.ui.KindExtrasRangeTest",
+    "--tests",
+    "app.doorprints.ui.ImportPreviewGroupsTest",
+    "--tests",
+    "app.doorprints.ui.SpaceUiTest",
+    "--tests",
+    "app.doorprints.ui.SchoolPageWordsTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/WalkEndLogic.kt",
+      "find": " + KindValues.searchWords(DevKinds.of(it.kind, devKinds).fields, it.extrasOther, language),",
+      "replace": ",",
+      "expect": "theSearchBoxFindsASchoolByItsExtrasInTheAppsWordsOnlyWhileTheFlagAllowsTheKind"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/WalkEndLogic.kt",
+      "find": "DevKinds.of(it.kind, devKinds).fields",
+      "replace": "DevKinds.of(it.kind, true).fields",
+      "expect": "theSearchBoxFindsASchoolByItsExtrasInTheAppsWordsOnlyWhileTheFlagAllowsTheKind"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/HouseFormRules.kt",
+      "find": "merge.extrasFilled.filter { id -> merge.house.extrasOther?.get(id) == current.extrasOther?.get(id) }",
+      "replace": "merge.extrasFilled",
+      "expect": "anExtraTheFillWroteKeepsItsMarkUntilItIsEditedAndAKeptOneHasNone"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/PasteListing.kt",
+      "find": "internal fun pasteKind(kind: BuiltInKind): String? = kind.id.takeIf { !KindCapabilities.of(it).baseline && kind.extracts }",
+      "replace": "internal fun pasteKind(kind: BuiltInKind): String? = null",
+      "expect": "theDialogAsksForTheSchoolsKindAndAHouseKeepsItsOwnCall"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/KindExtrasFields.kt",
+      "find": "((f.min != null && n < f.min!!) || (f.max != null && n > f.max!!))",
+      "replace": "(f.min != null && n < f.min!!)",
+      "expect": "theEdgesOfTheRangeAreKeptAndOutsideIsDropped"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/KindExtrasFields.kt",
+      "find": "else copy(extrasOther = JsonObject(other - outside).takeIf { it.isNotEmpty() })",
+      "replace": "else copy(extrasOther = JsonObject(other))",
+      "expect": "aListingFillsOutOfRangeNumberIsNotSavedButTheFeesAndTheTextAre"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/ImportPreviewCard.kt",
+      "find": "if (neutral) Res.string.import_new_any else Res.string.import_new_houses,",
+      "replace": "Res.string.import_new_houses,",
+      "expect": "withTwoKindsOnTheFiveHouseLabelsSayEntries"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/ImportPreviewCard.kt",
+      "find": "if (neutral) Res.string.import_removed_any else Res.string.import_removed_houses,",
+      "replace": "Res.string.import_removed_houses,",
+      "expect": "withTwoKindsOnTheFiveHouseLabelsSayEntries"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/Space.kt",
+      "find": "saveNeedsLocation = w(\"saveNeedsLocation\"),",
+      "replace": "saveNeedsLocation = w(\"needsPreciseNoHunt\"),",
+      "expect": "theSchoolsMapLocationNotesSayNoHouse"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/Space.kt",
+      "find": "many = w(\"heading\"), search",
+      "replace": "many = w(\"emptyBody\"), search",
+      "expect": "theWordsTheKindFileHasAreReadFromItsAndroidKeys"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/PageWords.kt",
+      "find": "areaNotesNone = w(\"areaNotesNone\"), areaHere = w(\"areaInReach\"),",
+      "replace": "areaNotesNone = w(\"areaInReach\"), areaHere = w(\"areaInReach\"),",
+      "expect": "theWordsTheKindFileHasAreReadFromItsAndroidKeys"
+    }
+  ]
+}

@@ -116,7 +116,7 @@ object CopyWriter {
 
         val rows = BackupData.of(bundle)
         files += hashed(zip, tools, BackupFormat.DATA_ENTRY) { out ->
-            out(BackupFormat.json.encodeToString(BackupData.serializer(), rows).encodeToByteArray())
+            out(BackupWire.encodeData(rows, bundle.options.enabledKinds, bundle.options.defaultKind).encodeToByteArray())
         }
         onProgress(++done, total)
 
@@ -154,7 +154,7 @@ object CopyWriter {
             sharedSince = bundle.options.since?.let(IsoTime::format),
             sharedTo = bundle.options.sharedTo,
         )
-        zip.text(BackupFormat.MANIFEST_ENTRY, BackupFormat.json.encodeToString(BackupManifest.serializer(), manifest))
+        zip.text(BackupFormat.MANIFEST_ENTRY, BackupWire.encodeManifest(manifest))
         onProgress(total, total)
         zip.finish()
     }

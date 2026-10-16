@@ -22,7 +22,7 @@ Always make one before you change phones or clear your browser.
 
 **On iPhone:** open **Settings**, then **Save a copy**, and save it to Files or share it. Every format but the PDF.
 
-**Weekly automatic backup** (Android) saves a backup once a week while the phone is charging. It goes to a folder you choose.
+**Weekly automatic backup** (Android) saves one plain backup file a week, while the phone is charging, to a folder you choose, and keeps the last four. It is not encrypted. It is separate from [Google Drive backups](google-drive.md), which keep their own encrypted daily copies. A folder on the phone is lost with the phone, so choose a folder on an SD card or in a cloud app, or copy the file somewhere else now and then.
 
 - **Web page (HTML)**, **PDF**, CSV tables, **Excel** and **Markdown** are *readable copies*. They are good for
   reading, printing and sharing with family. In the tables (CSV and Excel) each house is a row, with its costs, the
@@ -52,6 +52,8 @@ changed it after you deleted it. She can also import your update on the website 
 **Import a backup** brings houses, visits and photos back from a **Full backup (ZIP)**, the server's backup file
 (`.json`, without photos) or an update someone shared with you. Every app can read a backup made by any other.
 
+![Your data on the website, the Import a backup card: the Choose a backup file button (1)](images/web-import-choose.png)
+
 1. On the website, open **Your data** and find **Import a backup**. On Android or iPhone, open **Settings**, then
    **Import a backup**.
 2. Choose **Choose a backup file**. (On a phone you can also open the file from another app, such as WhatsApp or
@@ -66,6 +68,8 @@ changed it after you deleted it. She can also import your update on the website 
     - **Add everything as new copies:** nothing on this phone is changed. Houses you already have will appear twice.
 5. Tap **Import**.
 
+![The preview after choosing a file: the choice between Merge with what I have and Add everything as new copies (1), What this would change with its counts, and the Import button (2). The file here is the sample backup](images/web-import-preview.png)
+
 The preview also counts the new and updated brokers. If a house's floor in the file is outside -5 to 200, the
 preview says so: that house comes in with its floor left blank.
 
@@ -73,5 +77,11 @@ On the website and on Android, **Undo this import** removes the copies an **Add 
 made (on the website, until you leave the page).
 
 Readable copies (HTML, PDF, CSV, Excel, Markdown) cannot be imported.
+
+## Google Drive
+
+On the website, **Your data** also has **Back up to Google Drive**: encrypted backups in your own Drive, an 8-digit
+code or the recovery key to enrol another browser, and deletion at three levels. See [Back up to Google Drive](google-drive.md).
+Android and iPhone Drive work is paused.
 
 <img src="images/android-import.png" width="300" alt="Import a backup on Android: Bring back houses, visits and photos from a Doorprints backup, and a Choose a backup file button">

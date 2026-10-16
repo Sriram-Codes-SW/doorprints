@@ -18,6 +18,7 @@
 
 package app.doorprints.server.ai.config;
 
+import app.doorprints.server.ai.SafetyBlockAdvisor;
 import app.doorprints.server.secrets.GeminiKey;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.openai.http.okhttp.OpenAiHttpClientBuilderCustomizer;
@@ -48,6 +49,11 @@ public class AiConfiguration {
     /** {@code asia-south1}, {@code us-central1}, {@code global}, {@code us}, {@code eu}. */
     private static final Pattern LOCATION = Pattern.compile("[a-z][a-z0-9-]{1,40}");
 
+    /**
+     * Fails startup with a message naming the setting when the provider or embedding provider is not one the app
+     * supports, so a typo is caught at boot rather than on the first AI call. A missing Gemini key is not an error:
+     * AI then reads as off until the owner sets one.
+     */
     public AiConfiguration(Environment env, AiProperties props) {
         if (props.vertexProvider()) {
             validateVertex(props.vertex());
@@ -68,6 +74,11 @@ public class AiConfiguration {
         }
     }
 
+    /**
+     * Checks the Vertex settings are well formed (project id, locations, optional http(s) endpoint) before any Google
+     * client is built.
+     * @throws IllegalStateException with the setting name and an example value
+     */
     public static void validateVertex(AiProperties.Vertex v) {
         if (!PROJECT_ID.matcher(v.projectId()).matches()) {
             throw new IllegalStateException("AI_PROVIDER=vertex needs GCP_PROJECT_ID (app.ai.vertex.project-id): the "
@@ -83,12 +94,13 @@ public class AiConfiguration {
     }
 
     /**
-     * One ChatClient for all features; each call sets its own system prompt and options. No default advisors:
-     * nothing is logged, and the agent adds its own bounded tool-calling advisor per request.
+     * One ChatClient for all features; each call sets its own system prompt and options. The one default advisor turns a
+     * provider's safety block into a clean "declined" answer (S4b-BL-233); nothing is logged, and the agent adds its own
+     * bounded tool-calling advisor per request.
      */
     @Bean
     public ChatClient chatClient(ChatClient.Builder builder) {
-        return builder.build();
+        return builder.defaultAdvisors(new SafetyBlockAdvisor()).build();
     }
 
     /**

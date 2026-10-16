@@ -111,10 +111,15 @@ class DevicePairingIntegrationTest {
     @Autowired
     MovableClock clock;
 
+    @Autowired
+    org.springframework.jdbc.core.simple.JdbcClient jdbc;
+
     RestClient anonymous;
 
     @BeforeEach
     void setUp() {
+        // Every request here comes from one address, which may keep only a few requests open (S4b-BL-161): start clean.
+        jdbc.sql("DELETE FROM pairing_request").update();
         anonymous = RestClient.builder().baseUrl("http://localhost:" + port)
                 .defaultStatusHandler(s -> true, (req, res) -> { }).build();
     }

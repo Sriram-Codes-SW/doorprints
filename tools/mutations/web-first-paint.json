@@ -1,0 +1,19 @@
+{
+  "spec": [
+    "web/src/app/app-first-paint.spec.ts"
+  ],
+  "mutations": [
+    {
+      "file": "web/src/app/app.ts",
+      "find": "<router-outlet (activate)=\"paintPageOnce()\" />",
+      "replace": "<router-outlet />",
+      "expect": "runs the first update in a microtask after the outlet creates the page"
+    },
+    {
+      "file": "web/src/app/app.ts",
+      "find": "        this.appRef.tick();",
+      "replace": "        void 0;",
+      "expect": "runs the first update in a microtask after the outlet creates the page"
+    }
+  ]
+}

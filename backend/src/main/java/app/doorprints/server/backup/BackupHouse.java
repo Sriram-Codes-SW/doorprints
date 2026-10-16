@@ -25,13 +25,14 @@ import app.doorprints.server.house.HouseMoveIn;
 import app.doorprints.server.house.HouseCost;
 import app.doorprints.server.house.HouseRoom;
 import app.doorprints.server.house.HouseStatus;
+import tools.jackson.databind.JsonNode;
 
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 /**
- * One house in the shared backup format ({@code doorprints-backup/1}, and {@code /2} when the copy holds brokers or rooms).
+ * One house in the shared backup format ({@code doorprints-backup/1}, and {@code /2} when the copy holds anything {@code /1} has no place for, see {@link BackupFormat#ID_WITH_BROKERS}).
  *
  * <p><b>Null semantics (NFR-025).</b> A field that has no value is <em>left out</em> of the JSON; a reader must
  * treat "absent" and "null" as the same thing, which is what the Kotlin writer's {@code explicitNulls = false} and
@@ -66,7 +67,8 @@ import java.util.UUID;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({"id", "label", "address", "street", "locality", "lat", "lon", "status", "price", "priceType",
         "bedrooms", "rating", "contactName", "contactPhone", "listingUrl", "notes", "areaSqft", "locationSource",
-        "cost", "rooms", "answers", "moveIn", "floor", "brokerId", "checklist", "createdAt", "updatedAt"})
+        "cost", "rooms", "answers", "moveIn", "floor", "brokerId", "checklist", "createdAt", "updatedAt", "extrasOther",
+        "kind"})
 public record BackupHouse(
         UUID id,
         String label,
@@ -105,6 +107,13 @@ public record BackupHouse(
            comment. */
         Map<String, Integer> checklist,
         Long createdAt,
-        Long updatedAt
+        Long updatedAt,
+        /* S4b-BL-248: the extras a newer app wrote that this server does not know, by id. Never a key of a file of the
+           family before: BackupWire reads them out of a candidate's extras and writes them back there, after the known
+           ones; BackupService keeps them by CandidateExtras.keptOther's rules. Absent when there are none. */
+        Map<String, JsonNode> extrasOther,
+        /* S4b-BL-209: the candidate's kind when it is not the house (the hidden schools kind), as BackupWire reads it
+           out of a candidate and writes it back there; absent for a house. Never a key of a file of the family before. */
+        String kind
 ) {
 }

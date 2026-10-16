@@ -40,6 +40,11 @@ object ServerUrl {
         data object NotHttps : Result
     }
 
+    /**
+     * Judges a server address the person typed: trims it and a trailing slash, and accepts `https` hosts and
+     * `http` only for [LOCAL_HOSTS], with no user info, query or fragment. The kind of refusal is the result, so
+     * the screen can say what is wrong.
+     */
     fun check(raw: String): Result = check(raw, underscoreInHostnames = true)
 
     /** [check] with the JVM's host name rule when [underscoreInHostnames] is false (for `ServerUrlParityTest`). */
@@ -86,8 +91,16 @@ internal class UriParts private constructor(
         }
     }
 
+    /**
+     * Thrown inside the parser where `java.net.URI` would throw `URISyntaxException`; [UriParts.parse] turns it
+     * into null.
+     */
     private class UriSyntaxException : Exception()
 
+    /**
+     * The port of `URI.Parser`: reads [input] once, left to right, as RFC 2396 with the IPv6 deviation, and keeps
+     * the components [UriParts] exposes.
+     */
     private class Parser(private val input: String, underscoreInHostnames: Boolean) {
         private val labelLow = L_ALPHANUM or L_DASH or (if (underscoreInHostnames) L_UNDERSCORE else 0L)
         private val labelHigh = H_ALPHANUM or H_DASH or (if (underscoreInHostnames) H_UNDERSCORE else 0L)
@@ -457,6 +470,7 @@ internal class UriParts private constructor(
 // java.net.URI's character classes: bit c of the low mask for chars 1..63, bit c - 64 of the high mask for 64..127.
 // The values are OpenJDK's (URI.java), with its derivations.
 
+/** Whether [c] is in a character class given as two bit masks; non-ASCII and NUL never are. */
 private fun match(c: Char, lowMask: Long, highMask: Long): Boolean {
     val code = c.code
     if (code == 0) return false

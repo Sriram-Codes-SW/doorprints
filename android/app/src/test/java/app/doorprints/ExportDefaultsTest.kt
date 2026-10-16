@@ -20,7 +20,9 @@ package app.doorprints
 
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import app.doorprints.data.Repository
 import app.doorprints.export.ExportBuilder
+import app.doorprints.shared.export.ExportOptions
 import app.doorprints.screenshots.ScreenshotTestApp
 import app.doorprints.shared.export.ExportTime
 import org.junit.After
@@ -49,5 +51,19 @@ class ExportDefaultsTest {
         assertEquals("+00:00", ExportTime.offsetLabel(options.utcOffsetMinutes))
         // 2026-09-28 10:00 IST, as the web's utcDateTime writes it.
         assertEquals("2026-09-28 04:30", ExportTime.dateTime(1_790_569_800_000, options.utcOffsetMinutes))
+    }
+
+    /**
+     * Kinds PR 6 (S4b-BL-210): a copy reads a candidate of a hidden kind with its typed extras only in a debug build made
+     * with the flag (`BuildConfig.DEV_KINDS`); this build has it off, so a school is copied as a house, whatever the
+     * options say.
+     */
+    @Test
+    fun aSchoolIsCopiedAsAHouseInABuildWithTheFlagOff() {
+        val rows = Repository.LocalRows(listOf(SchoolSample.entity()), emptyList(), emptyList())
+        val bundle = ExportBuilder.build(rows, ExportOptions(exportedAtMillis = 1_790_569_800_000, devKinds = true))
+        assertEquals(BuildConfig.DEV_KINDS, bundle.options.devKinds)
+        assertEquals(emptyList<Any>(), bundle.extrasOf(bundle.houses.single()))
+        assertEquals(emptyList<Any>(), bundle.extraColumns)
     }
 }

@@ -21,14 +21,22 @@ import {
   MAX_QUESTION_TEXT,
   QUESTION_CATEGORIES,
   QUESTION_SCOPES,
+  questionCategoryLabel,
+  questionKinds,
+  registerQuestionBank,
   defaultQuestion,
+  defaultQuestionsOf,
   isCustomQuestionId,
   isDefaultQuestionId,
   newQuestionId,
   questionFromPayload,
+  questionKindOf,
   questionToPayload,
+  questionsOfKind,
   sortQuestions,
 } from './question';
+import { SCHOOL_CATEGORY_LABELS, SCHOOL_QUESTIONS } from './school-questions';
+import schoolSeedJson from '../../../../docs/schemas/kinds/school-questions.json';
 // The one seed file both apps embed (docs/schemas, slice 3a); resolveJsonModule is on for the specs.
 import seedJson from '../../../../docs/schemas/default-questions.json';
 
@@ -144,5 +152,81 @@ describe('question ids and order', () => {
       { id: 'a', sort: 1 },
     ];
     expect(sortQuestions(list).map((q) => q.id)).toEqual(['c', 'a', 'b']);
+  });
+});
+
+/**
+ * The school's question seed (kinds PR 29, docs/03 §18.23): `docs/schemas/kinds/school-questions.json`, a DRAFT for the owner's
+ * review, which the phones' `DefaultQuestionsFileTest` reads too. Its ids carry the kind, so the two banks never meet.
+ */
+describe('SCHOOL_QUESTIONS', () => {
+  const seed = schoolSeedJson as unknown as Seed & { format: string };
+
+  it('is the docs/schemas/kinds/school-questions.json file: ids, categories, scopes, flags, order and the four texts', () => {
+    expect(seed.format).toBe('doorprints-kind-questions/1');
+    expect(JSON.parse(JSON.stringify(SCHOOL_QUESTIONS))).toEqual(seed.questions);
+    expect(seed.questions).toHaveLength(6);
+  });
+
+  it('words each category for a school: the file’s categoryLabels, four languages, the bank’s six ids, none of the house’s words', () => {
+    const labels = (seed as unknown as { categoryLabels: Record<string, Record<string, string>> }).categoryLabels;
+    expect(JSON.parse(JSON.stringify(SCHOOL_CATEGORY_LABELS))).toEqual(labels);
+    expect(Object.keys(labels).sort()).toEqual([...QUESTION_CATEGORIES].sort());
+    for (const q of SCHOOL_QUESTIONS) expect(Object.keys(labels), q.id).toContain(q.category);
+    for (const [id, text] of Object.entries(labels)) for (const lang of ['en', 'hi', 'ta', 'te']) expect(text[lang].length, `${id} ${lang}`).toBeGreaterThan(1);
+    // The stored ids are unchanged: the school's questions keep the bank's category names.
+    expect(SCHOOL_QUESTIONS.map((q) => q.category)).toEqual(['MONEY', 'LEGAL', 'RULES', 'BUILDING', 'WATER_POWER', 'OTHER']);
+  });
+
+  it('reads a category header from the kind, and null (so the house’s word) for the house and for a kind or category with none', () => {
+    expect(questionCategoryLabel('school', 'MONEY', 'en')).toBe('Fees and money');
+    expect(questionCategoryLabel('school', 'WATER_POWER', 'hi')).toBe('पानी और शौचालय');
+    expect(questionCategoryLabel('house', 'WATER_POWER', 'en')).toBeNull();
+    expect(questionCategoryLabel('villa', 'MONEY', 'en')).toBeNull();
+    const undo = registerQuestionBank('shop', [], ['BOTH']);
+    expect(questionCategoryLabel('shop', 'MONEY', 'en')).toBeNull();
+    undo();
+  });
+
+  it('has ids qd_school_ and a name, categories of the bank, scope BOTH (a school has no rent or sale), and short texts', () => {
+    for (const q of SCHOOL_QUESTIONS) {
+      expect(q.id, q.id).toMatch(/^qd_school_[a-z]+$/);
+      expect(QUESTION_CATEGORIES, q.id).toContain(q.category);
+      expect(q.appliesTo, q.id).toBe('BOTH');
+      for (const lang of ['en', 'hi', 'ta', 'te'] as const) {
+        expect(q.text[lang].length, `${q.id} ${lang}`).toBeGreaterThan(10);
+        expect(q.text[lang].length, `${q.id} ${lang}`).toBeLessThanOrEqual(MAX_QUESTION_TEXT);
+      }
+    }
+    expect(new Set(SCHOOL_QUESTIONS.map((q) => q.id)).size).toBe(6);
+  });
+
+  it('shares no id with the house’s seed, and the kind of a question is read from its id alone', () => {
+    const house = new Set(DEFAULT_QUESTIONS.map((d) => d.id));
+    for (const q of SCHOOL_QUESTIONS) expect(house.has(q.id), q.id).toBe(false);
+    expect(DEFAULT_QUESTIONS.every((d) => questionKindOf(d.id) === 'house')).toBe(true);
+    expect(SCHOOL_QUESTIONS.every((d) => questionKindOf(d.id) === 'school')).toBe(true);
+    expect(questionKindOf('q_0123abcd')).toBe('house');
+    expect(questionKindOf('q_school_0123abcd')).toBe('school');
+    // The house’s own ids never start with a kind: nothing like qd_school is a house’s default.
+    expect(questionKinds()).toEqual(['school']);
+  });
+
+  it('is the seed of its kind, a default for the delete and reset rules, and a school’s own question is custom', () => {
+    expect(defaultQuestionsOf('school')).toBe(SCHOOL_QUESTIONS);
+    expect(defaultQuestionsOf('house')).toBe(DEFAULT_QUESTIONS);
+    expect(defaultQuestionsOf('villa')).toEqual([]);
+    expect(SCHOOL_QUESTIONS.every((q) => isDefaultQuestionId(q.id))).toBe(true);
+    expect(isCustomQuestionId('q_school_0123abcd')).toBe(true);
+    expect(isCustomQuestionId('q_school_0123abc')).toBe(false);
+    expect(isCustomQuestionId('qd_school_fees')).toBe(false);
+    expect(newQuestionId('school')).toMatch(/^q_school_[0-9a-f]{8}$/);
+    expect(newQuestionId()).toMatch(/^q_[0-9a-f]{8}$/);
+  });
+
+  it('keeps one kind’s questions when a bank is filtered', () => {
+    const all = [...DEFAULT_QUESTIONS.slice(0, 2), ...SCHOOL_QUESTIONS.slice(0, 2)];
+    expect(questionsOfKind(all, 'school').map((q) => q.id)).toEqual(SCHOOL_QUESTIONS.slice(0, 2).map((q) => q.id));
+    expect(questionsOfKind(all, 'house').map((q) => q.id)).toEqual(DEFAULT_QUESTIONS.slice(0, 2).map((q) => q.id));
   });
 });

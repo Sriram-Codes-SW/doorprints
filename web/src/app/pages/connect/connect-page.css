@@ -32,6 +32,14 @@
   margin-top: var(--space-3);
 }
 
+.ai-worth {
+  margin-bottom: var(--space-3);
+}
+
+.ai-worth p {
+  margin: 0 0 var(--space-2);
+}
+
 .hint {
   margin-top: var(--space-4);
   margin-bottom: 0;
@@ -107,4 +115,14 @@
 .invite .server-name {
   font-weight: 700;
   overflow-wrap: anywhere;
+}
+
+/* AI speed and cost (S4b-BL-198): the group of three radios under the Gemini key, set apart from the form above it. */
+.ai-quality {
+  margin-top: var(--space-4);
+}
+
+/* AI service (S4b-BL-151): a preset's base URL is shown but only Custom can change it. */
+.ai-compat input[readonly] {
+  cursor: default;
 }

@@ -20,6 +20,7 @@ import { describe, expect, it } from 'vitest';
 import vectorsJson from '../../../../docs/schemas/import-vectors.json';
 import updateSample from '../../../../docs/schemas/update-sample.json';
 import { checkData } from './backup-check';
+import { currentOf } from './backup-family';
 import type { BackupData } from './backup-export';
 import { isUpdate, openBackup } from './backup-reader';
 import { EMPTY_LOCAL, copyDuplicates, plan, preview } from './import-plan';
@@ -28,7 +29,7 @@ import { inflateRaw } from './zip-read';
 
 interface Vectors {
   format: string;
-  checks: { name: string; data: unknown; problem: string | null }[];
+  checks: { name: string; data: unknown; problem: string | null; candidatesWrittenBack?: unknown[] }[];
   merges: {
     name: string;
     mode: ImportMode;
@@ -87,20 +88,34 @@ describe('backup import (shared vectors)', () => {
     });
   }
 
+  it('keeps a newer app\'s extras through a read and writes them back after the known ones, byte for byte (S4b-BL-248)', () => {
+    const kept = vectors.checks.filter((c) => c.candidatesWrittenBack);
+    expect(kept.length).toBeGreaterThan(0);
+    for (const c of kept) {
+      const checked = checkData(c.data);
+      if (!checked.ok) throw new Error(`${c.name}: ${checked.problem}`);
+      const written = currentOf(checked.data as unknown as Record<string, unknown>);
+      expect(JSON.stringify(written['candidates']), c.name).toBe(JSON.stringify(c.candidatesWrittenBack));
+    }
+  });
+
   for (const m of vectors.merges) {
     it(`merges: ${m.name}`, () => {
       const local = localOf(m.local);
       const flags = { mode: m.mode, restoreDeleted: m.restoreDeleted, skipUpdates: m.skipUpdates, applyDeletions: m.update };
       const entries = new Set(m.photoEntries);
-      expect(checkData(m.data).ok).toBe(true);
-      const p = preview(m.data, entries, local, flags);
+      // The rows as the reader hands them on (kinds step 3: a file of the new family is read as the family before).
+      const checked = checkData(m.data);
+      if (!checked.ok) throw new Error(`refused: ${checked.problem}`);
+      const data = checked.data;
+      const p = preview(data, entries, local, flags);
       for (const [key, value] of Object.entries(m.expect)) expect(p[key as keyof typeof p], key).toBe(value);
       let n = 0;
-      const actions = plan(m.data, entries, local, flags, () => `n${n++}`);
+      const actions = plan(data, entries, local, flags, () => `n${n++}`);
       expect(actions.removedHouseIds.length).toBe(p.removedHouses);
       expect(actions.houses.length).toBe(p.newHouses + p.updatedHouses + p.restoredHouses);
       expect(actions.photos.length).toBe(p.newPhotos);
-      if (m.duplicates !== undefined) expect(copyDuplicates(m.data, local)).toBe(m.duplicates);
+      if (m.duplicates !== undefined) expect(copyDuplicates(data, local)).toBe(m.duplicates);
     });
   }
 

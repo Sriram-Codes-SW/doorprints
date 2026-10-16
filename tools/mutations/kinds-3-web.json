@@ -1,0 +1,29 @@
+{
+  "spec": [
+    "web/src/app/core/candidate.spec.ts",
+    "web/src/app/data/candidate-rows.spec.ts",
+    "web/src/app/core/house-api.service.spec.ts",
+    "web/src/app/data/local-db.spec.ts",
+    "web/src/app/data/local-db-idb.spec.ts"
+  ],
+  "mutations": [
+    {"file": "web/src/app/core/candidate.ts", "find": "  return priceType === 'RENT' ? 'month' : priceType === 'SALE' ? 'once' : null;", "replace": "  return priceType === 'RENT' ? 'month' : null;", "expect": "a sale in Guwahati"},
+    {"file": "web/src/app/core/candidate.ts", "find": "  return { ...(amount !== null ? { amount } : {}), ...(cadence !== null ? { cadence } : {}) };\n}\n\n/** The candidate a house", "replace": "  return { ...(amount !== null ? { amount } : {}), cadence: cadence ?? 'month' };\n}\n\n/** The candidate a house", "expect": "keeps a price without a type typeless"},
+    {"file": "web/src/app/core/candidate.ts", "find": "  maintenance: 'month',\n", "replace": "  maintenance: 'once',\n", "expect": "moves price and priceType to money"},
+    {"file": "web/src/app/core/candidate.ts", "find": "cadence: cadence === 'follows' ? (ownCadence ?? 'month') : cadence", "replace": "cadence: cadence === 'follows' ? 'month' : cadence", "expect": "a sale in Guwahati"},
+    {"file": "web/src/app/core/candidate.ts", "find": "  return !money || money.amount === undefined ? null : money.amount;", "replace": "  return !money ? null : (money.amount ?? 0);", "expect": "drops a money extra that is not a money object"},
+    {"file": "web/src/app/core/candidate.ts", "find": "    if (Object.keys(out).length >= MAX_OTHER_EXTRAS) break;\n", "replace": "", "expect": "keeps at most 30 unknown extras"},
+    {"file": "web/src/app/core/candidate.ts", "find": "  if (typeof v === 'string') return v.length <= MAX_EXTRA_TEXT ? v : null;", "replace": "  if (typeof v === 'string') return v;", "expect": "drops an unknown text extra over 2,000"},
+    {"file": "web/src/app/core/candidate.ts", "find": "    .filter((id) => EXTRA_ID_PATTERN.test(id) && !HOUSE_EXTRAS.includes(id))", "replace": "    .filter((id) => !HOUSE_EXTRAS.includes(id))", "expect": "drops an unknown extra whose id is not a field id"},
+    {"file": "web/src/app/core/candidate.ts", "find": "  if (other) Object.assign(out, other);", "replace": "", "expect": "keeps an extra a newer app wrote"},
+    {"file": "web/src/app/core/candidate.ts", "find": "  if (typeof kind === 'string' && KIND_PATTERN.test(kind) && kind !== HOUSE_KIND) house.kind = kind;", "replace": "", "expect": "keeps a kind other than house"},
+    {"file": "web/src/app/data/candidate-rows.ts", "find": "      ops.map((op) => (op.op === 'put' && op.store === 'houses' ? { ...op, value: this.in(op.store, op.value) } : op)),", "replace": "      ops,", "expect": "converts in every write path"},
+    {"file": "web/src/app/data/candidate-rows.ts", "find": "  if (typeof r['kind'] !== 'string') return row as HouseRecord;", "replace": "", "expect": "reads a row a version-3 database left"},
+    {"file": "web/src/app/data/local-db.ts", "find": "      for (const row of rows.result) houses.put(upgradeHouseRow(row));", "replace": "      for (const row of rows.result) houses.put(row);", "expect": "rewrites every house of a version-3 database"},
+    {"file": "web/src/app/data/local-db.ts", "find": "  if (oldVersion >= 1 && oldVersion < 4) {", "replace": "  if (oldVersion < 4) {", "expect": "leaves a fresh install"},
+    {"file": "web/src/app/core/house-api.service.ts", "find": "const CANDIDATES = '/api/candidates';", "replace": "const CANDIDATES = '/api/houses';", "expect": "pulls /api/candidates"},
+    {"file": "web/src/app/core/house-api.service.ts", "find": "    const params = new HttpParams().set('candidateId', houseId);", "replace": "    const params = new HttpParams().set('houseId', houseId);", "expect": "sends a visit's house as candidateId"},
+    {"file": "web/src/app/core/house-api.service.ts", "find": "  return renameKey(v, 'houseId', 'candidateId') as unknown as WireVisit;", "replace": "  return v as unknown as WireVisit;", "expect": "sends a visit's house as candidateId"},
+    {"file": "web/src/app/core/house-api.service.ts", "find": "  return renameKey(w, 'candidateId', 'houseId') as unknown as PhotoChangeDto;", "replace": "  return w as unknown as PhotoChangeDto;", "expect": "reads a photo change's candidateId"}
+  ]
+}

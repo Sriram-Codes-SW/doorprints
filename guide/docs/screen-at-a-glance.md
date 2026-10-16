@@ -21,7 +21,7 @@
 On a phone, the same page puts the map above the list. The menu moves to a bar at the bottom: **Map**, **Compare**
 and **Your data**. **Connect** is inside **Your data**.
 
-<img src="images/web-phone-map.png" width="300" alt="The Doorprints website on a phone: the map with pins, zoom buttons, Add house and Show all, the legend, the counts, and the bottom bar with Map, Compare and Your data">
+<img src="images/web-phone-map.png" width="300" alt="The Doorprints website on a phone: the map with its zoom and location buttons and the legend in its corner, a row of buttons under the map starting with Add house, the counts, and the bottom bar with Map, Compare and Your data">
 
 ## Android
 
@@ -33,7 +33,7 @@ and **Your data**. **Connect** is inside **Your data**.
 4. **Save house here** saves a house at the spot where you are standing. You can also press and hold the map anywhere.
 5. The colour key: **New**, **Shortlisted**, **Rejected**, **Taken**, **Not chosen**.
 6. Map credits (who made the map, and **Boundary: Survey of India** for India's northern boundary).
-7. The tabs: **Map**, **Houses**, **Compare** and **Settings**. An **Assistant** tab shows once you turn on AI features, through your server or with your own Gemini key.
+7. The tabs: **Map**, **Houses**, **Compare** and **Settings**. An **Assistant** tab shows once you turn on AI features, through your server or with your own key for the AI provider you chose.
 
 This picture was taken by an automatic test on a pretend phone on a computer. That pretend phone does not show place
 names. On a real phone, the map has place names and shows your houses as coloured pins, like the website's map.
@@ -55,3 +55,13 @@ another app opens in Doorprints). It cannot add photos yet. To see the houses yo
 backup from them or connect your own server in **Settings**.
 
 <img src="images/iphone-map.png" width="260" alt="The iPhone app's Map: India with city names, the zoom and My location buttons, Save house here, the legend (New, Shortlisted, Rejected) and the four tabs">
+
+## Take the tour (Android and iPhone) {#take-the-tour-on-the-phone}
+
+The first time you open the **Map**, a card offers **Take the tour**: a short walk through every part of the app, one step
+at a time, over the real screens. Each step dims the screen, leaves one control bright (such as **Save house here**,
+**Hunt mode**, **Have I been here?**, the search box, **Compare**, **Criteria**, **Save a copy** or **Help**) and says what
+it is for and what to try. You can use the bright control right away, then choose **Next**. **Back** goes to the step
+before, and **Skip tour** (or the phone's Back) leaves at any point. Steps for things your phone does not have, such as
+the weekly backup on an iPhone, are left out. To see the tour again, open **Settings**, go to **About** and choose
+**Take the tour**, just under **Help**.

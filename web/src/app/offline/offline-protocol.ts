@@ -48,7 +48,9 @@ export const OFFLINE_CACHE = 'doorprints-offline-maps-v1';
 /** The name prefix of this feature's caches, for "Remove all data". */
 export const OFFLINE_CACHE_PREFIX = 'doorprints-offline-';
 
+/** MapLibre protocol for map tiles while an area is saved; `rewriteForOffline` points tile requests at it. */
 export const TILE_SCHEME = 'dpmap-tile';
+/** MapLibre protocol for the other map files (style, sprite, glyphs) while an area is saved. */
 export const ASSET_SCHEME = 'dpmap-file';
 
 /** Marks a cached tile that the server answered with 404 (no data there): served back as a 404 so MapLibre skips it. */
@@ -157,10 +159,12 @@ export function protocolHandler(
  */
 let active = false;
 
+/** Whether a saved area exists, so map requests are rewritten to the offline protocols. */
 export function offlineActive(): boolean {
   return active;
 }
 
+/** Sets the flag `offlineActive` reads; only `OfflineMapsService` and `syncOfflineActive` call it. */
 export function setOfflineActive(value: boolean): void {
   active = value;
 }

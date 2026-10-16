@@ -22,6 +22,11 @@
   gap: var(--space-4);
 }
 
+/* The element stays in the DOM while AI is off (the map is made in it), so [hidden] must beat `display: grid`. */
+.layout[hidden] {
+  display: none;
+}
+
 @media (min-width: 900px) {
   .layout {
     grid-template-columns: minmax(0, 26rem) minmax(0, 1fr);

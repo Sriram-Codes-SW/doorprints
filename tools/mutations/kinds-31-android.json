@@ -1,0 +1,42 @@
+{
+  "spec": "android/ui/src/commonTest/kotlin/app/doorprints/ui/SpaceUiTest.kt and TourTest.kt",
+  "gradle": [
+    ":ui:testAndroidHostTest",
+    "--tests",
+    "app.doorprints.ui.SpaceUiTest",
+    "--tests",
+    "app.doorprints.ui.TourTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/TourSteps.kt",
+      "find": "if (k == null || KindCapabilities.of(space.built.id).baseline) return own",
+      "replace": "if (k == null) return own",
+      "expect": "theHouseTourIsEveryStepsOwnStrings"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/TourSteps.kt",
+      "find": "part == \"body\" && id == \"done\" -> TourPart(Res.string.tour_kind_done_body, true)",
+      "replace": "part == \"body\" && id == \"done\" -> TourPart(Res.string.tour_kind_body, true)",
+      "expect": "aSchoolSpaceNamesItsOwnAddSearchDetailsCompareAndVisitWords"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/Space.kt",
+      "find": "val neutral: Boolean get() = multi || !KindCapabilities.of(setting.default).baseline",
+      "replace": "val neutral: Boolean get() = multi",
+      "expect": "theAppWideTextsAreNeutralOnceMoreThanTheHouseIsInUse"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/Space.kt",
+      "find": "fun of(kind: String): SpaceWords = BY_KIND[kind] ?: HOUSE",
+      "replace": "fun of(kind: String): SpaceWords = HOUSE",
+      "expect": "theHousesWordsAreTheStringsTheHouseScreensAlwaysRead"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/KindWordKeys.kt",
+      "find": "fun of(kind: String): Map<String, String?> = KindWordData.BY_KIND[kind] ?: HOUSE",
+      "replace": "fun of(kind: String): Map<String, String?> = HOUSE",
+      "expect": "theWordsOfAKindWithNoFileAreTheHousesAndEveryKindFileHasItsOwn"
+    }
+  ]
+}

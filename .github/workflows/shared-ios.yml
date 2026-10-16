@@ -314,7 +314,7 @@ jobs:
           echo "Compose resources: $res ($(find "$res" -type f | wc -l | tr -d ' ') files)"
           test "$(/usr/libexec/PlistBuddy -c 'Print :CADisableMinimumFrameDurationOnPhone' "$app/Info.plist")" = true \
             || { echo "::error::CADisableMinimumFrameDurationOnPhone is not true in the built Info.plist"; exit 1; }
-          for key in NSLocationWhenInUseUsageDescription NSLocationAlwaysAndWhenInUseUsageDescription NSLocalNetworkUsageDescription; do
+          for key in NSLocationWhenInUseUsageDescription NSLocationAlwaysAndWhenInUseUsageDescription NSLocalNetworkUsageDescription NSMicrophoneUsageDescription; do
             /usr/libexec/PlistBuddy -c "Print :$key" "$app/Info.plist" > /dev/null \
               || { echo "::error::$key missing from the built Info.plist"; exit 1; }
           done
@@ -324,6 +324,10 @@ jobs:
           # Hunt mode (S4b-BL-69): background location updates need the mode, or Core Location throws at start.
           /usr/libexec/PlistBuddy -c 'Print :UIBackgroundModes' "$app/Info.plist" | grep -q '^ *location$' \
             || { echo "::error::UIBackgroundModes in the built Info.plist lacks 'location' (Hunt mode)"; exit 1; }
+          # Voice input (S4b-BL-223): recording is foreground only, so no background mode for audio may be declared.
+          if /usr/libexec/PlistBuddy -c 'Print :UIBackgroundModes' "$app/Info.plist" | grep -q '^ *audio$'; then
+            echo "::error::UIBackgroundModes in the built Info.plist has 'audio': voice input records in the foreground only"; exit 1
+          fi
           # The map (CMP-8c): MapLibre iOS embedded at the pinned revision, and India's geo files bundled unchanged.
           test -d "$app/Frameworks/MapLibre.framework" || { echo "::error::MapLibre.framework is not embedded in the app"; exit 1; }
           resolved=ios/Doorprints.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved

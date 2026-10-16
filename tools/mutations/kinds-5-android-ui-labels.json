@@ -1,0 +1,22 @@
+{
+  "spec": "android/ui/src/androidHostTest/kotlin/app/doorprints/ui/KindLabelsScreensTest.kt",
+  "gradle": [
+    ":ui:testAndroidHostTest",
+    "--tests",
+    "app.doorprints.ui.KindLabelsScreensTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/ModelLabels.kt",
+      "find": "    HouseStatus.entries.associateWith { kindStringResource(KindLabels.HOUSE.status(it)) }",
+      "replace": "    HouseStatus.entries.associateWith { kindStringResource(KindLabels.HOUSE.status(HouseStatus.NEW)) }",
+      "expect": "theStatusAndChecklistLabelsTheScreensReadAreThePinnedResources"
+    },
+    {
+      "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/ModelLabels.kt",
+      "find": "        kindStringResource(KindLabels.HOUSE.check(key) ?: error(\"No label for checklist key '$key'\"))",
+      "replace": "        kindStringResource(KindLabels.HOUSE.check(\"water\") ?: error(\"No label for checklist key '$key'\"))",
+      "expect": "theStatusAndChecklistLabelsTheScreensReadAreThePinnedResources"
+    }
+  ]
+}

@@ -35,7 +35,7 @@ import androidx.compose.ui.viewinterop.UIKitInteropInteractionMode
 import androidx.compose.ui.viewinterop.UIKitInteropProperties
 import androidx.compose.ui.viewinterop.UIKitView
 import app.doorprints.data.HouseEntity
-import app.doorprints.data.TrackPointEntity
+import app.doorprints.shared.trace.RepeatLook
 import app.doorprints.ui.res.Res
 import app.doorprints.ui.res.map_boundary_credit
 import kotlinx.coroutines.CancellationException
@@ -59,7 +59,9 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 actual fun PlatformMap(
     houses: List<HouseEntity>,
-    track: List<TrackPointEntity>,
+    track: TraceDrawing,
+    repeatLook: RepeatLook,
+    check: CheckOverlay?,
     labelSizeSp: Float,
     showLocation: Boolean,
     attribution: MapAttribution,
@@ -153,7 +155,19 @@ actual fun PlatformMap(
     }
 
     LaunchedEffect(styleLoaded, track) {
-        if (styleLoaded) map.setTrack(trackGeoJson(track))
+        if (styleLoaded) map.setTrack(track.geoJson)
+    }
+
+    // How repeated paths look (docs/11 5.27.4): the overlay layer's widths and visibility, live (MapLibreMapView.swift).
+    LaunchedEffect(styleLoaded, repeatLook) {
+        if (styleLoaded) {
+            map.setRepeatLook(repeatWidthStops(repeatLook).map { (zoom, width) -> listOf(zoom, width) }, repeatLook != RepeatLook.OFF)
+        }
+    }
+
+    // The place check's stretches and ring (docs/11 5.27.13).
+    LaunchedEffect(styleLoaded, check) {
+        if (styleLoaded) map.setCheck(checkGeoJson(check))
     }
 
     LaunchedEffect(styleLoaded, labelSizeSp) {

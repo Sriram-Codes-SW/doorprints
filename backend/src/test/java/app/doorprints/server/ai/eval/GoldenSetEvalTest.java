@@ -21,6 +21,7 @@ package app.doorprints.server.ai.eval;
 import app.doorprints.server.ai.eval.EvalScorer.CaseResult;
 import app.doorprints.server.ai.eval.EvalScorer.Metric;
 import app.doorprints.server.ai.web.AiExceptionHandler;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
@@ -35,9 +36,9 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -71,14 +72,34 @@ import static org.assertj.core.api.Assertions.assertThat;
  * stops, the scorecard says {@code STOPPED: provider quota exhausted} and the test fails, instead of recording every
  * remaining case as an error. To save calls, saves are not embedded one by one ({@code app.ai.index-on-change=false});
  * the single re-index embeds each fixture house once.
- * Flow: seed the fixture houses and visits through the public API ({@code PUT /api/houses/{id}},
+ * Flow: seed the fixture houses and visits through the public API ({@code PUT /api/candidates/{id}},
  * {@code PUT /api/visits/{id}}), rebuild the vector index ({@code POST /api/ai/reindex}), run every case through the
  * real HTTP endpoints (API-key filter, validation and sanitizers included), score it with {@link EvalScorer}, write a
  * markdown scorecard to {@code target/ai-eval-report.md} and fail if a metric misses the golden set's thresholds.
+ * A case that fails because of the provider (not the model) is listed as an infrastructure error, left out of every
+ * metric, and makes the verdict INCOMPLETE (the test still fails; it never reads PASS).
  *
  * <p>Use an empty database: other saved houses change what retrieval returns (the report warns when it sees any).
  * Optional environment: {@code AI_EVAL_TYPES} (default {@code extract,ask,plan}), {@code AI_EVAL_DELAY_MS} (pause
- * between cases for free-tier rate limits, default 4000) and {@code AI_EVAL_GOLDEN_SET} (another golden set file).
+ * between cases for free-tier rate limits, default 4000), {@code AI_EVAL_GOLDEN_SET} (another golden set file) and
+ * {@code AI_EVAL_REPEATS} (S4b-BL-203: trials per plan case, default 1, at most {@link EvalScorer#MAX_REPEATS}; trial 1
+ * is scored and gated as ever, trials 2 and later only fill the report's stability table; each repeat is one more
+ * plan-only pass, so run it with {@code AI_EVAL_TYPES=plan}; the repeats also stop at the time budget, and the
+ * stability table is in every partial scorecard) and
+ * {@code AI_EVAL_DEADLINE_MS} (time budget, default 35 minutes) and
+ * {@code AI_EVAL_ADDRESS_SET} (S4b-BL-226: a set of {@code docs/ai/evals/address-variants.json}, default {@code default}; the
+ * run then uses that set's addresses, the cases the set cannot ask about are listed as not applicable, the scorecard says
+ * {@code Address set} and every metric is "not gated": the verdict of the golden set is the default run's, and a run under a
+ * set fails only on a harness error or a stop; the default run does not read the file and its scorecard is unchanged),
+ * {@code AI_EVAL_SET} (S4b-BL-236: an additive set such as {@code hard-set} beside the golden set, its cases against the
+ * golden set's fixtures, no thresholds, the scorecard says {@code Eval set} and nothing is gated) and {@code AI_EVAL_CANARY}
+ * (S4b-BL-237: one live canary of {@code canaries.json}; its eval-only seam is on for this run, only the canary's case types
+ * run, nothing is gated, and the scorecard prints {@code CANARY: <name> expected drop seen} or {@code NOT seen}).
+ *
+ * <p>Time budget (S4b-BL-202): the scorecard is rewritten after every case and marked {@code PARTIAL (n of N cases)}
+ * until the run completes, so a killed job still leaves one. When the budget is used up between cases (or before a
+ * retry) the run stops with {@code STOPPED: time budget}: the verdict is INCOMPLETE (never PASS), the cases not run are
+ * not scored, and the test fails. One slow case overshoots the budget by at most one request (the read timeout).
  */
 @Tag("llm-eval")
 @EnabledIf(value = "providerConfigured",
@@ -90,6 +111,9 @@ import static org.assertj.core.api.Assertions.assertThat;
                 "app.mcp.enabled=false",
                 // Only the explicit re-index embeds the fixtures (halves embedding calls, no async races).
                 "app.ai.index-on-change=false",
+                // Retrieval must be able to return every fixture house (production default 6, fixtures 7 since
+                // golden set v0.6); GoldenSetEvalConfigTest pins this against the golden set file.
+                "app.ai.rag.top-k=20",
                 // The eval paces itself; the app's own AI limiter must not turn cases into 429s.
                 "app.ai.rate-limit.requests-per-minute=1000",
                 "app.ai.rate-limit.burst=1000"})
@@ -123,6 +147,10 @@ class GoldenSetEvalTest {
     @Value("${app.ai.provider:aistudio}")
     String provider;
 
+    /** The kinds this server has available (KINDS_AVAILABLE; the house always): the school set needs {@code school} (S4b-BL-268). */
+    @Value("${app.kinds.available:house}")
+    List<String> kindsAvailable;
+
     @Value("${spring.ai.openai.base-url:unknown}")
     String baseUrl;
 
@@ -131,6 +159,12 @@ class GoldenSetEvalTest {
 
     @Value("${spring.ai.google.genai.chat.model:unknown}")
     String vertexChatModel;
+
+    @Value("${spring.ai.google.genai.chat.thinking-level:}")
+    String vertexThinkingLevel;
+
+    @Value("${spring.ai.openai.chat.reasoning-effort:}")
+    String openAiReasoningEffort;
 
     @Value("${app.ai.vertex.location:}")
     String vertexLocation;
@@ -145,6 +179,10 @@ class GoldenSetEvalTest {
     String embeddingProvider;
 
     private RestClient api;
+    /** The run's time budget (AI_EVAL_DEADLINE_MS, default 35 min), fixed at the start of the test. */
+    private Deadline deadline;
+    /** Trial 1 (the gated results) and the repeats of the plan cases (S4b-BL-203). */
+    private EvalScorer.Trials trials = new EvalScorer.Trials();
     private final List<String> warnings = new ArrayList<>();
     /** Each distinct Vertex AI setup hint is reported once, not once per case. */
     private final Set<String> reportedSetupHints = new HashSet<>();
@@ -153,11 +191,63 @@ class GoldenSetEvalTest {
     /** Harness errors (seeding, re-indexing, anything that aborted the run): any entry makes the scorecard FAIL. */
     private final List<String> errors = new ArrayList<>();
     private final Map<String, String> header = EvalScorer.header();
+    /** The address set of this run (S4b-BL-226), or null for the default run, which is the only one with a verdict. */
+    private AddressVariants.Run addressRun;
+    /** The additive eval set of this run (S4b-BL-236, {@code AI_EVAL_SET}), or null for the golden set. Informational. */
+    private EvalSets.Run evalSet;
+    /** The live canary of this run (S4b-BL-237, {@code AI_EVAL_CANARY}), or null. Informational; its seam is on for this run only. */
+    private Canaries.Canary canary;
+
+    @AfterEach
+    void canarySeamsOff() {
+        Canaries.reset();
+    }
 
     @Test
     void goldenSetMeetsThresholds() throws IOException {
         var path = GoldenSet.locate();
-        var golden = GoldenSet.load(path);
+        var loaded = GoldenSet.load(path);
+        // AI_EVAL_SET (S4b-BL-236): unset, "default" or "golden-set" is the golden set as ever (no other file is read); a
+        // set name runs that file's cases against the golden set's fixtures, informational only (no thresholds, no verdict).
+        var setName = env("AI_EVAL_SET", EvalSets.GOLDEN);
+        evalSet = EvalSets.isGolden(setName) ? null : EvalSets.select(loaded, path, setName);
+        if (evalSet != null) loaded = evalSet.golden();
+        // S4b-BL-268: a set of another kind is read by the server's kind-aware path, which only exists while the kind is
+        // available (KINDS_AVAILABLE=house,school). Without it every school would be refused or read as a house: a harness error.
+        boolean kindsRefused = false;
+        if (evalSet != null) {
+            var missing = evalSet.kinds().stream().filter(k -> !"house".equals(k) && !kindsAvailable.contains(k)).toList();
+            if (!missing.isEmpty()) {
+                kindsRefused = true;
+                errors.add("Eval set " + evalSet.name() + " needs the kinds " + String.join(", ", missing)
+                        + " in app.kinds.available (set KINDS_AVAILABLE=house," + String.join(",", missing) + "); this server has " + kindsAvailable);
+            }
+        }
+        // AI_EVAL_CANARY (S4b-BL-237): one live canary of canaries.json; its eval-only seam is turned on here and off after
+        // the test, the run is informational and the scorecard prints "CANARY: <name> expected drop seen / NOT seen".
+        var canaryName = env("AI_EVAL_CANARY", Canaries.NONE);
+        canary = Canaries.isNone(canaryName) ? null : Canaries.load(Canaries.locate()).byName(canaryName);
+        boolean canaryRefused = false;
+        if (canary != null) {
+            try {
+                Canaries.apply(canary);
+            } catch (IllegalStateException e) {
+                canaryRefused = true;
+                // S4b-BL-239: the bullet or the shape the canary rewrites is not in the real prompt any more, so the canary
+                // would change nothing. A harness error: no case runs, the scorecard says why and the job fails.
+                errors.add("Canary seam refused: " + e.getMessage());
+            }
+        }
+        // AI_EVAL_ADDRESS_SET (S4b-BL-226): unset, empty or "default" is the run as ever (the variants file is not even
+        // read); a name from address-variants.json runs the golden set with that set's addresses, informational only.
+        var addressName = env("AI_EVAL_ADDRESS_SET", AddressVariants.DEFAULT_SET);
+        if (evalSet != null && !AddressVariants.isDefault(addressName)) {
+            errors.add("AI_EVAL_SET and AI_EVAL_ADDRESS_SET cannot be combined (the address fingerprints are the golden set's); run them apart");
+            addressName = AddressVariants.DEFAULT_SET;
+        }
+        addressRun = AddressVariants.isDefault(addressName) ? null
+                : AddressVariants.load(AddressVariants.locate()).select(loaded, addressName);
+        var golden = addressRun == null ? loaded : addressRun.golden();
         var requestFactory = new JdkClientHttpRequestFactory();
         requestFactory.setReadTimeout(Duration.ofMinutes(3));
         api = RestClient.builder()
@@ -169,56 +259,124 @@ class GoldenSetEvalTest {
         var types = new HashSet<>(Arrays.asList(env("AI_EVAL_TYPES", "extract,ask,plan")
                 .toLowerCase(Locale.ROOT).strip().split("\\s*,\\s*")));
         long delayMs = Math.max(0, Long.parseLong(env("AI_EVAL_DELAY_MS", "4000")));
+        int repeats = EvalScorer.repeatsFrom(System.getenv("AI_EVAL_REPEATS"));
         var started = Instant.now();
+        var budget = Duration.ofMillis(Deadline.parseMs(env("AI_EVAL_DEADLINE_MS", "")));
+        deadline = new Deadline(Clock.systemUTC(), budget);
+        header.put("Time budget", budget.toMinutes() + " min");
 
-        header.put("Golden set", "v" + golden.version() + " (" + golden.date() + "), " + path.normalize());
+        header.put("Golden set", "v" + loaded.version() + " (" + loaded.date() + "), " + path.normalize());
+        if (evalSet != null) header.put("Eval set", evalSet.headerValue() + " (" + evalSet.fixturesNote() + ")");
+        if (canary != null) {
+            header.put("Canary", canary.name() + " (" + canary.kind() + "; not gated; types " + String.join(", ", canary.types())
+                    + (canary.cases().isEmpty() ? "" : "; only " + canary.cases().size() + " cases: " + String.join(", ", canary.cases())) + ")");
+            types.retainAll(canary.types()); // a canary runs only the types its metric is made of
+        }
+        if (addressRun != null) header.put("Address set", addressRun.headerValue());
         boolean vertex = "vertex".equals(provider);
         header.put("Provider", vertex
                 ? "vertex (Vertex AI, chat " + vertexLocation + ", embeddings "
                         + (vertexEmbeddingLocation.isBlank() ? vertexLocation : vertexEmbeddingLocation) + ")"
                 : "aistudio (" + baseUrl + ")");
         header.put("Chat model", vertex ? vertexChatModel : openAiChatModel);
+        header.put("Thinking level", EvalScorer.thinkingLabel(vertex, vertexThinkingLevel, openAiReasoningEffort));
         header.put("Embedding", embeddingProvider + " / " + embeddingModel);
         header.put("Case types", String.join(", ", types.stream().sorted().toList()));
+        var repeatTypes = new java.util.LinkedHashSet<>(EvalScorer.repeatTypesFrom(System.getenv("AI_EVAL_REPEAT_TYPES")));
+        repeatTypes.retainAll(types);
+        if (repeats > 1 && repeatTypes.equals(Set.of(PLAN))) {
+            header.put("Plan trials", repeats + " (trial 1 gated, the rest informational)");
+        } else if (repeats > 1 && !repeatTypes.isEmpty()) {
+            header.put("Trials", repeats + " of the " + String.join(", ", repeatTypes) + " cases (trial 1 gated, the rest informational)");
+        }
         header.put("Started", started.toString());
-        checkThresholdsDeclared(golden);
+        if (evalSet == null) checkThresholdsDeclared(golden); // an additive set has none, by design
 
-        var results = new ArrayList<CaseResult>();
-        List<Metric> metrics = List.of();
+        trials = new EvalScorer.Trials();
+        var results = trials.gated();
+        var planned = new ArrayList<Map<String, Object>>();
+        for (var testCase : golden.cases()) {
+            var type = String.valueOf(testCase.get("type"));
+            if (!Set.of(EXTRACT, ASK, PLAN).contains(type)) {
+                warnings.add("Skipped case " + testCase.get("id") + ": unknown type '" + type + "'");
+                continue;
+            }
+            // A canary with a 'cases' key (no-wrapping) scores only the cases its seam can change.
+            if (types.contains(type) && (canary == null || canary.runs(String.valueOf(testCase.get("id"))))) planned.add(testCase);
+        }
+        if (canaryRefused || kindsRefused) planned.clear(); // the seam or the kinds were refused: nothing is run against it
+        boolean timeStopped = false;
         try {
+            writeReport(started, golden, results, new EvalScorer.Progress(0, planned.size(), false));
             boolean seeded = true;
-            if (types.contains(ASK) || types.contains(PLAN)) seeded = seed(golden);
-            boolean first = true;
-            for (var testCase : golden.cases()) {
-                var type = String.valueOf(testCase.get("type"));
-                if (!Set.of(EXTRACT, ASK, PLAN).contains(type)) {
-                    warnings.add("Skipped case " + testCase.get("id") + ": unknown type '" + type + "'");
-                    continue;
+            if (addressRun != null && addressRun.error() != null) {
+                // The applied set is not the one the file records: nothing is seeded or run, the scorecard says why.
+                errors.add(addressRun.error());
+                planned.clear();
+                seeded = false;
+            } else if (!canaryRefused && !kindsRefused && (types.contains(ASK) || types.contains(PLAN))) seeded = seed(golden); // no calls for a refused canary
+            // Without fixtures and an index, ask/plan scores would only measure the seeding failure.
+            if (!seeded) planned.removeIf(c -> !EXTRACT.equals(String.valueOf(c.get("type"))));
+            // The scorecard is rewritten after every case, so a killed job still leaves one (S4b-BL-202).
+            timeStopped = EvalRun.run(planned, results, deadline,
+                    () -> pause(Math.min(delayMs, deadline.remaining().toMillis())),
+                    c -> run(c, golden), progress -> writeReport(started, golden, results, progress));
+            // Trials 2..repeats of the plan cases: informational, never in the metrics or the verdict, and also bound by
+            // the time budget (a stop here leaves the gated trial untouched).
+            // AI_EVAL_REPEAT_TYPES (S4b-BL-227) says which types: plan only unless asked otherwise.
+            var repeatCases = planned.stream().filter(c -> repeatTypes.contains(String.valueOf(c.get("type")))).toList();
+            if (!timeStopped && seeded && repeats > 1 && !repeatCases.isEmpty()) {
+                var planCases = repeatCases;
+                var progressNow = new EvalScorer.Progress(results.size(), planned.size(), false);
+                if (EvalRun.runRepeats(planCases, repeats, trials, deadline,
+                        () -> pause(Math.min(delayMs, deadline.remaining().toMillis())), c -> run(c, golden),
+                        () -> writeReport(started, golden, results, progressNow))) {
+                    warnings.add("The repeats of the " + (repeatTypes.equals(Set.of(PLAN)) ? "plan " : "") + "cases stopped at the time budget; the gated trial is complete, "
+                            + "the stability table covers only the trials that ran.");
                 }
-                if (!types.contains(type)) continue;
-                // Without fixtures and an index, ask/plan scores would only measure the seeding failure.
-                if (!seeded && !EXTRACT.equals(type)) continue;
-                if (!first) pause(delayMs);
-                first = false;
-                results.add(run(testCase, golden));
             }
         } catch (QuotaExhausted e) {
             errors.add(EvalScorer.QUOTA_STOPPED + " (" + e.getMessage() + "); " + results.size()
                     + " case(s) scored before the stop, the rest were not run");
+        } catch (Deadline.Expired e) {
+            timeStopped = true; // the budget ran out during seeding
         } catch (RuntimeException e) {
             errors.add("Eval aborted: " + describe(e));
-        } finally {
-            header.put("Duration", Duration.between(started, Instant.now()).toSeconds() + " s");
-            metrics = EvalScorer.metrics(results, golden.thresholds());
-            var markdown = EvalScorer.markdown(header, metrics, results, warnings, errors);
-            Files.createDirectories(REPORT.getParent());
-            Files.writeString(REPORT, markdown, StandardCharsets.UTF_8);
-            System.out.println(markdown);
         }
+        var progress = new EvalScorer.Progress(results.size(), planned.size(), timeStopped);
+        var metrics = writeReport(started, golden, results, progress);
 
-        // Fails on zero cases, any harness error (e.g. seeding / reindex 503) or a metric below its threshold.
-        var verdict = EvalScorer.verdict(metrics, results, errors);
+        // Fails on zero cases, any harness error (e.g. seeding / reindex 503), a time-budget stop or a metric below its threshold.
+        // Under an address set the verdict is the default run's (S4b-BL-226): this run fails only on a harness error or a stop.
+        // An eval set or a canary (S4b-BL-236, S4b-BL-237) is informational by construction, like an address set.
+        var verdict = addressRun == null && informational(metrics) == null ? EvalScorer.verdict(metrics, results, errors, progress)
+                : EvalScorer.variantVerdict(results, errors, progress);
         assertThat(verdict.reasons()).as("AI eval failed; scorecard: %s", REPORT.toAbsolutePath()).isEmpty();
+    }
+
+    /** The informational marker of this run: the canary's section with its result line, else the eval set's, else null. */
+    private EvalScorer.Informational informational(List<Metric> metrics) {
+        if (canary != null) {
+            return new EvalScorer.Informational("Canary", canary.name(), canary.description() + Canaries.evidenceText(),
+                    Canaries.line(canary, metrics));
+        }
+        return evalSet == null ? null : evalSet.info();
+    }
+
+    /** Scores what has run so far and replaces the scorecard file (atomically); returns the metrics. */
+    private List<Metric> writeReport(Instant started, GoldenSet golden, List<CaseResult> results,
+                                     EvalScorer.Progress progress) {
+        header.put("Duration", Duration.between(started, Instant.now()).toSeconds() + " s");
+        var metrics = EvalScorer.metrics(results, golden.thresholds());
+        var markdown = EvalScorer.markdown(header, metrics, results, warnings, errors, progress, trials, addressRun,
+                informational(metrics));
+        try {
+            EvalRun.writeAtomically(REPORT, markdown);
+        } catch (IOException e) {
+            throw new IllegalStateException("cannot write " + REPORT, e);
+        }
+        if (progress.complete() || progress.timeStopped() || !errors.isEmpty()) System.out.println(markdown);
+        return metrics;
     }
 
     private static String describe(RuntimeException e) {
@@ -243,6 +401,12 @@ class GoldenSetEvalTest {
             // Saves are not embedded one by one here (app.ai.index-on-change=false), so no settling pause is needed.
             var indexed = post("/api/ai/reindex", null);
             header.put("Indexed houses", String.valueOf(indexed.get("indexed")));
+            // A partial index would lower the Ask and Plan scores for a reason that is not the model: harness error.
+            var countError = FixtureSeeding.indexedCountError(indexed.get("indexed"), golden.fixtureHouses().size());
+            if (countError != null) {
+                errors.add(countError);
+                return false;
+            }
             return true;
         } catch (QuotaExhausted e) {
             throw e;
@@ -253,23 +417,20 @@ class GoldenSetEvalTest {
     }
 
     private void seedFixtures(GoldenSet golden) {
-        var now = Instant.now().toString();
-        for (var house : golden.fixtureHouses()) {
-            var body = new LinkedHashMap<String, Object>(house);
-            body.put("updatedAt", now);
-            body.put("deleted", false);
-            api.put().uri("/api/houses/{id}", house.get("id")).contentType(MediaType.APPLICATION_JSON)
-                    .body(body).retrieve().toBodilessEntity();
+        var nowInstant = Instant.now();
+        var fixtureHouses = golden.fixtureHouses();
+        for (int i = 0; i < fixtureHouses.size(); i++) {
+            var house = fixtureHouses.get(i);
+            // Distinct, ordered timestamps: the same list order, and so the same search results, every run.
+            api.put().uri("/api/candidates/{id}", house.get("id")).contentType(MediaType.APPLICATION_JSON)
+                    .body(FixtureSeeding.seedBody(house, i, nowInstant)).retrieve().toBodilessEntity();
         }
         for (var visit : golden.fixtureVisits()) {
-            var body = new LinkedHashMap<String, Object>(visit);
-            body.put("updatedAt", now);
-            body.put("deleted", false);
             api.put().uri("/api/visits/{id}", visit.get("id")).contentType(MediaType.APPLICATION_JSON)
-                    .body(body).retrieve().toBodilessEntity();
+                    .body(FixtureSeeding.visitBody(visit, nowInstant)).retrieve().toBodilessEntity();
         }
         var fixtureIds = new HashSet<>(golden.fixtureHouseIds());
-        var live = api.get().uri("/api/houses").retrieve().body(LIST);
+        var live = api.get().uri("/api/candidates").retrieve().body(LIST);
         long others = live == null ? 0 : live.stream()
                 .map(h -> String.valueOf(h.get("id")).toLowerCase(Locale.ROOT))
                 .filter(id -> !fixtureIds.contains(id))
@@ -280,20 +441,34 @@ class GoldenSetEvalTest {
         }
     }
 
+    /** The Extract request: the text, and the case's {@code kind} when it names one other than the house (S4b-BL-268). */
+    static Map<String, Object> extractBody(Map<String, Object> input) {
+        var body = new LinkedHashMap<String, Object>();
+        body.put("text", String.valueOf(input.get("text")));
+        var kind = input.get("kind");
+        if (kind != null && !"house".equals(String.valueOf(kind))) body.put("kind", String.valueOf(kind));
+        return body;
+    }
+
     private CaseResult run(Map<String, Object> testCase, GoldenSet golden) {
         var type = String.valueOf(testCase.get("type"));
         var input = GoldenSet.map(testCase.get("input"));
         Map<String, Object> response = null;
         String error = null;
+        String infra = null;
         long t0 = System.nanoTime();
         try {
             response = switch (type) {
-                case EXTRACT -> post("/api/ai/extract-listing", Map.of("text", String.valueOf(input.get("text"))));
+                case EXTRACT -> post("/api/ai/extract-listing", extractBody(input));
                 case ASK -> post("/api/ai/ask", input);
                 default -> post("/api/ai/plan-visits", input);
             };
         } catch (QuotaExhausted e) {
             throw e; // stops the run; this case is not scored
+        } catch (InfraFailure e) {
+            error = e.getMessage();
+            infra = e.getMessage();
+            response = null;
         } catch (RestClientResponseException e) {
             error = "HTTP " + e.getStatusCode().value() + ": " + EvalScorer.truncate(e.getResponseBodyAsString(), 300);
             response = null;
@@ -307,17 +482,22 @@ class GoldenSetEvalTest {
             case ASK -> EvalScorer.scoreAsk(testCase, response, error);
             default -> EvalScorer.scorePlan(testCase, response, error, golden.fixtureHouseIds());
         };
+        // A provider failure that outlasted the retries says nothing about the model: not scored, run INCOMPLETE.
+        if (infra != null) EvalScorer.markInfra(result, infra);
         result.latencyMs = ms;
         return result;
     }
 
     /**
-     * POST with retries on 503/429 (provider quota or transient failure), honouring Retry-After. A provider quota error
-     * (problem {@code code: AI_QUOTA_EXHAUSTED}) is retried once after Retry-After and then throws
-     * {@link QuotaExhausted}, which stops the run.
+     * POST with retries on 503/429, honouring Retry-After; {@link RetryPolicy} decides from the problem's {@code cause}:
+     * a provider failure is retried and then throws {@link InfraFailure}; a model failure (unreadable output) is not
+     * retried and is scored. A provider quota error (problem {@code code: AI_QUOTA_EXHAUSTED}) is retried once after
+     * Retry-After and then throws {@link QuotaExhausted}, which stops the run.
      */
     private Map<String, Object> post(String path, Object body) {
         for (int attempt = 1; ; attempt++) {
+            // A case that keeps retrying cannot outlast the budget by more than one request (the read timeout).
+            if (attempt > 1) deadline.check();
             try {
                 var spec = api.post().uri(path);
                 if (body != null) spec = spec.contentType(MediaType.APPLICATION_JSON).body(body);
@@ -337,12 +517,36 @@ class GoldenSetEvalTest {
                     if (reportedSetupHints.add(hint)) warnings.add("POST " + path + " returned " + status + ", setup: " + hint);
                     throw e;
                 }
-                if ((status != 503 && status != 429) || attempt >= MAX_ATTEMPTS) throw e;
+                switch (RetryPolicy.decide(status, RetryPolicy.causeOf(bodyOf(e)), attempt, MAX_ATTEMPTS)) {
+                    case SCORE -> throw e;
+                    case INFRA -> throw new InfraFailure("POST " + path + " still HTTP " + status + " (cause "
+                            + RetryPolicy.PROVIDER + ") after " + attempt + " attempt(s): "
+                            + EvalScorer.truncate(String.valueOf(bodyOf(e)), 200));
+                    case RETRY -> { }
+                }
                 long waitMs = retryAfterMs(e, attempt);
                 warnings.add("POST " + path + " returned " + status + (quota ? " (provider quota exhausted)" : "")
                         + " (attempt " + attempt + "), retried after " + waitMs / 1000 + " s");
-                pause(waitMs);
+                pause(Math.min(waitMs, deadline.remaining().toMillis()));
             }
+        }
+    }
+
+    private static String bodyOf(RestClientResponseException e) {
+        try {
+            return e.getResponseBodyAsString();
+        } catch (RuntimeException ignored) {
+            return null;
+        }
+    }
+
+    /**
+     * The provider failed (problem {@code cause: provider}) on every attempt: the case is recorded as an infrastructure
+     * error, left out of the metrics, and the run is INCOMPLETE ({@link RetryPolicy}).
+     */
+    static final class InfraFailure extends RuntimeException {
+        InfraFailure(String message) {
+            super(message);
         }
     }
 

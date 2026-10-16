@@ -17,6 +17,7 @@
  */
 
 import {
+  ApplicationRef,
   Component,
   DestroyRef,
   ElementRef,
@@ -36,13 +37,17 @@ import { isLang } from './i18n/languages';
 import { AiService } from './core/ai.service';
 import { ConfirmDialog } from './shared/confirm-dialog';
 import { AppBanners } from './shared/app-banners';
+import { ChunkNotice } from './shared/chunk-notice';
+import { UndoSnackbar } from './shared/undo-snackbar';
 import { ReminderBanners } from './shared/reminder-banners';
+import { TourOverlay } from './shared/tour-overlay';
 import { ViewingReminderService } from './core/viewing-reminder.service';
 import { LaunchFilesService } from './core/launch-files.service';
 import { PwaService } from './core/pwa.service';
 import { SyncService } from './data/sync.service';
 import { guideUrl } from './shared/help-link';
-import { hidesBottomBar, inDataSection, inMapSection, sectionCurrent } from './nav-section';
+import { hidesBottomBar, inDataSection, inMapSection, isSpaceHome, sectionCurrent } from './nav-section';
+import { SpaceService } from './core/space.service';
 
 /** How many pages' scroll positions are remembered for Back and Forward (older ones are dropped). */
 const SCROLL_MEMORY = 50;
@@ -63,9 +68,15 @@ const NAV_ICONS = {
   connect: 'M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z',
 } as const;
 
+/**
+ * The shell of the app: header with the brand and language, the navigation (a bottom bar on phones, in the header
+ * otherwise), the banners, the tour, the confirmation dialog and the live region for announcements. It also gives each
+ * page change a fresh start: the page scrolls to the top (or to where Back left it) and focus moves to the page
+ * heading.
+ */
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, TPipe, ConfirmDialog, AppBanners, ReminderBanners],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, TPipe, ConfirmDialog, UndoSnackbar, AppBanners, ChunkNotice, ReminderBanners, TourOverlay],
   template: `
     <a class="skip-link" href="#main" (click)="skipToMain($event)">{{ 'app.skip' | t }}</a>
     <header class="topbar">
@@ -73,6 +84,12 @@ const NAV_ICONS = {
         <img src="favicon.svg" alt="" width="28" height="28" />
         <span class="brand-name" aria-hidden="true">{{ 'app.name' | t }}</span>
       </a>
+      <!-- The current space (kinds PR 8, S4b-BL-212): only while two or more kinds are enabled; back to the chooser. -->
+      @if (space.multi() && !space.inChooser()) {
+        <button type="button" class="space-chip" [attr.aria-label]="'space.chip' | t: { name: spaceName() }" (click)="toChooser()">
+          <span aria-hidden="true">{{ spaceName() }} ▾</span>
+        </button>
+      }
       <!--
         Before the navigation in the DOM, so on a phone focus goes brand, language (both in the top row), then the
         bottom bar, then the page — not top, bottom, top (WCAG 2.4.3). On wider screens order: 1 keeps it visually at
@@ -118,20 +135,21 @@ const NAV_ICONS = {
           Map is also current on a house (/houses/:id, /houses/new): the house form is a child of the map, as on
           Android, and Back goes there. aria-current is "page" on the map itself and "true" on its child pages.
         -->
-        <a routerLink="/" [class.current]="mapSection()" [attr.aria-current]="mapCurrent()">
+        <a [routerLink]="space.home()" [class.current]="mapSection()" [attr.aria-current]="mapCurrent()">
           <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="24" height="24"><path [attr.d]="icons.map" /></svg></span>
           <span class="nav-label">{{ 'nav.map' | t }}</span>
         </a>
-        <a routerLink="/compare" routerLinkActive="current" ariaCurrentWhenActive="page">
+        <!-- Compare, Ask and Plan read the space on screen (S4b-BL-279): the house's are today's addresses. -->
+        <a [routerLink]="space.toolLink('compare')" routerLinkActive="current" ariaCurrentWhenActive="page">
           <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="24" height="24"><path [attr.d]="icons.compare" /></svg></span>
           <span class="nav-label">{{ 'nav.compare' | t }}</span>
         </a>
-        @if (ai.enabled()) {
-          <a routerLink="/ask" routerLinkActive="current" ariaCurrentWhenActive="page">
+        @if (ai.enabledFor(space.kind())) {
+          <a [routerLink]="space.toolLink('ask')" routerLinkActive="current" ariaCurrentWhenActive="page">
             <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="24" height="24"><path [attr.d]="icons.ask" /></svg></span>
             <span class="nav-label">{{ 'nav.ask' | t }}</span>
           </a>
-          <a routerLink="/plan" routerLinkActive="current" ariaCurrentWhenActive="page">
+          <a [routerLink]="space.toolLink('plan')" routerLinkActive="current" ariaCurrentWhenActive="page">
             <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="24" height="24"><path [attr.d]="icons.plan" /></svg></span>
             <span class="nav-label">{{ 'nav.plan' | t }}</span>
           </a>
@@ -162,11 +180,14 @@ const NAV_ICONS = {
       </nav>
     </header>
     <app-banners />
+    <app-chunk-notice />
     <app-reminder-banners />
+    <app-undo-snackbar />
     <main id="main" #main class="content" tabindex="-1">
-      <router-outlet />
+      <router-outlet (activate)="paintPageOnce()" />
     </main>
     <app-confirm-dialog />
+    <app-tour />
     <div class="sr-only" role="status" aria-live="polite" aria-atomic="true">
       @if (announcer.message(); as m) {
         {{ m.key | t: m.params }}
@@ -224,6 +245,25 @@ const NAV_ICONS = {
       color: var(--on-header);
       box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
       z-index: 10;
+    }
+    .space-chip {
+      min-height: var(--target);
+      max-width: 12rem;
+      padding: 0 var(--space-3);
+      border: 1px solid var(--on-header);
+      border-radius: var(--radius-pill);
+      background: transparent;
+      color: var(--on-header);
+      font: inherit;
+      font-weight: 600;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+    .space-chip:focus-visible {
+      outline: 3px solid var(--focus);
+      outline-offset: 2px;
     }
     .brand {
       display: flex;
@@ -570,6 +610,14 @@ export class App {
   protected readonly i18n = inject(TranslationService);
   protected readonly announcer = inject(Announcer);
   protected readonly ai = inject(AiService);
+  protected readonly space = inject(SpaceService);
+  /** The current space's list noun (*Houses*, *Schools*), for its chip. */
+  protected readonly spaceName = computed(() => this.i18n.t(this.space.current().keys.ref('kind.many')));
+  private readonly spaceRouter = inject(Router);
+  /** The chip: back to the chooser, one history entry. */
+  protected toChooser(): void {
+    void this.spaceRouter.navigateByUrl('/');
+  }
   protected readonly icons = NAV_ICONS;
   protected readonly guideHref = computed(() => guideUrl(this.i18n.lang()));
   // Constructing it registers the service worker and starts listening for install and update events (S4-05).
@@ -578,6 +626,7 @@ export class App {
   private readonly main = viewChild.required<ElementRef<HTMLElement>>('main');
   private readonly nav = viewChild.required<ElementRef<HTMLElement>>('nav');
   private readonly injector = inject(Injector);
+  private readonly appRef = inject(ApplicationRef);
 
   /** The current path, without query or fragment. */
   private readonly path = signal('/');
@@ -591,7 +640,7 @@ export class App {
   private measureBar: () => void = () => undefined;
   /** The map and the pages under it (a house, a new house): Map is the current item there. */
   protected readonly mapSection = computed(() => inMapSection(this.path()));
-  protected readonly mapCurrent = computed(() => sectionCurrent(this.path() === '/', this.mapSection()));
+  protected readonly mapCurrent = computed(() => sectionCurrent(this.path() === '/' || isSpaceHome(this.path()), this.mapSection()));
   protected readonly dataSection = computed(() => inDataSection(this.path(), this.phone()));
   protected readonly dataCurrent = computed(() => sectionCurrent(this.path().startsWith('/data'), this.dataSection()));
   /**
@@ -605,6 +654,22 @@ export class App {
 
   /** Scroll positions of #main by the id of the navigation that showed the page, for Back and Forward. */
   private readonly scrollPositions = new Map<number, number>();
+
+  /**
+   * A page the router has just created has its elements but not yet its text: the zoneless scheduler runs the first update
+   * on a timer raced with the next frame, and a frame painted in between showed *Connect*, *Share* and *Your data* with empty
+   * headings and then moved everything down when the text arrived (a layout shift of 0.3-0.8 on a slow runner, S4b-BL-249).
+   * A microtask runs before any paint, so the first update is made there.
+   */
+  protected paintPageOnce(): void {
+    queueMicrotask(() => {
+      try {
+        this.appRef.tick();
+      } catch {
+        /* a tick is already running: it paints the page */
+      }
+    });
+  }
 
   constructor() {
     // Looks once a minute for a viewing reminder while the app is open (slice 3b-2); cleared when the app is destroyed.
@@ -662,6 +727,7 @@ export class App {
     });
   }
 
+  /** Notes how far `main` was scrolled when a page is left, keeping the last 50 pages. */
   private rememberScroll(navigationId: number): void {
     // By element id, not the view query: the first navigation starts before the shell has rendered.
     const main = document.getElementById('main');
@@ -694,6 +760,7 @@ export class App {
     attempt();
   }
 
+  /** Follows whether the phone layout (up to 600px wide) applies. */
   private watchPhoneLayout(): void {
     if (typeof matchMedia === 'undefined') return;
     const query = matchMedia('(max-width: 600px)');
@@ -754,6 +821,7 @@ export class App {
     this.navMore.set(nav.scrollWidth - nav.clientWidth - nav.scrollLeft > 1);
   }
 
+  /** Switches the app language and announces it in the new language once it has loaded. */
   protected onLang(event: Event): void {
     const value = (event.target as HTMLSelectElement).value;
     if (!isLang(value)) return;
@@ -764,6 +832,10 @@ export class App {
     );
   }
 
+  /**
+   * Moves focus to the page's main heading (or to `main`), so keyboard and screen-reader users start at the top of the
+   * new page.
+   */
   private focusHeading(): void {
     const main = this.main().nativeElement;
     const target = main.querySelector<HTMLElement>('h1') ?? main;

@@ -21,11 +21,11 @@ package app.doorprints.ui
 import app.doorprints.data.HouseEntity
 import app.doorprints.data.Repository
 import app.doorprints.shared.model.HuntReminders
+import app.doorprints.shared.model.KindWordKeys
 import app.doorprints.shared.model.Viewing
 import app.doorprints.shared.model.ViewingReminders
 import app.doorprints.ui.res.Res
 import app.doorprints.ui.res.viewing_hunt_reminder_body
-import app.doorprints.ui.res.viewing_reminder_body
 import app.doorprints.ui.res.viewings_houseGone
 import kotlinx.coroutines.flow.first
 import org.jetbrains.compose.resources.getString
@@ -99,10 +99,12 @@ internal object IosViewingReminders {
             val v = r.viewing
             val house = byId[v.houseId]
             val name = house?.label?.ifBlank { null } ?: gone
+            // The reminder's body is the candidate's kind's word (kinds PR 29, docs/03 §18.23): the house's is "Viewing at ...".
+            val body = kindStringResource(KindWordKeys.key(house?.kind, "viewingBody"))
             val (h, m) = LocalClock.hourMinuteOf(v.startsAt)
             val time = h.toString().padStart(2, '0') + ":" + m.toString().padStart(2, '0')
             if (r.kind == HuntReminders.Kind.VIEWING) {
-                request(ID_PREFIX + v.id, r.at, getString(Res.string.viewing_reminder_body, name, time), house?.id?.let { mapOf(IosHunt.KEY_OPEN_HOUSE to it) })
+                request(ID_PREFIX + v.id, r.at, getString(body, name, time), house?.id?.let { mapOf(IosHunt.KEY_OPEN_HOUSE to it) })
             } else {
                 request(HUNT_PREFIX + v.id, r.at, getString(Res.string.viewing_hunt_reminder_body, name, time), mapOf(IosHunt.KEY_OFFER_HUNT_VIEWING to v.id))
             }
@@ -115,6 +117,10 @@ internal object IosViewingReminders {
         }
     }
 
+    /**
+     * One local notification for [identifier] at the calendar time of [fireAt], once, with the default sound;
+     * [userInfo] is what a tap reads.
+     */
     private fun request(identifier: String, fireAt: Long, body: String, userInfo: Map<String, String>?): UNNotificationRequest {
         val content = UNMutableNotificationContent().apply {
             setBody(body)

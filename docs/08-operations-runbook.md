@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | Operations runbook |
-| Version | 0.21 |
-| Date | 2026-09-29 |
+| Version | 0.34 |
+| Date | 2026-10-14 |
 | Author | Claude (Cowork) |
 | Status | Draft |
 
@@ -33,8 +33,21 @@
 | 0.19 | 2026-09-29 | Claude (Code), lead | The backup workflow sketch names its runner image (`ubuntu-26.04`), as the real workflows do ([07](07-secure-build-and-deploy.md) §1). |
 | 0.20 | 2026-09-29 | Claude (Code), lead | New §5.1a: devices and the owner page (first sign-in, a lost phone, AI per device, signing other browsers out) ([03](03-design.md) §12.1, ADR-25). |
 | 0.21 | 2026-09-29 | Claude (Code), lead | §5.1a: the Gemini key on the owner page (encrypted, no restart, *Remove key*, pausing AI) and what an owner-key rotation does to it. |
+| 0.22 | 2026-10-03 | Cursor Agent, lead | S4b-BL-124: §7 IR-11 (the Google project stopped or a client deleted), IR-12 (a leaked Picker key) and IR-13 (a person who lost access to their Google account), from [15](15-google-drive-backup-and-sharing.md). |
+| 0.23 | 2026-10-07 | Claude (Code), lead | §3 `AI_API_KEY`: no key is needed for an `AI_BASE_URL` other than the Gemini API (S4b-BL-149). |
+| 0.24 | 2026-10-08 | Claude (Code), lead | New **§1.2**: the three per-address rate limits behind a reverse proxy outside Tomcat's internal ranges (one shared bucket; widen `server.tomcat.remoteip.internal-proxies`, do not switch to `framework`); §6.2: what `DataService.deleteAll` leaves alone (device keys, owner sessions, pairing requests, the server secret and settings). From an independent review, 2026-10-08. |
+| 0.25 | 2026-10-08 | Claude (Code) | §5.1a: the owner page's setup link is written to the log only while no browser is signed in; afterwards use *Add another browser* (S4b-BL-171). |
+| 0.26 | 2026-10-08 | Claude (Code) | §5.1a: the recovery when the only signed-in browser is lost while its session is still open (`OWNER_SETUP_LINK_IN_LOG=true`, restart, read the log, sign in, switch it off; S4b-BL-188), and the caps on open pairing requests (50 in all, 5 per client address, 429 over them; S4b-BL-161). |
+| 0.27 | 2026-10-09 | Claude (Code) | §5.1a: the pairing caps are the settings `PAIRING_MAX_OPEN` and `PAIRING_MAX_PER_SOURCE` (defaults unchanged; S4b-BL-191). |
+| 0.28 | 2026-10-09 | Claude (Code) | §10.4: the **Vertex AI trial guard** (S4b-BL-193). `ai-evals.yml` refuses `provider=vertex` unless the repository variable `VERTEX_EVAL_ENABLED` is `true`, and refuses it from 2026-12-15 whatever the variable says, so a rerun by anyone with write access cannot spend beyond the trial credit. New rows: turn Vertex on for a run and off again, the hard stops at the end (unlink billing, disable the service account or the Workload Identity pool, delete the variables and secrets), a low per-minute and per-day quota on the Vertex AI API. |
+| 0.29 | 2026-10-09 | Claude (Code) | §4: renew the Docker Hub token before it expires; §5.2: rotating it (S4b-BL-197, [07](07-secure-build-and-deploy.md) §7.3). |
+| 0.30 | 2026-10-09 | Claude (Code) | §1.1: Ask finds the visited houses for a question about visits (S4b-BL-194); no re-index is needed after this upgrade, because the document text did not change. |
+| 0.31 | 2026-10-10 | Claude (Code), engineer | New §1.3: the iPhone app and a self-hosted server on plain `http://` (App Transport Security; S4b-BL-59). |
+| 0.32 | 2026-10-12 | Claude (Code), engineer | New §1.4: the one-time format reset (S4b-BL-206): an old database is dropped and created again, `/api/candidates`; §6.2 names the new path. |
+| 0.33 | 2026-10-14 | Claude (Code), engineer | §3 release checklist: the APK line names `release.yml` (merged, C-02), no longer "later". |
+| 0.34 | 2026-10-15 | Claude (Code), engineer | §10.3 signals: a spent quota or credit answers `402` (WARN `[provider quota or credit spent]`) and a provider safety block `422` `AI_DECLINED` (WARN `[provider declined the text]`) (S4b-BL-244, S4b-BL-233; [03](03-design.md) v0.139). |
 
-Related: [Build and deploy](07-secure-build-and-deploy.md) · [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md)
+Related: [Build and deploy](07-secure-build-and-deploy.md) · [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Google Drive design](15-google-drive-backup-and-sharing.md)
 
 ---
 
@@ -54,7 +67,7 @@ AI is off by default (AI-001); none of these variables is needed then. Full list
 | Variable | Default | When to change it |
 |---|---|---|
 | `AI_PROVIDER` | `aistudio` | `aistudio`: Gemini API with `AI_API_KEY` (the rows below). `vertex`: Google Cloud Vertex AI with Application Default Credentials; needs `GCP_PROJECT_ID`, and `AI_API_KEY` / `AI_EMBEDDING_*` URLs and keys are ignored. Other values stop startup. Owner setup: [ai/vertex-setup.md](ai/vertex-setup.md); switch back at any time with `AI_PROVIDER=aistudio` (step 13). |
-| `AI_API_KEY` | – | Gemini API key from Google AI Studio; for Ollama any non-empty value (for example `ollama`). Used for chat and, by default, for embeddings. Secret. Only used with `AI_PROVIDER=aistudio`. **With real data use a key on a billing-enabled (paid) project or Vertex AI** ([ai/vertex-setup.md](ai/vertex-setup.md)); a free-tier key is for synthetic evals only, because the free tier may use prompts to improve Google products ([01](01-requirements.md) PRV-022, [02](02-threat-model.md) T-I20). |
+| `AI_API_KEY` | – | Gemini API key from Google AI Studio; for Ollama or another OpenAI-compatible endpoint (an `AI_BASE_URL` whose host is not `generativelanguage.googleapis.com`) none: AI reads as on without it, and a key you set is still sent (S4b-BL-149). Used for chat and, by default, for embeddings. Secret. Only used with `AI_PROVIDER=aistudio`. **With real data use a key on a billing-enabled (paid) project or Vertex AI** ([ai/vertex-setup.md](ai/vertex-setup.md)); a free-tier key is for synthetic evals only, because the free tier may use prompts to improve Google products ([01](01-requirements.md) PRV-022, [02](02-threat-model.md) T-I20). Set `AI_KEY_REQUIRED=true` (or `false`) to override that: for a proxy in front of Gemini on another host, or an endpoint that wants a key. |
 | `AI_EMBEDDING_PROVIDER` | `google-genai` | `google-genai`: embeddings from the native Gemini API (`models/{model}:batchEmbedContents`). **Ollama (or any other OpenAI-compatible server) needs `AI_EMBEDDING_PROVIDER=openai`**, which sends embeddings to `AI_BASE_URL` like chat. Any other value stops startup with a message naming the variable. |
 | `AI_EMBEDDING_API_KEY` | `AI_API_KEY` | Only for `google-genai`, and only if embeddings should use a different Gemini key than chat. Secret. |
 | `AI_EMBEDDING_BASE_URL` | `https://generativelanguage.googleapis.com/v1beta` | Only for `google-genai`; leave the default. |
@@ -67,9 +80,21 @@ AI is off by default (AI-001); none of these variables is needed then. Full list
 | `AI_INDEX_ON_CHANGE` | `true` | `false` stops embedding each house right after a save; only `POST /api/ai/reindex` embeds then (fewer provider calls). Deletes still leave the index at once. |
 | `GOOGLE_APPLICATION_CREDENTIALS` | unset | Vertex only, standard ADC variable: path to a credential file. Not needed on Cloud Run (the attached service account) or locally after `gcloud auth application-default login`; on a non-Google host it points to the mode-600 key file ([07](07-secure-build-and-deploy.md) §4). |
 
-After changing the embedding provider or model, or `AI_PROVIDER`, run `POST /api/ai/reindex` so every house is embedded with the new model on the new endpoint (both providers use the same model, so this is a precaution when only `AI_PROVIDER` changed).
+After upgrading to the version that adds the visited-houses step to Ask (S4b-BL-194), run `POST /api/ai/reindex` once: the document metadata gained `visited` and `lastVisit`, which older vectors lack (until then a question about visits is answered from the ordinary similarity result; nothing breaks). After changing the embedding provider or model, or `AI_PROVIDER`, run `POST /api/ai/reindex` so every house is embedded with the new model on the new endpoint (both providers use the same model, so this is a precaution when only `AI_PROVIDER` changed).
 
 **Once after deploying the contact-redaction fix** (Sprint 3, C-13, [02](02-threat-model.md) F-30): run `POST /api/ai/reindex` until it returns 200, **after the final version of the fix is deployed** ([ai/ai-design.md](ai/ai-design.md) v0.10 §9.1; a reindex run on an earlier build of the fix must be repeated). Vectors indexed before it may still hold the contact name (before ai-design v0.7), a first name in the label (v0.7), a "C/o <owner>" address (v0.8 and older) or an initials-style "C/o K Ramesh" address (v0.9 and older) in pgvector (the database, not the provider); the Ask path already scrubs them before any prompt or citation, and the reindex replaces them with redacted text. The dev `docker-compose.yml` passes all these settings from the shell or a `.env` file ([07 §7](07-secure-build-and-deploy.md), column *Dev compose*).
+
+### 1.2 Behind a reverse proxy: whose address the rate limits see
+
+The three per-address limiters (the general limit, 600 requests a minute with a burst of 300; wrong or missing API keys, 10 a minute; pairing and owner sign-in, 40 a minute) key on the request's remote address (`getRemoteAddr()`). `server.forward-headers-strategy: native` (`application.yml`, env `FORWARD_HEADERS_STRATEGY`) lets Tomcat take the client address from `X-Forwarded-For`, but only from a proxy it counts as internal (its default private ranges). Behind a proxy outside them (a CDN, a tunnel, a proxy on a public address) every client shares the proxy's address and therefore one bucket: one client's burst throttles everybody, and the ten wrong keys a minute are counted across all clients together (a correct key is never throttled by that one). The limiter also drops all its buckets once it holds more than 10,000 keys, which forgets the limits. For such a proxy keep `native` and widen Tomcat's list to exactly the proxy's addresses with `server.tomcat.remoteip.internal-proxies` (a regular expression; as an environment variable `SERVER_TOMCAT_REMOTEIP_INTERNAL_PROXIES`). Do not trust a whole network you do not run, and do not switch to `framework`: that strategy takes the forwarded headers from any sender, so a client that reaches the server directly could invent its own address, and the property above does not apply to it.
+
+### 1.3 The iPhone app and a server on plain `http://` (S4b-BL-59)
+
+App Transport Security, at its default in the iPhone app, refuses plain `http://` to a host with a domain name, so a self-hosted server must be reached over `https://` (the supported set-up: Tailscale's `https://` address, [the server guide](../guide/docs/set-up-a-server.md)). A server on a LAN IP address or a `.local` name is outside ATS and connects without TLS, after iOS asks for local network access; that is as on Android, and the traffic is readable on that network. Loopback is the only plain `http://` exception for the AI provider ([03](03-design.md), the local-address rule of the AI providers).
+
+### 1.4 The one-time format reset (S4b-BL-206, 2026-10-12)
+
+The kinds step 2 squashed the fourteen Flyway migrations into one `V1__init.sql`, put `kind`, the money and the extras on the candidate and renamed the sync API to `/api/candidates` (`candidateId` on visits and photos; [03](03-design.md) §9). Nothing is migrated: no server had real data. A database made by the old migrations is refused by Flyway at start-up (the checksum of version 1 and the missing versions 2..14 differ), so drop it and let the server create it again (`docker compose down -v`, or `DROP DATABASE doorprints; CREATE DATABASE doorprints;`), then sync the apps again. Take a `GET /api/export` copy first if anything on it matters: the backup format is unchanged by this step and imports into the new server. Until the web and phone steps of S4b-BL-206 land, the apps cannot sync with a server of this version (they still call `/api/houses`).
 
 ## 2. Monitoring
 
@@ -152,6 +177,7 @@ After restoring into production, make sure `sync_seq.last_value` ≥ `max(sync_v
 | Weekly | Merge Dependabot PRs after CI passes. Read the weekly `security.yml` run (Trivy SBOM/fs/config, npm audit, gitleaks, Semgrep) and any ZAP report. When a Spring Boot patch manages Tomcat 11.0.25 or later, remove the `tomcat.version` override from `backend/pom.xml` (F-28, 07 §1). |
 | Monthly | DB size check. Check the backup run history. Update the Android app if a release exists. Check AI spend against the budget and the per-user and global caps (section 10.2). While the Google Cloud trial runs: credit left and days left (section 10.3). Firebase Hosting usage (section 2) and *Releases to keep* = 10. |
 | One-off (2026) | **By about 15 Dec 2026:** Google Cloud trial export and provider decision; **before 22 Dec 2026:** switch or upgrade, tear down staging (section 10.4). Put both dates in the calendar and the password manager entry. |
+| Before the Docker Hub token expires | Create a new read-only token (*Public Repo Read-only*) and replace the repository secret `DOCKERHUB_TOKEN` ([07](07-secure-build-and-deploy.md) §7.3). Put the expiry date in the calendar. After it expires the jobs still run, with anonymous pulls and the risk of `429 toomanyrequests`. |
 | Quarterly | Restore drill (TC-O-01). Rebuild the base image. Check free-tier terms (Render, Supabase/Neon, Firebase Hosting Spark, OpenFreeMap, Nominatim, LLM). If a custom domain was ever bought: auto-renew on and the renewal date in the calendar ([12](12-brand-and-naming.md) section D). |
 | 6-monthly | Rotate `APP_API_KEY` (section 5.1). Review the threat model findings. |
 | Yearly | Rotate DB, backup-role and CI secrets. Review the docs (bump versions). Check the keystore backup is readable. |
@@ -185,9 +211,20 @@ Do not leave `APP_API_KEY_NEXT` set after a rotation: while it is set, two keys 
 Each app install has its own key, obtained by pairing ([03](03-design.md) §12.1). The server's owner manages them on
 the **owner page**, `https://<server>/owner`.
 
-- **First sign-in, or a lost browser:** the server writes a one-time link to its log at every start
-  (`docker compose logs api`, look for "Doorprints owner page"). It works once, for one hour. Restart the server
-  (`docker compose restart api`) for a new one; a signed-in browser can also make one (*Add another browser*).
+- **First sign-in, or a lost browser:** while no browser is signed in, the server writes a one-time link to its log at
+  every start (`docker compose logs api`, look for "Doorprints owner page"). It works once, for one hour. Restart the
+  server (`docker compose restart api`) for a new one. Once a browser is signed in the log holds no link, only a line
+  saying where to get one: a signed-in browser makes it with *Add another browser*. If every browser was signed out or
+  has been idle for 30 days, the next start writes a link again.
+- **You lost your only signed-in browser (cleared cookies, a new laptop) and its session is still open** (up to 30 idle
+  days, so no start writes a link): the recovery switch. Set `OWNER_SETUP_LINK_IN_LOG=true` in the server's `.env`,
+  restart (`docker compose up -d`), read the log (`docker compose logs api`, look for "Doorprints owner page"; the block
+  says the setting is on), open the link within the hour, and **then remove the line (or set it to `false`) and restart
+  again**. While it is on, every start writes a live link, and a log is read by more people and tools than you. Default
+  off (`app.owner.setup-link-in-log`; S4b-BL-188, [03](03-design.md) §12.1).
+- **Pairing requests are capped** (S4b-BL-161): at most 50 open at once and 5 per client address (`PAIRING_MAX_OPEN`, `PAIRING_MAX_PER_SOURCE`; leave them unset, they exist for the API scan); another is refused with
+  429 until one expires (10 minutes) or is answered, and the open ones are never pushed out. Behind a proxy that hides
+  client addresses (§1.2) all clients share one source and one allowance of 5.
 - **A lost or sold phone:** owner page → *Devices* → *Revoke*. Its key stops working at once; the other devices are
   not affected and the owner key does not change.
 - **Someone else's phone on your server:** it starts with AI off; turn *AI* on for it only if it may use your Gemini
@@ -212,6 +249,7 @@ the **owner page**, `https://<server>/owner`.
 | Vertex AI credential | GitHub Actions (Workload Identity Federation) and Cloud Run (attached service account): no stored key, nothing to rotate; on suspicion remove the `roles/iam.workloadIdentityUser` binding or disable the service account, then re-grant after the fix. JSON key on a non-Google host only: quarterly and on suspicion, create a new key → replace the file named by `GOOGLE_APPLICATION_CREDENTIALS` → redeploy → delete the old key in IAM. [07](07-secure-build-and-deploy.md) §4, [02](02-threat-model.md) T-I22. |
 | Deploy hook / SSH key | Regenerate in Render / replace the `authorized_keys` line → update the GitHub environment secret |
 | Web deploy identity (`FIREBASE_WIF_PROVIDER`, `FIREBASE_SA_EMAIL`; Firebase project `doorprints`) | **Nothing to rotate**: Workload Identity Federation issues a token of about an hour to `web.yml` on `main` only, and the service account `firebase-hosting-deploy` has no key ([07](07-secure-build-and-deploy.md) §6.3). **On suspicion** (an unexpected release in *Hosting → release history*, a changed provider condition, a key found on the service account): Cloud console → project `doorprints` → *IAM & Admin → Service Accounts* → `firebase-hosting-deploy` → *Disable* (or remove its *Workload Identity User* binding); delete any key listed under *Keys*; check the provider `github-web-deploy`'s attribute condition against 07 §6.3 step 6; roll back the site (IR-10); then re-enable. The two GitHub secrets are identifiers, not credentials. If the Cloudflare secrets were ever added, delete them (07 §6.3 step 8). |
+| Docker Hub token (`DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN`) | Docker Hub, Account settings, Personal access tokens: create a new token with **Public Repo Read-only**, replace the repository secret `DOCKERHUB_TOKEN`, delete the old token. On suspicion of a leak, delete the token first, then replace. Check the next CI run shows *Log in to Docker Hub* green. [07](07-secure-build-and-deploy.md) §7.3. |
 | GitHub PAT | Revoke at github.com/settings/tokens. Create a fine-grained one with expiry ≤ 90 days only if needed. |
 | Age backup key | Create a new key pair → update `BACKUP_AGE_RECIPIENT`. Keep the old private key until the old backups expire (30 days). |
 | Android signing key | **Do not rotate** unless it is compromised (see IR-7) |
@@ -244,10 +282,12 @@ its photos as missing from the file. A full export for migration is the encrypte
 
 | Scope | Procedure (SQL on the prod DB, admin role, **take a backup first**) |
 |---|---|
-| One house | Delete it in the app (or `DELETE /api/houses/<id>`). The server blanks its content, deletes its photo bytes, unlinks its visits and keeps a content-free tombstone so other devices delete their copy; the tombstone is purged automatically after 90 days. |
+| One house | Delete it in the app (or `DELETE /api/candidates/<id>`). The server blanks its content, deletes its photo bytes, unlinks its visits and keeps a content-free tombstone so other devices delete their copy; the tombstone is purged automatically after 90 days. |
 | Purge tombstones | Automatic, daily at 03:30 (`DataService.purgeTombstones`, `TOMBSTONE_RETENTION_DAYS`, default 90). A device that has not synced for longer than that keeps its local copy of rows deleted elsewhere. |
 | Old visits (retention, PRV-006) | `delete from visit where arrived_at < now() - interval '6 months';` (devices keep their copies until the app's data is cleared) |
 | Everything (end of hunt) | 1) Export if wanted. 2) `curl -X DELETE -H "X-API-Key: $KEY" -H "X-Confirm-Delete: DELETE-ALL-MY-DATA" "$API/api/data"` (hard-deletes houses, visits, photos and AI index rows; 428 without the exact header), or delete the DB project. 3) Delete the API service. 4) Delete the backup artifacts / R2 objects. 5) Android: Settings → Apps → Doorprints → Storage → Clear storage, then uninstall. A test build from before the rename (app name "House Hunt", `com.househunt.app`) is a separate app with its own local copy: clear and uninstall it too. 6) Web: Connect → Disconnect, and clear site data. 7) If AI was used: delete the embeddings (same DB) and check the LLM provider's retention/deletion options. |
+
+`DataService.deleteAll` (the "delete all my data" call) removes the person's data only (houses, checklists, visits, photos, records and AI index rows); it leaves the device keys, owner sessions, pairing requests and the server secret and settings alone, because they are the owner's server configuration, not the person's data. To end every device's access, revoke the devices in the owner page (section 5.1a) or rotate the secrets (section 5).
 
 Third-party contact data (landlord/agent phone numbers) is removed with the house. If a third party asks you to delete their details, use the "one house" or field-level update (set `contact_name`/`contact_phone` to null through the app so it syncs).
 
@@ -320,7 +360,7 @@ after the bounded retries) is logged as a WARN containing `[provider quota exhau
 problem body with `"code": "AI_QUOTA_EXHAUSTED"`, `"retryable": true` and a `Retry-After: 60` header. A re-index
 stops at the first such error (the remaining batches count as failed; `POST /api/ai/reindex` returns 503), and an
 eval run ends with **STOPPED: provider quota exhausted** instead of PASS/FAIL. A per-minute quota clears by itself;
-a quota error that keeps coming back for hours points to a daily quota, shared-capacity limits or a loop. Check the per-user counters for
+a quota error that keeps coming back for hours points to a daily quota, shared-capacity limits or a loop. Since S4b-BL-244 a Gemini daily quota (a `PerDay` quota id), a spent credit (HTTP 402, `insufficient_quota`, `billing_error`) is not a wait: the app answers `402` with the same `code`, `"retryable": false` and no `Retry-After`, and the apps say the quota or credit is used up; WARN lines contain `[provider quota or credit spent]`. A provider's safety block (S4b-BL-233) is `422` with `"code": "AI_DECLINED"` and the WARN line `[provider declined the text]`; it is the person's text, not an outage. Check the per-user counters for
 one account using most of the requests; remove that invitation or lower its quota. If the pattern looks like a stolen
 session, revoke it (IR-1 / IR-2 as applicable) and rotate the AI key or Vertex credentials. If the spend comes from a
 bug (a retry loop), set the AI flag to off (AI-001) and redeploy. Budget alerts only notify; the spend cap budget
@@ -345,6 +385,50 @@ that fails with `PERMISSION_DENIED`: send the red line to DevSecOps; do not add 
 ([07](07-secure-build-and-deploy.md) §6.3). Old releases are not reachable at addresses of their own, so there is
 nothing else to withdraw.
 
+### IR-11 The Google project stopped, or a client deleted
+
+Google has suspended or changed the Doorprints Cloud project `doorprints` (policy or brand verification), or one of
+its OAuth clients (website, Android, iPhone) has been deleted
+([15](15-google-drive-backup-and-sharing.md) §2.4, R1). Connect and sync fail. The houses already on each phone
+and in each browser stay. The self-hosted server, and sharing by an update file, do not use this project.
+
+| Step | Action |
+|---|---|
+| Detect | One platform cannot connect while the others still can (a client is gone), or every platform fails together (the project is stopped). In Google Cloud Console, project `doorprints`: *APIs & Services > Credentials*, and *Google Auth Platform* (Audience status, brand verification). |
+| Contain | Do not add a restricted scope such as `drive` to get past a review: that needs a yearly paid assessment, which the zero-cost rule excludes (15 §2.1). Do not move the files into the hidden app folder (`drive.appdata`): if the project stops, those files are unreachable for good (15 §2.1). |
+| What stays readable | Each person's *Doorprints* folder stays in their own Drive, because the scope is `drive.file` (15 §2.2). They download the `.dpx` files and open them on the website with *Import a backup* and the recovery key, or on a device that still holds its key (15 §1.5, §9.5 vii). A *Save a copy* already on a device is readable without Google. |
+| A deleted client | Create that client again with the same settings as 15 §2.4: web origins `https://doorprints.web.app` and `http://localhost:4200`; Android package `app.doorprints` and the release or debug SHA-1; iPhone bundle `app.doorprints`. The new client id replaces the old one in configuration only (the website's repository variable `GOOGLE_OAUTH_WEB_CLIENT_ID`, Android's Gradle property, the iPhone's `Info.plist`). Do not copy the web client's secret anywhere (15 §2.4). People on that platform connect again. Check the other platforms before assuming they still work: whether losing one client takes the others with it is still the spike's question (S4b-BL-122). |
+| A stopped project | Read Google's notice. Brand verification needs the home page and the privacy page (S4b-BL-121; the owner still signs off that text). Leave Audience on **Testing** until the release gate passes (15 §2.3). While the project is stopped, tell people the files are still in Drive and how to open a downloaded backup (the guide's Google Drive page). |
+| Learn | Record what Google said. If a client was missing, note which one so the next pass of [13](13-release-security-checklist.md) I1 catches it. |
+
+### IR-12 A leaked Picker key
+
+The Picker key is a browser API key. It is public by nature: it ships in the page. The restrictions are what protect
+it ([15](15-google-drive-backup-and-sharing.md) §2.4, [13](13-release-security-checklist.md) I3): *Websites*
+`https://doorprints.web.app/*` only, and the API *Google Picker API* only. The project number (the Picker's app id)
+is the same kind of value. Sharing, which is what the Picker is for, is deferred (S4b-BL-120). Seeing the key in the
+page or in configuration, while those restrictions still hold, is not this incident.
+
+| Step | Action |
+|---|---|
+| Detect | The key is called from a site other than `https://doorprints.web.app`, it can call an API other than the Picker API, or *Credentials > the API key* shows the restrictions missing or wider than I3. |
+| Contain | Put the two restrictions back at once. If the key was ever unrestricted, create a new key with those restrictions, point the website's Picker configuration at it, and delete the old key. This is not the server API key: IR-2 does not apply, and rotating `APP_API_KEY` does nothing here. Do not write the key into the docs (15 §2.4). |
+| Assess | *APIs & Services* metrics for the Picker API: calls from an unexpected referrer. The key does not grant `drive.file` and does not decrypt a file. Reading a file the project was handed still needs that person's OAuth grant (15 §4.3). |
+| Learn | Check I3 at the next release. |
+
+### IR-13 A person lost access to their Google account
+
+The account is closed, or the person can no longer sign in to it. Its Drive goes with it
+([15](15-google-drive-backup-and-sharing.md) §1.5). Doorprints keeps no server copy to give back.
+
+| Step | Action |
+|---|---|
+| What stays | The houses on each device that already had them. A *Save a copy* on a device is readable without Google. Another enrolled device keeps its own copy and can still make a *Save a copy*. |
+| What goes | The *Doorprints* folder in that account (backups, sync files, photos and `keys.json`) if the account stays closed or unreachable. A recovery key kept only in that Google account is gone with it (15 §9.4). |
+| If they get the account back | The files are still encrypted. A device that still has its key connects again. A new device joins from one that still has the key, or with the recovery key (15 §9.5 i, iii). With no recovery key and every device gone, the files in Drive cannot be opened (15 §1.5, §9.5 iii). |
+| If someone else has the account | They can delete the files from Drive's own pages. They cannot read the houses: the contents stay encrypted (15 §9, §10.6). The person recovers the account with Google, turns on 2-Step Verification, and changes the Google password. From a device that still opens Doorprints: *Disconnect on all devices* (or Google's *Your connections to third-party apps & services*). If a phone was also lost, *Revoke this device* (IR-1). A revoke does not sign that phone out of Google (15 §9.5 iv). *Lock old backups again* is not in version 1, so someone who has both the lost phone and the account can still open backups made before the revoke. |
+| Another Google account | A different account is a different Drive. Connecting it does not open the lost account's files. The first connect there shows a new recovery key (15 §9.4). |
+
 ## 8. Release checklist
 
 - [ ] Version bumped: `android/app/build.gradle.kts` (`versionCode` +1, `versionName`), `backend/pom.xml`, `web/package.json`.
@@ -355,7 +439,7 @@ nothing else to withdraw.
 - [ ] Fresh backup taken (manual `backup.yml` run) within 24 h.
 - [ ] Deploy the API by image digest → health UP → smoke test (stats, create/delete a test house, then purge it).
 - [ ] Web deployed to Firebase Hosting (`web.yml` job `deploy-firebase` green, **including its security-header check**) → open `https://doorprints.web.app`: Connect and Map load, no CSP errors in the console; `APP_CORS_ORIGINS` on the API lists `https://doorprints.web.app` (no path); the release is in *Hosting → release history*.
-- [ ] Release APK built by the `android.yml` `release` job (`doorprints-release-apk`; later `release.yml`), `apksigner verify` fingerprint in the log matches the published one, SHA-256 published.
+- [ ] Release APK built by the `android.yml` `release` job (`doorprints-release-apk`), or a version tag `vX.Y.Z` pushed so that `release.yml` makes a **draft** GitHub Release with the signed APK, its `.sha256` and the signer fingerprint (a manual run of it is a dry run; the draft stays unapproved until the gate of [13](13-release-security-checklist.md) passes), `apksigner verify` fingerprint in the log matches the published one, SHA-256 published.
 - [ ] Install on the phone **after syncing**. Settings show the right server. Sync OK. Hunt mode starts and stops.
 - [ ] If AI changed: eval results attached and meet the thresholds. Flag default stays off unless approved.
 - [ ] Public repository: no secrets, personal data or unencrypted dumps in the commit, workflow logs or artifacts (section 10.1).
@@ -469,6 +553,9 @@ feature keep working). Owner: the product owner. Step by step for the AI part: [
 | By about 15 Dec 2026 | **Decide** (product owner): (a) **back to AI Studio**: `AI_PROVIDER=aistudio`; real data only with a paid-tier Gemini API key ([01](01-requirements.md) PRV-022; the free tier is for synthetic evals only); or (b) **upgrade the billing account** to paid and keep Vertex AI, with the spend cap budget and alerts of section 10.2 created **before** the upgrade; or (c) turn cloud AI off (`APP_AI_ENABLED=false`) | Decision recorded in the sprint log ([10](10-sprint-log.md)) |
 | **Before 22 Dec 2026** | Carry out the decision on every host (`AI_PROVIDER`, keys or credentials) and run `POST /api/ai/reindex` if the provider changed; run one small `ai-evals.yml` run (`types` = `extract`) on the provider now in use | Eval run green or STOPPED only by quota |
 | Before 22 Dec 2026 | **Staging tear-down** (section 10.3, [07](07-secure-build-and-deploy.md) §6.5): delete the Cloud SQL instance and the Cloud Run service; spend cap budgets do not cover Cloud SQL | Nothing billable left in the staging project |
+| **While Vertex AI is used** | Set the repository variable `VERTEX_EVAL_ENABLED=true` only for the days of a run and delete it afterwards: `ai-evals.yml` refuses `provider=vertex` without it (S4b-BL-193). In the Google Cloud console: APIs & Services > Vertex AI API > Quotas, set a low requests-per-minute and per-day limit; Billing > Budgets keep their e-mail alerts (they do not stop spending) | A run without the variable stops with the message that Vertex AI evals are switched off |
+| **From 2026-12-15** | The workflow refuses `provider=vertex` on its own from this date, even with the variable set. Do not upgrade the trial account ("Activate full account"): an expired trial is suspended, not charged | The guard step fails with "closed from 2026-12-15" |
+| **Hard stop at trial end** | Billing > Account management > My projects > `doorprints-ai` > Change billing / Disable billing; IAM > Service accounts > disable `doorprints-ai@…`, or delete the Workload Identity pool `github`; delete the secrets `GCP_WIF_PROVIDER` and `GCP_SA_EMAIL` and the variables `GCP_PROJECT_ID`, `GCP_LOCATION`, `AI_VERTEX_EMBEDDING_LOCATION`, `VERTEX_EVAL_ENABLED` | No billing account is linked, so no call to Vertex AI can be charged |
 | If Vertex AI is dropped | Disable the Vertex AI API or shut down `doorprints-ai`; delete the GitHub secrets `GCP_WIF_PROVIDER` and `GCP_SA_EMAIL`; remove the Workload Identity principal binding; leave `ai-evals.yml` on `provider=aistudio` | No Google Cloud credential left that can call Vertex AI |
 | If Vertex AI is kept | Spend cap budget and 50/90/100 % alerts active on the paid account (section 10.2); the trial-period $50/$150/$250 alerts replaced | Budget page shows the monthly target |
 | Firebase Test Lab | Nothing to do: it keeps working within the no-cost daily quota (section 10.3) | – |
@@ -489,7 +576,7 @@ There is no public server yet, so this is documented rather than made backward c
 | MCP tool | `askHouseHunt` | `askDoorprints` | An MCP client picks the new name from `tools/list` on its next connection; a saved prompt or allow-list that names the old tool is updated by hand ([ai/ai-design.md](ai/ai-design.md) section 12) |
 | Image tags in the examples | `house-hunt-api`, `house-hunt-db` | `doorprints-api`, `doorprints-db` | Only a local tag; rebuild or retag |
 | Maven coordinates, Java packages | `com.househunt:house-hunt-api`, `com.househunt.*` | `app.doorprints:doorprints-api`, `app.doorprints.server.*` | Nothing (the image copies `target/*.jar`); log filters that match on the logger name `com.househunt` change to `app.doorprints.server` |
-| Flyway migrations | V1-V3 | unchanged, not edited | Nothing: their checksums stay the same |
+| Flyway migrations | V1-V3 | unchanged, not edited | Nothing: their checksums stay the same (until the format reset of 2026-10-12, §1.4, which replaced them all) |
 
 **Carry a local compose database over: mandatory** for a server that phones or the web app have synced with. Do
 not start the new, empty database in its place. The clients do not send everything again to an empty server: each

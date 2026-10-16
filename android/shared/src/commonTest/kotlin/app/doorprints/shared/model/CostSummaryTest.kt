@@ -55,6 +55,17 @@ class CostSummaryTest {
     }
 
     @Test
+    fun aPriceWithoutATypeIsNotAMonthlyRent() {
+        // Owner, 2026-10-12 (S4b-BL-206): a 1.2 crore price of type *Not set* has no monthly cost or move-in, as on the
+        // website (house-cost.ts: RENT only); its price per sq ft still computes.
+        val s = CostSummary.of(1_20_00_000, null, 1200, HouseCost(maintenance = 3_000))
+        assertNull(s.monthlyCost)
+        assertNull(s.moveIn)
+        assertEquals(10_000.0, s.perSqFt)
+        assertEquals(1_20_00_000L, s.effectivePrice)
+    }
+
+    @Test
     fun vector4ASaleHasNoMonthlyCostOrMoveInButAPricePerSqFt() {
         val s = CostSummary.of(1_250_000, "SALE", 1450, HouseCost(brokerage = 25_000, agreedPrice = 1_200_000))
         assertNull(s.monthlyCost)

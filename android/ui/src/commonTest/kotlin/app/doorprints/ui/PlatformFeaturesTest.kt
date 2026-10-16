@@ -39,6 +39,8 @@ class PlatformFeaturesTest {
                 weeklyBackup = true,
                 inAppLanguage = true,
                 areaWakeup = true,
+                deviceTransferNote = true,
+                googleDrive = true,
             ),
             PlatformFeatures(),
         )
@@ -59,6 +61,12 @@ class PlatformFeaturesTest {
                 inAppLanguage = false,
                 // The area wake-up (slice 4b): region monitoring and "Always" on iPhone since S4b-BL-96.
                 areaWakeup = true,
+                // The iPhone's data is kept out of iCloud and computer backups (IosDataDirectory): no transfer note.
+                deviceTransferNote = false,
+                // Google Drive since S4b-BL-117: the iPhone's wiring (it says "not available" in a build with no Google client).
+                googleDrive = true,
+                // No emulator on the iPhone: 10.0.2.2 stays refused as an AI address (S4b-BL-150).
+                emulatorHost = false,
             ),
             PlatformFeatures.Ios,
         )

@@ -1,0 +1,52 @@
+{
+  "spec": [
+    "backend/src/test/java/app/doorprints/server/ai/agent/NeutralRulePromptsTest.java"
+  ],
+  "maven": [
+    "-Dtest=NeutralRulePromptsTest,AskPromptsTest,PlanPromptTest,KindAskPromptsTest,KindExtractVectorsTest"
+  ],
+  "mutations": [
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/PromptSafety.java",
+      "find": "\"Do not repeat abusive words from the text; stay neutral and factual.\"",
+      "replace": "\"Do not repeat abusive words from the text.\"",
+      "expect": "theRuleIsTheSharedVectorsSentence"
+    },
+    {
+      "file": "backend/src/main/resources/kinds/house.prompts.json",
+      "find": "- %2$s\\n- price:",
+      "replace": "- price:",
+      "expect": "everyExtractAskAndPlanTextHasTheRuleOnceAfterItsDataRule"
+    },
+    {
+      "file": "backend/src/main/resources/kinds/house.prompts.json",
+      "find": "- %2$s\\n- Records exist",
+      "replace": "- Records exist",
+      "expect": "everyExtractAskAndPlanTextHasTheRuleOnceAfterItsDataRule"
+    },
+    {
+      "file": "backend/src/main/resources/kinds/house.prompts.json",
+      "find": "- %4$s\\n- The request may",
+      "replace": "- The request may",
+      "expect": "everyExtractAskAndPlanTextHasTheRuleOnceAfterItsDataRule"
+    },
+    {
+      "file": "backend/src/main/resources/kinds/school.prompts.json",
+      "find": "- %2$s\\n- label:",
+      "replace": "- label:",
+      "expect": "everyExtractAskAndPlanTextHasTheRuleOnceAfterItsDataRule"
+    },
+    {
+      "file": "backend/src/main/resources/kinds/school.prompts.json",
+      "find": "- %2$s\\n- Records exist",
+      "replace": "- Records exist",
+      "expect": "everyExtractAskAndPlanTextHasTheRuleOnceAfterItsDataRule"
+    },
+    {
+      "file": "backend/src/main/resources/kinds/house.prompts.json",
+      "find": "Never guess phone numbers, URLs, prices or addresses.\\n- %2$s",
+      "replace": "Never guess phone numbers, URLs, prices or addresses.\\n- %2$s\\n- %2$s",
+      "expect": "everyExtractAskAndPlanTextHasTheRuleOnceAfterItsDataRule"
+    }
+  ]
+}

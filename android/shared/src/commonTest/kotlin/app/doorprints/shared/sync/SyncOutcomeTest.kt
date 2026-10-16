@@ -42,10 +42,10 @@ class SyncOutcomeTest {
     @Test
     fun aServerResetIsASixthFieldOnlyWhenItHappened() {
         // S4b-BL-20: every other outcome keeps the five-field form, so values stored before still read the same.
-        val reset = SyncOutcome(SyncOutcome.Kind.OK, pushed = 40, pulled = 12, serverReset = true)
+        val reset = SyncOutcome(SyncOutcome.Kind.OK, pushed = 40, pulled = 12, remoteReset = true)
         assertEquals("OK|40|12|0|0|R", reset.encode())
         assertEquals(reset, SyncOutcome.decode(reset.encode()))
-        assertEquals(false, SyncOutcome.decode("OK|1|2|0|0")?.serverReset)
+        assertEquals(false, SyncOutcome.decode("OK|1|2|0|0")?.remoteReset)
         assertNull(SyncOutcome.decode("OK|1|2|0|0|X"))
         assertNull(SyncOutcome.decode("OK|1|2|0|0|R|R"))
     }

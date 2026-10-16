@@ -1,0 +1,116 @@
+{
+  "spec": [
+    "web/src/app/core/school-kind.spec.ts",
+    "web/src/app/pages/house-detail/school-form.spec.ts"
+  ],
+  "mutations": [
+    {
+      "file": "web/src/app/core/dev-kinds.ts",
+      "find": "  if (!devMode || !storage) return false;",
+      "replace": "  if (!storage) return false;",
+      "expect": "off in a production build even when set"
+    },
+    {
+      "file": "web/src/app/core/dev-kinds.ts",
+      "find": "    return storage.getItem(DEV_KINDS_KEY) === 'school';",
+      "replace": "    return storage.getItem(DEV_KINDS_KEY) !== null;",
+      "expect": "off for any other value"
+    },
+    {
+      "file": "web/src/app/core/dev-kinds.ts",
+      "find": "  return on ? [HOUSE, SCHOOL] : [HOUSE];",
+      "replace": "  return [HOUSE, SCHOOL];",
+      "expect": "cannot be created, offered or drawn"
+    },
+    {
+      "file": "web/src/app/core/dev-kinds.ts",
+      "find": "fields: SCHOOL_FIELDS, extracts: false };",
+      "replace": "fields: SCHOOL_FIELDS, extracts: true };",
+      "expect": "choosing School draws the school"
+    },
+    {
+      "file": "web/src/app/pages/house-detail/kind-extras.ts",
+      "find": "    narrow: f.section === MONEY_SECTION && fields.labels.isVisible('field.money'),",
+      "replace": "    narrow: f.section === MONEY_SECTION,",
+      "expect": "each extra: its control"
+    },
+    {
+      "file": "web/src/app/pages/house-detail/kind-extras.ts",
+      "find": "    if (section === MONEY_SECTION && this.moneyShown) return shown.length ? [shown] : [];",
+      "replace": "    if (section === MONEY_SECTION) return shown.length ? [shown] : [];",
+      "expect": "lays the details extras out"
+    },
+    {
+      "file": "web/src/app/pages/house-detail/kind-extras.ts",
+      "find": "{ amount: Math.round(value), cadence: f.cadence }",
+      "replace": "{ amount: Math.round(value), cadence: 'once' }",
+      "expect": "writes each value as one of the candidate"
+    },
+    {
+      "file": "web/src/app/pages/house-detail/kind-extras.ts",
+      "find": "      return f.options.some((o) => o.id === value) ? (value as string) : null;",
+      "replace": "      return typeof value === 'string' ? value : null;",
+      "expect": "writes each value as one of the candidate"
+    },
+    {
+      "file": "web/src/app/pages/house-detail/kind-extras.ts",
+      "find": "      return f.options.some((o) => o.id === raw) ? raw : null;",
+      "replace": "      return raw;",
+      "expect": "writes each value as one of the candidate"
+    },
+    {
+      "file": "web/src/app/pages/house-detail/kind-extras.ts",
+      "find": "      return typeof value === 'string' && value !== '' ? value : null;",
+      "replace": "      return typeof value === 'string' ? value : null;",
+      "expect": "writes each value as one of the candidate"
+    },
+    {
+      "file": "web/src/app/pages/house-detail/kind-extras.ts",
+      "find": "  const path = f.was ? f.was.split('.') : ['extrasOther', f.id];",
+      "replace": "  const path = (f.was ?? f.id).split('.');",
+      "expect": "writes each value as one of the candidate"
+    },
+    {
+      "file": "web/src/app/core/school-kind.ts",
+      "find": "  { id: 'grades', type: 'text', maxLength: 40, section: 'details', order: 70 },",
+      "replace": "  { id: 'grades', type: 'text', maxLength: 80, section: 'details', order: 70 },",
+      "expect": "the website’s copy has every ref"
+    },
+    {
+      "file": "web/src/app/core/school-kind.ts",
+      "find": "  listingUrl: 'school.website', notes: 'house.notes',",
+      "replace": "  listingUrl: 'house.listingUrl', notes: 'house.notes',",
+      "expect": "the website’s copy has every ref"
+    },
+    {
+      "file": "web/src/app/pages/house-detail/house-detail-page.html",
+      "find": "      @if (shows('section.rooms')) { <section class=\"card\" aria-labelledby=\"rooms-heading\">",
+      "replace": "      @if (true) { <section class=\"card\" aria-labelledby=\"rooms-heading\">",
+      "expect": "the golden file's controls"
+    },
+    {
+      "file": "web/src/app/pages/house-detail/house-detail-page.html",
+      "find": "        @if (shows('field.brokerId')) { <div class=\"field\">",
+      "replace": "        @if (true) { <div class=\"field\">",
+      "expect": "the golden file's controls"
+    },
+    {
+      "file": "web/src/app/pages/house-detail/house-detail-page.html",
+      "find": "        {{ (isNew() ? 'house.discard' : L.ref('kind.delete')) | t }}",
+      "replace": "        {{ (isNew() ? 'house.discard' : 'house.delete') | t }}",
+      "expect": "hides what the kind hides"
+    },
+    {
+      "file": "web/src/app/core/kind-setting.ts",
+      "find": "priceType: drawnKind(kind).labels.isVisible('field.money') ? d.priceType : null };",
+      "replace": "priceType: d.priceType };",
+      "expect": "a new candidate is a school, and Save stores a school"
+    },
+    {
+      "file": "web/src/app/pages/house-detail/house-detail-page.ts",
+      "find": "  protected readonly kind = computed(() => drawnKind(this.draft()?.kind));",
+      "replace": "  protected readonly kind = computed(() => drawnKind(null));",
+      "expect": "is still drawn as a school"
+    }
+  ]
+}

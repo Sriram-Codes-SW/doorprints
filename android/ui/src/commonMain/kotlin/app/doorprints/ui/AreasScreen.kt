@@ -49,6 +49,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.doorprints.data.HouseEntity
+import app.doorprints.shared.trace.RepeatLook
 import app.doorprints.shared.model.Area
 import app.doorprints.shared.model.AreaNote
 import app.doorprints.shared.model.AreaNotes
@@ -61,6 +62,7 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
 
@@ -126,7 +128,7 @@ fun AreasEditor(onOpenArea: (String) -> Unit, onTurnOnWakeup: () -> Unit = {}) {
             HeroEmptyState(
                 icon = Icons.Default.Place,
                 title = stringResource(Res.string.areas_empty_title),
-                body = stringResource(Res.string.areas_empty_body),
+                body = stringResource(LocalSpace.current.pages.areasEmptyBody),
                 horizontalPadding = 0.dp,
             )
         }
@@ -178,6 +180,7 @@ private sealed interface NoteFilter {
     data class OfStreet(val key: String) : NoteFilter
 }
 
+/** The filter as the string kept in saved state: empty for all, "a:" and an area id, or "s:" and a street key. */
 private fun NoteFilter.save(): String = when (this) {
     NoteFilter.All -> ""
     is NoteFilter.OfArea -> "a:$id"
@@ -205,7 +208,7 @@ private fun noteSource(note: AreaNote, areas: List<Area>): String = when {
 private fun AreaNotesList(areas: List<Area>, notes: List<AreaNote>) {
     SectionHeading(stringResource(Res.string.notes_heading))
     if (notes.isEmpty()) {
-        Text(stringResource(Res.string.notes_empty), style = MaterialTheme.typography.bodyMedium)
+        Text(stringResource(LocalSpace.current.pages.notesEmpty), style = MaterialTheme.typography.bodyMedium)
         return
     }
     var saved by rememberSaveable { mutableStateOf("") }
@@ -325,6 +328,11 @@ fun AreaFormScreen(areaId: String?, onDone: () -> Unit) {
     }
 }
 
+/**
+ * The form behind [AreaFormScreen] once the area is known: name, point, radius and *Wake me here* are saved state;
+ * *Save* needs a name and a valid point, and a refused save at the cap of areas shows the cap message. Delete is
+ * confirmed first.
+ */
 @Composable
 private fun AreaForm(areaId: String?, found: Area?, liveCount: Int, onDone: () -> Unit) {
     val repo = LocalAppServices.current.repository
@@ -389,7 +397,7 @@ private fun AreaForm(areaId: String?, found: Area?, liveCount: Int, onDone: () -
     }
     if (confirmDelete && areaId != null) {
         ConfirmDelete(
-            stringResource(Res.string.area_delete_title), stringResource(Res.string.area_delete_body),
+            stringResource(Res.string.area_delete_title), stringResource(LocalSpace.current.pages.areaDeleteBody),
             onDismiss = { confirmDelete = false },
         ) {
             scope.launch {
@@ -400,6 +408,7 @@ private fun AreaForm(areaId: String?, found: Area?, liveCount: Int, onDone: () -
     }
 }
 
+/** The name field of an area or a place: capped at [max] characters, with an error while it is empty. */
 @Composable
 private fun NameField(name: String, max: Int, onName: (String) -> Unit) {
     val missing = name.isBlank()
@@ -411,6 +420,7 @@ private fun NameField(name: String, max: Int, onName: (String) -> Unit) {
     )
 }
 
+/** The delete confirmation of an area or a place: [onConfirm] runs after the dialog closes. */
 @Composable
 private fun ConfirmDelete(title: String, body: String, onDismiss: () -> Unit, onConfirm: () -> Unit) {
     AlertDialog(
@@ -566,7 +576,7 @@ private fun MapPointPicker(start: Pair<Double, Double>?, onDismiss: () -> Unit, 
         Surface(Modifier.fillMaxSize()) {
             Box(Modifier.fillMaxSize()) {
                 PlatformMap(
-                    houses = houses, track = emptyList(), labelSizeSp = markerLabelSizeSp(fontScale), showLocation = false,
+                    houses = houses, track = TraceDrawing.EMPTY, repeatLook = RepeatLook.CLEAR, check = null, labelSizeSp = markerLabelSizeSp(fontScale), showLocation = false,
                     attribution = MapAttribution(gutter, bottom, shown = true),
                     events = object : MapEvents {
                         override fun onReady(control: MapControl) {
@@ -618,6 +628,10 @@ fun PlacesScreen(onBack: () -> Unit, onOpenPlace: (String) -> Unit) {
     SubScreen(stringResource(Res.string.places_title), onBack) { PlacesList(onOpenPlace) }
 }
 
+/**
+ * The list of my places with *Add place* (off at the cap, with the cap text under it), the empty state, and a row per
+ * place that opens its form.
+ */
 @Composable
 fun PlacesList(onOpenPlace: (String) -> Unit) {
     val repo = LocalAppServices.current.repository
@@ -631,7 +645,7 @@ fun PlacesList(onOpenPlace: (String) -> Unit) {
             HeroEmptyState(
                 icon = Icons.Default.Home,
                 title = stringResource(Res.string.places_empty_title),
-                body = stringResource(Res.string.places_empty_body),
+                body = stringResource(LocalSpace.current.pages.placesEmptyBody),
                 horizontalPadding = 0.dp,
             )
         }
@@ -657,6 +671,10 @@ fun PlaceFormScreen(placeId: String?, onDone: () -> Unit) {
     }
 }
 
+/**
+ * The form behind [PlaceFormScreen] once the place is known: name and point, *Save* (needs a name and a valid point; a
+ * refused save at the cap shows the cap message) and *Delete place* after a confirmation.
+ */
 @Composable
 private fun PlaceForm(placeId: String?, found: Place?, liveCount: Int, onDone: () -> Unit) {
     val repo = LocalAppServices.current.repository
@@ -702,7 +720,7 @@ private fun PlaceForm(placeId: String?, found: Place?, liveCount: Int, onDone: (
     }
     if (confirmDelete && placeId != null) {
         ConfirmDelete(
-            stringResource(Res.string.place_delete_title), stringResource(Res.string.place_delete_body),
+            stringResource(Res.string.place_delete_title), stringResource(LocalSpace.current.pages.placeDeleteBody),
             onDismiss = { confirmDelete = false },
         ) {
             scope.launch {
@@ -750,7 +768,7 @@ fun AreaNoteDialog(
                     else -> {
                         val here = reaching.map { it.id }.toSet()
                         val labels = ordered.map { a ->
-                            if (a.id in here) stringResource(Res.string.note_area_here, a.name) else a.name
+                            if (a.id in here) stringResource(LocalSpace.current.pages.areaHere, a.name) else a.name
                         }
                         val current = ordered.indexOfFirst { it.id == areaId }.coerceAtLeast(0)
                         ChoiceMenu(stringResource(Res.string.note_area), labels[current], labels) { areaId = ordered[it].id }
@@ -800,7 +818,7 @@ fun AreaNoteDialog(
  * for an area* (the areas the house is in first).
  */
 @Composable
-fun HouseAreaNotesSection(house: HouseEntity) {
+fun HouseAreaNotesSection(house: HouseEntity, none: StringResource = Res.string.house_area_notes_none) {
     val repo = LocalAppServices.current.repository
     val areas: List<Area> by remember(repo) { repo.observeAreas() }.collectAsStateWithLifecycle(emptyList())
     val notes: List<AreaNote> by remember(repo) { repo.observeAreaNotes() }.collectAsStateWithLifecycle(emptyList())
@@ -809,8 +827,8 @@ fun HouseAreaNotesSection(house: HouseEntity) {
     val street = house.street?.trim()?.takeIf { it.isNotEmpty() }
     var adding by rememberSaveable { mutableStateOf<String?>(null) }
     HorizontalDivider()
-    SectionHeading(stringResource(Res.string.notes_heading))
-    if (reaching.isEmpty()) Text(stringResource(Res.string.house_area_notes_none), style = MaterialTheme.typography.bodyMedium)
+    SectionHeading(stringResource(kindSection("areaNotes")))
+    if (reaching.isEmpty()) Text(stringResource(none), style = MaterialTheme.typography.bodyMedium)
     reaching.forEach { note ->
         Column(Modifier.fillMaxWidth()) {
             Text(note.text, style = MaterialTheme.typography.bodyMedium)
@@ -849,7 +867,7 @@ fun HouseDistancesSection(house: HouseEntity) {
     val distances = Distances.toPlaces(house.point(), places)
     if (distances.isEmpty()) return
     HorizontalDivider()
-    SectionHeading(stringResource(Res.string.house_distances))
+    SectionHeading(stringResource(kindSection("distances")))
     distances.forEach { d ->
         Row(Modifier.fillMaxWidth().heightIn(min = 32.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(d.place.name, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)

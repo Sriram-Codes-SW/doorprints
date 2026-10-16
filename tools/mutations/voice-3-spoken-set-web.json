@@ -1,0 +1,17 @@
+{
+  "spec": "web/src/app/core/ai/ai-eval.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/core/ai/ai-eval.ts",
+      "find": "const EVAL_SETS: readonly EvalSetName[] = ['school-set', 'spoken-set'];",
+      "replace": "const EVAL_SETS: readonly EvalSetName[] = ['school-set'];",
+      "expect": "is a chosen set like the school set"
+    },
+    {
+      "file": "web/src/app/core/ai/ai-eval.ts",
+      "find": "evalSet.startsWith('school-set') ? 'its own fixtures, the kinds on' : \"the golden set's fixtures\"",
+      "replace": "'its own fixtures, the kinds on'",
+      "expect": "writes the set into the summary"
+    }
+  ]
+}

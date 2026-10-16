@@ -1,0 +1,133 @@
+/*
+ * Copyright 2026 Sriram (Sriram-Codes-SW)
+ *
+ * This file is part of Doorprints.
+ *
+ * Doorprints is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+ * Public License as published by the Free Software Foundation, version 3 of the License.
+ *
+ * Doorprints is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+ * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Affero General Public License along with Doorprints (the file LICENSE;
+ * the file NOTICE has additional permissions under section 7). If not, see <https://www.gnu.org/licenses/>.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+import { provideHttpClient, withFetch } from '@angular/common/http';
+import { TestBed } from '@angular/core/testing';
+import { describe, expect, it } from 'vitest';
+import { LocalStore } from '../../data/local-store.service';
+import golden from '../../../../../docs/ai/evals/golden-set.json';
+import variants from '../../../../../docs/ai/evals/address-variants.json';
+import layers from '../../../../../docs/ai/evals/injection-layers.json';
+import schoolSet from '../../../../../docs/ai/evals/school-set.json';
+import spokenSet from '../../../../../docs/ai/evals/spoken-set.json';
+import { pipelineIds } from './ai-eval-layers';
+import { type GoldenLike, type VariantsFile, addressRunHeader, selectAddressRun } from './address-variants';
+import { type CaseResult, type GoldenCase, type Outcome, evalSetup, fixtureRecords, formatSummary, scoreCase } from './ai-eval';
+import { DEV_KINDS_KEY } from '../dev-kinds';
+import { aiHostOf } from './ai-provider-config';
+import { AnthropicChatModel } from './anthropic';
+import { type AskFilterValues } from './ai-core';
+import { type ModelRef, OnDeviceAiError, OnDeviceAiService } from './on-device-ai.service';
+import { OpenAiCompatibleChatModel } from './openai-compat';
+
+type NodeProcess = {
+  env?: Record<string, string | undefined>;
+  getBuiltinModule?: (id: string) => { writeFileSync(path: string, data: string): void };
+};
+const proc = (globalThis as { process?: NodeProcess }).process;
+const setup = evalSetup(proc?.env ?? {});
+
+/**
+ * The golden set (docs/ai/evals/golden-set.json) through the website's own adapters against the provider the owner chose
+ * (S4b-BL-153, docs/06 TC-AI-23): the manual *AI evals* workflow, suite `own-provider`, passes the choice and the
+ * `AI_EVAL_API_KEY` secret as environment variables (`ai-eval.ts` reads them). Without a key the workflow says
+ * `skipped: no key` and never gets here; this spec skips itself as well, so the normal build never calls a provider.
+ * Synthetic data only. Reported, not gating: the test fails only when the setup is wrong or no case got an answer.
+ */
+describe.skipIf(setup.status === 'skip')('Golden set through the chosen provider (real key)', () => {
+  it('runs the cases and writes the summary', { timeout: 7_200_000 }, async () => {
+    if (setup.status !== 'run') throw new Error(setup.line);
+    const at = (c: unknown) => c as never;
+    // The address set (S4b-BL-226): informational, the verdict is the default run's. The default run (no AI_EVAL_ADDRESS_SET) uses
+    // the golden set as it is. A set whose applied fingerprint is not the one the file records is a harness error: nothing is sent.
+    const addressRun = selectAddressRun(golden as unknown as GoldenLike, variants as unknown as VariantsFile, setup.addressSet);
+    if (addressRun?.error) throw new Error(addressRun.error);
+    // The school set (S4b-BL-268): its own schools, and the kinds on for this run (the developer flag the AI reads, `kindsOn()`).
+    const own = setup.evalSet === 'school-set';
+    // The spoken set (S4b-BL-220): the golden set's fixtures with the spoken-style cases (text a transcriber would produce).
+    const spoken = setup.evalSet === 'spoken-set';
+    const used = (own ? { fixtureHouses: schoolSet.fixtureCandidates, fixtureVisits: schoolSet.fixtureVisits, cases: schoolSet.cases }
+      : spoken ? { ...golden, cases: spokenSet.cases } : (addressRun?.golden ?? golden)) as unknown as typeof golden;
+    const now = '2026-09-20T10:00:00Z';
+    const houses = fixtureRecords(used.fixtureHouses, now); // the set's own tags are not house fields
+    const visits = used.fixtureVisits.map((v) => ({ ...v, deleted: false, updatedAt: now }));
+    if (own) localStorage.setItem(DEV_KINDS_KEY, 'school');
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(withFetch()),
+        {
+          provide: LocalStore,
+          useValue: {
+            allHouses: async () => houses, allVisits: async () => visits, viewings: { all: async () => [] }, areas: { all: async () => [] },
+            places: { all: async () => [] }, areaNotes: { rows: async () => [] },
+          },
+        },
+      ],
+    });
+    const ai = TestBed.inject(OnDeviceAiService);
+    const config = { kind: setup.kind, baseUrl: setup.baseUrl, model: setup.model };
+    const via: ModelRef =
+      setup.kind === 'gemini' ? setup.key
+      : setup.kind === 'openai-compatible' ? new OpenAiCompatibleChatModel(config, setup.key, undefined, setup.timeoutMs)
+      : new AnthropicChatModel(config, setup.key);
+
+    // The app's own 10-a-minute limit is not what is measured; the provider's limits are, and `delayMs` paces for them.
+    let clock = 0;
+    ai.now = () => (clock += 60_000);
+    const results: CaseResult[] = [];
+    let stopped: string | null = null;
+    let answered = 0;
+    for (const c of (used.cases as GoldenCase[]).filter((g) => setup.types.includes(g.type) && (!setup.category || g.category === setup.category))) {
+      let outcome: Outcome;
+      try {
+        if (c.type === 'extract') {
+          const kind = c.input['kind'];
+          outcome = { type: 'extract', draft: await ai.extractListing(via, String(c.input['text']), typeof kind === 'string' ? kind : undefined) };
+        } else if (c.type === 'ask') {
+          outcome = { type: 'ask', response: await ai.ask(via, String(c.input['question']), c.input['filters'] as AskFilterValues | undefined) };
+        } else {
+          outcome = { type: 'plan', plan: await ai.planVisits(via, at(c.input)) };
+        }
+        answered++;
+      } catch (e) {
+        const kind = e instanceof OnDeviceAiError ? e.kind : String((e as Error)?.message ?? e).slice(0, 100);
+        outcome = { type: 'error', message: kind };
+        // Every further case would fail the same way: stop instead of spending the pauses (and the quota).
+        const why: Record<string, string> = { keyRejected: 'key rejected', modelNotFound: 'model not found', unreachable: 'provider unreachable' };
+        stopped = why[kind] ?? null;
+      }
+      results.push(scoreCase(c, outcome));
+      if (stopped) break;
+      await new Promise((r) => setTimeout(r, setup.delayMs));
+    }
+
+    const address = addressRun
+      ? { set: addressRun.set, header: addressRunHeader(addressRun), applicable: addressRun.golden.cases.length, total: addressRun.total, notApplicable: addressRun.notApplicable }
+      : undefined;
+    if (own) localStorage.removeItem(DEV_KINDS_KEY);
+    const text = formatSummary({ kind: setup.kind, host: aiHostOf(config), model: setup.model }, results, stopped, setup.key, address, pipelineIds(layers),
+      own ? `school-set v${schoolSet.version}` : spoken ? `spoken-set v${spokenSet.version}` : undefined, setup.category);
+    console.log(text);
+    const file = proc?.env?.['DOORPRINTS_EVAL_SUMMARY'];
+    if (file && proc?.getBuiltinModule) proc.getBuiltinModule('node:fs').writeFileSync(file, text);
+    // The summary above is written either way. A run that ended early because the provider could not be used (key
+    // rejected, model not found, unreachable or too slow for the request limit: 60 s, or AI_EVAL_TIMEOUT_MS for a model on this machine, S4b-BL-190) is not a quality result: it fails,
+    // so a green run never hides "0 of 2 cases" (the first keyless run of 2026-10-08 was green with 0 of 2).
+    expect(stopped, `the run stopped early: ${stopped}`).toBeNull();
+    expect(answered, 'no case got an answer from the provider').toBeGreaterThan(0);
+  });
+});

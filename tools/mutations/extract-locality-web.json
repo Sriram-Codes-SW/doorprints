@@ -1,0 +1,10 @@
+{
+  "spec": "web/src/app/core/ai/ai-core.spec.ts",
+  "mutations": [
+    {"file": "web/src/app/core/ai/ai-core.ts", "find": "- locality: the neighbourhood or area, never the city alone (the city goes in address). If only a road is named, use the road as the locality too.\n", "replace": "", "expect": "tells the model that locality is the area"},
+    {"file": "web/src/app/core/ai/ai-core.ts", "find": "never the city alone (the city goes in address)", "replace": "the city (the city goes in address)", "expect": "tells the model that locality is the area"},
+    {"file": "web/src/app/core/ai/ai-core.ts", "find": "(the city goes in address). ", "replace": ". ", "expect": "tells the model that locality is the area"},
+    {"file": "web/src/app/core/ai/ai-core.ts", "find": " If only a road is named, use the road as the locality too.", "replace": "", "expect": "tells the model that locality is the area"},
+    {"file": "web/src/app/core/ai/ai-core.ts", "find": "- locality: the neighbourhood or area", "replace": "- locality: the neighbourhood, area or city", "expect": "tells the model that locality is the area"}
+  ]
+}

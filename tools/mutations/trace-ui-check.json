@@ -1,0 +1,41 @@
+{
+  "spec": "web/src/app/pages/map/place-check.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/pages/map/place-check.ts",
+      "find": "if (this.state.answer() === null) this.opener?.focus();",
+      "replace": "this.opener?.focus();",
+      "expect": "leaves the focus to the panel"
+    },
+    {
+      "file": "web/src/app/pages/map/place-check.ts",
+      "find": "@if (state.canLocate) {",
+      "replace": "@if (true) {",
+      "expect": "offers no Where I am now where the browser has no Geolocation"
+    },
+    {
+      "file": "web/src/app/pages/map/place-check.ts",
+      "find": "@if (mapUsable()) {\n            <button type=\"button\" class=\"btn\" id=\"check-spot\"",
+      "replace": "@if (true) {\n            <button type=\"button\" class=\"btn\" id=\"check-spot\"",
+      "expect": "offers no A spot on the map while there is no map"
+    },
+    {
+      "file": "web/src/app/pages/map/place-check.ts",
+      "find": "    this.state.cancelLocating();\n    this.state.locateProblem.set(null);\n    const dlg",
+      "replace": "    this.state.cancelLocating();\n    const dlg",
+      "expect": "opening again clears the old problem"
+    },
+    {
+      "file": "web/src/app/pages/map/place-check.ts",
+      "find": "    this.state.locateHere();\n  }\n\n  protected spot",
+      "replace": "    queueMicrotask(() => this.state.locateHere());\n  }\n\n  protected spot",
+      "expect": "starts the watch in the same call as the click"
+    },
+    {
+      "file": "web/src/app/pages/map/place-check.ts",
+      "find": "    this.shut();\n    this.pickSpot.emit();",
+      "replace": "    this.pickSpot.emit();",
+      "expect": "closes the dialog and asks the page"
+    }
+  ]
+}

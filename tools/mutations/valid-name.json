@@ -1,0 +1,23 @@
+{
+  "spec": "web/src/app/data/crypto/keys-file.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/data/crypto/keys-file.ts",
+      "find": " || isHiddenOrBidi(c)) return false;",
+      "replace": ") return false;",
+      "expect": "creates, adds, revokes with a chained epoch"
+    },
+    {
+      "file": "web/src/app/data/crypto/keys-file.ts",
+      "find": "(c >= 0x2028 && c <= 0x202e) || ",
+      "replace": "(c >= 0x2028 && c <= 0x2029) || ",
+      "expect": "creates, adds, revokes with a chained epoch"
+    },
+    {
+      "file": "web/src/app/data/crypto/keys-file.ts",
+      "find": "c === 0x200b || c === 0x200e",
+      "replace": "c === 0x200b || c === 0x200c || c === 0x200d || c === 0x200e",
+      "expect": "creates, adds, revokes with a chained epoch"
+    }
+  ]
+}

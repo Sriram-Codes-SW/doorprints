@@ -23,6 +23,10 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TPipe } from '../../i18n/t.pipe';
 import { Announcer } from '../../core/announcer.service';
 import { SHARE_TEXT_KEY } from './share-text';
+import { SpaceService } from '../../core/space.service';
+import { shareKind } from '../../core/space-scope';
+import { toolWord } from '../../core/space-tool-words';
+import { spaceWords } from '../../core/space-words';
 import { RunResult, runResult } from '../../shared/run-result';
 
 export { SHARE_TEXT_KEY };
@@ -64,13 +68,25 @@ export { SHARE_TEXT_KEY };
             [placeholder]="'share.placeholder' | t"
             aria-describedby="shared-hint"
           ></textarea>
-          <p id="shared-hint" class="field-hint">{{ 'share.hint' | t }}</p>
+          <p id="shared-hint" class="field-hint">{{ hintKey() | t }}</p>
           @if (copyFailed(); as card) {
             @for (c of [card]; track c.run) {
               <p class="error" role="alert">{{ 'share.copyFailed' | t }}</p>
             }
           }
         </div>
+
+        @if (space.multi()) {
+          <!-- With two or more kinds on: what the listing is, before the text is read into fields (S4b-BL-279). -->
+          <div class="field">
+            <label for="share-kind">{{ 'share.kind' | t }}</label>
+            <select id="share-kind" name="shareKind" [ngModel]="kind" (ngModelChange)="kind = $event">
+              @for (k of space.enabled(); track k) {
+                <option [value]="k">{{ spaceWords(k).many | t }}</option>
+              }
+            </select>
+          </div>
+        }
 
         <div class="actions">
           <!-- aria-disabled, not disabled, as everywhere else in the app: with the box empty the buttons stay in the
@@ -81,7 +97,7 @@ export { SHARE_TEXT_KEY };
             [attr.aria-disabled]="!text.trim() ? 'true' : null"
             (click)="createHouse()"
           >
-            {{ 'share.create' | t }}
+            {{ createKey() | t }}
           </button>
           <button type="button" class="btn" [attr.aria-disabled]="!text.trim() ? 'true' : null" (click)="copy()">
             {{ (copied() ? 'share.copied' : 'share.copy') | t }}
@@ -125,6 +141,15 @@ export class SharePage implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly announcer = inject(Announcer);
   private readonly confirm = inject(ConfirmService);
+  protected readonly space = inject(SpaceService);
+  protected readonly spaceWords = spaceWords;
+  /** The kind the listing is saved as: the default kind until the person chooses another (when two or more are on). */
+  protected kind = this.space.dflt();
+  protected createKey = () => toolWord(this.chosen(), 'share.create');
+  protected hintKey = () => toolWord(this.chosen(), 'share.hint');
+  private chosen(): string {
+    return shareKind(this.kind, this.space.enabled(), this.space.dflt());
+  }
 
   protected text = '';
   /** The text as it arrived (or was restored): leaving after changing it asks first. */
@@ -138,6 +163,10 @@ export class SharePage implements OnInit, OnDestroy {
   protected readonly copyFailed = signal<RunResult<true> | null>(null);
   private copiedTimer: ReturnType<typeof setTimeout> | undefined;
 
+  /**
+   * Takes the shared title, text and URL from the query, or the copy kept for a reload, joins them into the box and
+   * then removes them from the address bar and history, because a shared listing often holds a phone number.
+   */
   ngOnInit(): void {
     const q = this.route.snapshot.queryParamMap;
     // Android sends title, text and url separately; most apps fill only one or two of them.
@@ -162,6 +191,7 @@ export class SharePage implements OnInit, OnDestroy {
     }
   }
 
+  /** Forgets the kept text: it was used or knowingly left. */
   ngOnDestroy(): void {
     clearTimeout(this.copiedTimer);
     // Used or knowingly left: the text is not kept any longer (it often holds a phone number).
@@ -195,7 +225,8 @@ export class SharePage implements OnInit, OnDestroy {
       return;
     }
     this.handedOn = true;
-    void this.router.navigate(['/'], { state: { shared, pickLocation: true }, replaceUrl: true });
+    // The map of the chosen kind's space (with one kind that is the map, `/`); Extract then reads the listing as that kind.
+    void this.router.navigate([this.space.home(this.chosen())], { state: { shared, pickLocation: true }, replaceUrl: true });
   }
 
   /** An edit makes an earlier "Copied" untrue. */
@@ -205,6 +236,7 @@ export class SharePage implements OnInit, OnDestroy {
     writeShareText(this.text);
   }
 
+  /** Copies the text to the clipboard and says so; a refused clipboard shows the failure. */
   protected async copy(): Promise<void> {
     // The button is only aria-disabled with the box empty: this is the guard behind it.
     if (!this.text.trim()) {
@@ -230,6 +262,7 @@ function focusBox(): void {
   if (typeof document !== 'undefined') document.getElementById('shared')?.focus();
 }
 
+/** The text kept for this tab, or empty when none or storage is blocked. */
 function readShareText(): string {
   try {
     return typeof sessionStorage === 'undefined' ? '' : (sessionStorage.getItem(SHARE_TEXT_KEY) ?? '');

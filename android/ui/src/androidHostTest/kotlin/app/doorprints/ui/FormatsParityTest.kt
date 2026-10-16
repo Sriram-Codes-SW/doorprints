@@ -21,6 +21,11 @@ package app.doorprints.ui
 import java.io.File
 import java.text.NumberFormat
 import java.util.Locale
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.long
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -73,6 +78,24 @@ class FormatsParityTest {
             listOf(0L, 7L, 999L, 1_000L, 22_500L, 28_000L, 99_999L).forEach { amount ->
                 assertEquals(format.format(amount), Formats.rupees(amount), "$amount in $locale")
             }
+        }
+    }
+
+    /**
+     * S4b-BL-174: the shared regional amounts (docs/ai/evals/parity-vectors.json, `rupees`: 12,34,567 and the crores
+     * after it, written out by hand), the list the website's TranslationService spec reads too.
+     */
+    @Test
+    fun rupeesFollowTheSharedRegionalVectorsInIndianGrouping() {
+        val file = generateSequence(File("").absoluteFile) { it.parentFile }
+            .map { File(it, "docs/ai/evals/parity-vectors.json") }.first { it.isFile }
+        val amounts = Json.parseToJsonElement(file.readText()).jsonObject.getValue("rupees").jsonArray.map { it.jsonObject }
+        assertEquals(17, amounts.size)
+        for (a in amounts) {
+            val amount = a.getValue("amount").jsonPrimitive.long
+            assertEquals(a.getValue("expected").jsonPrimitive.content, Formats.rupees(amount), "$amount")
+            assertEquals(a.getValue("expected").jsonPrimitive.content + "/month", Formats.price(amount, "RENT") { "$it/month" }, "rent $amount")
+            assertEquals(a.getValue("expected").jsonPrimitive.content, Formats.price(amount, "SALE") { "$it/month" }, "sale $amount")
         }
     }
 

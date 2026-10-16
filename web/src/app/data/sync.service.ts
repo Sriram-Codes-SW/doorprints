@@ -21,7 +21,6 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import type { Observable } from 'rxjs';
 import { ConfigService, normalizeBaseUrl } from '../core/config.service';
-import { HouseApiService } from '../core/house-api.service';
 import { Announcer } from '../core/announcer.service';
 import { errorMsg, isQuotaError, retryAfterSeconds } from '../core/format';
 import type { Msg } from '../i18n/translation.service';
@@ -42,8 +41,12 @@ import {
   visitToDto,
   withPhotoMeta,
 } from './records';
-import { keepLocalRecord } from './sync-rules';
+import { serverBehind, wireVersion } from './sync-rules';
+import { SYNC_BACKEND } from './sync-backend';
 import type { HouseRecord, PhotoRecord, RecordRecord, VisitRecord } from './records';
+
+// Kept importable from here, where they lived before the seam (S4b-BL-70); the rules are in sync-rules.ts.
+export { serverBehind, wireVersion };
 
 /** Debounce for `syncSoon()`; matches the Android app's "sync soon after a change" (docs/11 §5.10). */
 const DEBOUNCE_MS = 3000;
@@ -54,6 +57,10 @@ export const RATE_LIMIT_ATTEMPTS = 4;
 /** Longest `Retry-After` slept through (Android `RetryPolicy.maxDelayMs`); a longer one ends the run. */
 export const MAX_RATE_LIMIT_WAIT_MS = 15_000;
 
+/** Ids per local read of a pull page (S4b-BL-167): under SQLite's 999-variable limit on the phone, the same on the web. */
+export const PULL_READ_CHUNK = 500;
+
+/** What one finished sync pass did: rows pushed and pulled, rows the app refused to store, and when. */
 export interface SyncOutcome {
   pushed: number;
   pulled: number;
@@ -88,17 +95,19 @@ class SyncCancelled extends Error {}
 class SyncStopped extends Error {}
 /**
  * Thrown inside a push when the server's answer shows that its change log is behind this browser's cursors
- * ({@link serverWasReset}): the run resets and starts over as a full two-way sync (S4b-BL-20). A server that sends
+ * ({@link pushShowsReset}): the run resets and starts over as a full two-way sync (S4b-BL-20). A server that sends
  * its highest version in `GET /api/stats` is checked before the push instead ({@link serverBehind}).
  */
-class ServerReset extends Error {}
+class RemoteReset extends Error {}
 
 /**
  * Two-way sync between this browser's IndexedDB and the optional API-key server (S4-01).
  *
  * Same algorithm and the same conflict rule as the Android app (docs/03 §10, Repository.sync): push dirty rows,
- * pull with `since` cursors, last-write-wins via {@link keepLocalRecord}, tombstones for deletes, photo metadata
- * with the bytes fetched separately. Records (the envelope of docs/11 5.30 item 2) take the same path as visits,
+ * pull with `since` cursors, the backend's merge rule (the server's: last-write-wins via `keepLocalRecord`),
+ * tombstones for deletes, photo metadata with the bytes fetched separately. Every remote call goes through the
+ * `SyncBackend` seam (S4b-BL-70, `sync-backend.ts`; the server's is `ServerSyncBackend`). Records (the envelope of
+ * docs/11 5.30 item 2) take the same path as visits,
  * with a cursor of their own. It runs only when the user has configured a server; with no server the app is
  * complete on its own and this service stays quiet.
  *
@@ -114,7 +123,7 @@ class ServerReset extends Error {}
  */
 @Injectable({ providedIn: 'root' })
 export class SyncService {
-  private readonly api = inject(HouseApiService);
+  private readonly backend = inject(SYNC_BACKEND);
   private readonly config = inject(ConfigService);
   private readonly store = inject(LocalStore);
   private readonly announcer = inject(Announcer);
@@ -162,7 +171,7 @@ export class SyncService {
    * When this browser last found its server reset (S4b-BL-20): the server's change log was behind the stored
    * cursors, so everything here was sent again and everything there fetched again. Your data says so; null otherwise.
    */
-  readonly serverResetAt = signal<string | null>(null);
+  readonly remoteResetAt = signal<string | null>(null);
   /** Mirrors `navigator.onLine`, so the Your data page can say "offline, N changes waiting" instead of an error. */
   readonly online = signal(typeof navigator === 'undefined' || navigator.onLine !== false);
 
@@ -190,7 +199,7 @@ export class SyncService {
           this.migration.set('unknown');
           this.lastError.set(null);
           this.lastErrorForced.set(false);
-          this.serverResetAt.set(null);
+          this.remoteResetAt.set(null);
         }
       });
     });
@@ -260,7 +269,7 @@ export class SyncService {
       this.lastSkipped.set(0);
       this.lastError.set(null);
       this.lastErrorForced.set(false);
-      this.serverResetAt.set(null);
+      this.remoteResetAt.set(null);
     }
     await this.store.setSetting(SETTING_KEYS.syncServer, current);
   }
@@ -322,8 +331,8 @@ export class SyncService {
   async pendingCount(): Promise<number> {
     const houses = (await this.store.dirtyHouses()).length;
     const visits = (await this.store.dirtyVisits()).length;
-    const records = (await this.store.dirtyRecords()).length;
-    const photos = (await this.store.allPhotos()).filter(
+    const records = (await this.store.records.dirty()).length;
+    const photos = (await this.store.photos.all()).filter(
       (p) => (p.deleted && p.uploaded) || (!p.deleted && ((!p.uploaded && !!p.blob) || p.metaDirty === true)),
     ).length;
     return houses + visits + records + photos;
@@ -393,7 +402,7 @@ export class SyncService {
   }
 
   /**
-   * Push, then pull. When a push shows that the server was reset ({@link ServerReset}), this browser is made to hold
+   * Push, then pull. When a push shows that the server was reset ({@link RemoteReset}), this browser is made to hold
    * nothing the server is assumed to have — every row dirty, every photo not uploaded, every cursor 0 — and the
    * pass starts again: a full re-push and a full re-pull (S4b-BL-20). With the cursors at 0 the check cannot fire
    * again in the same run (a version is never at or below 0), so it restarts once at most.
@@ -404,7 +413,7 @@ export class SyncService {
         const pushed = await this.push(gen);
         return { pushed, ...(await this.pull(gen)) };
       } catch (err: unknown) {
-        if (!(err instanceof ServerReset)) throw err;
+        if (!(err instanceof RemoteReset)) throw err;
       }
     }
     await this.resetForServer(gen);
@@ -413,24 +422,25 @@ export class SyncService {
   }
 
   /**
-   * Whether `GET /api/stats` shows the server behind this browser's cursors ({@link serverBehind}), asked at the
-   * start of every pass once something has been pulled: this sees a reset even when this browser has nothing to push.
+   * Whether the backend is behind this browser's cursors (`SyncBackend.isBehind`; the server's reads `GET /api/stats`,
+   * {@link serverBehind}), asked at the start of every pass once something has been pulled: this sees a reset even
+   * when this browser has nothing to push.
    * An older server without `maxSyncVersion`, or a failed request, is unknown (false); a real failure then shows in
-   * the push that follows, and the push answers are still checked ({@link serverWasReset}).
+   * the push that follows, and the push answers are still checked ({@link pushShowsReset}).
    */
   private async statsShowReset(gen: number): Promise<boolean> {
     const cursors = await this.store.cursors();
     this.live(gen);
     const stored = [cursors.house, cursors.visit, cursors.photo, cursors.record];
     if (!stored.some((c) => c > 0)) return false;
-    let highest: unknown = null;
+    let behind = false;
     try {
-      highest = (await this.call(gen, () => this.api.stats()))?.maxSyncVersion;
+      behind = await this.call(gen, () => this.backend.isBehind(stored));
     } catch (err: unknown) {
       if (err instanceof SyncCancelled) throw err;
     }
     this.live(gen);
-    return serverBehind(highest, stored);
+    return behind;
   }
 
   /**
@@ -445,7 +455,7 @@ export class SyncService {
     this.live(gen);
     await this.store.resetCursors();
     this.live(gen);
-    this.serverResetAt.set(isoNow());
+    this.remoteResetAt.set(isoNow());
     // Heard on whatever page is open; Your data also shows it (data.serverReset), outside its live region.
     this.announcer.announce({ key: 'data.serverReset' });
   }
@@ -484,10 +494,39 @@ export class SyncService {
     if (gen !== this.generation) throw new SyncCancelled();
   }
 
+  /**
+   * Pushes local changes ({@link pushRows}). A backend that keeps whole snapshots (Drive, S4b-BL-118, `stagesPushes`)
+   * sends them together in `commitPushes`: the marks that say "sent" wait and run only once that returned (the file
+   * complete and read back), also when a later step failed, so what went is not sent again for nothing.
+   */
   private async push(gen: number): Promise<number> {
+    const afterCommit: Array<() => Promise<unknown>> = [];
+    const sent = async (mark: () => Promise<unknown>): Promise<void> => {
+      if (this.backend.stagesPushes) afterCommit.push(mark);
+      else await mark();
+    };
+    let failed = false;
+    try {
+      return await this.pushRows(gen, sent);
+    } catch (err) {
+      failed = true;
+      throw err;
+    } finally {
+      if (this.backend.stagesPushes && this.backend.commitPushes) {
+        try {
+          await firstValueFrom(this.backend.commitPushes());
+          for (const mark of afterCommit) await mark();
+        } catch (err) {
+          if (!failed) throw err;
+        }
+      }
+    }
+  }
+
+  private async pushRows(gen: number, sent: (mark: () => Promise<unknown>) => Promise<void>): Promise<number> {
     // The highest position this browser has reached in the server's change log. The server hands every accepted
     // write the next number of one sequence shared by houses, visits, photos and records, so an accepted push that
-    // comes back at or below it means the log went backwards: the server was reset (serverWasReset).
+    // comes back at or below it means the log went backwards: the server was reset (pushShowsReset).
     const cursors = await this.store.cursors();
     this.live(gen);
     const highest = Math.max(cursors.house, cursors.visit, cursors.photo, cursors.record);
@@ -495,9 +534,9 @@ export class SyncService {
     this.live(gen);
     const visits = await this.store.dirtyVisits();
     this.live(gen);
-    const records = await this.store.dirtyRecords();
+    const records = await this.store.records.dirty();
     this.live(gen);
-    const photos = await this.store.allPhotos();
+    const photos = await this.store.photos.all();
     this.live(gen);
     // Deletes first, so a house that lost a photo does not re-upload it.
     const photoDeletes = photos.filter((p) => p.deleted && p.uploaded);
@@ -514,57 +553,59 @@ export class SyncService {
     if (total > 0) this.progress.set({ phase: 'sending', done: 0, total });
 
     for (const house of houses) {
-      const saved = await this.call(gen, () => this.api.pushHouse(houseToDto(house)));
+      const saved = await this.call(gen, () => this.backend.pushHouse(houseToDto(house)));
       this.live(gen);
-      if (serverWasReset(house.updatedAt, saved, highest)) throw new ServerReset();
-      await this.store.markHouseClean(house.id, house.updatedAt);
+      if (pushShowsReset(house.updatedAt, saved, highest)) throw new RemoteReset();
+      await sent(() => this.store.markHouseClean(house.id, house.updatedAt));
       this.live(gen);
       step();
     }
     for (const visit of visits) {
-      const saved = await this.call(gen, () => this.api.pushVisit(visitToDto(visit)));
+      const saved = await this.call(gen, () => this.backend.pushVisit(visitToDto(visit)));
       this.live(gen);
-      if (serverWasReset(visit.updatedAt, saved, highest)) throw new ServerReset();
-      await this.store.markVisitClean(visit.id, visit.updatedAt);
+      if (pushShowsReset(visit.updatedAt, saved, highest)) throw new RemoteReset();
+      await sent(() => this.store.markVisitClean(visit.id, visit.updatedAt));
       this.live(gen);
       step();
     }
     for (const record of records) {
-      const saved = await this.call(gen, () => this.api.pushRecord(recordToDto(record)));
+      const saved = await this.call(gen, () => this.backend.pushRecord(recordToDto(record)));
       this.live(gen);
-      if (serverWasReset(record.updatedAt, saved, highest)) throw new ServerReset();
-      await this.store.markRecordClean(record.type, record.id, record.updatedAt);
+      if (pushShowsReset(record.updatedAt, saved, highest)) throw new RemoteReset();
+      await sent(() => this.store.records.markClean(record.type, record.id, record.updatedAt));
       this.live(gen);
       step();
     }
     for (const photo of photoDeletes) {
-      await this.call(gen, () => this.api.deletePhoto(photo.id));
+      await this.call(gen, () => this.backend.deletePhoto(photo.id));
       this.live(gen);
-      await this.store.forgetPhoto(photo.id);
+      await sent(() => this.store.photos.forget(photo.id));
       this.live(gen);
       step();
     }
     for (const photo of photoUploads) {
       const bytes = photo.blob;
       if (!bytes) continue;
-      await this.call(gen, () => this.api.uploadPhoto(photo.houseId, bytes, photo.id));
+      // The network policy (S4b-BL-128): photos wait for Wi-Fi unless the person allowed mobile data; they come again.
+      if (this.backend.photosAllowed && !this.backend.photosAllowed()) continue;
+      await this.call(gen, () => this.backend.uploadPhoto(photo.houseId, bytes, photo.id));
       this.live(gen);
       // The stored row, not the one read before the upload: a meta edit made meanwhile stays.
-      await this.store.putPhotoRecord({ ...((await this.store.getPhoto(photo.id)) ?? photo), uploaded: true });
+      await this.store.photos.put({ ...((await this.store.photos.get(photo.id)) ?? photo), uploaded: true });
       this.live(gen);
       step();
     }
     for (const listed of metaPushes) {
-      const photo = await this.store.getPhoto(listed.id);
+      const photo = await this.store.photos.get(listed.id);
       this.live(gen);
       if (!photo || photo.deleted || photo.metaDirty !== true) continue;
       const meta = photoMetaOf(photo);
-      const saved = await this.call(gen, () => this.api.putPhotoMeta(photo.id, meta));
+      const saved = await this.call(gen, () => this.backend.pushPhotoMeta(photo.id, meta));
       this.live(gen);
       // The server keeps the newer meta and answers it: an older one of ours changes nothing there (last write wins).
-      await this.store.applyPhotoMetaFromServer(photo.id, photoMetaOf(saved ?? {}));
+      await sent(() => this.store.photos.applyMetaFromServer(photo.id, photoMetaOf(saved ?? {})));
       this.live(gen);
-      await this.store.markPhotoMetaClean(photo.id, meta.metaUpdatedAt);
+      await sent(() => this.store.photos.markMetaClean(photo.id, meta.metaUpdatedAt));
       this.live(gen);
       step();
     }
@@ -602,17 +643,18 @@ export class SyncService {
    * case this feature exists for, and `allHouses()` is a full `getAll` plus a sort.
    */
   private async pull(gen: number): Promise<{ pulled: number; skipped: number }> {
+    const merge = this.backend.mergeRule;
     const cursors = await this.store.cursors();
     this.live(gen);
     let pulled = 0;
     let skipped = 0;
 
-    const houses = new Map<string, HouseRecord>(
-      (await this.store.allHouses()).map((h): [string, HouseRecord] => [h.id, h]),
-    );
-    this.live(gen);
     let houseCursor = cursors.house;
-    const houseRows = wireRows(await this.call(gen, () => this.api.housesSince(houseCursor)));
+    const houseRows = wireRows(await this.call(gen, () => this.backend.housesSince(houseCursor)));
+    this.live(gen);
+    const houses = new Map<string, HouseRecord>(
+      (await readInChunks(rowIds(houseRows), (ids) => this.store.houseRowsByIds(ids))).map((h): [string, HouseRecord] => [h.id, h]),
+    );
     this.live(gen);
     for (let i = 0; i < houseRows.length; i++) {
       await this.stopPoint(gen, SETTING_KEYS.houseCursor, houseCursor, houseRows, i);
@@ -629,7 +671,7 @@ export class SyncService {
         skipped++;
         continue;
       }
-      if (keepLocalRecord(houses.get(record.id), record)) continue;
+      if (merge(houses.get(record.id), record)) continue;
       await this.store.putHouseFromServer(record);
       this.live(gen);
       houses.set(record.id, record);
@@ -638,12 +680,12 @@ export class SyncService {
     await this.store.setSetting(SETTING_KEYS.houseCursor, String(houseCursor));
     this.live(gen);
 
-    const visits = new Map<string, VisitRecord>(
-      (await this.store.allVisits()).map((v): [string, VisitRecord] => [v.id, v]),
-    );
-    this.live(gen);
     let visitCursor = cursors.visit;
-    const visitRows = wireRows(await this.call(gen, () => this.api.visitsSince(visitCursor)));
+    const visitRows = wireRows(await this.call(gen, () => this.backend.visitsSince(visitCursor)));
+    this.live(gen);
+    const visits = new Map<string, VisitRecord>(
+      (await readInChunks(rowIds(visitRows), (ids) => this.store.visitRowsByIds(ids))).map((v): [string, VisitRecord] => [v.id, v]),
+    );
     this.live(gen);
     for (let i = 0; i < visitRows.length; i++) {
       await this.stopPoint(gen, SETTING_KEYS.visitCursor, visitCursor, visitRows, i);
@@ -660,7 +702,7 @@ export class SyncService {
         skipped++;
         continue;
       }
-      if (keepLocalRecord(visits.get(record.id), record)) continue;
+      if (merge(visits.get(record.id), record)) continue;
       await this.store.putVisitFromServer(record);
       this.live(gen);
       visits.set(record.id, record);
@@ -670,12 +712,16 @@ export class SyncService {
     this.live(gen);
 
     // Records follow the visits' two decisions exactly; a row over the payload cap is untrusted and skipped.
-    const records = new Map<string, RecordRecord>(
-      (await this.store.dirtyRecords()).map((r): [string, RecordRecord] => [recordKey(r), r]),
-    );
-    this.live(gen);
     let recordCursor = cursors.record;
-    const recordRows = wireRows(await this.call(gen, () => this.api.recordsSince(recordCursor)));
+    const recordRows = wireRows(await this.call(gen, () => this.backend.recordsSince(recordCursor)));
+    this.live(gen);
+    const records = new Map<string, RecordRecord>(
+      (
+        await readInChunks(recordKeys(recordRows), (keys) =>
+          this.store.records.rowsByKeys(keys.map((k): [string, string] => k.split('\u0000', 2) as [string, string])),
+        )
+      ).map((r): [string, RecordRecord] => [recordKey(r), r]),
+    );
     this.live(gen);
     for (let i = 0; i < recordRows.length; i++) {
       await this.stopPoint(gen, SETTING_KEYS.recordCursor, recordCursor, recordRows, i);
@@ -692,9 +738,10 @@ export class SyncService {
         skipped++;
         continue;
       }
-      // Only a dirty local row can win against the server's (sync-rules.ts keepLocal), so only those were read.
-      if (keepLocalRecord(records.get(recordKey(record)), record)) continue;
-      await this.store.putRecordFromServer(record);
+      // Only a dirty local row can win against the server's (sync-rules.ts keepLocal), so only those were read; a
+      // backend whose rule can keep a clean row (Drive's last-write-wins, S4b-BL-118) needs every record read here.
+      if (merge(records.get(recordKey(record)), record)) continue;
+      await this.store.records.putFromServer(record);
       this.live(gen);
       pulled++;
     }
@@ -702,8 +749,17 @@ export class SyncService {
     this.live(gen);
 
     let photoCursor = cursors.photo;
-    const photoRows = wireRows(await this.call(gen, () => this.api.photoChangesSince(photoCursor)));
+    const photoRows = wireRows(await this.call(gen, () => this.backend.photoChangesSince(photoCursor)));
     this.live(gen);
+    // The photo rows of this page and the houses they name (read after the houses phase, so a house pulled just now counts).
+    const photos = new Map<string, PhotoRecord>(
+      (await readInChunks(rowIds(photoRows), (ids) => this.store.photos.rowsByIds(ids))).map((p): [string, PhotoRecord] => [p.id, p]),
+    );
+    const photoHouses = new Map<string, HouseRecord>(
+      (await readInChunks(photoRows.map((c) => c?.houseId).filter(isRecordId), (ids) => this.store.houseRowsByIds(ids))).map((h): [string, HouseRecord] => [h.id, h]),
+    );
+    this.live(gen);
+    const photoSeen = new Set<string>();
     for (let i = 0; i < photoRows.length; i++) {
       await this.stopPoint(gen, SETTING_KEYS.photoCursor, photoCursor, photoRows, i);
       this.progress.set({ phase: 'photos', done: i + 1, total: photoRows.length });
@@ -719,11 +775,13 @@ export class SyncService {
         skipped++;
         continue;
       }
-      const local = await this.store.getPhoto(change.id);
+      // A page that names one photo twice re-reads it the second time, since the first change may have changed the row.
+      const local = photoSeen.has(change.id) ? await this.store.photos.get(change.id) : photos.get(change.id);
+      photoSeen.add(change.id);
       this.live(gen);
       if (change.deleted) {
         if (local) {
-          await this.store.forgetPhoto(change.id);
+          await this.store.photos.forget(change.id);
           this.live(gen);
           pulled++;
         }
@@ -731,18 +789,26 @@ export class SyncService {
       }
       if (local) {
         // A photo already here: only its meta can differ, and the newer `metaUpdatedAt` wins (slice 5).
-        if (!local.deleted && (await this.store.applyPhotoMetaFromServer(change.id, photoMetaOf(change)))) pulled++;
+        if (!local.deleted && (await this.store.photos.applyMetaFromServer(change.id, photoMetaOf(change)))) pulled++;
         this.live(gen);
         continue;
       }
-      const house = houses.get(change.houseId);
+      const house = photoHouses.get(change.houseId);
       if (!house || house.deleted) continue; // the house is gone or deleted here: nothing to attach the photo to
       const photoId = change.id;
+      if (this.backend.photosAllowed && !this.backend.photosAllowed()) {
+        // Waiting for Wi-Fi (S4b-BL-128): the phase ends here at the position reached, so the rest comes later.
+        photoCursor = cursorBefore;
+        break;
+      }
       let blob: Blob;
       try {
         // One request per photo: on a large first-run download this is what meets the server's rate limit, and
         // `call` waits out a short 429 and carries on instead of failing the whole pull.
-        blob = await this.call(gen, () => this.api.photo(photoId));
+        const got = await this.call(gen, () => this.backend.downloadPhotoIfAvailable ? this.backend.downloadPhotoIfAvailable(photoId) : this.backend.downloadPhoto(photoId));
+        // Null: this photo cannot be had (Drive: tampered, planted, a revoked writer); skipped, the backend reports it.
+        if (got === null) continue;
+        blob = got;
       } catch (err: unknown) {
         // Still refused (a long Retry-After, or the network went away): keep the position reached, so "Try again"
         // resumes at this photo rather than walking the whole photo list again. A cancelled run writes nothing.
@@ -764,7 +830,7 @@ export class SyncService {
         uploaded: true,
       }, photoMetaOf(change), false);
       try {
-        await this.store.putPhotoRecord(record);
+        await this.store.photos.put(record);
       } catch (err: unknown) {
         if (isQuotaError(err)) await this.keepPhotoPosition(gen, cursorBefore, photoRows, i);
         throw err;
@@ -860,7 +926,7 @@ export class SyncService {
  * ({@link serverBehind}), so a browser with nothing to send sees the reset too; with an older server the reset is
  * seen at the first push after it, the next time this browser has a change to send.
  */
-export function serverWasReset(
+export function pushShowsReset(
   sentUpdatedAt: string | null | undefined,
   answer: { syncVersion?: unknown; updatedAt?: string | null } | null | undefined,
   highestCursor: number,
@@ -874,20 +940,30 @@ export function serverWasReset(
   return version <= highestCursor;
 }
 
-/**
- * True when the server's highest sync version (`maxSyncVersion` from `GET /api/stats`) is below one of this browser's
- * stored `cursors` (S4b-BL-20; Android: `SyncRules.serverBehind`). A cursor only ever holds a version the server
- * handed out, and the server's sequence never goes back while it keeps its data (not even after "delete all my
- * data"), so on a healthy server no cursor is above it. A missing or unreadable value (an older server) is unknown:
- * false.
- */
-export function serverBehind(maxSyncVersion: unknown, cursors: readonly number[]): boolean {
-  const highest = wireVersion(maxSyncVersion);
-  if (highest === null) return false;
-  return cursors.some((cursor) => cursor > highest);
+/** The one map key of a record: its store key, (type, id). */
+/** The ids of a page's rows that can name a stored row. */
+function rowIds(rows: readonly ({ id?: unknown } | null | undefined)[]): string[] {
+  return rows.map((r) => r?.id).filter(isRecordId);
 }
 
-/** The one map key of a record: its store key, (type, id). */
+/** The keys (see {@link recordKey}) of a page's record rows that can name a stored record. */
+function recordKeys(rows: readonly ({ type?: unknown; id?: unknown } | null | undefined)[]): string[] {
+  return rows.flatMap((r) => (r && typeof r.type === 'string' && isRecordId(r.id) ? [recordKey({ type: r.type, id: r.id })] : []));
+}
+
+/**
+ * Reads the stored rows for `keys` by `read`, {@link PULL_READ_CHUNK} keys at a time, each key once: the number of
+ * reads follows the page, not the store and not one per row (S4b-BL-167).
+ */
+async function readInChunks<K, T>(keys: readonly K[], read: (chunk: K[]) => Promise<T[]>): Promise<T[]> {
+  const unique = [...new Set(keys)];
+  const found: T[] = [];
+  for (let from = 0; from < unique.length; from += PULL_READ_CHUNK) {
+    found.push(...(await read(unique.slice(from, from + PULL_READ_CHUNK))));
+  }
+  return found;
+}
+
 function recordKey(record: { type: string; id: string }): string {
   return `${record.type}\u0000${record.id}`;
 }
@@ -941,27 +1017,4 @@ export function resumeCursor(reached: number, rest: readonly unknown[]): number 
 export function wireRows<T>(body: readonly T[]): readonly T[] {
   if (!Array.isArray(body)) throw new LocalDataError('error.server');
   return body as readonly T[];
-}
-
-/**
- * A row's `syncVersion` as a finite number, or `null` when it cannot be used to move a cursor.
- *
- * Deliberately **not** `Number(value)` with a list of exceptions: `Number()` coerces objects and arrays through
- * `valueOf`/`toString`, so `Number([])` is `0` and `Number(['5'])` is `5`. A hand-rolled or proxied body carrying
- * `"syncVersion": []` would then move the cursor to 0 and store the row as version 0 — exactly the poisoning this
- * function exists to prevent. So only the two primitive shapes the wire can legitimately use are accepted:
- *
- *  * a finite `number` — what the backend writes (`HouseDto.syncVersion` is a JSON number);
- *  * a `string` that is a finite number once trimmed — tolerated because a proxy or a hand-written fixture may
- *    quote it, and `"12"` means 12 to every reader. `""` and `"  "` are not numbers and are refused.
- *
- * Everything else — `undefined`, `null`, booleans, objects, arrays, `NaN`, `Infinity` — is `null`.
- */
-export function wireVersion(value: unknown): number | null {
-  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
-  if (typeof value !== 'string') return null;
-  const trimmed = value.trim();
-  if (trimmed === '') return null;
-  const n = Number(trimmed);
-  return Number.isFinite(n) ? n : null;
 }

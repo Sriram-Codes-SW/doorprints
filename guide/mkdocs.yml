@@ -32,13 +32,18 @@ copyright: Doorprints. Free and open source (AGPL-3.0-only); no advertising.
 nav:
   - Home: index.md
   - The screen at a glance: screen-at-a-glance.md
+  - Phone or computer: phone-or-computer.md
   - Your houses: houses.md
   - Compare and plan: compare-and-plan.md
   - Your data: your-data.md
+  - Google Drive backups: google-drive.md
   - Server and sharing: server-and-sharing.md
   - Set up your own server: set-up-a-server.md
   - Hunt mode: hunt-mode.md
+  - Your paths: your-paths.md
   - Language, theme, privacy, offline maps: settings-and-privacy.md
+  - More than houses (experimental): other-kinds.md
+  - What we test: what-we-test.md
   - Troubleshooting and FAQ: faq.md
 
 theme:
@@ -73,6 +78,11 @@ theme:
 
 extra_css:
   - stylesheets/doorprints.css
+
+# The search box also searches text that arrives without a key-up (paste, voice, a tapped suggestion); the
+# translations inherit this and get the file from the English docs (hooks/i18n.py).
+extra_javascript:
+  - javascripts/search-input.js
 
 hooks:
   - hooks/i18n.py

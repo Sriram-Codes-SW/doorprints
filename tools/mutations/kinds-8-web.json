@@ -1,0 +1,117 @@
+{
+  "spec": [
+    "web/src/app/export/kind-search.spec.ts",
+    "web/src/app/export/export.service.spec.ts",
+    "web/src/app/pages/map/map-page.spec.ts"
+  ],
+  "mutations": [
+    {
+      "file": "web/src/app/shared/kind-values.ts",
+      "find": "    if (t(key) !== en[key]) out.push(t(key));",
+      "replace": "    out.push(t(key));",
+      "expect": "adds the vectors’ words after everything else in en"
+    },
+    {
+      "file": "web/src/app/shared/kind-values.ts",
+      "find": "      if (v.value) both(fields.label(v.field));",
+      "replace": "      both(fields.label(v.field));",
+      "expect": "a switch that is off add nothing"
+    },
+    {
+      "file": "web/src/app/shared/kind-values.ts",
+      "find": "    } else if (v.type === 'money') out.push(String(v.amount), rupees(v.amount));",
+      "replace": "    } else if (v.type === 'money') out.push(String(v.amount));",
+      "expect": "adds the vectors’ words after everything else in hi"
+    },
+    {
+      "file": "web/src/app/shared/kind-values.ts",
+      "find": "      const option = field.options?.find((o) => o.id === raw);",
+      "replace": "      const option = field.options?.[0];",
+      "expect": "an option the kind does not offer"
+    },
+    {
+      "file": "web/src/app/shared/kind-values.ts",
+      "find": "      return typeof raw === 'string' && raw !== '' ? { field, type: 'text', value: raw } : null;",
+      "replace": "      return typeof raw === 'string' ? { field, type: 'text', value: raw } : null;",
+      "expect": "an empty text"
+    },
+    {
+      "file": "web/src/app/core/kind-fields.ts",
+      "find": "    return this.all.filter((f) => !f.was && (!searched || this.search.includes(f.id)));",
+      "replace": "    return this.all.filter((f) => !searched || this.search.includes(f.id));",
+      "expect": "the school searches all seven extras"
+    },
+    {
+      "file": "web/src/app/pages/map/map-list.ts",
+      "find": "  if (t) parts.push(...kindSearchWords(fields, h, t));",
+      "replace": "  if (t) parts.push();",
+      "expect": "adds the vectors’ words after everything else in ta"
+    },
+    {
+      "file": "web/src/app/pages/map/map-list.ts",
+      "find": "  fields: KindFields = drawnKind(h.kind).fields,",
+      "replace": "  fields: KindFields = drawnKind(null).fields,",
+      "expect": "reads the candidate’s kind as the page does"
+    },
+    {
+      "file": "web/src/app/pages/map/map-page.ts",
+      "find": "this.noteWords().get(h.id), localFloor, t).includes(q))",
+      "replace": "this.noteWords().get(h.id), localFloor).includes(q))",
+      "expect": "finds a stored school by its board and its bus"
+    },
+    {
+      "file": "web/src/app/export/kind-copy.ts",
+      "find": "      return cellText(s.get(v.value ? 'yes' : 'no'));",
+      "replace": "      return cellText(s.get('yes'));",
+      "expect": "copied as a house: no extra row and no extra column"
+    },
+    {
+      "file": "web/src/app/export/kind-copy.ts",
+      "find": "      return cellText(tr(dict, v.label));",
+      "replace": "      return cellText(v.label);",
+      "expect": "each extra with its label and its type’s form"
+    },
+    {
+      "file": "web/src/app/export/kind-copy.ts",
+      "find": "      return cellMoney(Math.round(v.amount));",
+      "replace": "      return cellCount(Math.round(v.amount));",
+      "expect": "each extra with its label and its type’s form"
+    },
+    {
+      "file": "web/src/app/export/export-rows.ts",
+      "find": "    ...extraColumns.map((c) => c.label),",
+      "replace": "",
+      "expect": "each extra with its label and its type’s form"
+    },
+    {
+      "file": "web/src/app/export/export-rows.ts",
+      "find": "  return extras?.find((e) => e.key === key)?.cell ?? BLANK;",
+      "replace": "  return extras?.[0]?.cell ?? BLANK;",
+      "expect": "each extra with its label and its type’s form"
+    },
+    {
+      "file": "web/src/app/export/html-export.ts",
+      "find": "  for (const e of entry.extras ?? []) rows.push(`<tr><th scope=\"row\">${escapeHtml(e.label)}</th><td>${escapeHtml(e.text)}</td></tr>`);",
+      "replace": "",
+      "expect": "each extra with its label and its type’s form"
+    },
+    {
+      "file": "web/src/app/export/markdown-export.ts",
+      "find": "  for (const e of entry.extras ?? []) facts.push([e.label, e.text]);",
+      "replace": "",
+      "expect": "each extra with its label and its type’s form"
+    },
+    {
+      "file": "web/src/app/export/export-model.ts",
+      "find": "      ...(extras.length ? { extras } : {}),",
+      "replace": "      extras,",
+      "expect": "a house beside a school has blank extra cells"
+    },
+    {
+      "file": "web/src/app/export/export.service.ts",
+      "find": "      kinds: { fieldsOf: (kind) => drawnKind(kind).fields, dict: await loadDictionary(options.lang) },",
+      "replace": "      kinds: { fieldsOf: () => drawnKind(null).fields, dict: await loadDictionary(options.lang) },",
+      "expect": "a stored school is copied with its extras whatever the switch says"
+    }
+  ]
+}

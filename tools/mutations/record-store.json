@@ -1,0 +1,89 @@
+{
+  "spec": "web/src/app/data/record-store.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/data/record-store.ts",
+      "find": "    return sortRecords(rows.filter((r) => !r.deleted));\n",
+      "replace": "    return sortRecords(rows);\n",
+      "expect": "lists the live records of one type only"
+    },
+    {
+      "file": "web/src/app/data/record-store.ts",
+      "find": "return record && !record.deleted ? record : undefined;",
+      "replace": "return record;",
+      "expect": "lists the live records of one type only"
+    },
+    {
+      "file": "web/src/app/data/record-store.ts",
+      "find": "syncVersion: existing?.syncVersion ?? 0 },",
+      "replace": "syncVersion: 0 },",
+      "expect": "writes a record back after a delete"
+    },
+    {
+      "file": "web/src/app/data/record-store.ts",
+      "find": "      true,\n    );\n    await db.put('records', record);",
+      "replace": "      false,\n    );\n    await db.put('records', record);",
+      "expect": "keeps a record dirty when the clean mark"
+    },
+    {
+      "file": "web/src/app/data/record-store.ts",
+      "find": "payload: {}, deleted: true, dirty: true,",
+      "replace": "payload: {}, deleted: true, dirty: false,",
+      "expect": "leaves a tombstone with an empty payload"
+    },
+    {
+      "file": "web/src/app/data/record-store.ts",
+      "find": "    if (!existing) return;\n",
+      "replace": "    if (!existing) { await db.put('records', { type, id, payload: {}, deleted: true, dirty: true, updatedAt: isoNow(now), syncVersion: 0 }); this.changed(); return; }\n",
+      "expect": "bumps the revision"
+    },
+    {
+      "file": "web/src/app/data/record-store.ts",
+      "find": "recordFromDto(dto, false));",
+      "replace": "recordFromDto(dto, true));",
+      "expect": "stores a record from the remote clean"
+    },
+    {
+      "file": "web/src/app/data/record-store.ts",
+      "find": "millis(existing.updatedAt) === millis(pushedUpdatedAt)",
+      "replace": "millis(existing.updatedAt) !== millis(pushedUpdatedAt)",
+      "expect": "keeps a record dirty when the clean mark"
+    },
+    {
+      "file": "web/src/app/data/record-store.ts",
+      "find": "    return sortRecords(await db.getAll<RecordRecord>('records'));\n",
+      "replace": "    return await db.getAll<RecordRecord>('records');\n",
+      "expect": "lists every record of every type"
+    },
+    {
+      "file": "web/src/app/data/record-store.ts",
+      "find": "(await db.getAll<RecordRecord>('records')).filter((r) => r.dirty)",
+      "replace": "(await db.getAll<RecordRecord>('records'))",
+      "expect": "lists the dirty records"
+    },
+    {
+      "file": "web/src/app/data/record-store.ts",
+      "find": "attempt < 50",
+      "replace": "attempt < 49",
+      "expect": "draws an id again"
+    },
+    {
+      "file": "web/src/app/data/record-store.ts",
+      "find": "keys.map(([type, id]): [string, string] => [type, id])",
+      "replace": "keys.map(([type, id]): [string, string] => [id, type])",
+      "expect": "reads the rows under some"
+    },
+    {
+      "file": "web/src/app/data/record-store.ts",
+      "find": "return db.getAllByIndex<RecordRecord>('records', 'type', type);",
+      "replace": "return db.getAll<RecordRecord>('records');",
+      "expect": "lists every record of one type"
+    },
+    {
+      "file": "web/src/app/data/record-store.ts",
+      "find": "    this.changed();\n    return record;",
+      "replace": "    return record;",
+      "expect": "bumps the revision"
+    }
+  ]
+}

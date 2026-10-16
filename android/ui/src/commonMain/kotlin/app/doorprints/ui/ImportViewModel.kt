@@ -223,6 +223,7 @@ class ImportViewModel(
         check = null
     }
 
+    /** Sets how the file is brought in (merge or copy) and keeps the choice in the saved state. */
     fun choose(newMode: ImportMode) {
         mode = newMode
         saved[KEY_MODE] = newMode.name

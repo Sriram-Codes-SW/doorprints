@@ -32,11 +32,26 @@
 // matrix takes about 12-15 minutes. A network fault that a second fetch clears (a 502, a stylesheet with the wrong
 // type through a proxy) is reported under "transient" in results.json, not counted as a failure.
 // It adds and then deletes two "UI test" houses in a fresh browser profile; nothing leaves the browser (the mobile
-// pass adds one house per phone profile, which goes with the profile).
+// pass adds one house per phone profile, which goes with the profile). The houses are in different places: REGIONS
+// below rotates the city, the address, the locality and the coordinates of every house the run adds (by viewport, by
+// phone and language, by page-matrix pass), so one run covers eight cities in seven zones of India (S4b-BL-174); the
+// checks stay the same for all of them, plus one that the saved house shows its own locality.
+// `--trace` runs ONLY the path trace scenario (docs/11 5.27.8 and 5.27.13, S4b-FR-15, S4b-FR-17, S4b-FR-24), after a merge
+// that deploys web/**: in a fresh browser profile with the geolocation permission and a place the test moves
+// (setGeolocation), it switches the trace on, presses Start a walk, walks 30 steps of 22 m, presses Finish walk and Keep for
+// 30 days, then asks Have I been here? > Where I am now on the street (the answer says "within" and today's weekday) and
+// 100 m off it (the "no walk passed" sentence), counts the requests of the click that are not the map's (there must be none),
+// checks that Close withdraws the sentence from the page's live region, and takes a screenshot of the answer on a 360x640
+// phone. Never run it against anything but the deploy under test; it writes nothing outside its own browser profile.
 const { chromium, devices } = require('playwright');
+const { ROUTES, phoneContext, layoutAudit } = require('./layout-audit');
+const { walkSteps, eastOf, nonTileRequests, todayWeekday } = require('./trace-helpers');
+const { dynamicImportUrl, isClearedImportError } = require('./transient-import');
 const fs = require('fs'), path = require('path');
-const BASE = (process.argv[2] || 'https://doorprints.web.app').replace(/\/$/, '');
-const OUT = process.argv[3] || path.join(__dirname, 'out');
+const ARGS = process.argv.slice(2).filter((a) => !a.startsWith('--'));
+const WANT_TRACE = process.argv.includes('--trace');
+const BASE = (ARGS[0] || 'https://doorprints.web.app').replace(/\/$/, '');
+const OUT = ARGS[1] || path.join(__dirname, 'out');
 fs.mkdirSync(path.join(OUT, 'shots'), { recursive: true });
 const AXE = fs.readFileSync(require.resolve('axe-core/axe.min.js'), 'utf8');
 const EN = fs.readFileSync(path.join(__dirname, '../../web/src/app/i18n/en.ts'), 'utf8');
@@ -48,15 +63,33 @@ const check = (area, name, ok, detail = '') => {
   results.push({ area, name, ok, detail });
   if (!ok) console.log(`FAIL [${area}] ${name}${detail ? ' — ' + String(detail).slice(0, 300) : ''}`);
 };
-const ROUTES = ['/', '/compare', '/data', '/connect', '/ask', '/plan', '/share', '/houses/new?lat=12.9716&lon=77.5946', '/does-not-exist'];
 const LANGS = ['en', 'hi', 'ta', 'te'];
 const THEMES = ['light', 'dark'];
+/**
+ * Where the test houses are (S4b-BL-174): eight cities in seven zones, public localities, invented streets' worth of
+ * address. The first is the place every run used before, so index 0 keeps its old behaviour. A caller picks by its own
+ * index (viewport, phone and language, pass), never by a shared counter, because the areas run side by side.
+ */
+const REGIONS = [
+  { zone: 'south', city: 'Bengaluru', locality: 'Indiranagar', address: '12th Main, Indiranagar, Bengaluru', lat: 12.9716, lon: 77.5946 },
+  { zone: 'west', city: 'Mumbai', locality: 'Bandra West', address: 'Hill Road, Bandra West, Mumbai', lat: 19.0596, lon: 72.8295 },
+  { zone: 'north', city: 'Gurugram', locality: 'Sector 56', address: 'Golf Course Extension Road, Sector 56, Gurugram', lat: 28.422, lon: 77.1 },
+  { zone: 'east', city: 'Kolkata', locality: 'Salt Lake', address: 'Sector III, Salt Lake City, Kolkata', lat: 22.5867, lon: 88.4171 },
+  { zone: 'coast', city: 'Kochi', locality: 'Kakkanad', address: 'Seaport Airport Road, Kakkanad, Kochi', lat: 10.0159, lon: 76.3419 },
+  { zone: 'north-east', city: 'Guwahati', locality: 'Beltola', address: 'Beltola Road, Beltola, Guwahati', lat: 26.125, lon: 91.8 },
+  { zone: 'hills', city: 'Shimla', locality: 'Sanjauli', address: 'Sanjauli Chowk, Sanjauli, Shimla', lat: 31.101, lon: 77.202 },
+  { zone: 'south', city: 'Hyderabad', locality: 'Gachibowli', address: 'Nanakramguda Road, Gachibowli, Hyderabad', lat: 17.4401, lon: 78.3489 },
+];
+const regionAt = (i) => REGIONS[i % REGIONS.length];
+/** The form's address of a region: the page for a new house at its coordinates. */
+const newHouseUrl = (r) => `/houses/new?lat=${r.lat}&lon=${r.lon}`;
 const VIEWPORTS = { phone: { width: 390, height: 844 }, desktop: { width: 1280, height: 900 } };
 const IGNORE_CONSOLE = [/tiles\.openfreemap\.org.*(ERR_|40[34])/i, /favicon/i];
 
-async function newCtx(browser, { lang = 'en', theme = 'light', vp = 'desktop', mapView, bypassCSP = false } = {}) {
+async function newCtx(browser, { lang = 'en', theme = 'light', vp = 'desktop', mapView, bypassCSP = false, geolocation, viewport } = {}) {
   // bypassCSP only where axe is injected (the page matrix): the site's CSP rightly refuses inline scripts.
-  const ctx = await browser.newContext({ viewport: VIEWPORTS[vp], colorScheme: theme, serviceWorkers: 'allow', acceptDownloads: true, bypassCSP });
+  // geolocation: the place the browser reports (the path trace scenario moves it with ctx.setGeolocation); with it the permission is granted.
+  const ctx = await browser.newContext({ viewport: viewport || VIEWPORTS[vp], colorScheme: theme, serviceWorkers: 'allow', acceptDownloads: true, bypassCSP, ...(geolocation ? { geolocation, permissions: ['geolocation'] } : {}) });
   await ctx.addInitScript(([lang, mapView]) => {
     if (sessionStorage.getItem('__init')) return;
     sessionStorage.setItem('__init', '1');
@@ -94,7 +127,9 @@ function watch(page) {
   const cleared = new Set(); // URLs whose fault was transient: their console echoes are dropped too
   let cleared5xx = 0;
   let droppedNet = 0; // requests the network dropped (requestfailed), whose console echoes name no URL
-  errors.reset = () => { errors.length = 0; pending.length = 0; cleared.clear(); suspects.clear(); cleared5xx = 0; droppedNet = 0; };
+  let importFailures = 0; // lazy chunks that failed to load on this route (the app then loads the page afresh, ~1 s later)
+  errors.reset = () => { errors.length = 0; pending.length = 0; cleared.clear(); suspects.clear(); cleared5xx = 0; droppedNet = 0; importFailures = 0; };
+  errors.imports = () => importFailures;
   page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
   const suspects = new Set(); // one second fetch per URL and route
   /** Fetches [url] again; clears it as transient with [evidence], or records it as a real error. */
@@ -122,6 +157,16 @@ function watch(page) {
       const [, url, got] = refused;
       noteFault(page);
       classify(url, expectedType(url), { url, status: 'refused', type: got }, false, `wrong type '${got}' for ${url} (twice)`);
+    }
+    // A lazy route's chunk that did not load ("Failed to fetch dynamically imported module: <url>", seen in the runs of
+    // 2026-10-13 and -14 next to 502s of the host): the same second fetch decides. If the URL answers, the error is
+    // dropped like the other echoes of a transient fault and the app's own recovery (it loads the page afresh once,
+    // core/chunk-recovery.ts) is awaited by the page check; if not (a chunk that 404s twice), it stays a failure.
+    const chunk = dynamicImportUrl(m.text());
+    if (chunk && chunk.startsWith(BASE)) {
+      noteFault(page);
+      importFailures++;
+      classify(chunk, expectedType(chunk), { url: chunk, status: 'import failed', type: null }, false, `dynamic import failed for ${chunk} (twice)`);
     }
   });
   // A request the network dropped before any answer (a connection reset through this session's proxy, 2026-09-29):
@@ -165,7 +210,7 @@ function watch(page) {
     let dropNet = droppedNet - errors.filter((e) => / \(twice\)$/.test(e) && /ERR_/.test(e)).length;
     for (let i = errors.length - 1; i >= 0; i--) {
       const e = errors[i];
-      if ([...cleared].some((u) => e.includes(u))) errors.splice(i, 1);
+      if ([...cleared].some((u) => e.includes(u)) || isClearedImportError(e, cleared)) errors.splice(i, 1);
       else if (drop5xx > 0 && /status of 50[234]/.test(e)) { errors.splice(i, 1); drop5xx--; }
       else if (dropNet > 0 && /Failed to load resource: net::ERR_/.test(e)) { errors.splice(i, 1); dropNet--; }
     }
@@ -211,17 +256,28 @@ async function settle(page) {
 }
 
 async function pageMatrix(browser) {
+  let pass = 0;
   for (const vp of Object.keys(VIEWPORTS)) for (const theme of THEMES) for (const lang of LANGS) {
     const ctx = await newCtx(browser, { lang, theme, vp, bypassCSP: true });
     const page = await ctx.newPage();
     const errors = watch(page);
-    for (const route of ROUTES) {
+    const place = regionAt(pass++);
+    for (const listed of ROUTES) {
+      // The "new house" form opens at this pass's place; every other route is as listed.
+      const route = listed === ROUTES[7] ? newHouseUrl(place) : listed;
       const tag = `${route} ${lang} ${theme} ${vp}`;
       await page.waitForTimeout(300);
       errors.reset();
       const resp = await gotoRetry(page, BASE + route);
       await settle(page);
+      // A lazy chunk that failed: the app loads the page afresh about a second later (once per tab session), so the checks
+      // below wait for that to settle first; they run on the page that recovered, or fail on the one that did not.
+      if (errors.imports()) { await page.waitForTimeout(1800); await settle(page); }
       check('pages', `${tag}: loads`, !!resp && resp.status() < 400, resp && resp.status());
+      // The page's first heading can come a moment after `settle` on a slow load (the full runs of 2026-10-13 each lost one
+      // 'one h1' check in a different language, with the other checks of the same page passing): wait for one, up to 10 s;
+      // a page that really has none still fails below.
+      await page.waitForFunction(() => [...document.querySelectorAll('h1')].some((h) => h.textContent.trim()), null, { timeout: 10000 }).catch(() => {});
       const info = await page.evaluate(() => ({
         lang: document.documentElement.lang, title: document.title,
         h1: [...document.querySelectorAll('h1')].map((h) => h.textContent.trim()).filter(Boolean),
@@ -256,6 +312,47 @@ async function pageMatrix(browser) {
     }
     await ctx.close();
   }
+  await chooserPass(browser);
+}
+
+// The production build lists the school, compiled in and off (2026-10-15): with Experimental: more than houses turned on
+// (the stored switch, as the person's own tap sets it) `/` is the chooser with two cards. One pass per language on the
+// phone, light theme, beside the matrix above, where `/` with the switch off is the map. docs/06 TC-M-26.
+async function chooserPass(browser) {
+  for (const lang of LANGS) {
+    const ctx = await newCtx(browser, { lang, vp: 'phone', bypassCSP: true });
+    await ctx.addInitScript(() => {
+      localStorage.setItem('doorprints.kinds.experimental', '1');
+      localStorage.setItem('doorprints.kinds.enabled', '["house","school"]');
+      localStorage.setItem('doorprints.tour', 'skipped');
+    });
+    const page = await ctx.newPage();
+    const errors = watch(page);
+    const tag = `/ chooser (experimental on) ${lang} light phone`;
+    const resp = await gotoRetry(page, BASE + '/');
+    await settle(page);
+    await page.waitForSelector('#chooser-heading', { timeout: 10000 }).catch(() => {});
+    check('pages', `${tag}: loads`, !!resp && resp.status() < 400, resp && resp.status());
+    check('flow', `${tag}: the chooser with two cards`, (await page.locator('#chooser-heading').count()) === 1 && (await page.locator('button.space-card').count()) === 2);
+    const info = await page.evaluate(() => ({
+      lang: document.documentElement.lang, h1: [...document.querySelectorAll('h1')].map((h) => h.textContent.trim()).filter(Boolean),
+      overflow: document.scrollingElement.scrollWidth - window.innerWidth, text: document.body.innerText,
+    }));
+    check('pages', `${tag}: <html lang>`, info.lang.startsWith(lang), info.lang);
+    check('pages', `${tag}: one h1`, info.h1.length >= 1, JSON.stringify(info.h1));
+    check('pages', `${tag}: no horizontal scroll`, info.overflow <= 1, `${info.overflow}px`);
+    const raw = KEYS.filter((k) => new RegExp(`(^|[^\\w.])${escapeRegExp(k)}($|[^\\w.])`).test(info.text));
+    check('i18n', `${tag}: no untranslated keys`, raw.length === 0, raw.slice(0, 5).join(', '));
+    await page.addScriptTag({ content: AXE });
+    const axe = await page.evaluate(async () => {
+      const r = await window.axe.run(document, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'] }, resultTypes: ['violations'] });
+      return r.violations.filter((v) => ['serious', 'critical'].includes(v.impact)).map((v) => `${v.id} (${v.nodes.length})`);
+    });
+    check('a11y', `${tag}: axe serious/critical`, axe.length === 0, axe.join(' ; '));
+    await errors.settle();
+    check('console', `${tag}: no errors`, errors.length === 0, errors.slice(0, 3).join(' ; '));
+    await ctx.close();
+  }
 }
 
 async function flows(browser) {
@@ -264,9 +361,15 @@ async function flows(browser) {
     const page = await ctx.newPage();
     const errors = watch(page);
     const name = `UI test ${vp} ${Date.now()}`;
-    const addHouse = async (label, lat, lon) => {
-      await gotoRetry(page, `${BASE}/houses/new?lat=${lat}&lon=${lon}`); await settle(page);
+    // Two places per viewport: the phone's are regions 0 and 1, the desktop's 2 and 3 (REGIONS).
+    const vpIndex = Object.keys(VIEWPORTS).indexOf(vp);
+    const placeB = regionAt(2 * vpIndex + 1);
+    const placeA = regionAt(2 * vpIndex);
+    const addHouse = async (label, place) => {
+      await gotoRetry(page, `${BASE}${newHouseUrl(place)}`); await settle(page);
       await page.locator('#house-name').fill(label);
+      await page.locator('#house-address').fill(place.address);
+      await page.locator('#house-locality').fill(place.locality);
       await page.locator('#house-price').fill('25000');
       await page.locator('#house-bhk').fill('2');
       await page.locator('#house-notes').fill('Created by the live UI test.');
@@ -274,8 +377,8 @@ async function flows(browser) {
       await page.waitForURL(/\/houses\/(?!new)[^/?]+/, { timeout: 15000 }).catch(() => {});
       return (/\/houses\/([^/?]+)/.exec(page.url()) || [])[1];
     };
-    const id2 = await addHouse(`${name} B`, 12.975, 77.60);
-    const id = await addHouse(name, 12.9716, 77.5946);
+    const id2 = await addHouse(`${name} B`, placeB);
+    const id = await addHouse(name, placeA);
     check('flow', `${vp}: add two houses`, !!id && id !== 'new' && !!id2 && id2 !== 'new', page.url());
     // Edit and save
     await page.locator('#house-notes').fill('Edited by the live UI test.');
@@ -283,6 +386,8 @@ async function flows(browser) {
     await page.waitForTimeout(1500);
     await page.reload(); await settle(page);
     check('flow', `${vp}: edit persists after reload`, (await page.locator('#house-notes').inputValue()) === 'Edited by the live UI test.');
+    // The one place-specific check: the saved house shows the locality it was given, whichever city that is.
+    check('flow', `${vp}: the saved house shows its locality (${placeA.city}, ${placeA.zone})`, (await page.locator('#house-locality').inputValue()) === placeA.locality);
     // In the list and on Compare
     await gotoRetry(page, `${BASE}/`); await settle(page);
     check('flow', `${vp}: both houses in the list`, (await page.getByText(name, { exact: true }).count()) > 0 && (await page.getByText(`${name} B`).count()) > 0);
@@ -302,6 +407,27 @@ async function flows(browser) {
       check('flow', `${vp}: Save a copy downloads a file`, !!d && fs.statSync(file).size > 0, d && d.suggestedFilename());
     } else check('flow', `${vp}: Download button present`, false);
     await page.screenshot({ path: path.join(OUT, 'shots', `flow_${vp}_data.png`) });
+    // What you track (S4b-BL-212, docs/06 TC-M-69): the production build lists the school, compiled in and off (2026-10-15),
+    // so Your data shows the switch, off, and `/` is the map. A build of the house alone has no such section. Turned on
+    // with the school shown, `/` is the chooser and a card opens that space; turned back, the house app is as it was.
+    const kindSwitch = page.locator('#kinds-experimental');
+    if ((await kindSwitch.count()) === 0) {
+      check('flow', `${vp}: no What you track section in a build of houses only`, (await page.locator('#kinds-heading').count()) === 0);
+    } else {
+      check('flow', `${vp}: the switch for more than houses is off`, !(await kindSwitch.isChecked()) && (await page.locator('#kind-rows').count()) === 0);
+      await kindSwitch.check().catch(() => {});
+      await page.locator('#kind-on-school').check().catch(() => {});
+      await gotoRetry(page, `${BASE}/`); await settle(page);
+      check('flow', `${vp}: with two shown, / is the chooser with two cards`, (await page.locator('#chooser-heading').count()) === 1 && (await page.locator('button.space-card').count()) === 2);
+      await page.locator('#space-school').click().catch(() => {});
+      await page.waitForURL(/\/k\/school$/, { timeout: 10000 }).catch(() => {});
+      check('flow', `${vp}: the school card opens the school space`, /\/k\/school$/.test(page.url()) && (await page.locator('.space-chip').count()) === 1, page.url());
+      await gotoRetry(page, `${BASE}/data`); await settle(page);
+      await page.locator('#kind-on-school').uncheck().catch(() => {});
+      await kindSwitch.uncheck().catch(() => {});
+      await gotoRetry(page, `${BASE}/`); await settle(page);
+      check('flow', `${vp}: turned back, / is the map again`, (await page.locator('#chooser-heading').count()) === 0 && (await page.locator('#houses-heading').count()) === 1);
+    }
     // Offline: the service worker serves the app shell
     await gotoRetry(page, `${BASE}/`); await settle(page);
     const sw = await page.evaluate(async () => !!(await navigator.serviceWorker.getRegistration()));
@@ -388,20 +514,11 @@ async function mapLabels(page, glyphs) {
 /** Runs in the page: the layout problems a phone shows, as a list of findings (empty when all is well). */
 function mobileAudit() {
   const out = [];
-  // A page wider than the phone's screen widens the layout viewport (innerWidth) and is shown zoomed out, so the
-  // screen width is the measure (the context's screen is its viewport).
-  const W = Math.min(window.innerWidth, screen.width), H = window.innerHeight;
-  if (window.innerWidth > screen.width + 1) out.push(`page laid out ${window.innerWidth}px wide on a ${screen.width}px screen (zoomed out)`);
   // checkVisibility(): content inside a closed <details> keeps a box in Chrome but is not drawn (the Connect page's
   // "Use an API key instead" was reported as under the bottom bar on 2026-09-29).
   const shown = (el) => { if (el.checkVisibility && !el.checkVisibility()) return false; const s = getComputedStyle(el); if (s.visibility === 'hidden' || s.display === 'none') return false; const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
   const hidden = (el) => el.closest('.sr-only, [aria-hidden="true"], .skip-link') !== null;
   const name = (el) => { const t = (el.getAttribute('aria-label') || el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 30); return `${el.tagName.toLowerCase()}${el.id ? '#' + el.id : ''}${el.classList.length ? '.' + [...el.classList].slice(0, 2).join('.') : ''}${t ? ` "${t}"` : ''}`; };
-  const main = document.querySelector('main');
-  // Sideways scroll: the document, and <main> (the app's page scroller, which the document check does not see).
-  const doc = document.scrollingElement.scrollWidth - W;
-  if (doc > 1) out.push(`page scrolls sideways by ${doc}px`);
-  if (main && main.scrollWidth - main.clientWidth > 1) out.push(`main scrolls sideways by ${main.scrollWidth - main.clientWidth}px`);
   // Touch targets: 44x44 CSS px (UX-007). An input inside a label counts by its label; links inside running text
   // (WCAG 2.5.8's inline exception), MapLibre's credits (a 24px (i) and links in its text) and the house form's
   // draggable pin (27x41; the map tap, "Use my location" and the typed coordinates do the same, 2.5.8's equivalent
@@ -420,51 +537,17 @@ function mobileAudit() {
   const tiny = [...document.querySelectorAll('input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=hidden]), select, textarea')]
     .filter((el) => shown(el) && !hidden(el) && parseFloat(getComputedStyle(el).fontSize) < 16).map((el) => `${name(el)} ${getComputedStyle(el).fontSize}`);
   if (tiny.length) out.push(`fields under 16px text: ${tiny.slice(0, 3).join(', ')}`);
-  // Scrolled to the end, nothing is left under the fixed bottom bar.
-  const bar = document.querySelector('nav.nav');
-  if (main && bar && getComputedStyle(bar).position === 'fixed' && shown(bar)) {
-    const top = main.scrollTop; main.scrollTop = main.scrollHeight;
-    const barTop = bar.getBoundingClientRect().top;
-    const under = [...main.querySelectorAll('button, a[href], input, select, textarea, p, li, h2, h3')].filter((el) => shown(el) && !hidden(el) && el.getBoundingClientRect().bottom > barTop + 1);
-    if (under.length) out.push(`under the bottom bar at the end of the page: ${under.slice(0, 3).map((el) => `${name(el)} by ${Math.round(el.getBoundingClientRect().bottom - barTop)}px`).join(', ')}`);
-    main.scrollTop = top;
-  }
-  // MapLibre's controls stay inside the map and clear of the page's legend, buttons and hint.
-  const ctrl = document.querySelector('.map-wrap .maplibregl-ctrl-bottom-right, .map-wrap .maplibregl-ctrl-top-right');
-  const wrap = document.querySelector('.map-wrap');
-  if (ctrl && wrap && shown(wrap)) {
-    const box = wrap.getBoundingClientRect();
-    const parts = [...ctrl.children].filter(shown).map((c) => c.getBoundingClientRect());
-    for (const r of parts) if (r.top < box.top - 1 || r.bottom > box.bottom + 1) out.push(`a map control (${Math.round(r.top)}-${Math.round(r.bottom)}px) outside the map (${Math.round(box.top)}-${Math.round(box.bottom)}px)`);
-    for (const el of document.querySelectorAll('.map-stack > *, .add-hint')) {
-      if (!shown(el)) continue;
-      const b = el.getBoundingClientRect();
-      if (parts.some((r) => Math.min(r.right, b.right) - Math.max(r.left, b.left) > 1 && Math.min(r.bottom, b.bottom) - Math.max(r.top, b.top) > 1)) out.push(`a map control overlaps ${name(el)}`);
-    }
-  }
   // The skip link stays out of sight until it has focus, however many lines its label wraps to.
   const skip = document.querySelector('.skip-link');
   if (skip && document.activeElement !== skip && skip.getBoundingClientRect().bottom > 0) out.push(`skip link showing without focus (bottom ${Math.round(skip.getBoundingClientRect().bottom)}px)`);
-  // The app fits the screen: header, banners and page no taller than the viewport.
-  const root = document.querySelector('app-root');
-  if (root && root.getBoundingClientRect().height > H + 1) out.push(`app taller than the screen: ${Math.round(root.getBoundingClientRect().height)}px of ${H}px`);
   return out;
 }
 
 async function mobile(browser) {
+  let combo = 0; // phone, language and theme, in order: picks this profile's place (REGIONS)
   for (const phone of PHONES) for (const lang of phone.langs) for (const theme of phone.themes && lang === 'en' ? phone.themes : ['light']) {
-    const { defaultBrowserType, ...profile } = devices[phone.device];
-    const viewport = phone.viewport || profile.viewport;
-    const ctx = await browser.newContext({ ...profile, viewport, screen: viewport, colorScheme: theme, serviceWorkers: 'block' });
-    await ctx.addInitScript(([lang, text]) => {
-      try {
-        if (!sessionStorage.getItem('__init')) {
-          sessionStorage.setItem('__init', '1');
-          localStorage.setItem('doorprints.lang', lang);
-        }
-      } catch {}
-      if (text) document.addEventListener('DOMContentLoaded', () => { document.documentElement.style.fontSize = `${text}%`; });
-    }, [lang, phone.text]);
+    const place = regionAt(combo++);
+    const { ctx, viewport } = await phoneContext(browser, devices, { device: phone.device, viewport: phone.viewport, theme, lang, text: phone.text });
     const page = await ctx.newPage();
     const errors = watch(page);
     // Glyph ranges for the map's labels (requested from MapLibre's worker, seen at the context).
@@ -474,8 +557,10 @@ async function mobile(browser) {
     // One house is added after the routes, so its page is checked too (it goes with this profile). Not before: the Map
     // page's first visit would fit to it at street level, and the labels check looks at the country view.
     const addHouse = async () => {
-      await gotoRetry(page, `${BASE}/houses/new?lat=12.9716&lon=77.5946`); await settle(page);
-      await page.locator('#house-name').fill('Mobile check: a house with a fairly long name, Indiranagar 2nd Stage');
+      await gotoRetry(page, `${BASE}${newHouseUrl(place)}`); await settle(page);
+      await page.locator('#house-name').fill(`Mobile check: a house with a fairly long name, ${place.locality} 2nd Stage`);
+      await page.locator('#house-address').fill(place.address);
+      await page.locator('#house-locality').fill(place.locality);
       await page.locator('.toolbar .btn-primary').first().click();
       await page.waitForURL(/\/houses\/(?!new)[^/?]+/, { timeout: 15000 }).catch(() => {});
       const id = (/\/houses\/(?!new)([^/?]+)/.exec(page.url()) || [])[1];
@@ -490,8 +575,9 @@ async function mobile(browser) {
       await gotoRetry(page, BASE + route);
       await settle(page);
       if (route === '/') await page.waitForTimeout(CREDITS_FOLD_MS + 1500);
-      const found = await page.evaluate(mobileAudit);
+      const found = [...(await page.evaluate(layoutAudit)), ...(await page.evaluate(mobileAudit))];
       check('mobile', `${tag}: layout`, found.length === 0, found.join(' ; '));
+      if (listed === 'HOUSE') check('mobile', `${tag0}: the saved house shows its locality (${place.city}, ${place.zone})`, (await page.locator('#house-locality').inputValue().catch(() => '')) === place.locality);
       if (route === '/' && viewport.width <= 640) {
         const open = await page.evaluate(() => { const a = document.querySelector('.map-wrap .maplibregl-ctrl-attrib'); return a ? a.classList.contains('maplibregl-compact-show') : null; });
         check('mobile', `${tag}: map credits folded after ${CREDITS_FOLD_MS / 1000} s`, open !== true, String(open));
@@ -503,13 +589,17 @@ async function mobile(browser) {
         // Portrait phones up to 130% text: "Your houses" and every counter, number and caption, are on screen above
         // the bottom bar before any scrolling (owner report 2026-09-24). The one exception is the map-page rule that
         // MapLibre's controls must fit above the legend row: when the map is at that minimum height (map-page.css,
-        // min-height), the controls win, as with Tamil at 130% on a 384x615 phone, and the counters start below.
+        // --map-floor), the controls win, as with Tamil at 130% on a 384x615 phone, and the counters start below.
         if (viewport.height >= 560 && viewport.height > viewport.width && viewport.width <= 760 && (phone.text || 100) <= 130) {
           const peek = await page.evaluate(() => {
             const bar = document.querySelector('nav.nav'), limit = bar && getComputedStyle(bar).position === 'fixed' ? bar.getBoundingClientRect().top : innerHeight;
             const parts = [...document.querySelectorAll('#houses-heading, .stats dt, .stats dd')];
-            const wrap = document.querySelector('.map-wrap');
-            const atControlsMin = !!wrap && wrap.getBoundingClientRect().height <= parseFloat(getComputedStyle(wrap).minHeight) + 1;
+            // The map row at its floor (--map-floor, map-page.css; since S4b-BL-49's grid the .map-wrap also holds the legend and
+            // the actions, so its own min-height is no longer the floor): measure the floor through a probe, the map against it.
+            const wrap = document.querySelector('.map-wrap'), mapEl = document.querySelector('.maplibregl-map');
+            let floor = NaN;
+            if (wrap) { const probe = document.createElement('div'); probe.style.cssText = 'position:absolute;visibility:hidden;height:var(--map-floor)'; wrap.appendChild(probe); floor = probe.getBoundingClientRect().height; probe.remove(); }
+            const atControlsMin = !!mapEl && floor > 0 && mapEl.getBoundingClientRect().height <= floor + 1;
             return { limit: Math.round(limit), n: parts.length, lowest: Math.round(Math.max(...parts.map((e) => e.getBoundingClientRect().bottom))), atControlsMin };
           });
           check('mobile', `${tag}: heading and counters above the bottom bar`, peek.n >= 11 && (peek.lowest <= peek.limit || peek.atControlsMin), JSON.stringify(peek));
@@ -542,6 +632,135 @@ async function mobile(browser) {
   }
 }
 
+/**
+ * The path trace and the place check, through the UI only (docs/11 5.27.8, 5.27.13): no IndexedDB seeding, so the test does not
+ * know the store's names. 30 steps of 22 m north along one street, with the geolocation moved by the test.
+ */
+async function trace(browser) {
+  const START = { latitude: 12.9716, longitude: 77.5946, accuracy: 10 };
+  const steps = walkSteps(START.latitude, START.longitude, 30, 22);
+  const street = steps[15];
+  const walkAndAsk = async (ctx, page, tag) => {
+    const errors = watch(page);
+    await gotoRetry(page, `${BASE}/`); await settle(page); await page.waitForTimeout(1500);
+    // The card is a <details>: open on a desktop, one line on a phone.
+    const details = page.locator('app-trace-card details');
+    if (!(await details.evaluate((d) => d.open))) await details.locator('summary').click();
+    // The trace is off by default, and nothing asks for the location until Start a walk.
+    check('trace', `${tag}: the trace switch is off by default and Start a walk is not offered yet`, !(await page.locator('#trace-on').isChecked()) && (await page.locator('#trace-start').count()) === 0);
+    await page.locator('#trace-on').check();
+    // Angular renders the card's next state a moment after the click: wait for it instead of reading it at once.
+    await page.locator('#trace-start').waitFor({ timeout: 5000 }).catch(() => {});
+    check('trace', `${tag}: Start a walk and its permission sentence appear`, await page.locator('#trace-start').isVisible() && /your browser will ask for your location/.test(await page.locator('#trace-explain').innerText()));
+    await page.locator('#trace-start').click();
+    await page.locator('#trace-finish').waitFor({ timeout: 10000 }).catch(() => {});
+    check('trace', `${tag}: recording shows Finish walk and the state`, await page.locator('#trace-finish').isVisible() && /Recording your walk/.test(await page.locator('app-trace-card').innerText()));
+    for (const step of steps) {
+      await ctx.setGeolocation({ ...step, accuracy: 10 });
+      await page.waitForTimeout(250);
+    }
+    await page.waitForTimeout(500);
+    const kept = /Points kept: (\d+)/.exec(await page.locator('app-trace-card').innerText());
+    check('trace', `${tag}: the points were kept (at least 25 of 30)`, !!kept && +kept[1] >= 25, kept && kept[0]);
+    await page.locator('#trace-finish').click();
+    await page.locator('dialog.walk-end[open]').waitFor({ timeout: 10000 }).catch(() => {});
+    const sheet = page.locator('dialog.walk-end');
+    check('trace', `${tag}: Save this walk? opens when the walk ends, with the title focused`, (await sheet.getAttribute('open')) !== null && (await page.evaluate(() => document.activeElement && document.activeElement.id)) === 'walk-end-title');
+    check('trace', `${tag}: Keep for 30 days is the primary answer`, /btn-primary/.test((await page.locator('#walk-end-keep').getAttribute('class')) || ''));
+    await page.locator('#walk-end-keep').click();
+    await page.waitForTimeout(500);
+    check('trace', `${tag}: the sheet closes on Keep for 30 days`, (await sheet.getAttribute('open')) === null);
+    check('trace', `${tag}: the legend shows Walked once while the trace is not empty`, /Walked once/.test(await page.locator('.legend').innerText()));
+    // The check: here, on the street.
+    const requests = [];
+    page.on('request', (r) => requests.push(r.url()));
+    await ctx.setGeolocation({ ...street, accuracy: 10 });
+    await page.locator('#place-check-open').click();
+    check('trace', `${tag}: the dialog says the permission sentence`, /It is used once, only on this page, and not kept/.test(await page.locator('#check-permission').innerText()));
+    requests.length = 0;
+    await page.locator('#check-here').click();
+    await page.locator('#check-headline').waitFor({ timeout: 20000 }).catch(() => {});
+    const onStreet = await page.locator('#check-headline').innerText().catch(() => '');
+    check('trace', `${tag}: on the street the answer says within, and today's weekday`, /You walked within \d+ m of here on/.test(onStreet) && onStreet.includes(todayWeekday()), onStreet);
+    check('trace', `${tag}: the answer has the title focused`, (await page.evaluate(() => document.activeElement && document.activeElement.id)) === 'check-title');
+    const leaked = nonTileRequests(requests, BASE);
+    check('trace', `${tag}: the click made no request but the map's`, leaked.length === 0, leaked.slice(0, 3).join(' ; '));
+    // 100 m off the street.
+    await ctx.setGeolocation({ ...eastOf(street, 100), accuracy: 10 });
+    requests.length = 0;
+    await page.locator('#check-again').click();
+    await page.waitForFunction(() => /No walk of yours passed/.test((document.querySelector('#check-headline') || {}).textContent || ''), null, { timeout: 20000 }).catch(() => {});
+    const off = await page.locator('#check-headline').innerText().catch(() => '');
+    check('trace', `${tag}: 100 m off the street the answer says no walk passed within 25 m`, /No walk of yours passed within 25 m of here/.test(off), off);
+    const leakedAgain = nonTileRequests(requests, BASE);
+    check('trace', `${tag}: Check again made no request but the map's`, leakedAgain.length === 0, leakedAgain.slice(0, 3).join(' ; '));
+    if (tag.includes('360')) await page.screenshot({ path: path.join(OUT, 'shots', 'trace_check_360x640.png') });
+    const live = () => page.evaluate(() => [...document.querySelectorAll('[aria-live]')].map((e) => e.textContent).join(' '));
+    await page.waitForTimeout(500);
+    check('trace', `${tag}: the answer was said through the page's live region`, /No walk of yours passed|You walked within/.test(await live()), await live());
+    await page.locator('#check-close').click();
+    await page.waitForTimeout(500);
+    check('trace', `${tag}: Close withdraws the sentence from the live region`, !/No walk of yours passed|You walked within/.test(await live()), await live());
+    check('trace', `${tag}: Close returns focus to Have I been here?`, (await page.evaluate(() => document.activeElement && document.activeElement.id)) === 'place-check-open');
+    check('trace', `${tag}: no result in the URL or in the history state`, !/walked|within|check/i.test(page.url()) && (await page.evaluate(() => JSON.stringify(history.state || {}))).indexOf('within') < 0);
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    check('trace', `${tag}: no horizontal scroll`, overflow <= 1, `${overflow}px`);
+    check('console', `${tag}: no errors`, errors.length === 0, errors.slice(0, 3).join(' ; '));
+  };
+  for (const [tag, viewport] of [['trace desktop', VIEWPORTS.desktop], ['trace 360x640', { width: 360, height: 640 }]]) {
+    const ctx = await newCtx(browser, { viewport, geolocation: START });
+    const page = await ctx.newPage();
+    try { await walkAndAsk(ctx, page, tag); } catch (e) { check('trace', `${tag} ran to the end`, false, e.stack); }
+    await ctx.close();
+  }
+}
+
+/**
+ * The guided tour (S4b-FR-38), at 360 px: the first-visit offer, the steps, the card never covering what it
+ * points at, no horizontal scroll, one offer only, and the replay from Your data.
+ */
+async function tour(browser) {
+  const ctx = await newCtx(browser, { viewport: { width: 360, height: 740 } });
+  const page = await ctx.newPage();
+  const errors = watch(page);
+  try {
+    await gotoRetry(page, `${BASE}/`); await settle(page);
+    await page.locator('#tour-offer-start').waitFor({ timeout: 8000 }).catch(() => {});
+    check('tour', 'the offer shows on the first visit', await page.locator('#tour-offer-start').isVisible());
+    await page.locator('#tour-offer-start').click();
+    let covered = 0; let overflow = 0; let seen = 0; const bad = [];
+    for (let i = 0; i < 40; i++) {
+      // A step's page may be lazy-loading (a few seconds on a cold CDN), and the tour finishes by removing the title.
+      if (i > 0) await page.waitForTimeout(400);
+      if (i > 0 && (await page.locator('#tour-title').count()) === 0) break;
+      await page.locator('#tour-title').waitFor({ timeout: 10000 });
+      await page.waitForTimeout(900); // the page and its target settle
+      const g = await page.evaluate(() => {
+        const c = document.querySelector('[role="dialog"]').getBoundingClientRect(); const s = document.querySelector('.spot')?.getBoundingClientRect();
+        return { c: [c.top | 0, c.bottom | 0], s: s ? [s.top | 0, s.bottom | 0] : null, nav: document.querySelector('nav.nav').getBoundingClientRect().top | 0, overlap: !!s && c.top < s.bottom && c.bottom > s.top, wide: document.documentElement.scrollWidth - document.documentElement.clientWidth, onScreen: c.top >= 0 && c.bottom <= innerHeight };
+      });
+      seen++; if (g.overlap || !g.onScreen) { covered++; bad.push(`${i + 1}:${JSON.stringify(g)}`); } if (g.wide > 1) overflow++;
+      await page.locator('#tour-next').click();
+    }
+    check('tour', 'every step showed (at least 15) and the last one finished the tour', seen >= 15 && seen <= 30, `${seen} steps`);
+    check('tour', 'the card never covers its highlight and stays on screen', covered === 0, `${covered} step(s): ${bad.join(' ')}`);
+    check('tour', 'no horizontal scroll in any step', overflow === 0, `${overflow} step(s)`);
+    await page.waitForTimeout(300);
+    check('tour', 'Finish closes the tour', (await page.locator('#tour-title').count()) === 0);
+    await gotoRetry(page, `${BASE}/`); await settle(page); await page.waitForTimeout(1000);
+    check('tour', 'the offer does not come back after the tour', (await page.locator('#tour-offer-start').count()) === 0);
+    await gotoRetry(page, `${BASE}/data`); await settle(page);
+    await page.locator('#tour-replay').click();
+    await page.locator('#tour-title').waitFor({ timeout: 4000 });
+    check('tour', 'Take the tour on Your data starts it again', /Welcome/.test(await page.locator('#tour-title').innerText()));
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(300);
+    check('tour', 'Escape leaves the tour', (await page.locator('#tour-title').count()) === 0);
+    check('console', 'tour: no errors', errors.length === 0, errors.slice(0, 3).join(' ; '));
+  } catch (e) { check('tour', 'the tour scenario ran to the end', false, e.stack); }
+  await ctx.close();
+}
+
 async function boundaries(browser) {
   // Natural Earth's world lines (below zoom 5) and, since S4b-BL-114, the Survey of India's lines (polyline7).
   const request = (await browser.newContext()).request;
@@ -570,14 +789,63 @@ async function boundaries(browser) {
   await ctx.close();
 }
 
+/**
+ * The Connect page's AI card on a 360 px phone (S4b-BL-151): for the services Gemini, OpenAI, Ollama and Custom, no
+ * sideways scroll, every field has a visible label, the key field is masked, nothing runs off the screen, and a base URL
+ * that breaks a rule shows its error. Nothing is sent to any AI service and no key is typed.
+ */
+async function aiCard(browser) {
+  const ctx = await newCtx(browser, { viewport: { width: 360, height: 740 } });
+  const page = await ctx.newPage();
+  const errors = watch(page);
+  try {
+    await gotoRetry(page, `${BASE}/connect`); await settle(page);
+    await page.locator('#ai-features').check();
+    await page.locator('#ai-service').waitFor({ timeout: 8000 });
+    for (const service of ['gemini', 'openai', 'ollama', 'custom']) {
+      await page.locator('#ai-service').selectOption(service);
+      await page.locator(service === 'gemini' ? '#gemini-key' : '#ai-base-url').waitFor({ timeout: 5000 });
+      const g = await page.evaluate(() => {
+        const card = document.querySelector('#ai');
+        const fields = [...card.querySelectorAll('input:not([type=radio]):not([type=checkbox]), select')];
+        const unlabelled = fields.filter((f) => {
+          const l = card.querySelector(`label[for="${f.id}"]`);
+          const r = l?.getBoundingClientRect();
+          return !l || !l.textContent.trim() || !r || r.width === 0 || r.height === 0;
+        }).map((f) => f.id);
+        const off = [...card.querySelectorAll('input, select, button, a')]
+          .filter((e) => { const r = e.getBoundingClientRect(); return r.width > 0 && (r.right > window.innerWidth + 1 || r.left < -1); })
+          .map((e) => e.id || e.textContent.trim().slice(0, 20));
+        const key = card.querySelector('#ai-key, #gemini-key');
+        return { page: document.scrollingElement.scrollWidth - window.innerWidth, card: card.scrollWidth - card.clientWidth, unlabelled, off, keyType: key?.type };
+      });
+      check('ai', `360px ${service}: no horizontal scroll`, g.page <= 1 && g.card <= 1, `page ${g.page}px, card ${g.card}px`);
+      check('ai', `360px ${service}: every field has a visible label`, g.unlabelled.length === 0, g.unlabelled.join(','));
+      check('ai', `360px ${service}: nothing runs off the screen`, g.off.length === 0, g.off.join(','));
+      check('ai', `360px ${service}: the key field is masked`, g.keyType === 'password', String(g.keyType));
+    }
+    await page.locator('#ai-base-url').fill('http://192.168.1.5:8080/v1');
+    await page.locator('#ai-save').click();
+    const err = page.locator('#ai-base-url-error');
+    await err.waitFor({ timeout: 4000 }).catch(() => {});
+    check('ai', '360px custom: a base URL that breaks a rule shows its error', (await err.count()) === 1 && /localhost/.test(await err.innerText()));
+    check('ai', '360px custom: the error does not widen the page', await page.evaluate(() => document.scrollingElement.scrollWidth - window.innerWidth <= 1));
+    await page.locator('#ai').scrollIntoViewIfNeeded();
+    await page.screenshot({ path: path.join(OUT, 'shots', 'ai_card_360.png') });
+    check('console', 'ai card: no errors', errors.length === 0, errors.slice(0, 3).join(' ; '));
+  } catch (e) { check('ai', 'the AI card scenario ran to the end', false, e.stack); }
+  await ctx.close();
+}
+
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || undefined, args: ['--enable-unsafe-swiftshader', '--use-angle=swiftshader', '--ignore-gpu-blocklist'] });
   const t0 = Date.now();
   const only = (process.env.ONLY || '').split(',').filter(Boolean);
   // The four areas run side by side, each in its own browser contexts (about 12 minutes instead of 25-30 one after
   // another); SERIAL=1 runs them in turn, as before.
-  const areas = [['pages', pageMatrix], ['flows', flows], ['boundaries', boundaries], ['mobile', mobile]]
-    .filter(([name]) => !only.length || only.includes(name));
+  // `--trace` (or ONLY=trace) runs the path trace scenario alone; the default matrix does not include it.
+  const areas = [['pages', pageMatrix], ['flows', flows], ['boundaries', boundaries], ['mobile', mobile], ['tour', tour], ['ai', aiCard], ['trace', trace]]
+    .filter(([name]) => (only.length ? only.includes(name) : WANT_TRACE ? name === 'trace' : name !== 'trace'));
   const run = async ([name, fn]) => {
     try { await fn(browser); } catch (e) { check(name, `${name} ran to the end`, false, e.stack); }
   };

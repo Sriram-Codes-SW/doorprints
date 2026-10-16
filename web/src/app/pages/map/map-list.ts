@@ -19,7 +19,12 @@
 import { HouseDto, HouseStatus, STATUSES } from '../../core/models';
 import type { Broker } from '../../shared/broker';
 import { floorSearchText } from '../../shared/house-floor';
+import type { KindFields } from '../../core/kind-fields';
+import type { TKey } from '../../i18n/en';
+import { drawnKind } from '../../core/kind-setting';
+import { kindSearchWords, type Words } from '../../shared/kind-values';
 import { NO_COST_FILTER, type CostFilter, type CostRange } from '../../shared/cost-filter';
+import { readExtraFilter, type ExtraFilter } from '../../shared/extra-filter';
 
 /**
  * The house list's search, status filter and sort, kept apart from the map page so they can be unit tested without
@@ -27,16 +32,26 @@ import { NO_COST_FILTER, type CostFilter, type CostRange } from '../../shared/co
  * filtered list, and a filtered view can be bookmarked or shared (UX audit 2026-09-23).
  */
 export type SortKey = 'recent' | 'score' | 'price';
+/** A status to show, or all. */
 export type StatusFilter = HouseStatus | 'ALL';
 
 export const SORT_KEYS: readonly SortKey[] = ['recent', 'score', 'price'];
+/** The sort choices with their label keys, in the order the list offers them. */
+export const SORT_OPTIONS: readonly { key: SortKey; labelKey: TKey }[] = [
+  { key: 'recent', labelKey: 'map.sort.recent' },
+  { key: 'score', labelKey: 'map.sort.score' },
+  { key: 'price', labelKey: 'map.sort.price' },
+];
 
+/** The list's state as it goes into the URL: search text, status, sort and cost ranges. */
 export interface ListQuery {
   q: string;
   status: StatusFilter;
   sort: SortKey;
   /** The ranges over the cost numbers (S4b-BL-84); absent is none. */
   cost?: CostFilter;
+  /** The rows over a kind's typed extras (S4b-BL-265), as `x.<id>` in the address; absent for a house, which has none. */
+  extras?: ExtraFilter;
 }
 
 /** The defaults, which are left out of the URL. */
@@ -59,8 +74,8 @@ function rupeesParam(value: string | null): number | null {
   return n <= 1_000_000_000_000 ? n : null;
 }
 
-/** Reads the list state from query parameters; anything unknown falls back to the default. */
-export function parseListQuery(get: (name: string) => string | null): ListQuery {
+/** Reads the list state from query parameters; anything unknown falls back to the default. `fields`: the space's kind, for its extras' rows. */
+export function parseListQuery(get: (name: string) => string | null, fields?: KindFields): ListQuery {
   const status = get('status');
   const sort = get('sort');
   return {
@@ -68,9 +83,11 @@ export function parseListQuery(get: (name: string) => string | null): ListQuery 
     status: STATUSES.includes(status as HouseStatus) ? (status as HouseStatus) : 'ALL',
     sort: SORT_KEYS.includes(sort as SortKey) ? (sort as SortKey) : 'recent',
     cost: parseCostFilter(get),
+    ...(fields ? { extras: readExtraFilter(get, fields) } : {}),
   };
 }
 
+/** Reads the cost range ends from the URL; an end that is not a whole number of rupees is ignored. */
 function parseCostFilter(get: (name: string) => string | null): CostFilter {
   const cost: CostFilter = { monthly: {}, moveIn: {}, perSqFt: {} };
   for (const [range, end, name] of COST_PARAMS) {
@@ -92,6 +109,7 @@ export function listQueryParams(query: ListQuery): Record<string, string | null>
     const v = query.cost?.[range][end];
     params[name] = v == null ? null : String(v);
   }
+  for (const [id, v] of Object.entries(query.extras ?? {})) params[`x.${id}`] = v || null;
   return params;
 }
 
@@ -119,6 +137,7 @@ export function comparePrice(a: HouseDto, b: HouseDto): number {
   return (a.price ?? 0) - (b.price ?? 0);
 }
 
+/** Groups houses for the price sort: rent first, then sale, then a price of unknown type, then no price. */
 function priceGroup(h: HouseDto): number {
   if (h.price === null || h.price === undefined) return 3;
   if (h.priceType === 'RENT') return 0;
@@ -133,13 +152,17 @@ function priceGroup(h: HouseDto): number {
  * the area notes that reach the house (`noteTexts`, slice 4a: `notesReaching`), and the move-in notes and checklist
  * item texts (slice 5), and the floor as `floorSearchText` words it (S4b-BL-87) and, when given, as `localFloor` words it
  * in the app's language (`floorLocalSearchText`, S4b-BL-104 b), so "भूतल" finds a ground floor as "ground floor" does. Photo captions and tags are not matched: the list holds no photos (reading them would read
- * every photo of the store).
+ * every photo of the store). Since kinds PR 6 (S4b-BL-210), given the app's words `t`, the typed extras the kind file's
+ * `search` names, after everything else (`kindSearchWords`): `fields` are the candidate's kind's, as the page draws it
+ * (its own kind when built in, `drawnKind`, S4b-BL-212), and a house adds none.
  */
 export function searchText(
   h: HouseDto,
   brokerText = '',
   noteTexts: readonly string[] = [],
   localFloor?: (floor: number) => string,
+  t?: Words,
+  fields: KindFields = drawnKind(h.kind).fields,
 ): string {
   const parts = [h.label, h.address, h.street, h.locality, h.notes, h.contactName, brokerText]
     .filter((x) => !!x);
@@ -168,6 +191,7 @@ export function searchText(
     parts.push(floorSearchText(h.floor));
     if (localFloor) parts.push(localFloor(h.floor));
   }
+  if (t) parts.push(...kindSearchWords(fields, h, t));
   return parts.join(' ')
     .toLowerCase();
 }
@@ -177,6 +201,7 @@ export function brokerSearchText(broker: Pick<Broker, 'name' | 'agency' | 'feeTe
   return [broker.name, broker.agency, broker.feeTerms].filter((x) => !!x).join(' ');
 }
 
+/** When the house last changed in ms (updated, else created); 0 if neither is readable. */
 export function timeOf(h: HouseDto): number {
   const t = Date.parse(h.updatedAt ?? h.createdAt ?? '');
   return Number.isNaN(t) ? 0 : t;

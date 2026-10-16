@@ -2,7 +2,7 @@
 
 This page is for you if you want sync or the AI features and you are not a programmer. It takes you through every
 step, from an empty computer to **Ask** and **Plan** working on your phone. It takes about an hour. Most of that time
-is waiting for downloads. Everything on this page is free.
+is waiting for downloads. Everything on this page can be done for free; the one optional exception is the paid Google tier for AI in step 4.
 
 A **server** is a program that runs all the time on one computer and looks after your houses for your other devices.
 Think of it as a home post office that all your devices send to and collect from.
@@ -144,17 +144,9 @@ You can move the same key to Google's paid tier. This helps in two ways:
   main reason to pay.
 - **No daily limit to run out of** in normal use.
 
-**What it costs.** You pay only for what you use. There is no monthly fee. The AI counts text in small pieces called
-"tokens" (a token is roughly part of a word). On Google's price list of September 2026, the model Doorprints uses
-(Gemini 3.5 Flash) costs US$1.50 for every million tokens sent and US$9 for every million received.
-
-- One **Ask** question sends a few thousand tokens and gets a few hundred back. It costs about **one US cent**
-  (around a rupee).
-- **Plan** asks the AI several times, so one plan costs a few cents.
-- Keeping your houses searchable costs far less.
-- A month of house-hunting with a hundred questions costs roughly US$1 to US$2.
-
-Prices change. Check [Google's price list](https://ai.google.dev/gemini-api/docs/pricing).
+**What it costs.** You pay only for what you use. There is no monthly fee. The cost per pasted ad, per question and per
+plan, and for a busy month, is in one table: [What it costs](what-we-test.md#what-it-costs). Keeping your houses
+searchable costs far less than the questions. Prices change. Check [Google's price list](https://ai.google.dev/gemini-api/docs/pricing).
 
 **How to switch:**
 
@@ -263,14 +255,25 @@ them may use AI, and can paste your Gemini key. Nobody else needs it.
    letters.
 3. On the server computer, open the first link (it starts with `http://localhost:8080`). On another computer, use
    the second one: put your address from step 7 in place of `<your-server-address>`.
-4. The owner page opens and your browser stays signed in to it. The link works only once, within an hour. The server
-   writes a new one every time it starts, so if it no longer works, restart the server (`docker compose restart api`) and
-   look again.
+4. The owner page opens and your browser stays signed in to it. The link works only once, within an hour. Until a
+   browser is signed in, the server writes a new one every time it starts, so if it no longer works, restart the server
+   (`docker compose restart api`) and look again. Once a browser is signed in, the logs no longer hold a link: to sign
+   in another browser, open the owner page in the signed-in one and choose **Add another browser**.
 5. For AI: under **AI (Google Gemini)**, paste your Gemini key and choose **Save key**. It takes effect at once; you
    don't restart anything. The page then shows only the key's last four characters. **AI on this server** turns AI
    off (and on again) for every device at once.
 
 Keep the owner page's address in your password manager: `https://` your address from step 7, then `/owner`.
+
+**If you lose your only signed-in browser** (you cleared its cookies, or you have a new computer) and the server still
+thinks it is signed in, the logs hold no link. To get one:
+
+1. In `.env`, add the line `OWNER_SETUP_LINK_IN_LOG=true`.
+2. Run `docker compose up -d` in **doorprints-main**, then `docker compose logs api`, and use the link under
+   **Doorprints owner page** as in the steps above. The text there says the setting is on.
+3. Once you are signed in, **take the line out of `.env` again** (or change it to `false`) and run
+   `docker compose up -d`. While it is on, every start writes a working link into the logs, and the logs are read by
+   more tools than you.
 
 ## Step 9: Connect the apps
 
@@ -285,6 +288,9 @@ devices.
    **Connect to a server?**, showing your server's address.
 3. Check the address, then tap **Connect**. The code works once, within 10 minutes.
 
+!!! note "iPhone and a server address"
+    The iPhone app only connects to an address that starts with `https://`, such as the Tailscale address from step 7. A plain `http://` address with a name is refused by iOS itself. An address made of numbers, such as `http://192.168.1.20:8080`, or ending in `.local` is allowed, but it is not encrypted: use it only on a network you trust, and iOS will ask to find devices on your local network.
+
 **With a code (the website, or a phone):**
 
 1. Type your address from step 7 in the app: on the website, open **Connect** and use **API address (URL)**; on a
@@ -293,6 +299,10 @@ devices.
 3. On your owner page, type that code under **Connect a device** and choose **Find**. Check that the name shown is
    the device in front of you, then choose **Approve**.
 4. Within a few seconds the app says it is connected.
+
+![The website's Connect page: the example address https://my-pc.tail1234.ts.net typed under API address (URL) (1), then the Get a code button (2)](images/web-connect-url.png)
+
+*The address in the picture is only an example. Use your own from step 7.*
 
 On the server computer itself, there is a shortcut for the website: on the owner page, choose **Make a QR code**, then
 **Open the website connected to this server**. The website asks once whether to connect, and connects.
@@ -368,7 +378,7 @@ First, see what the server says about the problem. These messages are called log
 | The phone connects but the website doesn't | Check that the `APP_CORS_ORIGINS` line in `.env` is exactly `https://doorprints.web.app`. Then run `docker compose up -d`. Make sure Tailscale is on for that computer too. If the browser asks to allow access to devices on your network, choose **Allow**. |
 | **Ask**, **Plan** or **Assistant** don't appear | `.env` needs `APP_AI_ENABLED=true` (after a change, run `docker compose up -d`). Then check three things: a Gemini key is saved on the owner page (or in `AI_API_KEY`); **AI on this server** is on; and **AI** is ticked for that device under **Devices**. In the app, also turn on **Use AI features in this browser** (website, **Connect** page) or **Use AI features on this phone** (phone, **Settings**). |
 | **Get a code** says the server cannot connect by code yet | The server is older than this guide. Update it (see *Everyday use*), or open **Use an API key instead** and type your Doorprints API key. |
-| The owner page link no longer works | It works only once, within an hour. Restart the server with `docker compose restart api` and use the new link in the logs. |
+| The owner page link no longer works | It works only once, within an hour. If no browser has signed in yet, restart the server with `docker compose restart api` and use the new link in the logs. If one has, the logs hold no link: in that browser, open the owner page and choose **Add another browser**. If you no longer have that browser, use the recovery at the end of step 8 (`OWNER_SETUP_LINK_IN_LOG=true`). |
 | `tailscale` is not recognized, or `command not found` | Windows: open a new terminal after installing Tailscale. Mac: use the longer form in step 7. |
 | AI answers fail after working earlier | You have probably reached the free daily limit. Try again the next day. |
 | All your houses are gone from the server | The folder was renamed or moved (see step 2). Move it back. Or, on Android, use **Import a backup** with your latest copy, then **Sync now**. |

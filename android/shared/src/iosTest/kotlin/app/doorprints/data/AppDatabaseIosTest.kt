@@ -166,15 +166,17 @@ class AppDatabaseIosTest {
 
         val connection = BundledSQLiteDriver().open(path)
         try {
-            // The current version (10 since S4b-BL-87: houses.floor; 9 the photos' meta and houses.moveIn; 8 houses.answers;
+            // The current version (13 S4b-BL-303: index_houses_kind; 12 since kinds step 4, S4b-BL-206: every house a candidate; 11 S4b-FR-14: saved_walks and
+            // track_points.walkId; 10 S4b-BL-87: houses.floor; 9 the photos' meta and houses.moveIn; 8 houses.answers;
             // 7 houses.rooms; 6 houses.brokerId; 5 the house's values; 4 records; track_points and records empty after the
-            // migration, and a house from before has no area, source, cost, broker, rooms, answers, move-in or floor).
-            assertEquals(listOf("10"), connection.rows("PRAGMA user_version"))
+            // migration, and a house from before is a `house` whose rent has no amount yet, with no extras, broker, rooms,
+            // answers or move-in).
+            assertEquals(listOf("13"), connection.rows("PRAGMA user_version"))
             assertEquals(
-                listOf("h1|||||||"),
+                listOf("h1|house||month|||||"),
                 connection.rows(
-                    "SELECT id, IFNULL(areaSqft, ''), IFNULL(cost_deposit, ''), IFNULL(brokerId, ''), IFNULL(rooms, ''), " +
-                        "IFNULL(answers, ''), IFNULL(moveIn, ''), IFNULL(floor, '') FROM houses",
+                    "SELECT id, kind, IFNULL(money_amount, ''), IFNULL(money_cadence, ''), IFNULL(extras, ''), " +
+                        "IFNULL(brokerId, ''), IFNULL(rooms, ''), IFNULL(answers, ''), IFNULL(moveIn, '') FROM houses",
                 ),
             )
             // A photo from before has no meta: no room, tags or caption, never edited, nothing to send (slice 5).
@@ -185,6 +187,7 @@ class AppDatabaseIosTest {
                 ),
             )
             assertEquals(listOf("0"), connection.rows("SELECT COUNT(*) FROM track_points"))
+            assertEquals(listOf("0"), connection.rows("SELECT COUNT(*) FROM saved_walks"))
             assertEquals(listOf("0"), connection.rows("SELECT COUNT(*) FROM records"))
         } finally {
             connection.close()

@@ -1,0 +1,16 @@
+{
+  "spec": "web/src/app/core/ai/ai-core.spec.ts",
+  "mutations": [
+    {"file": "web/src/app/core/ai/ai-core.ts", "find": "0x0b66, 0x0be6, 0x0c66, 0x0ce6", "replace": "0x0b66, 0x0be6, 0x0ce6", "expect": "removes contacts as the server does"},
+    {"file": "web/src/app/core/ai/ai-core.ts", "find": "\\u0c66-\\u0c6f", "replace": "\\u0c66-\\u0c66", "expect": "removes contacts as the server does"},
+    {"file": "web/src/app/core/ai/ai-core.ts", "find": "\\u0a66-\\u0a6f", "replace": "", "expect": "removes contacts as the server does"},
+    {"file": "web/src/app/core/ai/ai-core.ts", "find": "return String(code - DIGIT_ZEROS.find((zero) => code >= zero && code <= zero + 9)!);", "replace": "return String(code - 0x0966);", "expect": "removes contacts as the server does"},
+    {"file": "web/src/app/core/ai/ai-core.ts", "find": "'|\\\\(?0\\\\d{2,4}\\\\)?[ \\\\-]?\\\\d{3,4}", "replace": "'|0\\\\d{2,4}[ \\\\-]?\\\\d{3,4}", "expect": "removes contacts as the server does"},
+    {"file": "web/src/app/core/ai/ai-core.ts", "find": "out += s.slice(last, at) + PHONE;", "replace": "out += PHONE;", "expect": "removes contacts as the server does"},
+    {"file": "web/src/app/core/ai/ai-core.ts", "find": "last = at + m[0].length;", "replace": "last = at;", "expect": "removes contacts as the server does"},
+    {"file": "web/src/app/core/ai/ai-core.ts", "find": "const at = m.index ?? 0;", "replace": "const at = 1;", "expect": "removes contacts as the server does"},
+    {"file": "web/src/app/core/ai/ai-core.ts", "find": "return replaceInDigits(PHONE_LIKE, out).replace(EMAIL_LIKE, EMAIL);", "replace": "return out.replace(PHONE_LIKE, PHONE).replace(EMAIL_LIKE, EMAIL);", "expect": "removes contacts as the server does"},
+    {"file": "web/src/app/core/ai/ai-core.ts", "find": "this.savedPhone ? replaceInDigits(this.savedPhone, s) : s", "replace": "this.savedPhone ? s.replace(this.savedPhone, PHONE) : s", "expect": "removes contacts as the server does"},
+    {"file": "web/src/app/core/ai/ai-core.ts", "find": "return text ? replaceInDigits(PHONE_LIKE, text).replace(EMAIL_LIKE, EMAIL) : text;", "replace": "return text ? text.replace(PHONE_LIKE, PHONE).replace(EMAIL_LIKE, EMAIL) : text;", "expect": "removes contacts as the server does"}
+  ]
+}

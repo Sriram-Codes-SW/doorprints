@@ -131,7 +131,7 @@ class ViewingsRepositoryTest {
         val row = db.records().get(ViewingType.name, id)!!
         assertTrue("a saved viewing is pushed on the next sync", row.dirty)
         assertEquals(
-            """{"houseId":"h1","startsAt":$at,"durationMin":30,"kind":"FIRST","status":"PLANNED","remindMin":60,"withWhom":"Ravi"}""",
+            """{"candidateId":"h1","startsAt":$at,"durationMin":30,"kind":"FIRST","status":"PLANNED","remindMin":60,"withWhom":"Ravi"}""",
             row.payload,
         )
         // The same values again: no write, the stamp stays.
@@ -180,6 +180,64 @@ class ViewingsRepositoryTest {
         // A house delete leaves its viewings: the history shows them as a house that is gone.
         repo.deleteHouse("h1")
         assertEquals(3, repo.viewingsOf("h1").size)
+    }
+
+    @Test
+    fun theReminderIdsIncludeTombstonesAndARowThatCannotBeTrustedIsSkippedEverywhere(): Unit = runBlocking {
+        house()
+        repo.saveViewing(viewing("v_00000001"))
+        repo.saveViewing(viewing("v_00000002"))
+        repo.deleteViewing("v_00000002")
+        // A row whose payload does not decode, and one with no start: both are left out of every read.
+        db.records().upsert(RecordEntity(ViewingType.name, "v_00000003", "not json", at))
+        db.records().upsert(RecordEntity(ViewingType.name, "v_00000004", """{"houseId":"h1","startsAt":0}""", at))
+        assertEquals(setOf("v_00000001", "v_00000002", "v_00000003", "v_00000004"), repo.viewingIdsForReminders().toSet())
+        assertEquals(listOf("v_00000001"), repo.viewings().map { it.id })
+        assertEquals(listOf("v_00000001"), repo.observeViewings().first().map { it.id })
+        assertNull(repo.getViewing("v_00000003"))
+        assertNull(repo.getViewing("v_00000004"))
+        // A tombstone that still holds a valid payload (a pulled one) is not a viewing.
+        val kept = db.records().get(ViewingType.name, "v_00000001")!!
+        db.records().upsert(kept.copy(id = "v_00000005", deleted = true))
+        assertNull(repo.getViewing("v_00000005"))
+        assertEquals(listOf("v_00000001"), repo.localRows().toBundle(ExportOptions(exportedAtMillis = at)).viewings.map { it.id })
+    }
+
+    /**
+     * S4b-BL-247: a row stored or synced before names its house `houseId` and reads, backs up and is found by its house
+     * like a new one; saving it again writes `candidateId` only; a row with both keys is a bad row, left out everywhere.
+     */
+    @Test
+    fun aRowOfTheKeyBeforeIsReadAndRewrittenWithCandidateIdAndOneWithBothKeysIsSkipped(): Unit = runBlocking {
+        house()
+        db.records().upsert(RecordEntity(ViewingType.name, "v_00000001",
+            """{"houseId":"h1","startsAt":$at,"durationMin":45,"kind":"SECOND","status":"PLANNED","remindMin":30}""", at))
+        db.records().upsert(RecordEntity(ViewingType.name, "v_00000002",
+            """{"candidateId":"h1","houseId":"h1","startsAt":$at}""", at))
+        assertEquals(listOf("v_00000001"), repo.viewings().map { it.id })
+        val old = repo.getViewing("v_00000001")!!
+        assertEquals(listOf("h1", "45", "SECOND"), listOf(old.houseId, old.durationMin.toString(), old.kind))
+        assertNull(repo.getViewing("v_00000002"))
+        val backup = repo.localRows().toBundle(ExportOptions(exportedAtMillis = at)).viewings
+        assertEquals(listOf("v_00000001" to "h1"), backup.map { it.id to it.houseId })
+
+        repo.markViewingDone("v_00000001")
+        assertEquals(
+            """{"candidateId":"h1","startsAt":$at,"durationMin":45,"kind":"SECOND","status":"DONE","remindMin":30}""",
+            db.records().get(ViewingType.name, "v_00000001")!!.payload,
+        )
+    }
+
+    @Test
+    fun markingDoneWithoutAVisitKeepsTheOneItHadAndAMissingViewingStaysMissing(): Unit = runBlocking {
+        house()
+        repo.saveViewing(viewing("v_00000001").copy(visitId = "visit-7"))
+        repo.markViewingDone("v_00000001")
+        val done = repo.getViewing("v_00000001")!!
+        assertEquals(listOf("DONE", "visit-7"), listOf(done.status, done.visitId))
+        repo.markViewingDone("v_00000009", "visit-8")
+        assertNull(repo.getViewing("v_00000009"))
+        assertNull(db.records().get(ViewingType.name, "v_00000009"))
     }
 
     @Test

@@ -1,0 +1,168 @@
+{
+ "spec": "android/app/src/test/java/app/doorprints/VoiceInputUiTest.kt and VoiceSafetyTest.kt",
+ "gradle": [
+  ":app:testDebugUnitTest",
+  "--tests",
+  "app.doorprints.VoiceInputUiTest",
+  "--tests",
+  "app.doorprints.VoiceSafetyTest"
+ ],
+ "mutations": [
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/OwnKeyTranscription.kt",
+   "find": "if (choice.enabled && s.aiFeatures && VoiceInput.providerOk(ownKey, s.aiProviderConfig)) {",
+   "replace": "if (s.aiFeatures && VoiceInput.providerOk(ownKey, s.aiProviderConfig)) {",
+   "expect": "withoutTheSwitchTheOwnAiTheKeyOrAnAudioProviderNothingIsSent"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/OwnKeyTranscription.kt",
+   "find": "if (choice.enabled && s.aiFeatures && VoiceInput.providerOk(ownKey, s.aiProviderConfig)) {",
+   "replace": "if (choice.enabled && VoiceInput.providerOk(ownKey, s.aiProviderConfig)) {",
+   "expect": "withoutTheSwitchTheOwnAiTheKeyOrAnAudioProviderNothingIsSent"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/OwnKeyTranscription.kt",
+   "find": "val ownKey = s.aiProvider == AiProviderChoice.DEVICE && s.geminiKey.isNotBlank()",
+   "replace": "val ownKey = s.geminiKey.isNotBlank()",
+   "expect": "withoutTheSwitchTheOwnAiTheKeyOrAnAudioProviderNothingIsSent"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/OwnKeyTranscription.kt",
+   "find": "        return transcriber.transcribe(clip.bytes, clip.mime, VoiceInput.langHint(appLanguage), clip.durationMs)",
+   "replace": "        settings.saveAiFeatures(false)\n        return transcriber.transcribe(clip.bytes, clip.mime, VoiceInput.langHint(appLanguage), clip.durationMs)",
+   "expect": "aWholeSpokenTurnLeavesNoTrace"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/OwnKeyTranscription.kt",
+   "find": "        return transcriber.transcribe(clip.bytes, clip.mime, VoiceInput.langHint(appLanguage), clip.durationMs)",
+   "replace": "        println(clip.bytes.size)\n        return transcriber.transcribe(clip.bytes, clip.mime, VoiceInput.langHint(appLanguage), clip.durationMs)",
+   "expect": "theVoiceCodeWritesNoFilePreferenceLogShareOrRow"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/Settings.kt",
+   "find": "if (on) it[Keys.voiceInput] = true else it.remove(Keys.voiceInput)",
+   "replace": "it[Keys.voiceInput] = on",
+   "expect": "theSettingWritesOnlyItsOwnSwitch"
+  },
+  {
+   "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/Settings.kt",
+   "find": "enabled = p[Keys.voiceInput] ?: false,",
+   "replace": "enabled = p[Keys.voiceInput] ?: true,",
+   "expect": "theSettingIsOffByDefault"
+  },
+  {
+   "file": "android/app/src/main/java/app/doorprints/voice/AndroidVoiceServices.kt",
+   "find": "override val recordable: Boolean by lazy { app.packageManager.hasSystemFeature(PackageManager.FEATURE_MICROPHONE) }",
+   "replace": "override val recordable: Boolean = true",
+   "expect": "theGrantIsReadNotAsked"
+  },
+  {
+   "file": "android/app/src/main/java/app/doorprints/voice/AndroidVoiceServices.kt",
+   "find": "Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED",
+   "replace": "Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED",
+   "expect": "theGrantIsReadNotAsked"
+  },
+  {
+   "file": "android/app/src/main/java/app/doorprints/voice/AndroidVoiceServices.kt",
+   "find": "override fun newRecorder(): VoiceRecorder = PcmVoiceRecorder(AudioRecordPcmSource(app), Dispatchers.IO)",
+   "replace": "override fun newRecorder(): VoiceRecorder = PcmVoiceRecorder(AudioRecordPcmSource(app).also { java.io.File(app.cacheDir, \"a.wav\").writeText(\"\") }, Dispatchers.IO)",
+   "expect": "theVoiceCodeWritesNoFilePreferenceLogShareOrRow"
+  },
+  {
+   "file": "android/app/src/main/java/app/doorprints/voice/AudioRecordPcmSource.kt",
+   "find": "Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED",
+   "replace": "Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED",
+   "expect": "withoutThePermissionTheMicrophoneIsNotOpened"
+  },
+  {
+   "file": "android/app/src/main/AndroidManifest.xml",
+   "find": "    <uses-permission android:name=\"android.permission.RECORD_AUDIO\" />\n",
+   "replace": "",
+   "expect": "theMicrophonePermissionIsDeclaredOnce"
+  },
+  {
+   "file": "android/app/src/main/AndroidManifest.xml",
+   "find": "<uses-feature android:name=\"android.hardware.microphone\" android:required=\"false\" />",
+   "replace": "<uses-feature android:name=\"android.hardware.microphone\" android:required=\"true\" />",
+   "expect": "theMicrophonePermissionIsDeclaredOnce"
+  },
+  {
+   "file": "android/app/src/main/res/xml/data_extraction_rules.xml",
+   "find": "<include domain=\"file\" path=\"photos/\" />",
+   "replace": "<include domain=\"file\" path=\".\" />",
+   "expect": "androidBackupIsOffAndDeviceTransferTakesOnlyTheDatabaseAndThePhotos"
+  },
+  {
+   "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/VoiceMicButton.kt",
+   "find": "LifecycleResumeEffect(session) { onPauseOrDispose { session.release() } }",
+   "replace": "LifecycleResumeEffect(session) { onPauseOrDispose { } }",
+   "expect": "pausingTheScreenWhileRecording"
+  },
+  {
+   "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/VoiceMicButton.kt",
+   "find": "VoicePhase.IDLE -> if (voice.microphoneGranted()) session.start() else rationale = true",
+   "replace": "VoicePhase.IDLE -> session.start()",
+   "expect": "thePermissionIsNotAskedUntilATapAndARationale"
+  },
+  {
+   "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/VoiceMicButton.kt",
+   "find": "TextButton(onClick = { rationale = false; request() })",
+   "replace": "TextButton(onClick = { rationale = false })",
+   "expect": "thePermissionIsNotAskedUntilATapAndARationale"
+  },
+  {
+   "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/VoiceMicButton.kt",
+   "find": "if (!VoiceInput.available(choice, aiOn, ownKey, services.voice.recordable)) return null",
+   "replace": "if (false) return null",
+   "expect": "withTheSettingOffThereIsNoMicrophoneButton"
+  },
+  {
+   "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/VoiceMicButton.kt",
+   "find": "val inserted = appendTranscript(text, words, limit)",
+   "replace": "val inserted = appendTranscript(\"\", words, limit)",
+   "expect": "speakThenStopPutsTheWordsAfterTheText"
+  },
+  {
+   "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/VoiceMicButton.kt",
+   "find": "        LiveMessage(assertive = true) {\n            ui.problem?.let",
+   "replace": "        LiveMessage(assertive = false) {\n            ui.problem?.let",
+   "expect": "aRefusalLeavesTheFieldUsable"
+  },
+  {
+   "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/VoiceMicButton.kt",
+   "find": "modifier = Modifier.semantics { contentDescription = label },",
+   "replace": "modifier = Modifier,",
+   "expect": "withThePermissionAlreadyGrantedATapRecordsAtOnce"
+  },
+  {
+   "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/VoiceInputSetting.kt",
+   "find": "if (VoiceInput.usable(choice, ownActive)) {",
+   "replace": "if (true) {",
+   "expect": "anAnthropicOrLocalOrCustomServiceGetsTheReason"
+  },
+  {
+   "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/VoiceInputSetting.kt",
+   "find": "onChange = { on -> scope.launch { repo.settings.saveVoiceInput(on) } },",
+   "replace": "onChange = { _ -> },",
+   "expect": "theSwitchIsOffByDefaultShowsTheDisclosure"
+  },
+  {
+   "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/AssistantScreen.kt",
+   "find": "    VoiceMicButton(question, vm::editAsk, LocalSpace.current.kind, max = AssistantViewModel.MAX_QUESTION)\n",
+   "replace": "",
+   "expect": "askAddsTheWordsAndAsksNothing"
+  },
+  {
+   "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/AssistantScreen.kt",
+   "find": "    VoiceMicButton(question, vm::editPlan, LocalSpace.current.kind, max = AssistantViewModel.MAX_QUESTION)\n",
+   "replace": "",
+   "expect": "planNotesHasTheMicrophoneToo"
+  },
+  {
+   "file": "android/ui/src/commonMain/kotlin/app/doorprints/ui/PasteListing.kt",
+   "find": "                VoiceMicButton(text, { text = it }, Candidates.kindOf(kind))\n",
+   "replace": "",
+   "expect": "fillInFromListingText"
+  }
+ ]
+}

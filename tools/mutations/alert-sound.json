@@ -1,0 +1,65 @@
+{
+  "spec": "web/src/app/core/alert-sound.service.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/core/alert-sound.service.ts",
+      "find": "hz: 880,",
+      "replace": "hz: 440,",
+      "expect": "plays two 0.15 s sine tones at 880 Hz"
+    },
+    {
+      "file": "web/src/app/core/alert-sound.service.ts",
+      "find": "volume: 0.3 }",
+      "replace": "volume: 0.5 }",
+      "expect": "plays two 0.15 s sine tones at 880 Hz"
+    },
+    {
+      "file": "web/src/app/core/alert-sound.service.ts",
+      "find": "toneS: 0.15,",
+      "replace": "toneS: 0.2,",
+      "expect": "plays two 0.15 s sine tones at 880 Hz"
+    },
+    {
+      "file": "web/src/app/core/alert-sound.service.ts",
+      "find": "gapS: 0.1,",
+      "replace": "gapS: 0.2,",
+      "expect": "plays two 0.15 s sine tones at 880 Hz"
+    },
+    {
+      "file": "web/src/app/core/alert-sound.service.ts",
+      "find": "if (ctx !== null && ctx.state === 'running') {",
+      "replace": "if (ctx !== null) {",
+      "expect": "does not play when it is not running"
+    },
+    {
+      "file": "web/src/app/core/alert-sound.service.ts",
+      "find": "const VIBRATION = [200, 100, 200];",
+      "replace": "const VIBRATION = [200, 100];",
+      "expect": "does not play when it is not running"
+    },
+    {
+      "file": "web/src/app/core/alert-sound.service.ts",
+      "find": "      ctx.resume().then(",
+      "replace": "      void (0 as unknown as Promise<void>)?.then?.(",
+      "expect": "prepare() creates the context once and resumes it"
+    },
+    {
+      "file": "web/src/app/core/alert-sound.service.ts",
+      "find": "      if (this.ctx === null && this.factory !== null) {",
+      "replace": "      if (this.factory !== null) {",
+      "expect": "prepare() creates the context once"
+    },
+    {
+      "file": "web/src/app/core/alert-sound.service.ts",
+      "find": "    this.vibrate?.(VIBRATION);\n",
+      "replace": "",
+      "expect": "does not play when it is not running"
+    },
+    {
+      "file": "web/src/app/core/alert-sound.service.ts",
+      "find": "    ctx?.close().catch(() => undefined);",
+      "replace": "",
+      "expect": "close() releases the context"
+    }
+  ]
+}

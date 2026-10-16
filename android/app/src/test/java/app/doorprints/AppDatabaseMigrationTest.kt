@@ -33,6 +33,7 @@ import app.doorprints.data.AppDatabase
 import app.doorprints.data.DatabaseFile
 import app.doorprints.data.create
 import app.doorprints.shared.model.HouseAnswer
+import app.doorprints.shared.model.HouseCost
 import app.doorprints.shared.model.HouseRoom
 import app.doorprints.shared.model.HouseStatus
 import app.doorprints.shared.model.MoveIn
@@ -362,6 +363,159 @@ class AppDatabaseMigrationTest {
             assertEquals(-1, opened.houses().get("h1")!!.floor)
         } finally {
             opened.close()
+        }
+    }
+
+    /**
+     * `MIGRATION_10_11` (S4b-FR-14, TC-U-150): the chain from version 1 validates against `11.json`; a trace row from
+     * before survives with walk id 0 (no id) and `saved_walks` is empty and takes a row; the app's own builder opens it.
+     */
+    @Test
+    fun migration10To11KeepsTheTraceWithWalkIdZeroAndAddsSavedWalks() = runBlocking {
+        writeVersion1(helperFile)
+        helper.runMigrationsAndValidate(10, AppDatabase.MIGRATIONS.toList().take(9)).use { v10 ->
+            v10.execSQL("INSERT INTO track_points (at, lat, lon, accuracyM) VALUES (5, 12.5, 77.5, 8.0)")
+        }
+        val db = helper.runMigrationsAndValidate(11, listOf(AppDatabase.MIGRATION_10_11))
+        try {
+            assertEquals(listOf("5|12.5|77.5|0"), db.rows("SELECT at, lat, lon, walkId FROM track_points"))
+            assertEquals(listOf("0"), db.rows("SELECT COUNT(*) FROM saved_walks"))
+            db.execSQL(
+                "INSERT INTO saved_walks (id, houseId, startedAt, endedAt, savedAt, pointCount, lengthM, points) " +
+                    "VALUES ('w1', 'h1', 1, 2, 3, 2, 120, X'0102')",
+            )
+            assertEquals(listOf("w1|h1|120"), db.rows("SELECT id, houseId, lengthM FROM saved_walks"))
+        } finally {
+            db.close()
+        }
+        // The app's own builder (framework SQLite, every migration) opens the version-11 file the helper left.
+        val opened = AppDatabase.create(context.also { helperFile.copyTo(context.getDatabasePath(DatabaseFile.NAME), overwrite = true) })
+        try {
+            assertEquals(1, opened.savedWalks().count())
+            assertEquals(1, opened.track().since(0).size)
+            assertEquals(0L, opened.track().since(0).single().walkId)
+        } finally {
+            opened.close()
+        }
+    }
+
+    /**
+     * `MIGRATION_11_12` (kinds step 4, S4b-BL-206, TC-U-204): the chain from version 1 validates against `12.json`, and
+     * every house is rewritten in place as a candidate with nothing lost: a rent's money is `month`, a sale's `once`, a
+     * price without a type has no cadence (owner, 2026-10-12), a rent with no amount yet keeps its cadence; the values
+     * become extras in the kind file's order (money extras with their cadences, the offers as often as the money or
+     * `month`); a house with none has no money and no extras; every other column, the dirty flag and the tombstone
+     * included, is copied. The app's own builder then reads each house back as it was.
+     */
+    @Test
+    fun migration11To12RewritesEveryHouseAsACandidateInPlace() = runBlocking {
+        writeVersion1(helperFile)
+        helper.runMigrationsAndValidate(11, AppDatabase.MIGRATIONS.toList().take(10)).use { v11 ->
+            v11.execSQL(
+                "UPDATE houses SET price = 32000, bedrooms = 2, areaSqft = 1150, floor = 0, locationSource = 'GPS', " +
+                    "cost_deposit = 64000, cost_depositMonths = 2, cost_maintenance = 2500, cost_maintenanceIncluded = 0, " +
+                    "cost_brokerage = 16000, cost_brokerageMonths = 1, cost_lockInMonths = 11, cost_noticeMonths = 3, " +
+                    "cost_availableFrom = '2026-10-15', cost_myOffer = 30000, cost_agreedPrice = 31000, " +
+                    "rooms = '[{\"id\":\"r1\",\"type\":\"BEDROOM\",\"sort\":0}]', brokerId = 'b1' WHERE id = 'h1'",
+            )
+            for (sql in listOf(
+                // A sale in Kolkata with an offer, a tombstone and clean (already sent).
+                "('h2', 'Salt Lake flat', 22.58, 88.41, 'NEW', 9500000, 'SALE', NULL, NULL, 9000000, 1, 0)",
+                // A price of type *Not set* in Kochi: never a monthly rent.
+                "('h3', 'Kakkanad villa', 10.01, 76.34, 'NEW', 12000000, NULL, 4, -1, NULL, 0, 1)",
+                // A rent whose amount is not known yet, in Guwahati: money and no extras.
+                "('h4', 'Zoo Road 1BHK', 26.17, 91.77, 'NEW', NULL, 'RENT', NULL, NULL, NULL, 0, 1)",
+                // Nothing known at all (a map tap in Shimla).
+                "('h5', '', 31.10, 77.17, 'NEW', NULL, NULL, NULL, NULL, NULL, 0, 1)",
+            )) {
+                v11.execSQL(
+                    "INSERT INTO houses (id, label, lat, lon, status, price, priceType, bedrooms, floor, cost_myOffer, " +
+                        "deleted, dirty, checklist, createdAt, updatedAt) VALUES " + sql.dropLast(1) + ", '{}', 10, 20)",
+                )
+            }
+        }
+        val db = helper.runMigrationsAndValidate(12, listOf(AppDatabase.MIGRATION_11_12))
+        try {
+            assertEquals(
+                listOf(
+                    "h1|house|32000|month|{\"bedrooms\":2,\"areaSqft\":1150,\"floor\":0," +
+                        "\"deposit\":{\"amount\":64000,\"cadence\":\"once\"},\"depositMonths\":2," +
+                        "\"maintenance\":{\"amount\":2500,\"cadence\":\"month\"},\"maintenanceIncluded\":false," +
+                        "\"brokerage\":{\"amount\":16000,\"cadence\":\"once\"},\"brokerageMonths\":1,\"lockInMonths\":11," +
+                        "\"noticeMonths\":3,\"availableFrom\":\"2026-10-15\",\"myOffer\":{\"amount\":30000,\"cadence\":\"month\"}," +
+                        "\"agreedPrice\":{\"amount\":31000,\"cadence\":\"month\"}}|0|1",
+                    "h2|house|9500000|once|{\"myOffer\":{\"amount\":9000000,\"cadence\":\"once\"}}|1|0",
+                    "h3|house|12000000||{\"bedrooms\":4,\"floor\":-1}|0|1",
+                    "h4|house||month||0|1",
+                    "h5|house||||0|1",
+                ),
+                db.rows(
+                    "SELECT id, kind, IFNULL(money_amount, ''), IFNULL(money_cadence, ''), IFNULL(extras, ''), deleted, dirty " +
+                        "FROM houses ORDER BY id",
+                ),
+            )
+            // The columns that did not move are copied as they were.
+            assertEquals(
+                listOf("h1|Flat in Indiranagar|SHORTLISTED|{\"water\":4}|GPS|b1|[{\"id\":\"r1\",\"type\":\"BEDROOM\",\"sort\":0}]|1|2"),
+                db.rows("SELECT id, label, status, checklist, locationSource, brokerId, rooms, createdAt, updatedAt FROM houses WHERE id = 'h1'"),
+            )
+            assertEquals(listOf("v1|h1"), db.rows("SELECT id, houseId FROM visits"))
+        } finally {
+            db.close()
+        }
+        val opened = AppDatabase.create(context.also { helperFile.copyTo(context.getDatabasePath(DatabaseFile.NAME), overwrite = true) })
+        try {
+            val h1 = opened.houses().get("h1")!!
+            assertEquals(32_000L, h1.price); assertEquals("RENT", h1.priceType); assertEquals(2, h1.bedrooms)
+            assertEquals(1150, h1.areaSqft); assertEquals(0, h1.floor)
+            assertEquals(
+                HouseCost(64_000, 2, 2_500, false, 16_000, 1, 11, 3, "2026-10-15", 30_000, 31_000),
+                h1.cost,
+            )
+            assertEquals("SALE", opened.houses().get("h2")!!.priceType)
+            assertTrue(opened.houses().get("h2")!!.deleted)
+            val h3 = opened.houses().get("h3")!!
+            assertEquals(12_000_000L, h3.price); assertEquals(null, h3.priceType); assertEquals(4, h3.bedrooms); assertEquals(-1, h3.floor)
+            val h4 = opened.houses().get("h4")!!
+            assertEquals(null, h4.price); assertEquals("RENT", h4.priceType); assertEquals(null, h4.extras)
+            val h5 = opened.houses().get("h5")!!
+            assertEquals(null, h5.price); assertEquals(null, h5.priceType); assertEquals(null, h5.cost)
+            assertEquals(null, h5.money); assertEquals(null, h5.extras)
+            // A write after the upgrade stores the candidate again, round trip unchanged.
+            opened.houses().upsert(h1.copy(floor = 3))
+            assertEquals(h1.copy(floor = 3), opened.houses().get("h1")!!)
+        } finally {
+            opened.close()
+        }
+    }
+
+    /**
+     * v13 (S4b-BL-303): `index_houses_kind` on `houses.kind`, nothing else. The rows of a version 12 database, a tombstone and a
+     * school among them, are read back as they were, and the index is the one Room's `13.json` lists (the helper validates it).
+     */
+    @Test
+    fun migration12To13AddsTheKindIndexAndKeepsEveryRow() = runBlocking {
+        writeVersion1(helperFile)
+        helper.runMigrationsAndValidate(12, AppDatabase.MIGRATIONS.toList().take(11)).use { v12 ->
+            for ((id, kind, deleted) in listOf(Triple("s1", "school", 0), Triple("h9", "house", 1))) {
+                v12.execSQL(
+                    "INSERT INTO houses (id, label, lat, lon, status, kind, deleted, dirty, checklist, createdAt, updatedAt) " +
+                        "VALUES ('$id', 'Pine Hill', 26.14, 91.79, 'NEW', '$kind', $deleted, 0, '{}', 10, 20)",
+                )
+            }
+        }
+        val db = helper.runMigrationsAndValidate(13, listOf(AppDatabase.MIGRATION_12_13))
+        try {
+            assertEquals(
+                listOf("h1|house|0", "h9|house|1", "s1|school|0"),
+                db.rows("SELECT id, kind, deleted FROM houses ORDER BY id"),
+            )
+            assertEquals(
+                listOf("index_houses_kind|houses", "index_houses_street|houses"),
+                db.rows("SELECT name, tbl_name FROM sqlite_master WHERE type = 'index' AND tbl_name = 'houses' AND name LIKE 'index_houses_%' ORDER BY name"),
+            )
+        } finally {
+            db.close()
         }
     }
 

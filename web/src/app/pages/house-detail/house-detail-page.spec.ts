@@ -21,7 +21,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { Observable, Subject, of } from 'rxjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { AiService } from '../../core/ai.service';
+import { AI_MAX_LISTING_CHARS, AiService } from '../../core/ai.service';
 import type { HouseDraft } from '../../core/ai.service';
 import { Announcer } from '../../core/announcer.service';
 import { GeocodeService } from '../../core/geocode.service';
@@ -55,8 +55,10 @@ interface Fakes {
   saveHouse?: () => Observable<HouseDto>;
   reverse?: () => Observable<unknown>;
   search?: (place: string, language: string) => Observable<unknown>;
-  extractListing?: () => Observable<HouseDraft>;
+  extractListing?: (text: string) => Observable<HouseDraft>;
   aiEnabled?: boolean;
+  /** The host of the person's own AI: with it, the page names it where the text goes. */
+  ownHost?: string;
   brokers?: () => Observable<BrokerRow[]>;
   scoring?: () => Observable<Scoring>;
 }
@@ -99,7 +101,7 @@ function create(
       { provide: GeocodeService, useValue: { reverse: fakes.reverse ?? (() => of({})), search: fakes.search ?? (() => of(null)) } },
       {
         provide: AiService,
-        useValue: { enabled: signal(fakes.aiEnabled ?? false), usesOwnKey: signal(false), extractListing: fakes.extractListing ?? (() => of()) },
+        useValue: { enabled: signal(fakes.aiEnabled ?? false), usesOwnKey: signal(fakes.ownHost !== undefined), ownHost: signal(fakes.ownHost ?? ''), extractListing: fakes.extractListing ?? (() => of()) },
       },
     ],
   });
@@ -361,6 +363,20 @@ describe('HouseDetailPage: a failure card kept while the next run goes', () => {
     expect(card!.isConnected).toBe(false);
   });
 
+  it('names the host the listing text goes to when the person\'s own AI answers, and says "the AI provider set up on your server" otherwise', async () => {
+    const own = create({}, { lat: '12.9716', lon: '77.5946' }, { aiEnabled: true, ownHost: 'api.groq.com' });
+    await own.fixture.whenStable();
+    const hint = (own.fixture.nativeElement as HTMLElement).querySelector('#listing-fill-hint')!.textContent;
+    expect(hint).toContain('straight to api.groq.com with your own key');
+    own.fixture.destroy();
+    TestBed.resetTestingModule();
+    const server = create({}, { lat: '12.9716', lon: '77.5946' }, { aiEnabled: true });
+    await server.fixture.whenStable();
+    const serverHint = (server.fixture.nativeElement as HTMLElement).querySelector('#listing-fill-hint')!.textContent;
+    expect(serverHint).toContain('the AI provider set up on your server');
+    expect(serverHint).not.toContain('straight to');
+  });
+
   it('keeps "Could not read the listing" while reading again, and removes it when the listing is read', async () => {
     const reads: Subject<HouseDraft>[] = [];
     const { fixture } = create({}, { lat: '12.9716', lon: '77.5946' }, {
@@ -565,5 +581,173 @@ describe('HouseDetailPage: finding the locality on the map', () => {
     await fixture.whenStable();
     expect([draft().lat, draft().lon]).toEqual(before);
     expect(host.textContent).toContain(t({ key: 'house.placeNotFound', params: { place: 'Indiranagar' } }));
+  });
+});
+
+/** S4b-BL-N13: listingHref validation for malicious URL schemes. */
+describe('HouseDetailPage: listingHref URL validation', () => {
+  it('accepts and returns valid https URLs unchanged', async () => {
+    const { fixture } = create({}, { lat: '12.9716', lon: '77.5946' }, {});
+    const page = fixture.componentInstance as unknown as { listingHref: (url: string | null | undefined) => string | null };
+    expect(page.listingHref('https://a.com/x')).toBe('https://a.com/x');
+  });
+
+  it('accepts and returns valid http URLs unchanged', async () => {
+    const { fixture } = create({}, { lat: '12.9716', lon: '77.5946' }, {});
+    const page = fixture.componentInstance as unknown as { listingHref: (url: string | null | undefined) => string | null };
+    expect(page.listingHref('HTTP://a.com')).toBe('HTTP://a.com');
+  });
+
+  it('converts bare domains to https URLs', async () => {
+    const { fixture } = create({}, { lat: '12.9716', lon: '77.5946' }, {});
+    const page = fixture.componentInstance as unknown as { listingHref: (url: string | null | undefined) => string | null };
+    expect(page.listingHref('example.com/x')).toBe('https://example.com/x');
+  });
+
+  it('blocks intent scheme URLs', async () => {
+    const { fixture } = create({}, { lat: '12.9716', lon: '77.5946' }, {});
+    const page = fixture.componentInstance as unknown as { listingHref: (url: string | null | undefined) => string | null };
+    expect(page.listingHref('intent://x#Intent;scheme=a;end')).toBeNull();
+  });
+
+  it('blocks javascript scheme URLs', async () => {
+    const { fixture } = create({}, { lat: '12.9716', lon: '77.5946' }, {});
+    const page = fixture.componentInstance as unknown as { listingHref: (url: string | null | undefined) => string | null };
+    expect(page.listingHref('javascript:alert(1)')).toBeNull();
+  });
+
+  it('blocks ms-word scheme URLs', async () => {
+    const { fixture } = create({}, { lat: '12.9716', lon: '77.5946' }, {});
+    const page = fixture.componentInstance as unknown as { listingHref: (url: string | null | undefined) => string | null };
+    expect(page.listingHref('ms-word:ofe|u|https://a')).toBeNull();
+  });
+
+  it('blocks data scheme URLs', async () => {
+    const { fixture } = create({}, { lat: '12.9716', lon: '77.5946' }, {});
+    const page = fixture.componentInstance as unknown as { listingHref: (url: string | null | undefined) => string | null };
+    expect(page.listingHref('data:text/html,x')).toBeNull();
+  });
+
+  it('trims whitespace from URLs', async () => {
+    const { fixture } = create({}, { lat: '12.9716', lon: '77.5946' }, {});
+    const page = fixture.componentInstance as unknown as { listingHref: (url: string | null | undefined) => string | null };
+    expect(page.listingHref('  https://a.com  ')).toBe('https://a.com');
+  });
+
+  it('does not show the Open listing link when listingUrl has a malicious scheme', async () => {
+    const { fixture } = create({}, { lat: '12.9716', lon: '77.5946' }, {});
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const host = fixture.nativeElement as HTMLElement;
+    const input = host.querySelector<HTMLInputElement>('#house-listing')!;
+    input.value = 'intent://x';
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const link = host.querySelector('div.inline a.btn');
+    expect(link).toBeNull();
+  });
+
+  it('shows the Open listing link when listingUrl has a valid https scheme', async () => {
+    const { fixture } = create({}, { lat: '12.9716', lon: '77.5946' }, {});
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const host = fixture.nativeElement as HTMLElement;
+    const input = host.querySelector<HTMLInputElement>('#house-listing')!;
+    input.value = 'https://a.com';
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const link = host.querySelector('div.inline a.btn');
+    expect(link).not.toBeNull();
+    expect(link?.getAttribute('href')).toBe('https://a.com');
+  });
+});
+
+/**
+ * S4b-BL-182: Extract reads at most AI_MAX_LISTING_CHARS characters of the pasted text. The field takes what was pasted
+ * (no silent cut by the browser), says under it how many characters at the end are left out, and sends only the first
+ * AI_MAX_LISTING_CHARS.
+ */
+describe('HouseDetailPage: the pasted listing is longer than Extract reads (S4b-BL-182)', () => {
+  const CAP = AI_MAX_LISTING_CHARS;
+
+  function t(msg: Msg): string {
+    return TestBed.inject(TranslationService).t(msg.key, msg.params);
+  }
+
+  async function opened(extract: (text: string) => Observable<HouseDraft> = () => of()) {
+    const made = create({}, { lat: '12.9716', lon: '77.5946' }, { aiEnabled: true, extractListing: extract });
+    await made.fixture.whenStable();
+    return made.fixture;
+  }
+
+  async function paste(fixture: ComponentFixture<HouseDetailPage>, value: string): Promise<HTMLTextAreaElement> {
+    const host = fixture.nativeElement as HTMLElement;
+    const area = host.querySelector<HTMLTextAreaElement>('#listing-text')!;
+    area.value = value;
+    area.dispatchEvent(new Event('input'));
+    await fixture.whenStable();
+    return area;
+  }
+
+  const hintOf = (fixture: ComponentFixture<HouseDetailPage>) =>
+    (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>('#listing-cut-hint');
+
+  it('shows no hint at exactly the limit, and the field no longer cuts the paste itself', async () => {
+    const fixture = await opened();
+    const area = await paste(fixture, 'x'.repeat(CAP));
+    expect(hintOf(fixture)).toBeNull();
+    expect(area.hasAttribute('maxlength')).toBe(false);
+  });
+
+  it('says how many characters at the end are left out, one over the limit and well over it', async () => {
+    const fixture = await opened();
+    await paste(fixture, 'x'.repeat(CAP + 1));
+    expect(hintOf(fixture)?.textContent?.trim()).toBe(t({ key: 'listingFill.cut', params: { max: CAP, n: 1 } }));
+    expect(hintOf(fixture)?.textContent).toContain('Only the first 8,000 characters are read. Characters left out at the end: 1.');
+    await paste(fixture, 'x'.repeat(CAP + 2345));
+    expect(hintOf(fixture)?.textContent).toContain('2,345');
+  });
+
+  it('counts the text without the spaces round it, as it is sent', async () => {
+    const fixture = await opened();
+    await paste(fixture, '  ' + 'x'.repeat(CAP) + '   ');
+    expect(hintOf(fixture)).toBeNull();
+  });
+
+  it('is read out (a polite live region that is there before the hint) and tied to the field', async () => {
+    const fixture = await opened();
+    const host = fixture.nativeElement as HTMLElement;
+    const area = host.querySelector<HTMLTextAreaElement>('#listing-text')!;
+    const slot = host.querySelector('#listing-cut-slot')!;
+    expect(slot.getAttribute('aria-live')).toBe('polite');
+    expect(area.getAttribute('aria-describedby')).toContain('listing-cut-slot');
+    await paste(fixture, 'x'.repeat(CAP + 5));
+    expect(slot.contains(hintOf(fixture))).toBe(true);
+  });
+
+  it('sends only the first characters up to the limit', async () => {
+    const sent: string[] = [];
+    const fixture = await opened((text) => {
+      sent.push(text);
+      return of();
+    });
+    const host = fixture.nativeElement as HTMLElement;
+    await paste(fixture, 'a'.repeat(CAP) + 'TAIL');
+    [...host.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent?.trim() === t({ key: 'listingFill.submit' }))!.click();
+    expect(sent).toEqual(['a'.repeat(CAP)]);
+  });
+
+  it('sends a text at the limit whole', async () => {
+    const sent: string[] = [];
+    const fixture = await opened((text) => {
+      sent.push(text);
+      return of();
+    });
+    const host = fixture.nativeElement as HTMLElement;
+    await paste(fixture, 'b'.repeat(CAP));
+    [...host.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent?.trim() === t({ key: 'listingFill.submit' }))!.click();
+    expect(sent).toEqual(['b'.repeat(CAP)]);
   });
 });

@@ -1,0 +1,42 @@
+{
+  "spec": "android/shared/src/commonTest/kotlin/app/doorprints/data/SettingsStoreTest.kt",
+  "gradle": [":shared:testAndroidHostTest", "--tests", "app.doorprints.data.SettingsStoreTest"],
+  "mutations": [
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/Settings.kt",
+      "find": "DONE.wire -> DONE",
+      "replace": "DONE.wire -> SKIPPED",
+      "expect": "aStoredTourWordIsReadTheWayTheWebsiteReadsIt"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/Settings.kt",
+      "find": "            null -> null\n            DONE.wire",
+      "replace": "            null -> SKIPPED\n            DONE.wire",
+      "expect": "aStoredTourWordIsReadTheWayTheWebsiteReadsIt"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/Settings.kt",
+      "find": "            else -> SKIPPED\n        }\n    }\n}",
+      "replace": "            else -> null\n        }\n    }\n}",
+      "expect": "aStoredTourWordIsReadTheWayTheWebsiteReadsIt"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/Settings.kt",
+      "find": "val tour = stringPreferencesKey(\"tour\")",
+      "replace": "val tour = stringPreferencesKey(\"tourChoice\")",
+      "expect": "theTourIsUnseenUntilItEndsAndThenRemembersHowItEnded"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/Settings.kt",
+      "find": "it[Keys.tour] = end.wire",
+      "replace": "it[Keys.tour] = TourEnd.DONE.wire",
+      "expect": "theTourIsUnseenUntilItEndsAndThenRemembersHowItEnded"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/Settings.kt",
+      "find": "SKIPPED(\"skipped\")",
+      "replace": "SKIPPED(\"skipp\")",
+      "expect": "theTourIsUnseenUntilItEndsAndThenRemembersHowItEnded"
+    }
+  ]
+}

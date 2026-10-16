@@ -18,6 +18,8 @@
 
 package app.doorprints.shared.export
 
+import app.doorprints.data.toEntity
+import app.doorprints.data.toExport
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonNull
@@ -63,7 +65,8 @@ class ImportVectorsTest {
 
     /** The `data.json` checks: decoding, then [BackupValidation.checkData]; a row that does not decode is BROKEN_DATA. */
     private fun check(data: JsonObject): BackupProblem? {
-        val decoded = runCatching { BackupFormat.json.decodeFromJsonElement(BackupData.serializer(), data) }
+        // Through the reader of both backup families (kinds step 3, BackupWire), as every import reads a file.
+        val decoded = runCatching { BackupWire.decodeData(data) }
             .getOrElse { return BackupProblem.BROKEN_DATA }
         return BackupValidation.checkData(decoded)
     }
@@ -75,11 +78,28 @@ class ImportVectorsTest {
         for (c in all) assertEquals(c.name(), c.problem(), check(c.getValue("data").jsonObject)?.name)
     }
 
+    /**
+     * S4b-BL-248: a newer app's extras are kept through an import into the phone's store (the file read, each house a
+     * Room row and back) and written back after the known ones, by id: the candidates of the next backup are the
+     * case's `candidatesWrittenBack`, byte for byte, as on the website and the server.
+     */
+    @Test
+    fun aNewerAppsExtrasAreKeptThroughTheStoreAndWrittenBack() {
+        val kept = cases("checks").filter { "candidatesWrittenBack" in it }
+        assertTrue(kept.isNotEmpty())
+        for (c in kept) {
+            val data = BackupWire.decodeData(c.getValue("data").jsonObject)
+            val again = data.copy(houses = data.houses.map { it.toEntity(dirty = false).toExport() })
+            val written = Json.parseToJsonElement(BackupWire.encodeData(again)).jsonObject
+            assertEquals(c.name(), c.getValue("candidatesWrittenBack").toString(), written.getValue("candidates").toString())
+        }
+    }
+
     @Test
     fun everyMergePreviewCountsTheSame() {
         for (c in cases("merges")) {
             val name = c.name()
-            val data = BackupFormat.json.decodeFromJsonElement(BackupData.serializer(), c.getValue("data"))
+            val data = BackupWire.decodeData(c.getValue("data").jsonObject)
             assertNull(name, BackupValidation.checkData(data))
             val local = c.getValue("local").jsonObject
             fun versions(key: String) = local.getValue(key).jsonObject.mapValues { it.value.jsonPrimitive.long }

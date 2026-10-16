@@ -102,6 +102,7 @@ export class AuthImage implements OnInit, OnDestroy {
   private sub?: Subscription;
   private objectUrl: string | null = null;
 
+  /** Reads the photo and makes an object URL for it. */
   ngOnInit(): void {
     this.sub = this.api.photo(this.photoId()).subscribe({
       next: (blob) => {
@@ -112,6 +113,7 @@ export class AuthImage implements OnInit, OnDestroy {
     });
   }
 
+  /** Cancels the read and frees the object URL. */
   ngOnDestroy(): void {
     this.sub?.unsubscribe();
     if (this.objectUrl) URL.revokeObjectURL(this.objectUrl);

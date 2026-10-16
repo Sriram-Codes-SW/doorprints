@@ -76,6 +76,10 @@ private val GREY = Color.rgb(0x5F, 0x6B, 0x67)
  */
 object PdfExporter {
 
+    /**
+     * Draws [bundle] as a PDF on the platform's PdfDocument (595 by 842 points): a cover, one page per house, then
+     * the brokers; writes it to [out] and reports progress after each house. Blocking; does not close [out].
+     */
     fun write(
         bundle: ExportBundle,
         photoFile: (String) -> File,
@@ -116,15 +120,16 @@ object PdfExporter {
 
             sheet.space(10f)
             sheet.paragraph(s["section.ranking"], heading, spaceAfter = 6f)
+            // A copy in a kind's voice has no score or price in its ranking where the kind has none (S4b-BL-266: a school).
+            val rankScore = bundle.shows(null, "section.checklist")
+            val rankPrice = bundle.shows(null, "field.money")
             for (house in bundle.ranked) {
-                val score = ExportRows.rankedScore(house, bundle)
-                val price = house.price?.let { ExportRows.rupees(it) } ?: s["none"]
-                sheet.labelled(
-                    "${bundle.rankOf(house)}. ${house.label}",
-                    "$score · $price · ${s.status(house.status)}",
-                    body,
-                    spaceAfter = 2f,
+                val parts = listOfNotNull(
+                    if (rankScore) ExportRows.rankedScore(house, bundle) else null,
+                    if (rankPrice) house.price?.let { ExportRows.rupees(it) } ?: s["none"] else null,
+                    s.status(house.status),
                 )
+                sheet.labelled("${bundle.rankOf(house)}. ${house.label}", parts.joinToString(" · "), body, spaceAfter = 2f)
             }
 
             bundle.houses.forEachIndexed { index, house ->
@@ -133,7 +138,7 @@ object PdfExporter {
                 onProgress(index + 1, bundle.houses.size)
             }
             // The brokers (slice 1b), after the houses: each one's fields and the houses of the copy that use it.
-            if (bundle.brokers.isNotEmpty()) {
+            if (bundle.brokers.isNotEmpty() && bundle.shows(null, "field.brokerId")) {
                 sheet.newPage()
                 sheet.paragraph(s["section.brokers"], heading, spaceAfter = 6f)
                 for (broker in bundle.brokers) {
@@ -158,29 +163,45 @@ object PdfExporter {
         body: TextPaint,
         photoFile: (String) -> File,
     ) {
-        val s = bundle.strings
+        val s = bundle.stringsOf(house)
         val o = bundle.options
         sheet.paragraph(house.label, heading, spaceAfter = 2f)
         sheet.paragraph("${s["col.rank"]} ${bundle.rankOf(house)} · ${s.status(house.status)}", sub, 10f)
 
-        sheet.labelled(s["col.score"], bundle.overallOf(house)?.let { ExportRows.fixed(it, 1) } ?: s["none"], body)
-        for ((term, value) in ExportRows.scoringLines(house, bundle)) sheet.labelled(term, value, body)
-        sheet.labelled(s["col.price"], house.price?.let { ExportRows.rupees(it) } ?: s["none"], body)
-        if (house.price != null) sheet.labelled(s["col.priceType"], s.priceType(house.priceType), body)
-        sheet.labelled(s["col.bedrooms"], house.bedrooms?.toString() ?: s["none"], body)
-        house.floor?.let { sheet.labelled(s["col.floor"], s.floor(it), body) }
-        sheet.labelled(s["col.rating"], house.rating?.toString() ?: s["none"], body)
-        sheet.labelled(s["col.address"], house.address ?: s["none"], body)
-        sheet.labelled(s["col.street"], house.street ?: s["none"], body)
-        sheet.labelled(s["col.locality"], house.locality ?: s["none"], body)
-        sheet.labelled(
-            "${s["col.lat"]} / ${s["col.lon"]}",
-            "${ExportRows.fixed(house.lat, 6)}, ${ExportRows.fixed(house.lon, 6)}",
-            body,
-        )
-        house.listingUrl?.takeIf { it.isNotEmpty() }?.let { sheet.labelled(s["col.listingUrl"], it, body) }
+        fun shows(ref: String) = bundle.shows(house, ref)
+        if (shows("section.checklist")) {
+            sheet.labelled(s["col.score"], bundle.overallOf(house)?.let { ExportRows.fixed(it, 1) } ?: s["none"], body)
+            for ((term, value) in ExportRows.scoringLines(house, bundle)) sheet.labelled(term, value, body)
+        }
+        if (shows("field.money")) {
+            sheet.labelled(s["col.price"], house.price?.let { ExportRows.rupees(it) } ?: s["none"], body)
+            if (house.price != null) sheet.labelled(s["col.priceType"], s.priceType(house.priceType), body)
+        }
+        if (shows("field.bedrooms")) sheet.labelled(s["col.bedrooms"], house.bedrooms?.toString() ?: s["none"], body)
+        house.floor?.takeIf { shows("field.floor") }?.let { sheet.labelled(s["col.floor"], s.floor(it), body) }
+        if (shows("field.rating")) sheet.labelled(s["col.rating"], house.rating?.toString() ?: s["none"], body)
+        if (shows("field.address")) sheet.labelled(s["col.address"], house.address ?: s["none"], body)
+        if (shows("field.street")) sheet.labelled(s["col.street"], house.street ?: s["none"], body)
+        if (shows("field.locality")) sheet.labelled(s["col.locality"], house.locality ?: s["none"], body)
+        if (shows("field.location")) {
+            sheet.labelled(
+                "${s["col.lat"]} / ${s["col.lon"]}",
+                "${ExportRows.fixed(house.lat, 6)}, ${ExportRows.fixed(house.lon, 6)}",
+                body,
+            )
+        }
+        house.listingUrl?.takeIf { it.isNotEmpty() && shows("field.listingUrl") }?.let { sheet.labelled(s["col.listingUrl"], it, body) }
+        // Kinds PR 6 (S4b-BL-210): the kind's typed extras of the Details section, labelled by the kind; a house has none.
+        for (e in bundle.extrasOf(house)) if (e.section != "cost") sheet.labelled(e.label, e.text, body)
         sheet.labelled(s["col.createdAt"], ExportTime.dateTime(house.createdAt, o.utcOffsetMinutes), body)
         sheet.labelled(s["col.updatedAt"], ExportTime.dateTime(house.updatedAt, o.utcOffsetMinutes), body)
+
+        // A kind's cost section (a school's Fees): its typed extras, under the heading of their own section (S4b-BL-266).
+        val fees = bundle.extrasOf(house).filter { it.section == "cost" }
+        if (fees.isNotEmpty()) {
+            sheet.section(s["section.cost"], heading)
+            for (e in fees) sheet.labelled(e.label, e.text, body, 2f)
+        }
 
         // The questions asked (slice 3a), before the checklist, open ones first: "question: answer · status".
         val answers = ExportRows.answerRows(house, bundle)
@@ -209,13 +230,13 @@ object PdfExporter {
         }
 
         // Moving in (slice 5), after the distances and before the checklist: the date, the notes, the ticked list.
-        if (house.moveIn != null) {
+        if (house.moveIn != null && shows("section.moveIn")) {
             sheet.section(s["section.movingIn"], heading)
             for ((term, value) in ExportRows.moveInLines(house, bundle)) sheet.labelled(term, value, body, 2f)
             for (item in ExportRows.moveInItems(house)) sheet.paragraph(item, body, spaceAfter = 2f)
         }
 
-        val keys = ExportRows.orderedChecklistKeys(house)
+        val keys = ExportRows.checklistKeys(house, bundle)
         if (keys.isNotEmpty()) {
             sheet.section(s["section.checklist"], heading)
             for (key in keys) sheet.labelled(bundle.criterionLabel(key), "${house.checklist.getValue(key)}/5", body, 2f)

@@ -71,7 +71,7 @@ HASH = (None, "#", None)         # one # per line
 MARKUP = ("<!--", "  ", "-->")   # XML and HTML
 
 SOURCE = {
-    ".kt": BLOCK, ".kts": BLOCK, ".java": BLOCK, ".ts": BLOCK, ".mts": BLOCK, ".js": BLOCK, ".mjs": BLOCK,
+    ".kt": BLOCK, ".kts": BLOCK, ".java": BLOCK, ".ts": BLOCK, ".mts": BLOCK, ".js": BLOCK, ".mjs": BLOCK, ".cjs": BLOCK,
     ".swift": BLOCK, ".css": BLOCK, ".strings": BLOCK,
     ".sh": HASH, ".py": HASH, ".yml": HASH, ".yaml": HASH, ".toml": HASH, ".properties": HASH, ".in": HASH,
     ".xml": MARKUP, ".html": MARKUP,

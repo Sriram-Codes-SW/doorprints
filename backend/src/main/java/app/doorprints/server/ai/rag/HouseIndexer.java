@@ -20,6 +20,7 @@ package app.doorprints.server.ai.rag;
 
 import app.doorprints.server.ai.ProviderErrors;
 import app.doorprints.server.ai.config.AiProperties;
+import app.doorprints.server.ai.kind.AiKinds;
 import app.doorprints.server.house.HouseChangedEvent;
 import app.doorprints.server.house.House;
 import app.doorprints.server.house.HouseDto;
@@ -74,6 +75,15 @@ public class HouseIndexer {
     /** Where the viewings come from (records of type {@code viewing}); null in a unit test that has none. */
     private final RecordRepository records;
     private final ObjectMapper json;
+    /** How each candidate is read (kinds PR 7, S4b-BL-211): as a house unless the server's developer flag allows its kind. */
+    private AiKinds kinds = AiKinds.OFF;
+
+    /** As the Spring constructor, for a test that sets the kinds flag. */
+    HouseIndexer(HouseRepository houses, VisitRepository visits, VectorStore vectorStore, RecordRepository records,
+                 ObjectMapper json, AiKinds kinds) {
+        this(houses, visits, vectorStore, true, records, json);
+        this.kinds = kinds;
+    }
 
     public HouseIndexer(HouseRepository houses, VisitRepository visits, VectorStore vectorStore) {
         this(houses, visits, vectorStore, true, null, null);
@@ -81,8 +91,9 @@ public class HouseIndexer {
 
     @Autowired
     public HouseIndexer(HouseRepository houses, VisitRepository visits, VectorStore vectorStore, AiProperties props,
-                        RecordRepository records, ObjectMapper json) {
+                        RecordRepository records, ObjectMapper json, AiKinds kinds) {
         this(houses, visits, vectorStore, props.indexOnChange(), records, json);
+        this.kinds = kinds;
     }
 
     HouseIndexer(HouseRepository houses, VisitRepository visits, VectorStore vectorStore, boolean indexOnChange) {
@@ -106,7 +117,19 @@ public class HouseIndexer {
                 .filter(Objects::nonNull).collect(Collectors.groupingBy(ViewingLine::houseId));
     }
 
-    /** The live areas, places and area notes (slice 4a): three queries of small types, read once per index run. */
+    /** The live viewings of one house: the database picks them, so a save never reads another house's (S4b-BL-162). */
+    private List<ViewingLine> viewingsOf(UUID houseId) {
+        if (records == null) return List.of();
+        return records.findLiveViewingsOfHouse(houseId.toString()).stream().map(r -> ViewingLine.from(r, json))
+                .filter(Objects::nonNull).toList();
+    }
+
+    /**
+     * The live areas, places and area notes (slice 4a): three queries of small types (at most 200 notes), read once
+     * per index run. A save still reads them whole: a distance needs every place and a note reaches a house by an
+     * area's geometry or the street, which the document rules decide, so only the viewings (up to 5,000) are cut
+     * down to the house (S4b-BL-162).
+     */
     private AreaLines.All areaData() {
         if (records == null) return AreaLines.All.NONE;
         return new AreaLines.All(
@@ -118,6 +141,12 @@ public class HouseIndexer {
                         .filter(Objects::nonNull).toList());
     }
 
+    /**
+     * Keeps the search index in step after a house is saved or deleted. Runs asynchronously once the change has
+     * committed, so a slow or failing embedding call never delays or fails the save; failures are logged as at most
+     * one summary warning per five minutes and not thrown. With indexing on change switched off, a deleted house
+     * still leaves the index at once.
+     */
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     public void onHouseChanged(HouseChangedEvent event) {
@@ -145,6 +174,10 @@ public class HouseIndexer {
         asyncFailures.tick();
     }
 
+    /**
+     * Embeds one house and replaces its document in the vector store, or removes the document when the house is
+     * missing or deleted.
+     */
     public void index(UUID houseId) {
         var house = houses.findById(houseId).orElse(null);
         if (house == null || house.isDeleted()) {
@@ -152,7 +185,7 @@ public class HouseIndexer {
             return;
         }
         vectorStore.add(List.of(HouseDocuments.toDocument(HouseDto.from(house), visitsOf(houseId),
-                viewingsByHouse().getOrDefault(houseId.toString(), List.of()), areaData())));
+                viewingsOf(houseId), areaData(), kinds)));
     }
 
     /**
@@ -187,7 +220,7 @@ public class HouseIndexer {
                 for (var house : slice) {
                     docs.add(HouseDocuments.toDocument(HouseDto.from(house),
                             visitsByHouse.getOrDefault(house.getId(), List.of()),
-                            viewingsByHouse.getOrDefault(house.getId().toString(), List.of()), areaData));
+                            viewingsByHouse.getOrDefault(house.getId().toString(), List.of()), areaData, kinds));
                 }
                 vectorStore.add(docs);
                 indexed += slice.size();

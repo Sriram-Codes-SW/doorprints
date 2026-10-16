@@ -1,0 +1,1101 @@
+{
+ "format": "doorprints-sync-scenarios/1",
+ "comment": "Scenarios for the Drive sync engine (S4b-BL-118, docs/15 \u00a75.1). Run by Kotlin DriveSyncScenariosTest and web drive-sync-scenarios.spec.ts over a fake Drive and the real encryption core. Devices are named; each has a key; ids are random, so no scenario depends on a tie between two devices' ids (an advance separates conflicting edits). Steps: edit/delete (a house), advance (the fake clock), skew (a device's clock offset), sync (device, optional confirm/stale/force, expect: kind, wrote, held, take, skipped (sorted reasons), housesToDelete, liveHouses; expectError: a DriveException kind), expectLabels (all houses of a device), expectLabel, expectDirty, failDrive/healDrive (op UPDATE with a 5xx status, or ALL with status 0 = offline), corruptNextDownload, plant (a file in a slot: copy, flip, plain), expectPlantsKept, revoke, snapshot/replay/trashLastFile.",
+ "scenarios": [
+  {
+   "name": "two devices, A first",
+   "why": "the last edit wins; a pass with nothing new writes nothing",
+   "devices": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "do": "edit",
+     "device": "A",
+     "house": "h1",
+     "label": "one"
+    },
+    {
+     "do": "edit",
+     "device": "A",
+     "house": "h2",
+     "label": "two"
+    },
+    {
+     "do": "advance",
+     "ms": 1000
+    },
+    {
+     "do": "edit",
+     "device": "B",
+     "house": "h2",
+     "label": "two-b"
+    },
+    {
+     "do": "edit",
+     "device": "B",
+     "house": "h3",
+     "label": "three"
+    },
+    {
+     "do": "sync",
+     "device": "A",
+     "expect": {
+      "kind": "Done",
+      "wrote": true
+     }
+    },
+    {
+     "do": "advance",
+     "ms": 1000
+    },
+    {
+     "do": "sync",
+     "device": "B",
+     "expect": {
+      "kind": "Done",
+      "wrote": true
+     }
+    },
+    {
+     "do": "advance",
+     "ms": 1000
+    },
+    {
+     "do": "sync",
+     "device": "A",
+     "expect": {
+      "kind": "Done"
+     }
+    },
+    {
+     "do": "advance",
+     "ms": 1000
+    },
+    {
+     "do": "expectLabels",
+     "device": "A",
+     "labels": {
+      "h1": "one",
+      "h2": "two-b",
+      "h3": "three"
+     }
+    },
+    {
+     "do": "expectLabels",
+     "device": "B",
+     "labels": {
+      "h1": "one",
+      "h2": "two-b",
+      "h3": "three"
+     }
+    },
+    {
+     "do": "advance",
+     "ms": 1000
+    },
+    {
+     "do": "sync",
+     "device": "B",
+     "expect": {
+      "kind": "Done",
+      "wrote": false
+     }
+    },
+    {
+     "do": "expectDirty",
+     "device": "B",
+     "count": 0
+    }
+   ]
+  },
+  {
+   "name": "two devices, B first",
+   "why": "same result in the other order",
+   "devices": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "do": "edit",
+     "device": "A",
+     "house": "h1",
+     "label": "one"
+    },
+    {
+     "do": "advance",
+     "ms": 1000
+    },
+    {
+     "do": "edit",
+     "device": "B",
+     "house": "h1",
+     "label": "one-b"
+    },
+    {
+     "do": "advance",
+     "ms": 1000
+    },
+    {
+     "do": "sync",
+     "device": "B"
+    },
+    {
+     "do": "advance",
+     "ms": 1000
+    },
+    {
+     "do": "sync",
+     "device": "A"
+    },
+    {
+     "do": "advance",
+     "ms": 1000
+    },
+    {
+     "do": "sync",
+     "device": "B"
+    },
+    {
+     "do": "advance",
+     "ms": 1000
+    },
+    {
+     "do": "sync",
+     "device": "A"
+    },
+    {
+     "do": "expectLabels",
+     "device": "A",
+     "labels": {
+      "h1": "one-b"
+     }
+    },
+    {
+     "do": "expectLabels",
+     "device": "B",
+     "labels": {
+      "h1": "one-b"
+     }
+    }
+   ]
+  },
+  {
+   "name": "three devices, edit and delete race",
+   "why": "a newer edit beats an older delete, in every device",
+   "devices": [
+    "A",
+    "B",
+    "C"
+   ],
+   "steps": [
+    {
+     "do": "edit",
+     "device": "A",
+     "house": "h1",
+     "label": "a1"
+    },
+    {
+     "do": "sync",
+     "device": "A"
+    },
+    {
+     "do": "advance",
+     "ms": 1000
+    },
+    {
+     "do": "sync",
+     "device": "B"
+    },
+    {
+     "do": "sync",
+     "device": "C"
+    },
+    {
+     "do": "advance",
+     "ms": 1000
+    },
+    {
+     "do": "edit",
+     "device": "B",
+     "house": "h1",
+     "label": "b1"
+    },
+    {
+     "do": "advance",
+     "ms": 1000
+    },
+    {
+     "do": "delete",
+     "device": "C",
+     "house": "h1"
+    },
+    {
+     "do": "advance",
+     "ms": 1000
+    },
+    {
+     "do": "edit",
+     "device": "A",
+     "house": "h2",
+     "label": "a2"
+    },
+    {
+     "do": "advance",
+     "ms": 1000
+    },
+    {
+     "do": "edit",
+     "device": "C",
+     "house": "h1",
+     "label": "c-again"
+    },
+    {
+     "do": "advance",
+     "ms": 1000
+    },
+    {
+     "do": "sync",
+     "device": "C"
+    },
+    {
+     "do": "advance",
+     "ms": 1000
+    },
+    {
+     "do": "sync",
+     "device": "A"
+    },
+    {
+     "do": "advance",
+     "ms": 1000
+    },
+    {
+     "do": "sync",
+     "device": "B"
+    },
+    {
+     "do": "advance",
+     "ms": 1000
+    },
+    {
+     "do": "sync",
+     "device": "C"
+    },
+    {
+     "do": "advance",
+     "ms": 1000
+    },
+    {
+     "do": "sync",
+     "device": "A"
+    },
+    {
+     "do": "advance",
+     "ms": 1000
+    },
+    {
+     "do": "sync",
+     "device": "B"
+    },
+    {
+     "do": "expectLabels",
+     "device": "A",
+     "labels": {
+      "h1": "c-again",
+      "h2": "a2"
+     }
+    },
+    {
+     "do": "expectLabels",
+     "device": "B",
+     "labels": {
+      "h1": "c-again",
+      "h2": "a2"
+     }
+    },
+    {
+     "do": "expectLabels",
+     "device": "C",
+     "labels": {
+      "h1": "c-again",
+      "h2": "a2"
+     }
+    }
+   ]
+  },
+  {
+   "name": "delete wins over an older edit",
+   "why": "the tombstone is newer",
+   "devices": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "do": "edit",
+     "device": "A",
+     "house": "h1",
+     "label": "one"
+    },
+    {
+     "do": "sync",
+     "device": "A"
+    },
+    {
+     "do": "advance",
+     "ms": 1000
+    },
+    {
+     "do": "sync",
+     "device": "B"
+    },
+    {
+     "do": "advance",
+     "ms": 1000
+    },
+    {
+     "do": "edit",
+     "device": "A",
+     "house": "h1",
+     "label": "one-edited"
+    },
+    {
+     "do": "advance",
+     "ms": 1000
+    },
+    {
+     "do": "delete",
+     "device": "B",
+     "house": "h1"
+    },
+    {
+     "do": "advance",
+     "ms": 1000
+    },
+    {
+     "do": "sync",
+     "device": "A"
+    },
+    {
+     "do": "advance",
+     "ms": 1000
+    },
+    {
+     "do": "sync",
+     "device": "B"
+    },
+    {
+     "do": "advance",
+     "ms": 1000
+    },
+    {
+     "do": "sync",
+     "device": "A"
+    },
+    {
+     "do": "expectLabels",
+     "device": "A",
+     "labels": {
+      "h1": "<deleted>"
+     }
+    },
+    {
+     "do": "expectLabels",
+     "device": "B",
+     "labels": {
+      "h1": "<deleted>"
+     }
+    }
+   ]
+  },
+  {
+   "name": "interrupted upload",
+   "why": "a partial file is never read; the next pass heals; rows stay dirty until the file is confirmed",
+   "devices": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "do": "edit",
+     "device": "A",
+     "house": "h1",
+     "label": "one"
+    },
+    {
+     "do": "failDrive",
+     "op": "UPDATE",
+     "status": 503
+    },
+    {
+     "do": "sync",
+     "device": "A",
+     "expectError": "SERVER"
+    },
+    {
+     "do": "expectDirty",
+     "device": "A",
+     "count": 1
+    },
+    {
+     "do": "healDrive"
+    },
+    {
+     "do": "sync",
+     "device": "B",
+     "expect": {
+      "kind": "Done",
+      "take": 0
+     }
+    },
+    {
+     "do": "expectLabels",
+     "device": "B",
+     "labels": {}
+    },
+    {
+     "do": "advance",
+     "ms": 1000
+    },
+    {
+     "do": "sync",
+     "device": "A",
+     "expect": {
+      "kind": "Done",
+      "wrote": true
+     }
+    },
+    {
+     "do": "expectDirty",
+     "device": "A",
+     "count": 0
+    },
+    {
+     "do": "advance",
+     "ms": 1000
+    },
+    {
+     "do": "sync",
+     "device": "B"
+    },
+    {
+     "do": "expectLabels",
+     "device": "B",
+     "labels": {
+      "h1": "one"
+     }
+    }
+   ]
+  },
+  {
+   "name": "read-back fails: rows stay dirty",
+   "why": "clean-marking only after the read-back",
+   "devices": [
+    "A"
+   ],
+   "steps": [
+    {
+     "do": "edit",
+     "device": "A",
+     "house": "h1",
+     "label": "one"
+    },
+    {
+     "do": "corruptNextDownload"
+    },
+    {
+     "do": "sync",
+     "device": "A",
+     "expectError": "CORRUPT"
+    },
+    {
+     "do": "expectDirty",
+     "device": "A",
+     "count": 1
+    }
+   ]
+  },
+  {
+   "name": "planted, tampered and foreign files",
+   "why": "each bad file is skipped and reported, never deleted, and the genuine file still counts",
+   "devices": [
+    "A",
+    "B",
+    "C"
+   ],
+   "steps": [
+    {
+     "do": "edit",
+     "device": "A",
+     "house": "h1",
+     "label": "one"
+    },
+    {
+     "do": "sync",
+     "device": "A"
+    },
+    {
+     "do": "advance",
+     "ms": 1000
+    },
+    {
+     "do": "plant",
+     "slot": "A",
+     "from": "A",
+     "how": "flip"
+    },
+    {
+     "do": "plant",
+     "slot": "C",
+     "from": "A",
+     "how": "copy"
+    },
+    {
+     "do": "plant",
+     "slot": "C",
+     "from": "A",
+     "how": "plain"
+    },
+    {
+     "do": "plant",
+     "slot": "X",
+     "from": "A",
+     "how": "copy"
+    },
+    {
+     "do": "sync",
+     "device": "B",
+     "expect": {
+      "kind": "Done",
+      "skipped": [
+       "BAD_ENVELOPE",
+       "NOT_ENCRYPTED",
+       "UNLISTED_DEVICE",
+       "WRONG_DEVICE"
+      ]
+     }
+    },
+    {
+     "do": "expectLabels",
+     "device": "B",
+     "labels": {
+      "h1": "one"
+     }
+    },
+    {
+     "do": "expectPlantsKept",
+     "count": 4
+    }
+   ]
+  },
+  {
+   "name": "revoked device",
+   "why": "a file written after the revoke under the old epoch is skipped; the one before it counts",
+   "devices": [
+    "A",
+    "B",
+    "C"
+   ],
+   "steps": [
+    {
+     "do": "edit",
+     "device": "C",
+     "house": "early",
+     "label": "before"
+    },
+    {
+     "do": "sync",
+     "device": "C"
+    },
+    {
+     "do": "advance",
+     "ms": 60000
+    },
+    {
+     "do": "sync",
+     "device": "A"
+    },
+    {
+     "do": "expectLabels",
+     "device": "A",
+     "labels": {
+      "early": "before"
+     }
+    },
+    {
+     "do": "advance",
+     "ms": 1000
+    },
+    {
+     "do": "sync",
+     "device": "B"
+    },
+    {
+     "do": "revoke",
+     "by": "A",
+     "victim": "C"
+    },
+    {
+     "do": "advance",
+     "ms": 60000
+    },
+    {
+     "do": "edit",
+     "device": "C",
+     "house": "late",
+     "label": "after"
+    },
+    {
+     "do": "sync",
+     "device": "C",
+     "stale": true
+    },
+    {
+     "do": "advance",
+     "ms": 60000
+    },
+    {
+     "do": "sync",
+     "device": "A",
+     "expect": {
+      "kind": "Done",
+      "skipped": [
+       "REVOKED_WRITER"
+      ]
+     }
+    },
+    {
+     "do": "expectLabels",
+     "device": "A",
+     "labels": {
+      "early": "before"
+     }
+    },
+    {
+     "do": "sync",
+     "device": "B",
+     "expect": {
+      "kind": "Done",
+      "skipped": [
+       "REVOKED_WRITER"
+      ]
+     }
+    },
+    {
+     "do": "expectLabels",
+     "device": "B",
+     "labels": {
+      "early": "before"
+     }
+    }
+   ]
+  },
+  {
+   "name": "rolled-back file",
+   "why": "an older file put back changes nothing",
+   "devices": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "do": "edit",
+     "device": "A",
+     "house": "h1",
+     "label": "v1"
+    },
+    {
+     "do": "sync",
+     "device": "A"
+    },
+    {
+     "do": "snapshot",
+     "device": "A",
+     "name": "old"
+    },
+    {
+     "do": "advance",
+     "ms": 1000
+    },
+    {
+     "do": "edit",
+     "device": "A",
+     "house": "h1",
+     "label": "v2"
+    },
+    {
+     "do": "sync",
+     "device": "A"
+    },
+    {
+     "do": "advance",
+     "ms": 1000
+    },
+    {
+     "do": "sync",
+     "device": "B"
+    },
+    {
+     "do": "advance",
+     "ms": 1000
+    },
+    {
+     "do": "sync",
+     "device": "B"
+    },
+    {
+     "do": "expectLabels",
+     "device": "B",
+     "labels": {
+      "h1": "v2"
+     }
+    },
+    {
+     "do": "trashLastFile",
+     "device": "A"
+    },
+    {
+     "do": "replay",
+     "device": "A",
+     "name": "old"
+    },
+    {
+     "do": "advance",
+     "ms": 1000
+    },
+    {
+     "do": "sync",
+     "device": "B",
+     "expect": {
+      "kind": "Done",
+      "skipped": [
+       "ROLLED_BACK"
+      ]
+     }
+    },
+    {
+     "do": "expectLabels",
+     "device": "B",
+     "labels": {
+      "h1": "v2"
+     }
+    }
+   ]
+  },
+  {
+   "name": "shrink guard",
+   "why": "11 of 12 houses deleted by one file wait for the person's yes",
+   "devices": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "do": "edit",
+     "device": "A",
+     "house": "h1",
+     "label": "house 1"
+    },
+    {
+     "do": "edit",
+     "device": "A",
+     "house": "h2",
+     "label": "house 2"
+    },
+    {
+     "do": "edit",
+     "device": "A",
+     "house": "h3",
+     "label": "house 3"
+    },
+    {
+     "do": "edit",
+     "device": "A",
+     "house": "h4",
+     "label": "house 4"
+    },
+    {
+     "do": "edit",
+     "device": "A",
+     "house": "h5",
+     "label": "house 5"
+    },
+    {
+     "do": "edit",
+     "device": "A",
+     "house": "h6",
+     "label": "house 6"
+    },
+    {
+     "do": "edit",
+     "device": "A",
+     "house": "h7",
+     "label": "house 7"
+    },
+    {
+     "do": "edit",
+     "device": "A",
+     "house": "h8",
+     "label": "house 8"
+    },
+    {
+     "do": "edit",
+     "device": "A",
+     "house": "h9",
+     "label": "house 9"
+    },
+    {
+     "do": "edit",
+     "device": "A",
+     "house": "h10",
+     "label": "house 10"
+    },
+    {
+     "do": "edit",
+     "device": "A",
+     "house": "h11",
+     "label": "house 11"
+    },
+    {
+     "do": "edit",
+     "device": "A",
+     "house": "h12",
+     "label": "house 12"
+    },
+    {
+     "do": "sync",
+     "device": "A"
+    },
+    {
+     "do": "sync",
+     "device": "B"
+    },
+    {
+     "do": "advance",
+     "ms": 1000
+    },
+    {
+     "do": "delete",
+     "device": "A",
+     "house": "h1"
+    },
+    {
+     "do": "delete",
+     "device": "A",
+     "house": "h2"
+    },
+    {
+     "do": "delete",
+     "device": "A",
+     "house": "h3"
+    },
+    {
+     "do": "delete",
+     "device": "A",
+     "house": "h4"
+    },
+    {
+     "do": "delete",
+     "device": "A",
+     "house": "h5"
+    },
+    {
+     "do": "delete",
+     "device": "A",
+     "house": "h6"
+    },
+    {
+     "do": "delete",
+     "device": "A",
+     "house": "h7"
+    },
+    {
+     "do": "delete",
+     "device": "A",
+     "house": "h8"
+    },
+    {
+     "do": "delete",
+     "device": "A",
+     "house": "h9"
+    },
+    {
+     "do": "delete",
+     "device": "A",
+     "house": "h10"
+    },
+    {
+     "do": "delete",
+     "device": "A",
+     "house": "h11"
+    },
+    {
+     "do": "sync",
+     "device": "A"
+    },
+    {
+     "do": "advance",
+     "ms": 1000
+    },
+    {
+     "do": "sync",
+     "device": "B",
+     "expect": {
+      "kind": "NeedsConfirmation",
+      "housesToDelete": 11,
+      "liveHouses": 12
+     }
+    },
+    {
+     "do": "expectLabel",
+     "device": "B",
+     "house": "h1",
+     "label": "house 1"
+    },
+    {
+     "do": "advance",
+     "ms": 1000
+    },
+    {
+     "do": "sync",
+     "device": "B",
+     "confirm": true,
+     "expect": {
+      "kind": "Done"
+     }
+    },
+    {
+     "do": "expectLabel",
+     "device": "B",
+     "house": "h1",
+     "label": "<deleted>"
+    },
+    {
+     "do": "expectLabel",
+     "device": "B",
+     "house": "h12",
+     "label": "house 12"
+    }
+   ]
+  },
+  {
+   "name": "clock skew hold",
+   "why": "a stamp over 24 h ahead is held, then applied when the clock is within a day",
+   "devices": [
+    "A",
+    "B"
+   ],
+   "steps": [
+    {
+     "do": "skew",
+     "device": "A",
+     "ms": 172800000
+    },
+    {
+     "do": "edit",
+     "device": "A",
+     "house": "h1",
+     "label": "future"
+    },
+    {
+     "do": "skew",
+     "device": "A",
+     "ms": 0
+    },
+    {
+     "do": "sync",
+     "device": "A"
+    },
+    {
+     "do": "sync",
+     "device": "B",
+     "expect": {
+      "kind": "Done",
+      "held": 1
+     }
+    },
+    {
+     "do": "expectLabels",
+     "device": "B",
+     "labels": {}
+    },
+    {
+     "do": "advance",
+     "ms": 90000000
+    },
+    {
+     "do": "sync",
+     "device": "B",
+     "expect": {
+      "kind": "Done",
+      "held": 0
+     }
+    },
+    {
+     "do": "expectLabels",
+     "device": "B",
+     "labels": {
+      "h1": "future"
+     }
+    }
+   ]
+  },
+  {
+   "name": "offline then back",
+   "why": "back-off after a failure, then recovery",
+   "devices": [
+    "A"
+   ],
+   "steps": [
+    {
+     "do": "edit",
+     "device": "A",
+     "house": "h1",
+     "label": "one"
+    },
+    {
+     "do": "failDrive",
+     "op": "ALL",
+     "status": 0
+    },
+    {
+     "do": "sync",
+     "device": "A",
+     "expectError": "OFFLINE"
+    },
+    {
+     "do": "healDrive"
+    },
+    {
+     "do": "sync",
+     "device": "A",
+     "force": false,
+     "expect": {
+      "kind": "Waiting"
+     }
+    },
+    {
+     "do": "advance",
+     "ms": 120000
+    },
+    {
+     "do": "sync",
+     "device": "A",
+     "force": false,
+     "expect": {
+      "kind": "Done",
+      "wrote": true
+     }
+    },
+    {
+     "do": "expectDirty",
+     "device": "A",
+     "count": 0
+    }
+   ]
+  }
+ ]
+}

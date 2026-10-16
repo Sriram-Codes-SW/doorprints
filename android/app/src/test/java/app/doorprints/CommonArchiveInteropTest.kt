@@ -27,6 +27,7 @@ import app.doorprints.shared.export.ArchiveOpen
 import app.doorprints.shared.export.ArchiveTools
 import app.doorprints.shared.export.BackupArchive
 import app.doorprints.shared.export.BackupData
+import app.doorprints.shared.export.BackupFormat
 import app.doorprints.shared.export.CopyPhotos
 import app.doorprints.shared.export.CopySink
 import app.doorprints.shared.export.CopyWriter
@@ -133,7 +134,7 @@ class CommonArchiveInteropTest {
         val opened = BackupReader.open(file)
         assertTrue("open failed: $opened", opened is BackupOpen.Ok)
         (opened as BackupOpen.Ok).reader.use { reader ->
-            assertEquals(BackupData.of(bundle), reader.data)
+            assertEquals(BackupData.of(bundle).copy(format = BackupFormat.ID_2), reader.data)
             assertArrayEquals(photoBytes, reader.photoBytes("photos/p1.jpg"))
         }
     }
@@ -151,7 +152,7 @@ class CommonArchiveInteropTest {
             val opened = BackupArchive.open(source, tools)
             assertTrue("open failed: $opened", opened is ArchiveOpen.Ok)
             val archive = (opened as ArchiveOpen.Ok).archive
-            assertEquals(BackupData.of(bundle), archive.data)
+            assertEquals(BackupData.of(bundle).copy(format = BackupFormat.ID_2), archive.data)
             assertArrayEquals(photoBytes, archive.photoBytes("photos/p1.jpg"))
         }
     }

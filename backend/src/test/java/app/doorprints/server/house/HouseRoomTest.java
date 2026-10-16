@@ -37,7 +37,7 @@ class HouseRoomTest {
     }
 
     private static HouseDto house(List<HouseRoom> rooms) {
-        return new HouseDto(UUID.randomUUID(), "Green View", null, null, null, 12.9, 77.6, HouseStatus.NEW, null, null,
+        return TestHouses.dto(UUID.randomUUID(), "Green View", null, null, null, 12.9, 77.6, HouseStatus.NEW, null, null,
                 null, null, null, null, null, null, null, null, null, rooms, null, null, null, null, Map.of(), null, null, false, 0,
                 null);
     }

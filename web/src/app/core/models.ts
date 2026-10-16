@@ -17,6 +17,7 @@
  */
 
 import type { TKey } from '../i18n/en';
+import { HOUSE_LABELS } from './kind-labels';
 import { evaluateScore } from '../shared/scoring';
 import type { Scoring } from '../shared/scoring';
 
@@ -173,10 +174,21 @@ export interface HouseAnswer {
   sort: number;
 }
 
+/** The states an answer to a question can be in. */
 export const ANSWER_STATUSES: readonly AnswerStatus[] = ['OPEN', 'ANSWERED', 'SKIPPED'];
 
+/**
+ * A saved house as the apps and the server exchange it: the same fields, names and optional-field rules as Kotlin
+ * `HouseDto` and the server's. `deleted` rows are tombstones that sync carries; `syncVersion` orders changes and
+ * `distanceMeters` is only ever a result of a nearby search.
+ */
 export interface HouseDto {
   id: string;
+  /**
+   * The candidate's kind (docs/03 ADR-36, S4b-BL-206) when it is not `house`; absent for a house, the only kind today.
+   * Kept so a row of another kind is written back as it came (`core/candidate.ts`).
+   */
+  kind?: string | null;
   label: string;
   address?: string | null;
   street?: string | null;
@@ -211,6 +223,11 @@ export interface HouseDto {
    */
   brokerId?: string | null;
   checklist: Record<string, number>;
+  /**
+   * The extras a newer app wrote that this one does not know (ADR-36 §18.4 door 5), by extra id: never shown or
+   * searched, only kept and written back after the known ones (`core/candidate.ts`). Absent when there are none.
+   */
+  extrasOther?: Record<string, number | string | boolean | { amount: number; cadence: string }> | null;
   createdAt?: string | null;
   updatedAt?: string | null;
   deleted: boolean;
@@ -218,6 +235,10 @@ export interface HouseDto {
   distanceMeters?: number | null;
 }
 
+/**
+ * One time spent at a place: `AUTO` when the app recorded it, `MANUAL` when the person added it. Same wire shape as the
+ * server's.
+ */
 export interface VisitDto {
   id: string;
   houseId?: string | null;
@@ -266,6 +287,10 @@ export interface RecordDto {
   syncVersion: number;
 }
 
+/**
+ * The counts of houses, shortlisted, rejected, visits and distinct streets, from the server or from this browser's own
+ * store.
+ */
 export interface StatsDto {
   houses: number;
   shortlisted: number;
@@ -286,31 +311,21 @@ export interface ChecklistItem {
   labelKey: TKey;
 }
 
-/** Same keys as the Android app. Each item is scored 0 (bad) to 5 (great). */
-export const CHECKLIST: readonly ChecklistItem[] = [
-  { key: 'water', labelKey: 'check.water' },
-  { key: 'power', labelKey: 'check.power' },
-  { key: 'parking', labelKey: 'check.parking' },
-  { key: 'sunlight', labelKey: 'check.sunlight' },
-  { key: 'ventilation', labelKey: 'check.ventilation' },
-  { key: 'noise', labelKey: 'check.noise' },
-  { key: 'security', labelKey: 'check.security' },
-  { key: 'maintenance', labelKey: 'check.maintenance' },
-  { key: 'neighbourhood', labelKey: 'check.neighbourhood' },
-  { key: 'commute', labelKey: 'check.commute' },
-];
+/**
+ * Same keys as the Android app. Each item is scored 0 (bad) to 5 (great). The labels are the house kind's, through the
+ * resolver (kinds PR 3, S4b-BL-207).
+ */
+export const CHECKLIST: readonly ChecklistItem[] = (
+  ['water', 'power', 'parking', 'sunlight', 'ventilation', 'noise', 'security', 'maintenance', 'neighbourhood', 'commute']
+).map((key) => ({ key, labelKey: HOUSE_LABELS.check(key)! }));
 
 export const STATUSES: readonly HouseStatus[] = ['NEW', 'SHORTLISTED', 'REJECTED', 'TAKEN', 'NOT_CHOSEN'];
 export const LOCATION_SOURCES: readonly LocationSource[] = ['GPS', 'MAP', 'APPROX'];
 
-/** Translation key for each status label. */
-export const STATUS_KEY: Readonly<Record<HouseStatus, TKey>> = {
-  NEW: 'status.NEW',
-  SHORTLISTED: 'status.SHORTLISTED',
-  REJECTED: 'status.REJECTED',
-  TAKEN: 'status.TAKEN',
-  NOT_CHOSEN: 'status.NOT_CHOSEN',
-};
+/** Translation key for each status label: the house kind's, through the resolver (kinds PR 3, S4b-BL-207). */
+export const STATUS_KEY: Readonly<Record<HouseStatus, TKey>> = Object.fromEntries(
+  STATUSES.map((s) => [s, HOUSE_LABELS.status(s)]),
+) as Record<HouseStatus, TKey>;
 
 /** Icon shown next to the status text, so status is never conveyed by colour alone (WCAG 1.4.1). */
 export const STATUS_ICON: Readonly<Record<HouseStatus, string>> = {
@@ -343,6 +358,10 @@ export function houseScore(h: Pick<HouseDto, 'checklist' | 'rating'>, scoring: S
   return evaluateScore(h.checklist, h.rating, scoring).overall;
 }
 
+/**
+ * A blank house at the given position: status NEW, rent, no checklist, version 0. The id is new; nothing is stored
+ * until the person saves.
+ */
 export function newHouse(lat: number, lon: number, locationSource: LocationSource | null = null): HouseDto {
   return {
     id: uuid(),

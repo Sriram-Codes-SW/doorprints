@@ -40,7 +40,11 @@ kotlin {
         compilerOptions.jvmTarget = JvmTarget.JVM_17
         // Host (JVM) tests are off by default in this plugin; they run commonTest + androidHostTest as the Gradle
         // task :shared:testAndroidHostTest (the app's testDebugUnitTest depends on it, see app/build.gradle.kts).
-        withHostTest {}
+        withHostTest {
+            // The end-to-end Drive test (DriveSyncEndToEndTest) opens the real Room database on Robolectric: it needs the
+            // merged manifest and resources, as :app's screenshot tests do.
+            isIncludeAndroidResources = true
+        }
     }
 
     // Guard rails since Phase 2, and the iOS app's data and HTTP code since CMP-8 (linked into :ui's DoorprintsKit
@@ -80,6 +84,9 @@ kotlin {
         }
         getByName("androidHostTest").dependencies {
             implementation(libs.kotlin.test.junit)
+            // Robolectric for DriveSyncEndToEndTest (Room on the framework SQLite); the Android image comes from the
+            // robolectricRuntime configuration below, offline, as in :app.
+            implementation(libs.robolectric)
         }
     }
 }
@@ -103,5 +110,23 @@ dependencies {
 providers.gradleProperty("iosSimulatorDevice").orNull?.let { simulator ->
     tasks.withType<org.jetbrains.kotlin.gradle.targets.native.tasks.KotlinNativeSimulatorTest>().configureEach {
         device.set(simulator)
+    }
+}
+
+// Robolectric offline, as in :app (docs/06 TC-U-56): the android-all jar comes from the Gradle cache, not from an HTTP
+// download while the tests run. Only the host tests use it.
+val robolectricRuntime = configurations.create("robolectricRuntime") { isTransitive = false }
+dependencies {
+    robolectricRuntime(libs.robolectric.android.all)
+}
+val robolectricDeps = tasks.register<Copy>("copyRobolectricDeps") {
+    from(robolectricRuntime)
+    into(layout.buildDirectory.dir("robolectric-deps"))
+}
+tasks.matching { it.name == "testAndroidHostTest" }.configureEach {
+    dependsOn(robolectricDeps)
+    (this as Test).apply {
+        systemProperty("robolectric.offline", "true")
+        systemProperty("robolectric.dependency.dir", layout.buildDirectory.dir("robolectric-deps").get().asFile.absolutePath)
     }
 }

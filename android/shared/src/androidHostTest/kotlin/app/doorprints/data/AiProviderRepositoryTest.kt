@@ -1,0 +1,301 @@
+/*
+ * Copyright 2026 Sriram (Sriram-Codes-SW)
+ *
+ * This file is part of Doorprints.
+ *
+ * Doorprints is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+ * Public License as published by the Free Software Foundation, version 3 of the License.
+ *
+ * Doorprints is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+ * warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Affero General Public License along with Doorprints (the file LICENSE;
+ * the file NOTICE has additional permissions under section 7). If not, see <https://www.gnu.org/licenses/>.
+ *
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
+package app.doorprints.data
+
+import android.app.Application
+import androidx.datastore.preferences.core.MutablePreferences
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.room.Room
+import app.doorprints.shared.ai.AiKind
+import app.doorprints.shared.ai.AiProviderConfig
+import app.doorprints.shared.ai.AiQuality
+import app.doorprints.shared.ai.AnthropicClient
+import app.doorprints.shared.ai.GeminiClient
+import app.doorprints.shared.ai.OpenAiCompatClient
+import app.doorprints.shared.api.ApiException
+import app.doorprints.shared.api.ApiHttp
+import io.ktor.client.engine.mock.MockEngine
+import io.ktor.client.engine.mock.respond
+import io.ktor.client.engine.mock.toByteArray
+import io.ktor.http.Headers
+import io.ktor.http.HttpStatusCode
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.runBlocking
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Rule
+import org.junit.Test
+import org.junit.rules.TemporaryFolder
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
+import org.robolectric.annotation.Config
+import java.io.File
+
+/**
+ * The repository's choice of AI (docs/03 §13.2, ADR-35; TC-U-168): the saved kind builds the Gemini client or the
+ * OpenAI-compatible one, a bad address or a missing model is refused before anything is saved, and removing the key
+ * clears the choice. Real Room and settings, fake servers.
+ */
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [35], application = Application::class)
+class AiProviderRepositoryTest {
+    @get:Rule
+    val tmp = TemporaryFolder()
+
+    private val context: Application = RuntimeEnvironment.getApplication()
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java).allowMainThreadQueries().build()
+    private val geminiCalls = mutableListOf<String>()
+    private val geminiBodies = mutableListOf<String>()
+    private val openAiCalls = mutableListOf<Pair<String, String?>>()
+    private val anthropicCalls = mutableListOf<Pair<String, String?>>()
+
+    private class MemorySecrets(name: String) : SecretStore {
+        private val key = stringPreferencesKey(name)
+        override fun get(settings: Preferences): String? = settings[key]
+        override fun put(settings: MutablePreferences, apiKey: String) {
+            settings[key] = apiKey
+        }
+        override fun clear(settings: MutablePreferences) {
+            settings.remove(key)
+        }
+    }
+
+    private val json = Headers.build { append("Content-Type", "application/json") }
+    private val geminiEngine = MockEngine { request ->
+        geminiCalls += request.url.toString()
+        geminiBodies += request.body.toByteArray().decodeToString().replace(" ", "")
+        respond("""{"candidates":[{"content":{"parts":[{"text":"{\"label\":\"From Gemini\"}"}]}}]}""", HttpStatusCode.OK, json)
+    }
+    private val openAiEngine = MockEngine { request ->
+        openAiCalls += request.url.toString() to request.headers["Authorization"]
+        respond("""{"choices":[{"message":{"role":"assistant","content":"{\"label\":\"From OpenAI\"}"}}]}""", HttpStatusCode.OK, json)
+    }
+
+    private val anthropicEngine = MockEngine { request ->
+        anthropicCalls += request.url.toString() to request.headers["x-api-key"]
+        respond(
+            """{"stop_reason":"tool_use","content":[{"type":"tool_use","id":"t1","name":"listing","input":{"label":"From Anthropic"}}]}""",
+            HttpStatusCode.OK, json,
+        )
+    }
+
+    private val settings = SettingsStore(
+        PreferenceDataStoreFactory.create(scope = scope) { File(tmp.root, "ai.preferences_pb") },
+        MemorySecrets("serverKey"), geminiSecrets = MemorySecrets("aiKey"),
+    )
+
+    // The calls are refused while AI is off (S4b-BL-251), and this phone's switch is off until the person turns it on: these tests are
+    // about which provider answers, so the switch is on in the saved settings.
+    private fun repository(emulator: Boolean = false): CommonRepository {
+        runBlocking { settings.saveAiFeatures(true) }
+        return newRepository(emulator)
+    }
+
+    private fun newRepository(emulator: Boolean) = CommonRepository(
+        db, settings,
+        photoDir = File(tmp.root, "photos").path,
+        syncSoon = {},
+        apiFor = { _, _ -> error("no server in this test") },
+        geminiFor = { key, quality -> GeminiClient(ApiHttp.client(geminiEngine), key, timeoutMs = null, quality = quality) },
+        openAiFor = { url, model, key -> OpenAiCompatClient(ApiHttp.client(openAiEngine), url, model, key, timeoutMs = null) },
+        anthropicFor = { url, model, key -> AnthropicClient(ApiHttp.client(anthropicEngine), model, key, url, timeoutMs = null) },
+        emulatorHostAllowed = emulator,
+    )
+
+    private val local = AiProviderConfig(AiKind.OPENAI_COMPATIBLE, "http://localhost:11434/v1/", "llama3.2")
+    private val anthropic = AiProviderConfig(AiKind.ANTHROPIC, "https://api.anthropic.com", "test-model")
+
+    @After
+    fun close() {
+        db.close()
+        scope.cancel()
+    }
+
+    @Test
+    fun geminiStaysTheDefaultKindAndIsCalledWithTheSavedKey() = runBlocking {
+        val repo = repository()
+        repo.saveGeminiKey("AIzaOwnKeyForTests1234")
+        assertEquals("From Gemini", repo.extractListing("2BHK in Indiranagar").label)
+        assertEquals(1, geminiCalls.size)
+        assertTrue(openAiCalls.isEmpty())
+    }
+
+    @Test
+    fun theSavedSpeedAndCostChoiceReachesTheGeminiRequestAndTakesEffectOnTheNextCall() = runBlocking {
+        val repo = repository()
+        repo.saveGeminiKey("AIzaOwnKeyForTests1234")
+        // Nothing chosen: Quality, which sends no thinking field, and the larger answer budget.
+        repo.extractListing("2BHK in Indiranagar")
+        assertFalse(geminiBodies.last(), "thinking" in geminiBodies.last().lowercase())
+        assertTrue(geminiBodies.last(), "\"maxOutputTokens\":8192" in geminiBodies.last())
+        repo.setAiQuality(AiQuality.BALANCED)
+        assertEquals(AiQuality.BALANCED, settings.current().aiQuality)
+        repo.extractListing("another listing")
+        assertTrue(geminiBodies.last(), "\"thinkingConfig\":{\"thinkingLevel\":\"MEDIUM\"}" in geminiBodies.last())
+        repo.setAiQuality(AiQuality.ECONOMY)
+        repo.extractListing("a third listing")
+        assertTrue(geminiBodies.last(), "\"thinkingConfig\":{\"thinkingLevel\":\"LOW\"}" in geminiBodies.last())
+        // *Test key* asks with the choice too, so a key that cannot use it is found out there.
+        assertTrue(repo.testGeminiKey("AIzaOwnKeyForTests1234").isSuccess)
+        assertTrue(geminiBodies.last(), "\"thinkingLevel\":\"LOW\"" in geminiBodies.last())
+        // Back to Quality: the field is gone again.
+        repo.setAiQuality(AiQuality.QUALITY)
+        repo.extractListing("a fourth listing")
+        assertFalse(geminiBodies.last(), "thinking" in geminiBodies.last().lowercase())
+    }
+
+    @Test
+    fun theChoiceIsKeptButNeverSentToAnotherService() = runBlocking {
+        val repo = repository()
+        repo.setAiQuality(AiQuality.ECONOMY)
+        repo.saveAiProviderConfig(local, "")
+        repo.extractListing("2BHK in Indiranagar")
+        repo.saveAiProviderConfig(anthropic, "test-key-not-real")
+        repo.extractListing("2BHK in Indiranagar")
+        assertEquals(AiQuality.ECONOMY, settings.current().aiQuality)
+        assertTrue(geminiCalls.isEmpty())
+        assertEquals(1, openAiCalls.size)
+        assertEquals(1, anthropicCalls.size)
+        // Back to Gemini: the kept choice is used again.
+        repo.saveGeminiKey("AIzaOwnKeyForTests1234")
+        repo.extractListing("2BHK in Indiranagar")
+        assertTrue(geminiBodies.last(), "\"thinkingLevel\":\"LOW\"" in geminiBodies.last())
+    }
+
+    @Test
+    fun removingTheKeyForgetsTheChoice() = runBlocking {
+        val repo = repository()
+        repo.saveGeminiKey("AIzaOwnKeyForTests1234")
+        repo.setAiQuality(AiQuality.ECONOMY)
+        repo.removeGeminiKey()
+        assertEquals(AiQuality.QUALITY, settings.current().aiQuality)
+    }
+
+    @Test
+    fun anOpenAiCompatibleChoiceBuildsTheOpenAiClientWithTheNormalisedAddressAndNoKeyHeaderWhenThereIsNoKey() = runBlocking {
+        val repo = repository()
+        repo.saveAiProviderConfig(local, "")
+        assertEquals("http://localhost:11434/v1", settings.current().aiProviderConfig.baseUrl)
+        assertEquals("From OpenAI", repo.extractListing("2BHK in Indiranagar").label)
+        assertEquals(listOf<Pair<String, String?>>("http://localhost:11434/v1/chat/completions" to null), openAiCalls)
+        assertTrue(geminiCalls.isEmpty())
+        // With a key: the same client, a Bearer header.
+        repo.saveAiProviderConfig(local, "sk-test-key")
+        repo.extractListing("another listing")
+        assertEquals("Bearer sk-test-key", openAiCalls.last().second)
+    }
+
+    @Test
+    fun anAnthropicChoiceBuildsTheAnthropicClientWithTheSavedModelAndKey() = runBlocking {
+        val repo = repository()
+        repo.saveAiProviderConfig(anthropic, "test-key-not-real")
+        assertEquals(anthropic, settings.current().aiProviderConfig)
+        assertEquals("From Anthropic", repo.extractListing("2BHK in Indiranagar").label)
+        assertEquals(listOf<Pair<String, String?>>("https://api.anthropic.com/v1/messages" to "test-key-not-real"), anthropicCalls)
+        assertTrue(geminiCalls.isEmpty() && openAiCalls.isEmpty())
+    }
+
+    @Test
+    fun anAnthropicChoiceWithNoSavedAddressUsesAnthropicsOwn() = runBlocking {
+        val repo = repository()
+        repo.saveAiProviderConfig(anthropic.copy(baseUrl = ""), "test-key-not-real")
+        assertEquals("https://api.anthropic.com", settings.current().aiProviderConfig.baseUrl)
+    }
+
+    @Test
+    fun anAnthropicChoiceNeedsAKeyAndAnHttpsAddressAndNothingIsSavedWithoutThem() = runBlocking {
+        val repo = repository()
+        assertEquals("key", runCatching { repo.saveAiProviderConfig(anthropic, " ") }.exceptionOrNull()?.message)
+        assertEquals(
+            "insecureHost",
+            runCatching { repo.saveAiProviderConfig(anthropic.copy(baseUrl = "http://example.com"), "test-key-not-real") }.exceptionOrNull()?.message,
+        )
+        assertEquals(AiProviderConfig.GEMINI, settings.current().aiProviderConfig)
+    }
+
+    @Test
+    fun testingAnAnthropicChoiceSendsOnePingToItAndSavesNothing() = runBlocking {
+        val repo = repository()
+        assertTrue(repo.testAiProvider(anthropic, "test-key-not-real").isSuccess)
+        assertEquals(1, anthropicCalls.size)
+        assertEquals(AiProviderConfig.GEMINI, settings.current().aiProviderConfig)
+        // No key, no request.
+        assertTrue(repo.testAiProvider(anthropic, "").isFailure)
+        assertEquals(1, anthropicCalls.size)
+    }
+
+    @Test
+    fun aBadAddressOrAnEmptyModelIsRefusedAndNothingIsSaved() = runBlocking {
+        val repo = repository()
+        val reasons = mapOf(
+            "http://example.com/v1" to "insecureHost", "https://example.com/v1/chat/completions" to "endpoint",
+            "https://u:p@example.com/v1" to "userinfo", "" to "empty", "ftp://example.com" to "scheme",
+        )
+        for ((url, reason) in reasons) {
+            val e = runCatching { repo.saveAiProviderConfig(local.copy(baseUrl = url), "k") }.exceptionOrNull()
+            assertEquals(url, reason, e?.message)
+        }
+        assertEquals("model", runCatching { repo.saveAiProviderConfig(local.copy(model = " "), "k") }.exceptionOrNull()?.message)
+        assertEquals("model", runCatching { repo.saveAiProviderConfig(AiProviderConfig(AiKind.ANTHROPIC, anthropic.baseUrl), "k") }.exceptionOrNull()?.message)
+        assertEquals(AiProviderConfig.GEMINI, settings.current().aiProviderConfig)
+        assertEquals("", settings.current().geminiKey)
+    }
+
+    @Test
+    fun theEmulatorsAddressIsAllowedOnlyWhereThePlatformSaysSo() = runBlocking {
+        val config = local.copy(baseUrl = "http://10.0.2.2:11434/v1")
+        assertEquals("insecureHost", runCatching { repository().saveAiProviderConfig(config, "") }.exceptionOrNull()?.message)
+        repository(emulator = true).saveAiProviderConfig(config, "")
+        assertEquals(config.baseUrl, settings.current().aiProviderConfig.baseUrl)
+    }
+
+    @Test
+    fun testingAProviderSendsOnePingToItAndSavesNothing() = runBlocking {
+        val repo = repository()
+        assertTrue(repo.testAiProvider(local, "").isSuccess)
+        assertEquals(1, openAiCalls.size)
+        assertEquals(AiProviderConfig.GEMINI, settings.current().aiProviderConfig)
+        assertTrue(repo.testAiProvider(local.copy(baseUrl = "http://example.com/v1"), "").isFailure)
+        assertEquals(1, openAiCalls.size)
+        assertTrue(repo.testGeminiKey("AIzaOwnKeyForTests1234").isSuccess)
+        assertEquals(1, geminiCalls.size)
+    }
+
+    @Test
+    fun removingTheKeyClearsTheChoiceAndAiLeavesTheDevice() = runBlocking {
+        val repo = repository()
+        repo.saveAiProviderConfig(local, "sk-test-key")
+        repo.removeGeminiKey()
+        assertEquals(AiProviderConfig.GEMINI, settings.current().aiProviderConfig)
+        assertEquals(AiProviderChoice.SERVER, settings.current().aiProvider)
+        assertFalse(settings.current().toString().contains("localhost"))
+        val e = runCatching { repo.extractListing("x") }.exceptionOrNull()
+        assertEquals("with nothing on the device and no server, AI is off and the call is refused", ApiException.Kind.AI_OFF, (e as ApiException).kind)
+        assertTrue(openAiCalls.isEmpty())
+    }
+}

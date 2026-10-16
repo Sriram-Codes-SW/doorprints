@@ -18,25 +18,49 @@
 
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, timeout } from 'rxjs';
 import { LocalStore } from '../../data/local-store.service';
+import { REQUEST_TIMEOUT_MS } from './ai-request';
 import { distancesToPlaces, notesReaching } from '../../shared/area';
 import type { Viewing } from '../../shared/viewing';
 import type { AskResponse, HouseDraft, PlanRequest, PlanResponse } from '../ai.service';
 import {
   AgentPlan, AiHouse, AskFilterValues, I_DONT_KNOW, ModelAnswer, PlanCandidate, RawListing, askPrompt, assemblePlan,
-  candidateLines, citations, extractionPrompt, nonce, planPrompt, sanitizeDraft, selectForAsk, selectForPlan,
+  candidateLines, citations, cleanAnswer, extractionPrompt, nonce, planPrompt, sanitizeDraft, selectForAsk, selectForPlan,
 } from './ai-core';
+import { type AiQuality, geminiThinkingLevel } from './ai-quality';
+import { availableKinds, defaultKind, kindsOn, spacesOn } from '../kind-setting';
+import { holdsFor } from '../space-scope';
+import {
+  SCHOOL_LISTING_SCHEMA, aiKindOf, aiText, askView, kindAskPrompt, kindExtractionPrompt, kindPlanPrompt, planExtras, planView, promptKind,
+  refusalOf, sanitizeKindDraft,
+} from './kind-ai';
+import { geminiBlocked } from './ai-blocked';
+import { isQuotaExhausted } from './ai-quota';
+import type { JsonChatModel } from './json-chat-model';
+
+/**
+ * `modelNotFound` and `unreachable` come from an OpenAI-compatible provider (docs/03 §13.2); Gemini never raises them.
+ * `blocked` is the provider's own safety system declining the text (S4b-BL-232): never retried, its words never kept.
+ * `quotaExhausted` is the key's free quota or credit used up (S4b-BL-243): not a wait of a minute, so not `rateLimited`.
+ */
+export type OnDeviceAiErrorKind = 'rateLimited' | 'keyRejected' | 'unavailable' | 'modelNotFound' | 'unreachable' | 'blocked' | 'quotaExhausted';
 
 /** Why an on-device AI request failed, in the words the screens use (see `aiErrorMsg`). */
 export class OnDeviceAiError extends Error {
-  constructor(readonly kind: 'rateLimited' | 'keyRejected' | 'unavailable', readonly retryAfter = 60) {
+  constructor(readonly kind: OnDeviceAiErrorKind, readonly retryAfter = 60) {
     super(kind);
   }
 }
 
+/** The model and endpoint the `gemini` kind calls; the key travels only in a header, never in the URL. */
 export const GEMINI_MODEL = 'gemini-3.5-flash';
 export const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+/**
+ * The answer budget of a Gemini call. On Gemini 3.x the limit includes the hidden thinking tokens, so 2,048 could be spent
+ * before the JSON began and cut it off (S4b-BL-194); the visible answers use 130 to 350 tokens. As the server's default.
+ */
+export const GEMINI_MAX_OUTPUT_TOKENS = 8192;
 export const MAX_INPUT_CHARS = 8000;
 export const MAX_QUESTION_CHARS = 1000;
 export const RATE_LIMIT = 10;
@@ -49,8 +73,8 @@ export const LISTING_SCHEMA = {
   properties: {
     label: str("Short human label, e.g. '2BHK near Indiranagar metro'"),
     address: str('Full postal address as written in the listing'),
-    street: str('Street / road name only'),
-    locality: str('Locality / neighbourhood / area'),
+    street: str("Street / road name only, e.g. 'MG Road'; null when no road is named"),
+    locality: str("Locality / neighbourhood / area inside the city, e.g. 'Indiranagar', 'Sector 56'; never the city or district alone. When the listing names only a road, repeat the road here"),
     price: str("Monthly rent or sale price in rupees exactly as written, e.g. '25,000' or '1.2 Cr'"),
     priceType: str('RENT or SALE'),
     bedrooms: str("Number of bedrooms, e.g. '2' for 2BHK"),
@@ -93,7 +117,78 @@ interface GeminiResponse {
 }
 
 /**
- * AI with the person's own Gemini key, in this browser (docs/03 §13.1, ADR-26): the same three calls as the server's
+ * The body of one `generateContent` request (the `geminiRequest` vectors). With Quality there is no `thinkingConfig`; with
+ * Balanced or Economy `generationConfig.thinkingConfig.thinkingLevel` is `MEDIUM` or `LOW` (Gemini API reference,
+ * `GenerationConfig.thinkingConfig` and `ThinkingLevel`; docs/ai/ai-design.md 13.2). It goes last, so the body for Quality
+ * is what it was before the setting existed, apart from the larger answer budget.
+ */
+export function geminiBody(system: string, user: string, schema: object, temperature: number, quality: AiQuality = 'quality') {
+  const level = geminiThinkingLevel(quality);
+  return {
+    systemInstruction: { parts: [{ text: system }] },
+    contents: [{ role: 'user', parts: [{ text: user }] }],
+    generationConfig: {
+      temperature, maxOutputTokens: GEMINI_MAX_OUTPUT_TOKENS, responseMimeType: 'application/json', responseSchema: schema,
+      ...(level ? { thinkingConfig: { thinkingLevel: level } } : {}),
+    },
+  };
+}
+
+/**
+ * The `gemini` kind (ADR-26): Google's `generateContent` with the person's key in `x-goog-api-key`, never in a URL. A
+ * [JsonChatModel] for the key it is made with, at the thinking level of [quality] (*AI speed and cost*).
+ */
+export class GeminiChatModel implements JsonChatModel {
+  /**
+   * `timeoutMs`: the same 60 s request limit as `postAiJson` gives the other kinds (S4b-BL-238; the Gemini path had none,
+   * so a stalled call hung the form). A timeout is `unavailable`, the words the other kinds use. The app never passes
+   * another value; tests do.
+   */
+  constructor(
+    private readonly http: HttpClient,
+    private readonly key: string,
+    private readonly quality: AiQuality = 'quality',
+    private readonly timeoutMs: number = REQUEST_TIMEOUT_MS,
+  ) {}
+
+  async generateJson(system: string, user: string, schema: object, temperature: number): Promise<string> {
+    const body = geminiBody(system, user, schema, temperature, this.quality);
+    let res: GeminiResponse;
+    try {
+      res = await firstValueFrom(
+        this.http.post<GeminiResponse>(GEMINI_URL, body, { headers: { 'x-goog-api-key': this.key } }).pipe(timeout({ first: this.timeoutMs })),
+      );
+    } catch (e) {
+      if (e instanceof HttpErrorResponse) {
+        const text = typeof e.error === 'string' ? e.error : JSON.stringify(e.error ?? '');
+        if (isQuotaExhausted(e.status, text)) throw new OnDeviceAiError('quotaExhausted');
+        if (e.status === 429) throw new OnDeviceAiError('rateLimited');
+        if (e.status === 403 || (e.status === 400 && (text.includes('API_KEY_INVALID') || text.includes('API key not valid')))) {
+          throw new OnDeviceAiError('keyRejected');
+        }
+        if (e.status === 0) throw e; // offline: the usual "cannot reach" words
+      }
+      throw new OnDeviceAiError('unavailable');
+    }
+    if (geminiBlocked(res)) throw new OnDeviceAiError('blocked');
+    const parts = res?.candidates?.[0]?.content?.parts;
+    if (!parts) throw new OnDeviceAiError('unavailable');
+    return parts.map((p) => p.text ?? '').join('');
+  }
+
+  async ping(): Promise<void> {
+    await this.generateJson('Reply with {"ok": true}.', 'ping', PING_SCHEMA, 0);
+  }
+}
+
+/**
+ * Who answers an on-device call: a Gemini key (the string, as before ADR-35: the model's own thinking level) or any [JsonChatModel] the caller made
+ * from the person's settings (`AiService`).
+ */
+export type ModelRef = string | JsonChatModel;
+
+/**
+ * AI with the person's own provider, in this browser (docs/03 §13.1 and §13.2, ADR-26, ADR-35; a Gemini key as a string): the same three calls as the server's
  * AI endpoints, the same prompts, limits and checks (ai-core.ts), and Gemini called directly. The key goes only to
  * Google, in the `x-goog-api-key` header, never in a URL; prompts and answers are not logged. At most 10 requests a
  * minute, as the server allows.
@@ -106,6 +201,10 @@ export class OnDeviceAiService {
   /** The clock (a test's). */
   now: () => number = () => Date.now();
 
+  /**
+   * Keeps this browser to {@link RATE_LIMIT} requests a minute, as the server does; throws `rateLimited` with the
+   * seconds to wait.
+   */
   private admit(): void {
     const t = this.now();
     while (this.recent.length && t - this.recent[0] >= 60_000) this.recent.shift();
@@ -115,30 +214,9 @@ export class OnDeviceAiService {
     this.recent.push(t);
   }
 
-  /** The model's JSON answer as text. */
-  private async generate(key: string, system: string, user: string, schema: object, temperature: number): Promise<string> {
-    const body = {
-      systemInstruction: { parts: [{ text: system }] },
-      contents: [{ role: 'user', parts: [{ text: user }] }],
-      generationConfig: { temperature, maxOutputTokens: 2048, responseMimeType: 'application/json', responseSchema: schema },
-    };
-    let res: GeminiResponse;
-    try {
-      res = await firstValueFrom(this.http.post<GeminiResponse>(GEMINI_URL, body, { headers: { 'x-goog-api-key': key } }));
-    } catch (e) {
-      if (e instanceof HttpErrorResponse) {
-        const text = JSON.stringify(e.error ?? '');
-        if (e.status === 429) throw new OnDeviceAiError('rateLimited');
-        if (e.status === 403 || (e.status === 400 && (text.includes('API_KEY_INVALID') || text.includes('API key not valid')))) {
-          throw new OnDeviceAiError('keyRejected');
-        }
-        if (e.status === 0) throw e; // offline: the usual "cannot reach" words
-      }
-      throw new OnDeviceAiError('unavailable');
-    }
-    const parts = res?.candidates?.[0]?.content?.parts;
-    if (!parts) throw new OnDeviceAiError('unavailable');
-    return parts.map((p) => p.text ?? '').join('');
+  /** The model for a call: a string is a Gemini key. */
+  private model(via: ModelRef): JsonChatModel {
+    return typeof via === 'string' ? new GeminiChatModel(this.http, via) : via;
   }
 
   private parse<T>(text: string): T | null {
@@ -149,8 +227,12 @@ export class OnDeviceAiService {
     }
   }
 
-  /** The saved houses and their visits as on-device AI reads them, most recently changed first. */
-  private async houses(): Promise<AiHouse[]> {
+  /**
+   * The saved candidates and their visits as on-device AI reads them, most recently changed first. `kind` (kinds PR B,
+   * S4b-BL-279): only the candidates the space of that kind holds, so Ask and Plan read one space at a time; none reads
+   * every candidate, as it always did.
+   */
+  private async houses(kind?: string): Promise<AiHouse[]> {
     const visits = (await this.store.allVisits()).filter((v) => !v.deleted);
     const byHouse = new Map<string, { arrivedAt: number; leftAt: number | null }[]>();
     for (const v of visits) {
@@ -160,13 +242,14 @@ export class OnDeviceAiService {
       byHouse.set(v.houseId, list);
     }
     const viewingsByHouse = new Map<string, Viewing[]>();
-    for (const viewing of await this.store.viewings()) {
+    for (const viewing of await this.store.viewings.all()) {
       viewingsByHouse.set(viewing.houseId, [...(viewingsByHouse.get(viewing.houseId) ?? []), viewing]);
     }
-    const areas = await this.store.areas();
-    const places = await this.store.places();
-    const noteRows = await this.store.areaNoteRows();
-    const live = (await this.store.allHouses()).filter((h) => !h.deleted);
+    const areas = await this.store.areas.all();
+    const places = await this.store.places.all();
+    const noteRows = await this.store.areaNotes.rows();
+    const holds = kind ? holdsFor(kind, spacesOn(), defaultKind(), availableKinds()) : () => true;
+    const live = (await this.store.allHouses()).filter((h) => !h.deleted && holds(h));
     live.sort((a, b) => Date.parse(b.updatedAt ?? '') - Date.parse(a.updatedAt ?? '') || 0);
     return live.map((h) => ({
       id: h.id, label: h.label, address: h.address, street: h.street, locality: h.locality, lat: h.lat, lon: h.lon,
@@ -175,44 +258,78 @@ export class OnDeviceAiService {
       areaNotes: notesReaching(h, areas, noteRows).map((n) => ({ id: n.id, text: n.note.text, updatedAt: Date.parse(n.updatedAt ?? '') || 0 })),
       distances: distancesToPlaces(h, places).map((d) => ({ name: d.place.name, meters: d.meters })),
       contactName: h.contactName, contactPhone: h.contactPhone, listingUrl: h.listingUrl, notes: h.notes,
-      checklist: h.checklist, visits: byHouse.get(h.id) ?? [],
+      checklist: h.checklist, visits: byHouse.get(h.id) ?? [], kind: h.kind, extras: h.extrasOther,
     }));
   }
 
-  async extractListing(key: string, text: string): Promise<HouseDraft> {
+  /**
+   * Reads pasted listing text into a draft for the form. Empty or too long text throws; the model's answer always goes
+   * through {@link sanitizeDraft}.
+   */
+  async extractListing(via: ModelRef, text: string, kind?: string): Promise<HouseDraft> {
     if (!text.trim() || text.length > MAX_INPUT_CHARS) throw new Error('listing text is empty or too long');
+    // Kinds PR 7 (S4b-BL-211): a school's listing (the developer flag or Settings' switch on, S4b-BL-212) gets the school's prompt, schema and checks.
+    const k = kind ? aiKindOf(kind, kindsOn()) : null;
+    if (kind && (!k || !k.extract.length)) throw new Error(`kind ${kind} has no listing extract`);
     this.admit();
+    if (k) {
+      const kp = kindExtractionPrompt(k, text, nonce());
+      return sanitizeKindDraft(k, this.parse<Record<string, unknown>>(await this.model(via).generateJson(kp.system, kp.user, SCHOOL_LISTING_SCHEMA, 0)), text);
+    }
     const p = extractionPrompt(text, nonce());
-    return sanitizeDraft(this.parse<RawListing>(await this.generate(key, p.system, p.user, LISTING_SCHEMA, 0)), text);
+    return sanitizeDraft(this.parse<RawListing>(await this.model(via).generateJson(p.system, p.user, LISTING_SCHEMA, 0)), text);
   }
 
-  async ask(key: string, question: string, filters?: AskFilterValues): Promise<AskResponse> {
+  /**
+   * Answers a question from the saved houses only. With no matching house, or no usable answer, it returns the "I don't
+   * know" sentence; citations are only houses that were sent to the model.
+   */
+  async ask(via: ModelRef, question: string, filters?: AskFilterValues, kind?: string): Promise<AskResponse> {
     if (!question.trim() || question.length > MAX_QUESTION_CHARS) throw new Error('question is empty or too long');
-    const docs = selectForAsk(await this.houses(), question, filters);
-    if (!docs.length) return { answer: I_DONT_KNOW, citations: [], grounded: false, retrieved: 0 };
+    // A candidate of another kind is read through its kind's slots while the developer flag or the switch is on (kinds PR 7, 8).
+    const dev = kindsOn();
+    const viewed = (await this.houses(kind)).map((h) => askView(h, dev));
+    const docs = selectForAsk(viewed, question, filters, (h) => aiText(h, dev));
+    // The words of the prompt and of the refusal are the kind's when every record sent is of one built-in kind (S4b-BL-269); a
+    // house, a mix and the flag off keep the house's. With nothing to send the space's kind speaks, if the caller names one.
+    const k = promptKind(docs.map((d) => d.id), viewed, dev);
+    if (!docs.length) return { answer: refusalOf(kind, dev), citations: [], grounded: false, retrieved: 0 };
     this.admit();
-    const p = askPrompt(question, docs, nonce());
-    const answer = this.parse<ModelAnswer>(await this.generate(key, p.system, p.user, ANSWER_SCHEMA, 0.1));
-    if (!answer?.answer?.trim()) return { answer: I_DONT_KNOW, citations: [], grounded: false, retrieved: docs.length };
-    const cited = citations(answer, docs, question);
-    return { answer: answer.answer.trim(), citations: cited, grounded: cited.length > 0, retrieved: docs.length };
+    const p = k ? kindAskPrompt(k, question, docs, nonce()) : askPrompt(question, docs, nonce());
+    const answer = this.parse<ModelAnswer>(await this.model(via).generateJson(p.system, p.user, ANSWER_SCHEMA, 0.1));
+    if (!answer?.answer?.trim()) return { answer: k?.refusal ?? I_DONT_KNOW, citations: [], grounded: false, retrieved: docs.length };
+    const text = cleanAnswer(answer.answer.trim(), docs.map((d) => d.text).join('\n'));
+    const cited = citations({ ...answer, answer: text }, docs, question);
+    return { answer: text, citations: cited, grounded: cited.length > 0, retrieved: docs.length };
   }
 
-  async planVisits(key: string, request: PlanRequest): Promise<PlanResponse> {
+  /**
+   * Plans visits: the model picks houses from the nearest candidates, and the order and walking legs are computed
+   * locally by {@link assemblePlan}. At most 8 stops; an unusable model answer falls back to nearest-neighbour order.
+   */
+  async planVisits(via: ModelRef, request: PlanRequest, kind?: string): Promise<PlanResponse> {
     if (!request.question.trim() || request.question.length > MAX_QUESTION_CHARS) throw new Error('question is empty or too long');
+    // The server's PlanRequest bounds (docs/ai/ai-design.md 9): a point that is not on Earth (or NaN) is refused here too.
+    if (!(Math.abs(request.startLat) <= 90) || !(Math.abs(request.startLon) <= 180)) throw new Error('the start point is not on Earth');
     const maxStops = Math.max(1, Math.min(request.maxStops ?? MAX_STOPS, MAX_STOPS));
-    const candidates = selectForPlan(await this.houses(), request.startLat, request.startLon);
+    const dev = kindsOn();
+    const viewed = (await this.houses(kind)).map((h) => planView(h, dev));
+    const candidates = selectForPlan(viewed, request.startLat, request.startLon, (h) => planExtras(h, dev));
     const seen = new Map<string, PlanCandidate>(candidates.map((c) => [c.id, c]));
     if (!candidates.length) return assemblePlan({ stops: [] }, seen, request.startLat, request.startLon, maxStops);
     this.admit();
-    const p = planPrompt(request.question, request.startLat, request.startLon, maxStops, candidateLines(candidates), nonce());
+    // As Ask: the kind's words when every candidate sent is of one built-in kind, else the house's (S4b-BL-269).
+    const k = promptKind(candidates.map((c) => c.id), viewed, dev);
+    const lines = candidateLines(candidates);
+    const p = k ? kindPlanPrompt(k, request.question, request.startLat, request.startLon, maxStops, lines, nonce())
+      : planPrompt(request.question, request.startLat, request.startLon, maxStops, lines, nonce());
     // As on the server: an unusable answer falls back to the candidates by distance; a failed request is reported.
-    const plan = this.parse<AgentPlan>(await this.generate(key, p.system, p.user, PLAN_SCHEMA, 0.2));
+    const plan = this.parse<AgentPlan>(await this.model(via).generateJson(p.system, p.user, PLAN_SCHEMA, 0.2));
     return assemblePlan(plan, seen, request.startLat, request.startLon, maxStops);
   }
 
-  /** Whether Google accepts [key]: one tiny request, nothing saved. */
-  async test(key: string): Promise<void> {
-    await this.generate(key, 'Reply with {"ok": true}.', 'ping', PING_SCHEMA, 0);
+  /** Whether the provider accepts [via] (a Gemini key, or a model): one tiny request, nothing saved. */
+  async test(via: ModelRef): Promise<void> {
+    await this.model(via).ping();
   }
 }

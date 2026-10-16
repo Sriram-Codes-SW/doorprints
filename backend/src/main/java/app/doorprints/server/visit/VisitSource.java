@@ -18,4 +18,7 @@
 
 package app.doorprints.server.visit;
 
+/**
+ * How a visit was recorded: AUTO by the phone, or MANUAL by the person.
+ */
 public enum VisitSource { AUTO, MANUAL }

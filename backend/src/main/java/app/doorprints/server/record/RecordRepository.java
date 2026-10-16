@@ -26,6 +26,10 @@ import org.springframework.data.repository.query.Param;
 import java.time.Instant;
 import java.util.List;
 
+/**
+ * Queries on records: the sync change feed, per-type listings for backup and the cap, and the purge of old
+ * tombstones.
+ */
 public interface RecordRepository extends JpaRepository<Record, RecordKey> {
 
     /** The change feed of every kind: everything after a cursor, tombstones included, oldest change first. */
@@ -37,9 +41,22 @@ public interface RecordRepository extends JpaRepository<Record, RecordKey> {
     /** Live rows of one kind, for a backup export. */
     List<Record> findByKeyTypeAndDeletedFalse(String type);
 
+    /**
+     * The live {@code viewing} rows whose payload names the house (the {@code candidateId} key, or {@code houseId} in a
+     * payload stored before S4b-BL-247, compared as text), chosen in the database so a save of one house does not read
+     * the viewings of the others (S4b-BL-162). Both keys are read here, so no stored row needs rewriting; a row with
+     * both is returned and then skipped by its reader ({@link ViewingPayload}).
+     */
+    @Query(value = "select * from record where type = 'viewing' and deleted = false"
+            + " and coalesce(payload ->> 'candidateId', payload ->> 'houseId') = :houseId", nativeQuery = true)
+    List<Record> findLiveViewingsOfHouse(@Param("houseId") String houseId);
+
     /** Live rows of one kind, for the per-type cap. */
     long countByKeyTypeAndDeletedFalse(String type);
 
+    /**
+     * Permanently removes tombstones last updated before the cut-off; returns how many.
+     */
     @Modifying
     @Query("delete from Record r where r.deleted = true and r.updatedAt < :before")
     int purgeTombstonesBefore(@Param("before") Instant before);

@@ -38,6 +38,12 @@ import androidx.compose.ui.platform.LocalContext
 // which offers the fingerprint or face and falls back to the PIN, pattern or password; on API 26-28 the keyguard's
 // confirm-credential screen (PIN, pattern or password; that screen offers the fingerprint where the phone allows).
 
+/**
+ * Android's check: BiometricPrompt from API 29 (fingerprint or face, with the PIN, pattern or password as the fallback)
+ * and the keyguard's confirm-credential screen before. A phone with no screen lock answers
+ * [CredentialCheck.NO_SCREEN_LOCK]; leaving the prompt, a timeout or too many wrong tries answer
+ * [CredentialCheck.CANCELLED].
+ */
 @Composable
 actual fun rememberDeviceCredentialCheck(title: String, onResult: (CredentialCheck) -> Unit): () -> Unit {
     val context = LocalContext.current
@@ -81,6 +87,10 @@ actual fun rememberDeviceCredentialCheck(title: String, onResult: (CredentialChe
     }
 }
 
+/**
+ * While the lock is on, keeps the app's picture out of the recents list: from Android 13 the recents screenshot is
+ * turned off, before that the window is made secure (which also blocks screenshots).
+ */
 @Composable
 actual fun AppLockWindowGuard(on: Boolean) {
     val activity = LocalContext.current.findActivity() ?: return

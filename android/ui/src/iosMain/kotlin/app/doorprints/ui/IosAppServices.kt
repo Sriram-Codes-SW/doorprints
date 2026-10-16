@@ -22,7 +22,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import app.doorprints.data.AppDatabase
 import app.doorprints.data.CommonRepository
+import app.doorprints.data.ServerSyncBackend
 import app.doorprints.data.Repository
 import app.doorprints.data.iosAppDatabase
 import app.doorprints.data.iosDataDirectory
@@ -31,6 +33,9 @@ import app.doorprints.export.CopyRecord
 import app.doorprints.export.CopyUndoOutcome
 import app.doorprints.location.HuntState
 import app.doorprints.location.Place
+import app.doorprints.drive.wiring.DriveSyncChoice
+import app.doorprints.drive.wiring.FileDrivePrefs
+import app.doorprints.drive.wiring.DriveSyncRoute
 import app.doorprints.shared.api.ApiClient
 import app.doorprints.shared.api.IosApiHttp
 import app.doorprints.shared.sync.SyncOutcome
@@ -69,16 +74,24 @@ object IosAppContainer {
     val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     /** One HTTP client for the whole app, so connections are pooled (as `:app`'s `Api.client`). */
-    private val http by lazy { IosApiHttp.create() }
+    internal val http by lazy { IosApiHttp.create() }
+
+    /** The database, opened once: the repository and the Drive sync rows read the same one. */
+    internal val database: AppDatabase by lazy {
+        // Breadcrumbs in the unified log: a native crash while the data opens leaves no Kotlin trace, and these say
+        // which step it was in (CMP-8b, the first launches in CI).
+        startupStep("database")
+        iosAppDatabase()
+    }
+
+    /** Carries the Drive backend into the repository's sync loop for one Drive pass (S4b-BL-70's seam, docs/15 §1.3). */
+    internal val driveRoute = DriveSyncRoute()
 
     /** Sync requests; conflated, so edits made while one waits or runs lead to one more sync, not one each. */
     private val syncRequests = Channel<Unit>(Channel.CONFLATED)
 
     val repository: CommonRepository by lazy {
-        // Breadcrumbs in the unified log: a native crash while the data opens leaves no Kotlin trace, and these say
-        // which step it was in (CMP-8b, the first launches in CI).
-        startupStep("database")
-        val db = iosAppDatabase()
+        val db = database
         startupStep("settings")
         val settings = iosSettingsStore()
         startupStep("repository")
@@ -88,11 +101,24 @@ object IosAppContainer {
             photoDir = iosDataDirectory() + "/photos",
             syncSoon = { syncRequests.trySend(Unit) },
             apiFor = { url, key -> ApiClient(url, key, http) },
-            geminiFor = { key -> app.doorprints.shared.ai.GeminiClient(http, key) },
+            geminiFor = { key, quality -> app.doorprints.shared.ai.GeminiClient(http, key, quality = quality) },
+            openAiFor = { url, model, key -> app.doorprints.shared.ai.OpenAiCompatClient(http, url, model, key) },
+            anthropicFor = { url, model, key -> app.doorprints.shared.ai.AnthropicClient(http, model, key, url) },
+            // While Drive is in use it replaces the server for sync (docs/15 §1.3): the Drive pass finds its own backend
+            // through the route, the server's is chosen exactly as before when Drive is not in use.
+            syncBackendFor = DriveSyncChoice.backendFor({ driveFlag.engaged }, driveRoute) { s ->
+                if (s.serverConfigured) ServerSyncBackend(ApiClient(s.serverUrl, s.apiKey, http)) else null
+            },
         ).also { startupStep("ready") }
     }
 
-    val services: AppServices by lazy { IosAppServices(repository, appScope) }
+    /** Whether Drive is in use, read from one small file without building Drive (as Android's `driveFlag`). */
+    internal val driveFlag: FileDrivePrefs by lazy { IosDriveServices.lightPrefs() }
+
+    /** Google Drive backup and sync (docs/15); the graph is built when first used. */
+    internal val drive: IosDriveServices by lazy { IosDriveServices(repository, database, http, driveRoute, appScope, driveFlag) }
+
+    val services: AppServices by lazy { IosAppServices(repository, appScope, drive) }
 
     private var started = false
 
@@ -101,6 +127,10 @@ object IosAppContainer {
     fun start() {
         if (started) return
         started = true
+        // Whether the app is in front, for the Drive passes and Google's sheet (cheap; nothing else in Drive starts yet).
+        IosForeground.install()
+        // A saved walk never outlives its house: at start the walks of a tombstoned house go (docs/11 5.27.6).
+        appScope.launch { catchFailures { repository.sweepWalksOfDeletedHouses() } }
         // Whether the server has AI features on, once per process, as on Android (Root does not ask again).
         appScope.launch { catchFailures { repository.refreshAiStatus() } }
         appScope.launch {
@@ -111,8 +141,10 @@ object IosAppContainer {
                 catchFailures { syncOnce() }
             }
         }
-        // No periodic sync on iOS yet: one at each launch instead.
+        // No periodic sync on iOS yet: one at each launch instead. With Drive in use its own passes run at the start, at
+        // every return to the app and every 30 minutes while it is in front (IosDriveServices.start).
         syncRequests.trySend(Unit)
+        if (driveFlag.engaged) drive.start()
         // The viewing reminders (slice 3b-2): set at start (the first emission) and after every change of the viewings,
         // the houses (their names are in the pending bodies) or the setting, a second after a burst of edits.
         appScope.launch {
@@ -136,6 +168,12 @@ object IosAppContainer {
 
     /** One sync, recorded in the settings the way Android's `SyncWorker` records it. */
     private suspend fun syncOnce() {
+        // With Google Drive in use it replaces the server (docs/15 §1.3): one Drive pass, under the same lock and Wi-Fi
+        // rules; the server's status in Settings is left as it was.
+        if (driveFlag.engaged) {
+            drive.syncAfterChange()
+            return
+        }
         val settings = repository.settings.current()
         val outcome = try {
             repository.sync(photosAllowed = !settings.photosOnWifiOnly)
@@ -175,12 +213,13 @@ internal inline fun catchFailures(block: () -> Unit) {
 internal class IosAppServices(
     override val repository: CommonRepository,
     override val appScope: CoroutineScope,
+    private val drive: IosDriveServices,
 ) : AppServices {
     override val location: LocationSource = IosLocationSource()
 
     override val copyImports: CopyImportUndoes = NoCopyImportUndoes
 
-    override val settingsScreen: SettingsServices = IosSettingsServices
+    override val settingsScreen: SettingsServices = IosSettingsServices(drive)
 
     override val houseForm: HouseFormServices = IosHouseFormServices(repository)
 
@@ -195,6 +234,9 @@ internal class IosAppServices(
 
     /** Region monitoring and the "Always" permission (S4b-BL-96). */
     override val areaWakeup: AreaWakeupServices = IosAreaWakeupServices
+
+    /** *Voice input* (S4b-BL-223): the microphone, its permission and the call to the person's own AI; asks for nothing until a tap. */
+    override val voice: VoiceServices = IosVoiceServices(repository.settings) { IosAppContainer.http }
 
     /** On every resume (the common root): a clock change or an authorization granted in the Settings app. */
     override fun rescheduleReminders() {
@@ -219,7 +261,7 @@ private object NoCopyImportUndoes : CopyImportUndoes {
  * Settings on iOS: the language follows iOS's own per-app language (Settings > Doorprints > Language), which the
  * common screen opens instead of a list ([PlatformFeatures.inAppLanguage] off); no weekly backup (hidden).
  */
-private object IosSettingsServices : SettingsServices {
+private class IosSettingsServices(private val drive: IosDriveServices) : SettingsServices {
     override val supportedLanguages: List<String> = listOf("en", "hi", "ta", "te")
 
     override fun currentLanguage(): String? = null
@@ -241,6 +283,10 @@ private object IosSettingsServices : SettingsServices {
     override suspend fun releaseBackupFolder(folder: String) = Unit
     override val backupNoFolderError: String = "no_folder"
     override fun settingsVisible(visible: Boolean) = Unit
+
+    /** Settings > Google Drive (docs/15 §2, §10.3): the common Drive screens behind the passcode rule. */
+    @Composable
+    override fun DriveSection() = IosDriveSettingsSection(drive)
 
     /** `CFBundleShortVersionString` of the app's Info.plist ("0.1.0"). */
     override fun appVersion(): String? =
@@ -273,6 +319,7 @@ private class IosHouseFormServices(private val repository: CommonRepository) : H
     override fun photoModel(photoId: String): Any = repository.photoFileOf(photoId).toString()
 }
 
+/** The photo sources of an iPhone build that has no camera or gallery yet: both buttons do nothing. */
 private object NoPhotoSources : PhotoSources {
     override fun takePhoto() = Unit
     override fun pickFromGallery() = Unit
@@ -284,8 +331,10 @@ private object NoPhotoSources : PhotoSources {
  */
 private object IosMapServices : MapServices {
     override val hunt: StateFlow<HuntState.State> get() = HuntState.state
-    override fun startHunt(): Boolean = IosHunt.start()
+    override fun startHunt(kind: String): Boolean = IosHunt.start(kind)
     override fun stopHunt() = IosHunt.stop()
+
+    override fun finishWalk() = IosHunt.finishWalk()
     override fun clearHuntStopReason() = IosHunt.clearStopReason()
     override fun notificationsReachUser(): Boolean = IosNotifications.canPost()
 

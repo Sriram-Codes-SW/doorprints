@@ -24,6 +24,7 @@ import app.doorprints.shared.export.BackupData
 import app.doorprints.shared.export.BackupFile
 import app.doorprints.shared.export.BackupFormat
 import app.doorprints.shared.export.BackupManifest
+import app.doorprints.shared.export.BackupWire
 import app.doorprints.shared.export.CsvWriter
 import app.doorprints.shared.export.ExportBundle
 import app.doorprints.shared.export.ExportFormat
@@ -63,6 +64,11 @@ import java.security.MessageDigest
  */
 object Exporters {
 
+    /**
+     * Writes [bundle] as [format] into [out], blocking: call it off the main thread. Photos are read one at a time
+     * through [photoFile]. The CSV, XLSX and backup writers close [out] (they end the ZIP); HTML, PDF and Markdown
+     * only flush it. [onProgress] is also the stop point (see above).
+     */
     fun write(
         bundle: ExportBundle,
         format: ExportFormat,
@@ -167,7 +173,7 @@ object Exporters {
 
             // Built once: the manifest counts the rows data.json actually holds (unlinked visits included).
             val rows = BackupData.of(bundle)
-            val data = BackupFormat.json.encodeToString(BackupData.serializer(), rows)
+            val data = BackupWire.encodeData(rows)
             files += hashed(zip, BackupFormat.DATA_ENTRY) { target -> writing(target) { it.write(data) } }
             onProgress(++done, total)
 
@@ -216,7 +222,7 @@ object Exporters {
             )
             zip.text(
                 BackupFormat.MANIFEST_ENTRY,
-                BackupFormat.json.encodeToString(BackupManifest.serializer(), manifest),
+                BackupWire.encodeManifest(manifest),
             )
             onProgress(total, total)
             zip.finish()
@@ -254,6 +260,7 @@ object Exporters {
         return BackupFile(path, size, hex(digest.digest()))
     }
 
+    /** Lower-case hexadecimal text of [bytes], as the backup manifest writes its SHA-256 values. */
     fun hex(bytes: ByteArray): String {
         val out = StringBuilder(bytes.size * 2)
         for (b in bytes) {

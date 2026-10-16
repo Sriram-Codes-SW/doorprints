@@ -37,6 +37,9 @@ public final class GeminiKeyInterceptor implements Interceptor {
         this.key = key;
     }
 
+    /**
+     * Adds the bearer header when a key exists; with no key the request goes out unchanged.
+     */
     @Override
     public Response intercept(Chain chain) throws IOException {
         var request = chain.request();

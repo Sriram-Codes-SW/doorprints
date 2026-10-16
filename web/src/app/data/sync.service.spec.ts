@@ -37,7 +37,7 @@ import {
   rateLimitWaitMs,
   resumeCursor,
   serverBehind,
-  serverWasReset,
+  pushShowsReset,
   wireVersion,
 } from './sync.service';
 import type { MigrationState } from './sync.service';
@@ -346,7 +346,7 @@ describe('SyncService', () => {
       expect(api.since.photo).toEqual([]);
       expect(api.fetchedPhotos).toEqual([]);
       expect(await store.allHouses()).toEqual([]);
-      expect(await store.allPhotos()).toEqual([]);
+      expect(await store.photos.all()).toEqual([]);
       expect(sync.lastOutcome()).toBeNull();
     });
 
@@ -519,7 +519,7 @@ describe('SyncService', () => {
     /** The record envelope (docs/11 5.30 item 2) takes the visits' path: pushed after them, pulled with its own cursor. */
     it('pushes a dirty record after the visits, as stored, and clears its dirty flag', async () => {
       await store.saveVisit({ id: 'local-v', lat: 1, lon: 2, arrivedAt: '2026-09-01T00:00:00.000Z', source: 'MANUAL', deleted: false, syncVersion: 0 }, Date.parse('2026-09-01T00:00:00.000Z'));
-      const saved = await store.saveRecord('broker', 'local-b', { name: 'Ravi' }, Date.parse('2026-09-01T00:00:00.000Z'));
+      const saved = await store.records.save('broker', 'local-b', { name: 'Ravi' }, Date.parse('2026-09-01T00:00:00.000Z'));
       const order: string[] = [];
       const pushVisit = api.pushVisit.bind(api);
       const pushRecord = api.pushRecord.bind(api);
@@ -536,63 +536,69 @@ describe('SyncService', () => {
       expect(api.pushedRecords).toEqual([
         { type: 'broker', id: 'local-b', payload: { name: 'Ravi' }, updatedAt: saved.updatedAt, deleted: false, syncVersion: 0 },
       ]);
-      expect(await store.dirtyRecords()).toEqual([]);
+      expect(await store.records.dirty()).toEqual([]);
       expect(sync.lastOutcome()?.pushed).toBe(2);
     });
 
     /** Slice 3b-1: a viewing is a record of type `viewing`, so it rides the record sync unchanged. */
     it('pushes a viewing as a record of type viewing, and pulls one back through the viewing reader', async () => {
-      const saved = await store.saveViewing(
+      const saved = await store.viewings.save(
         { id: 'v_0a1b2c3d', houseId: 'h-1', startsAt: 1790501400000, durationMin: 45, kind: 'SECOND', status: 'PLANNED', remindMin: 30, notes: 'Bring a tape' },
         Date.parse('2026-09-01T00:00:00.000Z'),
       );
       expect(saved.durationMin).toBe(45);
-      expect(await store.dirtyRecords()).toHaveLength(1);
+      expect(await store.records.dirty()).toHaveLength(1);
       await sync.syncNow(true);
       expect(api.pushedRecords.map((r) => [r.type, r.id, r.deleted])).toEqual([['viewing', 'v_0a1b2c3d', false]]);
       expect(api.pushedRecords[0].payload).toEqual({
-        houseId: 'h-1', startsAt: 1790501400000, durationMin: 45, kind: 'SECOND', status: 'PLANNED', remindMin: 30, notes: 'Bring a tape',
+        candidateId: 'h-1', startsAt: 1790501400000, durationMin: 45, kind: 'SECOND', status: 'PLANNED', remindMin: 30, notes: 'Bring a tape',
       });
-      expect(await store.dirtyRecords()).toEqual([]);
-      await store.putRecordFromServer({
+      expect(await store.records.dirty()).toEqual([]);
+      // S4b-BL-247: a row the server kept from before names its house `houseId` and reads the same as a new one.
+      await store.records.putFromServer({
         type: 'viewing', id: 'v_ffffffff', payload: { houseId: 'h-2', startsAt: 1790000000000, status: 'DONE' },
         updatedAt: '2026-09-02T00:00:00.000Z', deleted: false, syncVersion: 4,
       });
-      expect((await store.viewings()).map((v) => [v.id, v.status, v.durationMin, v.kind])).toEqual([
-        ['v_ffffffff', 'DONE', 30, 'FIRST'],
-        ['v_0a1b2c3d', 'PLANNED', 45, 'SECOND'],
+      await store.records.putFromServer({
+        type: 'viewing', id: 'v_eeeeeeee', payload: { candidateId: 'h-3', startsAt: 1789000000000, status: 'CANCELLED' },
+        updatedAt: '2026-09-02T00:00:00.000Z', deleted: false, syncVersion: 5,
+      });
+      expect((await store.viewings.all()).map((v) => [v.id, v.houseId, v.status, v.durationMin, v.kind])).toEqual([
+        ['v_eeeeeeee', 'h-3', 'CANCELLED', 30, 'FIRST'],
+        ['v_ffffffff', 'h-2', 'DONE', 30, 'FIRST'],
+        ['v_0a1b2c3d', 'h-1', 'PLANNED', 45, 'SECOND'],
       ]);
     });
 
     /** Slice 4a: areas, places and area notes are records of types `area`, `place` and `areanote`, so they ride the record sync unchanged. */
     it('pushes an area, a place and an area note as records, and pulls an area back through the area reader', async () => {
       const at = Date.parse('2026-09-01T00:00:00.000Z');
-      await store.saveArea({ id: 'a_0a1b2c3d', name: 'Adyar', lat: 13.0067, lon: 80.2574, radiusM: 500, enabled: false }, at);
-      await store.savePlace({ id: 'p_0a1b2c3d', name: 'Office', lat: 13.0827, lon: 80.2707 }, at);
-      await store.saveAreaNote({ id: 'n_0a1b2c3d', street: 'MG Road', text: 'Noisy' }, at);
+      await store.areas.save({ id: 'a_0a1b2c3d', name: 'Adyar', lat: 13.0067, lon: 80.2574, radiusM: 500, enabled: false }, at);
+      await store.places.save({ id: 'p_0a1b2c3d', name: 'Office', lat: 13.0827, lon: 80.2707 }, at);
+      await store.areaNotes.save({ id: 'n_0a1b2c3d', street: 'MG Road', text: 'Noisy' }, at);
       await sync.syncNow(true);
       const pushed = api.pushedRecords.map((r) => [r.type, r.id]).sort();
       expect(pushed).toEqual([['area', 'a_0a1b2c3d'], ['areanote', 'n_0a1b2c3d'], ['place', 'p_0a1b2c3d']]);
       expect(api.pushedRecords.find((r) => r.type === 'area')?.payload).toEqual({ name: 'Adyar', lat: 13.0067, lon: 80.2574, radiusM: 500, enabled: false });
-      expect(await store.dirtyRecords()).toEqual([]);
-      await store.putRecordFromServer({
+      expect(await store.records.dirty()).toEqual([]);
+      await store.records.putFromServer({
         type: 'area', id: 'a_ffffffff', payload: { name: 'Anna Nagar', lat: 13.085, lon: 80.21, radiusM: 99999 },
         updatedAt: '2026-09-02T00:00:00.000Z', deleted: false, syncVersion: 4,
       });
-      expect((await store.areas()).map((a) => [a.id, a.radiusM, a.enabled])).toEqual([['a_0a1b2c3d', 500, false], ['a_ffffffff', 500, true]].sort());
+      expect((await store.areas.all()).map((a) => [a.id, a.radiusM, a.enabled])).toEqual([['a_0a1b2c3d', 500, false], ['a_ffffffff', 500, true]].sort());
     });
 
     it('stores the records the server sent, tombstones included, and keeps an edit made while the push was in flight', async () => {
-      await store.putRecordFromServer({ type: 'place', id: PLACE_GONE, payload: { name: 'Office' }, updatedAt: '2026-09-01T00:00:00.000Z', deleted: false, syncVersion: 3 });
-      await store.saveRecord('broker', BROKER_ID, { name: 'Mine' }, Date.parse('2026-09-21T00:00:00.000Z'));
+      await store.records.putFromServer({ type: 'place', id: PLACE_GONE, payload: { name: 'Office' }, updatedAt: '2026-09-01T00:00:00.000Z', deleted: false, syncVersion: 3 });
+      await store.records.save('broker', BROKER_ID, { name: 'Mine' }, Date.parse('2026-09-21T00:00:00.000Z'));
       recordedServer();
       // The same race `markHouseClean` exists for: edited again while the push is in flight, later than the
       // server's row (2026-09-29T09:00), so the flag stays and last write wins for the local row.
       api.pushRecord = (pushed: RecordDto) =>
-        defer(() => from(store.saveRecord(pushed.type, pushed.id, { name: 'Mine, again' }, Date.parse('2026-09-30T00:00:00.000Z')).then(() => pushed)));
+        defer(() => from(store.records.save(pushed.type, pushed.id, { name: 'Mine, again' }, Date.parse('2026-09-30T00:00:00.000Z')).then(() => pushed)));
       await sync.syncNow(true);
-      expect(await store.getRecord('place', PLACE_GONE)).toBeUndefined();
-      const brokers = await store.recordsOf('broker');
+      expect(await store.records.get('place', PLACE_GONE)).toBeUndefined();
+      const brokers = await store.records.ofType('broker');
       expect(brokers).toHaveLength(1);
       expect(brokers[0].payload).toEqual({ name: 'Mine, again' });
       expect(brokers[0].dirty).toBe(true);
@@ -601,10 +607,10 @@ describe('SyncService', () => {
     });
 
     it('overwrites a clean local record with the server’s and keeps the payload exactly', async () => {
-      await store.putRecordFromServer({ type: 'broker', id: BROKER_ID, payload: { name: 'Old' }, updatedAt: '2026-09-01T00:00:00.000Z', deleted: false, syncVersion: 3 });
+      await store.records.putFromServer({ type: 'broker', id: BROKER_ID, payload: { name: 'Old' }, updatedAt: '2026-09-01T00:00:00.000Z', deleted: false, syncVersion: 3 });
       recordedServer();
       await sync.syncNow(true);
-      const broker = await store.getRecord('broker', BROKER_ID);
+      const broker = await store.records.get('broker', BROKER_ID);
       expect(broker?.payload).toEqual({ name: 'Anita', agency: 'Homes & Co', phone: '+91 98765 43210' });
       expect(broker?.syncVersion).toBe(21);
       expect(broker?.dirty).toBe(false);
@@ -657,21 +663,21 @@ describe('SyncService', () => {
 
     it('sends photo deletes before uploads, so a removed photo is not re-uploaded', async () => {
       await store.saveHouse(house('local-1'), Date.parse('2026-09-01T00:00:00.000Z'));
-      await store.addPhoto('local-1', new Blob([new Uint8Array([1])], { type: 'image/jpeg' }), 'p-keep');
-      await store.addPhoto('local-1', new Blob([new Uint8Array([2])], { type: 'image/jpeg' }), 'p-gone');
-      const gone = await store.getPhoto('p-gone');
-      await store.putPhotoRecord({ ...gone!, uploaded: true });
-      await store.deletePhoto('p-gone');
+      await store.photos.add('local-1', new Blob([new Uint8Array([1])], { type: 'image/jpeg' }), 'p-keep');
+      await store.photos.add('local-1', new Blob([new Uint8Array([2])], { type: 'image/jpeg' }), 'p-gone');
+      const gone = await store.photos.get('p-gone');
+      await store.photos.put({ ...gone!, uploaded: true });
+      await store.photos.delete('p-gone');
       await sync.syncNow(true);
       expect(api.deletedPhotos).toEqual(['p-gone']);
       expect(api.uploadedPhotos).toEqual(['p-keep']);
-      expect(await store.getPhoto('p-gone')).toBeUndefined();
+      expect(await store.photos.get('p-gone')).toBeUndefined();
     });
 
     it('removes a photo the server says is gone, and fetches one it says is new', async () => {
       recordedServer();
       // Seed the tombstoned photo so there is something for the delete to remove.
-      await store.putPhotoRecord({
+      await store.photos.put({
         id: PHOTO_GONE,
         houseId: HOUSE_ID,
         blob: new Blob([new Uint8Array([9])], { type: 'image/jpeg' }),
@@ -684,8 +690,8 @@ describe('SyncService', () => {
         uploaded: true,
       });
       await sync.syncNow(true);
-      expect(await store.getPhoto(PHOTO_GONE)).toBeUndefined();
-      const fetched = await store.getPhoto(PHOTO_NEW);
+      expect(await store.photos.get(PHOTO_GONE)).toBeUndefined();
+      const fetched = await store.photos.get(PHOTO_NEW);
       expect(api.fetchedPhotos).toEqual([PHOTO_NEW]);
       expect(fetched?.uploaded).toBe(true);
       expect(fetched?.syncVersion).toBe(7);
@@ -695,7 +701,7 @@ describe('SyncService', () => {
       api.photoChanges = () => of(parse<PhotoChangeDto>(PHOTOS_SINCE));
       await sync.syncNow(true);
       expect(api.fetchedPhotos).toEqual([]);
-      expect(await store.getPhoto(PHOTO_NEW)).toBeUndefined();
+      expect(await store.photos.get(PHOTO_NEW)).toBeUndefined();
       // The cursor still moves: those changes have been considered and need not be sent again.
       expect((await store.cursors()).photo).toBe(8);
     });
@@ -719,23 +725,23 @@ describe('SyncService', () => {
 
     it('uploads the bytes first and then sends the meta, once', async () => {
       await store.saveHouse(house('local-1'), Date.parse('2026-09-01T00:00:00.000Z'));
-      await store.addPhoto('local-1', jpeg(), 'p-1', 1000);
-      await store.setPhotoMeta('p-1', { roomId: 'r1', tags: ['DAMP', 'leaky tap'], caption: 'Corner' }, 5000);
+      await store.photos.add('local-1', jpeg(), 'p-1', 1000);
+      await store.photos.setMeta('p-1', { roomId: 'r1', tags: ['DAMP', 'leaky tap'], caption: 'Corner' }, 5000);
       expect(await sync.pendingCount()).toBe(2);
       await sync.syncNow(true);
       expect(api.uploadedPhotos).toEqual(['p-1']);
       expect(api.pushedMeta).toEqual([{ id: 'p-1', meta: meta() }]);
-      expect((await store.getPhoto('p-1'))?.metaDirty).toBeUndefined();
+      expect((await store.photos.get('p-1'))?.metaDirty).toBeUndefined();
       await sync.syncNow(true);
       expect(api.pushedMeta).toHaveLength(1);
     });
 
     it('sends the meta of a photo that is already on the server, and of nobody else', async () => {
       await store.saveHouse(house('local-1'), Date.parse('2026-09-01T00:00:00.000Z'));
-      await store.addPhoto('local-1', jpeg(), 'p-old', 1000);
-      await store.addPhoto('local-1', jpeg(), 'p-plain', 1000);
-      for (const id of ['p-old', 'p-plain']) await store.putPhotoRecord({ ...(await store.getPhoto(id))!, uploaded: true });
-      await store.setPhotoMeta('p-old', { roomId: null, tags: ['MOVE_IN'], caption: null }, 7000);
+      await store.photos.add('local-1', jpeg(), 'p-old', 1000);
+      await store.photos.add('local-1', jpeg(), 'p-plain', 1000);
+      for (const id of ['p-old', 'p-plain']) await store.photos.put({ ...(await store.photos.get(id))!, uploaded: true });
+      await store.photos.setMeta('p-old', { roomId: null, tags: ['MOVE_IN'], caption: null }, 7000);
       await sync.syncNow(true);
       expect(api.uploadedPhotos).toEqual([]);
       expect(api.pushedMeta.map((m) => m.id)).toEqual(['p-old']);
@@ -744,12 +750,12 @@ describe('SyncService', () => {
 
     it('takes the meta the server answers when it is newer than ours (last write wins on metaUpdatedAt)', async () => {
       await store.saveHouse(house('local-1'), Date.parse('2026-09-01T00:00:00.000Z'));
-      await store.addPhoto('local-1', jpeg(), 'p-1', 1000);
-      await store.putPhotoRecord({ ...(await store.getPhoto('p-1'))!, uploaded: true });
-      await store.setPhotoMeta('p-1', { roomId: null, tags: ['DAMP'], caption: 'mine' }, 5000);
+      await store.photos.add('local-1', jpeg(), 'p-1', 1000);
+      await store.photos.put({ ...(await store.photos.get('p-1'))!, uploaded: true });
+      await store.photos.setMeta('p-1', { roomId: null, tags: ['DAMP'], caption: 'mine' }, 5000);
       api.metaAnswer = (id) => ({ id, houseId: 'local-1', deleted: false, syncVersion: 2000, roomId: null, tags: ['LEAK'], caption: 'theirs', metaUpdatedAt: 9000 });
       await sync.syncNow(true);
-      const after = await store.getPhoto('p-1');
+      const after = await store.photos.get('p-1');
       expect(after?.caption).toBe('theirs');
       expect(after?.tags).toEqual(['LEAK']);
       expect(after?.metaUpdatedAt).toBe(9000);
@@ -758,31 +764,31 @@ describe('SyncService', () => {
 
     it('keeps ours when the server answers an older meta, and clears the flag', async () => {
       await store.saveHouse(house('local-1'), Date.parse('2026-09-01T00:00:00.000Z'));
-      await store.addPhoto('local-1', jpeg(), 'p-1', 1000);
-      await store.putPhotoRecord({ ...(await store.getPhoto('p-1'))!, uploaded: true });
-      await store.setPhotoMeta('p-1', { roomId: null, tags: ['DAMP'], caption: 'mine' }, 5000);
+      await store.photos.add('local-1', jpeg(), 'p-1', 1000);
+      await store.photos.put({ ...(await store.photos.get('p-1'))!, uploaded: true });
+      await store.photos.setMeta('p-1', { roomId: null, tags: ['DAMP'], caption: 'mine' }, 5000);
       api.metaAnswer = (id) => ({ id, houseId: 'local-1', deleted: false, syncVersion: 2000, roomId: null, tags: [], caption: 'older', metaUpdatedAt: 4000 });
       await sync.syncNow(true);
-      const after = await store.getPhoto('p-1');
+      const after = await store.photos.get('p-1');
       expect(after?.caption).toBe('mine');
       expect(after?.metaDirty).toBeUndefined();
     });
 
     it('pulls a newer meta onto a photo already here, and ignores an older or equal one', async () => {
       await store.saveHouse(house(HOUSE_ID), Date.parse('2026-09-01T00:00:00.000Z'));
-      await store.addPhoto(HOUSE_ID, jpeg(), PHOTO_NEW, 1000);
-      await store.putPhotoRecord({ ...(await store.getPhoto(PHOTO_NEW))!, uploaded: true });
-      await store.setPhotoMeta(PHOTO_NEW, { roomId: null, tags: [], caption: 'local' }, 5000);
-      await store.putPhotoRecord({ ...(await store.getPhoto(PHOTO_NEW))!, metaDirty: false });
+      await store.photos.add(HOUSE_ID, jpeg(), PHOTO_NEW, 1000);
+      await store.photos.put({ ...(await store.photos.get(PHOTO_NEW))!, uploaded: true });
+      await store.photos.setMeta(PHOTO_NEW, { roomId: null, tags: [], caption: 'local' }, 5000);
+      await store.photos.put({ ...(await store.photos.get(PHOTO_NEW))!, metaDirty: false });
       const change = (at: number, caption: string): PhotoChangeDto => ({
         id: PHOTO_NEW, houseId: HOUSE_ID, deleted: false, syncVersion: 50 + at, roomId: 'r9', tags: ['view', 'VIEW', 'Extra'], caption, metaUpdatedAt: at,
       });
       api.photoChanges = () => of([change(5000, 'same time')]);
       await sync.syncNow(true);
-      expect((await store.getPhoto(PHOTO_NEW))?.caption).toBe('local');
+      expect((await store.photos.get(PHOTO_NEW))?.caption).toBe('local');
       api.photoChanges = () => of([change(6000, 'newer')]);
       await sync.syncNow(true);
-      const after = await store.getPhoto(PHOTO_NEW);
+      const after = await store.photos.get(PHOTO_NEW);
       expect(after?.caption).toBe('newer');
       expect(after?.roomId).toBe('r9');
       // Coerced on read: the fixed tag in any case is the fixed key and the repeat goes.
@@ -795,7 +801,7 @@ describe('SyncService', () => {
       api.photoChanges = () =>
         of([{ id: PHOTO_NEW, houseId: HOUSE_ID, contentType: 'image/jpeg', deleted: false, syncVersion: 12, roomId: 'r1', tags: ['MOVE_IN'], caption: 'Hall', metaUpdatedAt: 8000 }]);
       await sync.syncNow(true);
-      const got = await store.getPhoto(PHOTO_NEW);
+      const got = await store.photos.get(PHOTO_NEW);
       expect(got).toMatchObject({ roomId: 'r1', tags: ['MOVE_IN'], caption: 'Hall', metaUpdatedAt: 8000, uploaded: true });
       expect(got?.metaDirty).toBeUndefined();
     });
@@ -886,8 +892,8 @@ describe('SyncService', () => {
       rows.push({ type: 'place', id: 'no-version', payload: {}, deleted: false } as RecordDto);
       api.records = () => of(rows);
       await sync.syncNow(true);
-      expect(await store.dirtyRecords()).toEqual([]);
-      expect(await store.recordsOf('place')).toEqual([]);
+      expect(await store.records.dirty()).toEqual([]);
+      expect(await store.records.ofType('place')).toEqual([]);
       expect(sync.lastOutcome()?.skipped).toBe(4);
       // Three rows carried a usable version and have been considered; the fourth holds nothing back.
       expect((await store.cursors()).record).toBe(23);
@@ -933,7 +939,7 @@ describe('SyncService', () => {
       expect(sync.lastError()).toBeNull();
       expect(waits).toEqual([1000]);
       expect(api.fetchedPhotos).toEqual([PHOTO_NEW, PHOTO_NEW]);
-      expect(await store.getPhoto(PHOTO_NEW)).toBeTruthy();
+      expect(await store.photos.get(PHOTO_NEW)).toBeTruthy();
       expect((await store.cursors()).photo).toBe(8);
       expect(sync.lastOutcome()).not.toBeNull();
     });
@@ -1055,7 +1061,7 @@ describe('SyncService', () => {
     it('stops the photo phase on the first "storage full" and says so in the app language', async () => {
       recordedServer();
       const put = vi
-        .spyOn(store, 'putPhotoRecord')
+        .spyOn(store.photos, 'put')
         .mockRejectedValue(new DOMException('The quota has been exceeded.', 'QuotaExceededError'));
       await sync.syncNow(true);
       // Translated advice, not the browser's English DOMException text through error.detail.
@@ -1117,7 +1123,7 @@ describe('SyncService', () => {
       expect(await store.dirtyVisits()).toEqual([]);
       expect(await sync.pendingCount()).toBe(0);
       // Said calmly, once: a note, not a failure.
-      expect(sync.serverResetAt()).not.toBeNull();
+      expect(sync.remoteResetAt()).not.toBeNull();
       expect(announce).toHaveBeenCalledWith({ key: 'data.serverReset' });
       expect(sync.lastError()).toBeNull();
       // The two records the recorded server had sent go up again too (the broker and the place's tombstone).
@@ -1135,7 +1141,7 @@ describe('SyncService', () => {
       api.version = 30;
       recordedServer();
       await sync.syncNow(true);
-      expect(sync.serverResetAt()).not.toBeNull();
+      expect(sync.remoteResetAt()).not.toBeNull();
       expect(api.since.house).toEqual([0]);
       // The pull from 0 brings the recorded rows (versions up to 42) back, so the cursors are where they were.
       expect(await store.cursors()).toEqual({ house: 42, visit: 17, photo: 8, record: 22 });
@@ -1152,7 +1158,7 @@ describe('SyncService', () => {
       expect(api.since).toEqual({ house: [42, 42], visit: [17, 17], photo: [8, 8], record: [22, 22] });
       expect(api.pushedHouses).toEqual([]);
       expect(await store.cursors()).toEqual({ house: 42, visit: 17, photo: 8, record: 22 });
-      expect(sync.serverResetAt()).toBeNull();
+      expect(sync.remoteResetAt()).toBeNull();
     });
 
     it('does not take a push answered above the cursors for a reset', async () => {
@@ -1162,7 +1168,7 @@ describe('SyncService', () => {
       await sync.syncNow(true);
       expect(api.pushedHouses.map((h) => h.id)).toEqual(['local-1']);
       expect(api.since.house).toEqual([42]);
-      expect(sync.serverResetAt()).toBeNull();
+      expect(sync.remoteResetAt()).toBeNull();
     });
 
     it('does not take the server keeping its own newer row (last write wins) for a reset', async () => {
@@ -1177,7 +1183,7 @@ describe('SyncService', () => {
       await sync.syncNow(true);
       expect(api.pushedHouses.map((h) => h.id)).toEqual([HOUSE_ID]);
       expect(api.since.house).toEqual([42]);
-      expect(sync.serverResetAt()).toBeNull();
+      expect(sync.remoteResetAt()).toBeNull();
     });
 
     /** A server that sends its highest sync version in `GET /api/stats` (2026-09-24). */
@@ -1202,7 +1208,7 @@ describe('SyncService', () => {
       expect(api.uploadedPhotos).toEqual([PHOTO_NEW]);
       expect(api.since).toEqual({ house: [0], visit: [0], photo: [0], record: [0] });
       expect(await store.cursors()).toEqual({ house: 0, visit: 0, photo: 0, record: 0 });
-      expect(sync.serverResetAt()).not.toBeNull();
+      expect(sync.remoteResetAt()).not.toBeNull();
       expect(announce).toHaveBeenCalledWith({ key: 'data.serverReset' });
       expect(sync.lastError()).toBeNull();
     });
@@ -1215,7 +1221,7 @@ describe('SyncService', () => {
       expect(api.statsCalls).toBe(1);
       expect(api.pushedHouses).toEqual([]);
       expect(api.since.house).toEqual([42]);
-      expect(sync.serverResetAt()).toBeNull();
+      expect(sync.remoteResetAt()).toBeNull();
     });
 
     it('treats stats without maxSyncVersion (an older server), or a failed stats request, as unknown', async () => {
@@ -1227,7 +1233,7 @@ describe('SyncService', () => {
       await sync.syncNow(true);
       expect(api.since.house).toEqual([42, 42]);
       expect(api.pushedHouses).toEqual([]);
-      expect(sync.serverResetAt()).toBeNull();
+      expect(sync.remoteResetAt()).toBeNull();
       expect(sync.lastError()).toBeNull();
     });
 
@@ -1249,21 +1255,21 @@ describe('SyncService', () => {
       expect(serverBehind('many', [42, 17, 8])).toBe(false);
     });
 
-    it('is decided by serverWasReset: an accepted write at or below the highest cursor', () => {
+    it('is decided by pushShowsReset: an accepted write at or below the highest cursor', () => {
       const sent = '2026-09-23T00:00:00.000Z';
-      expect(serverWasReset(sent, { syncVersion: 5, updatedAt: sent }, 42)).toBe(true);
-      expect(serverWasReset(sent, { syncVersion: 42, updatedAt: sent }, 42)).toBe(true);
+      expect(pushShowsReset(sent, { syncVersion: 5, updatedAt: sent }, 42)).toBe(true);
+      expect(pushShowsReset(sent, { syncVersion: 42, updatedAt: sent }, 42)).toBe(true);
       // The server clamped a clock that ran ahead: still accepted.
-      expect(serverWasReset(sent, { syncVersion: 5, updatedAt: '2026-09-22T23:59:00.000Z' }, 42)).toBe(true);
-      expect(serverWasReset(sent, { syncVersion: 43, updatedAt: sent }, 42)).toBe(false);
+      expect(pushShowsReset(sent, { syncVersion: 5, updatedAt: '2026-09-22T23:59:00.000Z' }, 42)).toBe(true);
+      expect(pushShowsReset(sent, { syncVersion: 43, updatedAt: sent }, 42)).toBe(false);
       // Nothing synced yet: no cursor to be below.
-      expect(serverWasReset(sent, { syncVersion: 1, updatedAt: sent }, 0)).toBe(false);
+      expect(pushShowsReset(sent, { syncVersion: 1, updatedAt: sent }, 0)).toBe(false);
       // The server kept its newer row.
-      expect(serverWasReset(sent, { syncVersion: 5, updatedAt: '2026-09-23T00:00:01.000Z' }, 42)).toBe(false);
+      expect(pushShowsReset(sent, { syncVersion: 5, updatedAt: '2026-09-23T00:00:01.000Z' }, 42)).toBe(false);
       // An answer that cannot be read proves nothing.
-      expect(serverWasReset(sent, { syncVersion: null, updatedAt: sent }, 42)).toBe(false);
-      expect(serverWasReset(sent, { syncVersion: 5 }, 42)).toBe(false);
-      expect(serverWasReset(sent, null, 42)).toBe(false);
+      expect(pushShowsReset(sent, { syncVersion: null, updatedAt: sent }, 42)).toBe(false);
+      expect(pushShowsReset(sent, { syncVersion: 5 }, 42)).toBe(false);
+      expect(pushShowsReset(sent, null, 42)).toBe(false);
     });
   });
 
@@ -1382,7 +1388,7 @@ describe('SyncService', () => {
     it('counts what the server has not received yet', async () => {
       await store.saveHouse(house('local-1'), Date.parse('2026-09-01T00:00:00.000Z'));
       await store.saveHouse(house('local-2'), Date.parse('2026-09-01T00:00:00.000Z'));
-      await store.addPhoto('local-1', new Blob([new Uint8Array([1])], { type: 'image/jpeg' }), PHOTO_NEW);
+      await store.photos.add('local-1', new Blob([new Uint8Array([1])], { type: 'image/jpeg' }), PHOTO_NEW);
       expect(await sync.pendingCount()).toBe(3);
     });
   });

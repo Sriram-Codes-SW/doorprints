@@ -105,6 +105,38 @@ internal class IosLocationSource : LocationSource {
 
     override fun hasPrecisePermission(): Boolean = iosLocationAccess() == LocationAccess.PRECISE
 
+    /**
+     * One Core Location fix with its horizontal accuracy (docs/11 5.27.13): \`requestLocation()\` already returns the best
+     * reading within about ten seconds, so [maxWaitMs] bounds it and the accuracy gate is the caller's.
+     */
+    override suspend fun best(maxWaitMs: Long, goodAccuracyM: Double): PlaceFix? = withContext(Dispatchers.Main) {
+        if (!hasPrecisePermission()) return@withContext null
+        withTimeoutOrNull(maxWaitMs) { oneAccurateFix() }
+    }
+
+    @OptIn(ExperimentalForeignApi::class)
+    private suspend fun oneAccurateFix(): PlaceFix? = suspendCancellableCoroutine { continuation ->
+        val manager = CLLocationManager()
+        val delegate = OneFixDelegate { location ->
+            manager.delegate = null
+            if (continuation.isActive) {
+                val fix = location?.takeIf { it.horizontalAccuracy >= 0.0 }?.let { l ->
+                    l.coordinate.useContents { PlaceFix(latitude, longitude, l.horizontalAccuracy) }
+                }
+                continuation.resume(fix)
+            }
+        }
+        manager.delegate = delegate
+        manager.desiredAccuracy = kCLLocationAccuracyBest
+        continuation.invokeOnCancellation {
+            dispatch_async(dispatch_get_main_queue()) {
+                manager.stopUpdatingLocation()
+                if (manager.delegate === delegate) manager.delegate = null
+            }
+        }
+        manager.requestLocation()
+    }
+
     @OptIn(ExperimentalForeignApi::class)
     private suspend fun oneFix(): Pair<Double, Double>? = suspendCancellableCoroutine { continuation ->
         val manager = CLLocationManager()

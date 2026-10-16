@@ -49,9 +49,32 @@ log (`NSLog`).
 
 ## What iOS does not have yet
 
-Hidden on iOS, not shown disabled (owner decision of 2026-09-29, `docs/10` §13.12): the camera and gallery, *Save a
-copy*, *Import a backup* and the weekly backup. Hindi, Tamil and Telugu strings, the purpose strings included
+Hidden on iOS, not shown disabled (owner decision of 2026-09-29, `docs/10` §13.12): the camera and gallery and the weekly
+backup. *Save a copy* and *Import a backup* were hidden too until S4b-BL-81; they are built now (`IosCopies.kt`,
+`IosExportServices` and `IosImportServices` in `IosAppServices.kt`). Hindi, Tamil and Telugu strings, the purpose strings included
 (`<lang>.lproj/InfoPlist.strings`), ship marked *under review*.
+
+## Google Drive (S4b-BL-117; docs/15 §9.11)
+
+Settings > Google Drive on the iPhone is the common Drive screens over the same graph Android uses. **It says "not
+available" until your iOS client id is set**; no client id is in the repository. To try it on your own build:
+
+1. Make the *iOS* OAuth client of your Google Cloud project for bundle id `app.doorprints` (docs/15 §2.4).
+2. Create the git-ignored `ios/Config/Drive.local.xcconfig` with two lines (`Config/Drive.xcconfig` explains them):
+
+   ```
+   GOOGLE_IOS_CLIENT_ID = <number>-<random>.apps.googleusercontent.com
+   GOOGLE_IOS_URL_SCHEME = com.googleusercontent.apps.<number>-<random>
+   ```
+
+3. `xcodegen generate` again and build with your own team to an iPhone with a **passcode** (the Simulator has no Secure
+   Enclave and no passcode by default; there the device key is a software Keychain key so the screens can be seen, but
+   Google's sign-in and Face ID need the phone). The first becomes Info.plist's `GoogleIOSClientId`, the second the
+   registered redirect scheme.
+
+The sign-in, the Secure Enclave key and the Keychain items are signed-app features: an ad-hoc signed Simulator build
+has Keychain access, an unsigned test binary does not (the real-Keychain test skips there). The phone checks are
+MT-86..MT-92 in `docs/ops/manual-test-checklist.md`.
 
 ## Offline maps (S4b-FR-6)
 
@@ -69,6 +92,23 @@ indicator shows while it runs; *Always* is never asked for), the alerts as local
 the Swift app sets the notification delegate in its `init`, `MainViewControllerKt.installNotifications()`), street
 names and the new house's address from Apple's `CLGeocoder`, the battery from `UIDevice`. `docs/10` §13.14.
 
+## Voice input (S4b-BL-223)
+
+The microphone button under *Ask a question*, *Plan notes* and *Fill in from listing text* and the *Voice input* switch
+are the common screens of `:ui` (S4b-BL-222); the iPhone supplies the microphone (`IosPcmSource.kt`, `IosMicrophone.kt`,
+`IosVoiceServices.kt` in android/ui's iosMain; the arithmetic, `Pcm16Resampler`, `ByteQueue` and `CaptureEndRules`, is
+common code in `:shared` and tested on every machine). **Off by default; own key only** (Gemini, OpenAI, Groq,
+OpenRouter). An `AVAudioEngine` input tap feeds samples into memory; **no `AVAudioRecorder`, no file, no log line**, the
+bytes are in no preference, Keychain, database, backup, copy or sync file (nothing is written, so there is nothing for an
+iCloud or computer backup to pick up either; the data folder is excluded from those anyway). `Info.plist` has `NSMicrophoneUsageDescription` (four languages in `<lang>.lproj/InfoPlist.strings`,
+Hindi, Tamil and Telugu *under review*); iOS shows it the first time, after the app's own rationale, and only after a
+tap on *Speak*. The audio session is set to record when the microphone opens and put down (other apps' audio resumes)
+when it closes. Recording is foreground only (no `audio` background mode): the app resigning active, a call or Siri, a
+change of microphone (headphones, Bluetooth) and a reset of the media services all end it with nothing kept.
+**Not built or run on a Mac in the session that wrote it:** Xcode, the simulator and an iPhone were not available, so
+only the Kotlin/Native compile and the common tests ran; the owner's checks are MT-104..MT-108 in
+`docs/ops/manual-test-checklist.md`, and the guide calls the iPhone app *early*.
+
 ## The map (CMP-8c)
 
 MapLibre iOS 6.31.0 from MapLibre's Swift package, pinned by commit in `project.yml` (Xcode resolves it on the first
@@ -82,9 +122,9 @@ boundary files are Android's own (`android/app/src/main/assets/geo`), bundled as
 Job `ios-app` in `.github/workflows/shared-ios.yml` (macOS runner, free for public repositories): installs XcodeGen
 from its pinned release zip, generates the project, checks the plists, builds the Debug app for the arm64 simulator
 ad-hoc signed (`CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO`; owner-approved, no identity or Apple account), checks
-that the app holds `compose-resources`, the 120 Hz key, both purpose strings, the location background mode and a
-valid signature, and runs `ci/launch-smoke.sh`: it installs the app on an iPhone simulator, grants it location and
+that the app holds `compose-resources`, the 120 Hz key, the purpose strings (the microphone's too), the location
+background mode and no `audio` one, and a valid signature, and runs `ci/launch-smoke.sh`: it installs the app on an iPhone simulator, grants it location and
 sets a simulated location next to the self-check's house (`simctl privacy`, `simctl location`), launches it with
-`-DoorprintsSelfCheck`, passes only on `DOORPRINTS-SELFCHECK done PASS` with the `indiaView`, `map` and `hunt` lines
+`-DoorprintsSelfCheck`, passes only on `DOORPRINTS-SELFCHECK done PASS` with the `keychain`, `indiaView`, `map` and `hunt` lines each `PASS` and no `SKIP` line
 (read from the console, or from the simulator's unified log when the console has no `done` line) and saves a
 screenshot. The screenshot and the logs are uploaded as the `ios-app-launch` artifact.

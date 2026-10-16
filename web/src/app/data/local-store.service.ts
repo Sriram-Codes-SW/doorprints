@@ -17,98 +17,24 @@
  */
 
 import { Injectable, signal } from '@angular/core';
-import { LocalDataError } from '../core/local-error';
-import { uuid } from '../core/models';
-import type { HouseDto, RecordDto, StatsDto, VisitDto } from '../core/models';
+import type { HouseDto, StatsDto, VisitDto } from '../core/models';
 import { openLocalDb } from './local-db';
+import { withCandidateRows } from './candidate-rows';
 import type { LocalDb, OpenedDb, StorageProblem } from './local-db';
-import { BROKER_TYPE, MAX_BROKER_NAME, MAX_BROKER_PHONE, brokerFromPayload, brokerToPayload, phoneKey, samePhone } from '../shared/broker';
-import type { Broker, BrokerRow } from '../shared/broker';
-import { SETTING_KEYS, houseFromDto, isoNow, millis, photoMetaOf, recordFromDto, visitFromDto, withPhotoMeta } from './records';
-import {
-  BUILT_IN_KEYS,
-  CRITERION_TYPE,
-  MAX_CRITERIA,
-  MAX_CRITERION_LABEL,
-  PREFERENCE_TYPE,
-  RATING_SHARE_KEY,
-  DEFAULT_RATING_SHARE,
-  criterionFromPayload,
-  criterionToPayload,
-  isBuiltInKey,
-  isCustomKey,
-  isDefaultCriterion,
-  newCustomKey,
-  ratingShareValue,
-  scoringOf,
-} from '../shared/scoring';
-import type { Criterion, CriterionRow, PreferenceRow, Scoring, Weight } from '../shared/scoring';
-import {
-  DEFAULT_QUESTIONS,
-  DEFAULT_QUESTIONS_SEEDED_AT,
-  MAX_QUESTIONS,
-  MAX_QUESTION_TEXT,
-  QUESTION_TYPE,
-  defaultQuestion,
-  isCustomQuestionId,
-  isDefaultQuestionId,
-  newQuestionId,
-  questionFromPayload,
-  questionToPayload,
-  sortQuestions,
-} from '../shared/question';
-import type { Question, QuestionCategory, QuestionRow, QuestionScope } from '../shared/question';
-import {
-  MAX_DURATION_MIN,
-  MAX_ID_LENGTH,
-  MAX_VIEWINGS,
-  MAX_VIEWING_NOTES,
-  MAX_WITH_WHOM,
-  MIN_DURATION_MIN,
-  REMIND_OPTIONS,
-  VIEWING_KINDS,
-  VIEWING_STATUSES,
-  VIEWING_TYPE,
-  isViewingId,
-  newViewingId as newViewingIdRandom,
-  nextViewingOf,
-  sortViewings,
-  viewingFromPayload,
-  viewingToPayload,
-} from '../shared/viewing';
-import type { Viewing, ViewingRow } from '../shared/viewing';
-import {
-  AREA_NOTE_TYPE,
-  AREA_TYPE,
-  MAX_AREAS,
-  MAX_AREA_ID,
-  MAX_AREA_NAME,
-  MAX_AREA_NOTES,
-  MAX_NOTE_TEXT,
-  MAX_PLACES,
-  MAX_PLACE_NAME,
-  MAX_STREET,
-  PLACE_TYPE,
-  areaFromPayload,
-  areaNoteFromPayload,
-  areaNoteToPayload,
-  areaToPayload,
-  isRecordKey,
-  newAreaIdRandom,
-  newAreaNoteIdRandom,
-  newPlaceIdRandom,
-  newestFirst,
-  placeFromPayload,
-  placeToPayload,
-  sortByName,
-  validLat,
-  validLon,
-  validRadius,
-} from '../shared/area';
-import type { Area, AreaNote, AreaNoteRow, AreaRow, Place, PlaceRow } from '../shared/area';
+import { deleteSavedWalksOfHouse } from './trace-rows';
+import { SETTING_KEYS, compareText, houseFromDto, isoNow, millis, sortByCreated, visitFromDto } from './records';
+import { PhotoStore } from './photo-store';
+import { nextStamp, restoreRows } from './house-bin';
+import type { RestoreResult } from './house-bin';
+import { RecordStore } from './record-store';
+import { ViewingStore } from './viewing-store';
+import { AreaStore } from './area-store';
+import { PlaceStore } from './place-store';
+import { AreaNoteStore } from './area-note-store';
+import { QuestionStore } from './question-store';
+import { CriteriaStore } from './criteria-store';
+import { BrokerStore } from './broker-store';
 import type { LengthUnit } from '../shared/room-sizes';
-import { MOVE_IN_TAG, cleanMeta, hasMeta, incomingWins } from '../shared/photo-tags';
-import type { PhotoMeta } from '../shared/photo-tags';
 import { choose as chooseStatus, closeTargets } from '../shared/house-status';
 import type { HouseRecord, PhotoRecord, RecordRecord, SettingRecord, VisitRecord } from './records';
 
@@ -116,11 +42,6 @@ import type { HouseRecord, PhotoRecord, RecordRecord, SettingRecord, VisitRecord
 export const SETTLE_MS = 300;
 /** During a long run of writes (a first-run download), views still refresh at least this often. */
 export const SETTLE_MAX_MS = 2000;
-
-/** Same ceiling as the Android app and the server (shared MAX_PHOTOS_PER_HOUSE). */
-export const MAX_PHOTOS_PER_HOUSE = 20;
-
-export type AddPhotoResult = { ok: true; id: string } | { ok: false; reason: 'limit' };
 
 /** This browser's position in the server's change log, per list (`GET /api/<list>?since=`). */
 export interface Cursors {
@@ -167,17 +88,57 @@ export class LocalStore {
    */
   readonly settled = signal(0);
 
+  /** The photo rows (`photo-store.ts`); they share this store's database and revision. */
+  readonly photos = new PhotoStore(
+    () => this.db(),
+    () => this.touch(),
+  );
+
+  /** The record rows (`record-store.ts`): the table every kind but houses, visits and photos lives in. */
+  readonly records = new RecordStore(
+    () => this.db(),
+    () => this.touch(),
+  );
+
+  /** The viewings (`viewing-store.ts`), records of type `viewing`. */
+  readonly viewings = new ViewingStore(this.records);
+
+  /** The hunting areas (`area-store.ts`), records of type `area`. */
+  readonly areas = new AreaStore(this.records);
+
+  /** My places (`place-store.ts`), records of type `place`. */
+  readonly places = new PlaceStore(this.records);
+
+  /** The area notes (`area-note-store.ts`), records of type `areanote`. */
+  readonly areaNotes = new AreaNoteStore(this.records);
+
+  /** The viewing-question bank (`question-store.ts`), records of type `question`, and its seeding. */
+  readonly questions = new QuestionStore(
+    this.records,
+    () => this.db(),
+    () => this.touch(),
+  );
+
+  /** The checklist criteria and the rating share (`criteria-store.ts`), records of type `criterion` and `preference`. */
+  readonly criteria = new CriteriaStore(this.records, () => this.rawHouses());
+
+  /** The brokers (`broker-store.ts`), records of type `broker`, the contact copies on their houses and the contacts migration. */
+  readonly brokers = new BrokerStore(
+    this.records,
+    () => this.db(),
+    () => this.rawDb(),
+    () => this.touch(),
+  );
+
   private opened: Promise<LocalDb> | null = null;
   private settleTimer: ReturnType<typeof setTimeout> | undefined;
   private settleSince = 0;
   private migrating: Promise<void> | null = null;
-  /** The language the bank is seeded in, once {@link seedQuestionsOnce} has been called (also after *Remove all data*). */
-  private seedLanguage: (() => string) | null = null;
 
   /** The opened database, once the one-off move of the contacts into brokers has run (see {@link ready}). */
   private async db(): Promise<LocalDb> {
     const db = await this.rawDb();
-    this.migrating ??= this.moveContactsToBrokers(db).then(
+    this.migrating ??= this.brokers.migrate().then(
       () => undefined,
       () => undefined,
     );
@@ -188,7 +149,8 @@ export class LocalStore {
   private rawDb(): Promise<LocalDb> {
     this.opened ??= openLocalDb(() => this.closedByNewerTab.set(true)).then((result: OpenedDb) => {
       this.storageProblem.set(result.problem);
-      return result.db;
+      // The `houses` store holds candidates (kinds step 3); everything here reads and writes houses.
+      return withCandidateRows(result.db);
     });
     return this.opened;
   }
@@ -234,10 +196,18 @@ export class LocalStore {
     return db.getAll<HouseRecord>('houses');
   }
 
+  /** Every house that is not deleted, in export order. */
   async liveHouses(): Promise<HouseRecord[]> {
     return sortByCreated((await this.rawHouses()).filter((h) => !h.deleted));
   }
 
+  /** The stored houses with these ids, tombstones included, in one read; an unknown id adds nothing (the sync pull's merge). */
+  async houseRowsByIds(ids: readonly string[]): Promise<HouseRecord[]> {
+    const db = await this.db();
+    return db.getMany<HouseRecord>('houses', ids);
+  }
+
+  /** One live house, or undefined for an unknown or deleted id. */
   async getHouse(id: string): Promise<HouseRecord | undefined> {
     const db = await this.db();
     const house = await db.get<HouseRecord>('houses', id);
@@ -249,7 +219,7 @@ export class LocalStore {
     const db = await this.db();
     const existing = await db.get<HouseRecord>('houses', house.id);
     const record: HouseRecord = {
-      ...houseFromDto(await this.withBroker(house, now), true),
+      ...houseFromDto(await this.brokers.link(house, now), true),
       createdAt: existing?.createdAt ?? house.createdAt ?? isoNow(now),
       updatedAt: isoNow(now),
       syncVersion: existing?.syncVersion ?? house.syncVersion ?? 0,
@@ -265,8 +235,49 @@ export class LocalStore {
     const existing = await db.get<HouseRecord>('houses', id);
     if (!existing) return;
     await db.put('houses', { ...existing, deleted: true, dirty: true, updatedAt: isoNow(now) });
-    for (const photo of await this.photosOf(id)) await this.deletePhoto(photo.id, now);
+    for (const photo of await this.photos.ofHouse(id)) await this.photos.delete(photo.id, now);
+    // A saved walk is the house's and never outlives it and has no tombstone (docs/11 5.27.6, PRV-030).
+    await deleteSavedWalksOfHouse(db, id);
     this.touch();
+  }
+
+  /**
+   * Marks many houses deleted in ONE batch (*Delete all in this space*, deletion safeguards PR 2): the tombstones of the
+   * rows that are live, all or none, each stamped later than the row it replaces. Rows already deleted or missing are
+   * skipped (their tombstone and its time stay as they are). Then, as {@link deleteHouse}, the photos and the saved walks
+   * of those houses go. Returns the ids deleted.
+   */
+  async deleteHouses(ids: readonly string[], now: number = Date.now()): Promise<string[]> {
+    const db = await this.db();
+    const live = (await db.getMany<HouseRecord>('houses', ids)).filter((h) => !h.deleted);
+    if (!live.length) return [];
+    await db.batch(live.map((h) => ({ op: 'put' as const, store: 'houses' as const, value: { ...h, deleted: true, dirty: true, updatedAt: nextStamp(h.updatedAt, now) } })));
+    for (const h of live) {
+      for (const photo of await this.photos.ofHouse(h.id)) await this.photos.delete(photo.id, now);
+      await deleteSavedWalksOfHouse(db, h.id);
+    }
+    this.touch();
+    return live.map((h) => h.id);
+  }
+
+  /** Every tombstone, for *Recently deleted* (`house-bin.ts` picks this space's, younger than 30 days). */
+  async deletedHouses(): Promise<HouseRecord[]> {
+    return (await this.rawHouses()).filter((h) => h.deleted);
+  }
+
+  /** Flips one tombstone and its photos back (`house-bin.ts`); undefined when the row is not a tombstone. */
+  async restoreHouse(id: string, now: number = Date.now(), held: readonly PhotoRecord[] = []): Promise<RestoreResult | undefined> {
+    const result = await restoreRows(await this.db(), id, now, held);
+    if (result) this.touch();
+    return result;
+  }
+
+  /**
+   * The opened database, for the stores that live beside the records and are never synced or exported (the path trace,
+   * `data/trace-store.ts`). Not for the pages.
+   */
+  database(): Promise<LocalDb> {
+    return this.db();
   }
 
   /** Applies a row that came from the server (sync or import). The caller has already applied the LWW rule. */
@@ -276,6 +287,9 @@ export class LocalStore {
     this.touch();
   }
 
+  /**
+   * Clears the dirty flag after a push, but only if the house has not been edited since that push began; otherwise the newer edit stays dirty for the next sync.
+   */
   async markHouseClean(id: string, pushedUpdatedAt: string | null | undefined): Promise<void> {
     const db = await this.db();
     const existing = await db.get<HouseRecord>('houses', id);
@@ -285,14 +299,22 @@ export class LocalStore {
     }
   }
 
+  /** The houses with local changes the remote has not seen, tombstones included: what a push sends. */
   async dirtyHouses(): Promise<HouseRecord[]> {
     return sortByCreated((await this.rawHouses()).filter((h) => h.dirty));
   }
 
   // ---- Visits ----
 
+  /** Every visit, tombstones included. */
   async allVisits(): Promise<VisitRecord[]> {
     return sortVisits(await this.rawVisits());
+  }
+
+  /** The stored visits with these ids, tombstones included, in one read. */
+  async visitRowsByIds(ids: readonly string[]): Promise<VisitRecord[]> {
+    const db = await this.db();
+    return db.getMany<VisitRecord>('visits', ids);
   }
 
   private async rawVisits(): Promise<VisitRecord[]> {
@@ -316,6 +338,7 @@ export class LocalStore {
     return counts;
   }
 
+  /** Saves a local edit of a visit: stamps `updatedAt` and marks it dirty so the next sync pushes it. */
   async saveVisit(visit: VisitDto, now: number = Date.now()): Promise<VisitRecord> {
     const db = await this.db();
     const existing = await db.get<VisitRecord>('visits', visit.id);
@@ -329,6 +352,7 @@ export class LocalStore {
     return record;
   }
 
+  /** Marks a visit deleted (a tombstone, so other devices learn about it). */
   async deleteVisit(id: string, now: number = Date.now()): Promise<void> {
     const db = await this.db();
     const existing = await db.get<VisitRecord>('visits', id);
@@ -337,12 +361,14 @@ export class LocalStore {
     this.touch();
   }
 
+  /** Stores a visit that came from the remote, clean; the caller has already applied the merge rule. */
   async putVisitFromServer(dto: VisitDto): Promise<void> {
     const db = await this.db();
     await db.put('visits', visitFromDto(dto, false));
     this.touch();
   }
 
+  /** Clears the dirty flag after a push, unless the visit was edited while the push was in flight. */
   async markVisitClean(id: string, pushedUpdatedAt: string | null | undefined): Promise<void> {
     const db = await this.db();
     const existing = await db.get<VisitRecord>('visits', id);
@@ -351,103 +377,9 @@ export class LocalStore {
     }
   }
 
+  /** Visits with local changes the remote has not seen, tombstones included. */
   async dirtyVisits(): Promise<VisitRecord[]> {
     return sortVisits((await this.rawVisits()).filter((v) => v.dirty));
-  }
-
-  // ---- Photos ----
-
-  async allPhotos(): Promise<PhotoRecord[]> {
-    const db = await this.db();
-    return sortByCreated(await db.getAll<PhotoRecord>('photos'));
-  }
-
-  /** A house's live photos, through the `houseId` index: the store holds Blobs, so every photo is not read (S4b-BL-66). */
-  async photosOf(houseId: string): Promise<PhotoRecord[]> {
-    const db = await this.db();
-    const rows = await db.getAllByIndex<PhotoRecord>('photos', 'houseId', houseId);
-    return sortByCreated(rows.filter((p) => !p.deleted));
-  }
-
-  async getPhoto(id: string): Promise<PhotoRecord | undefined> {
-    const db = await this.db();
-    return db.get<PhotoRecord>('photos', id);
-  }
-
-  /**
-   * Stores photo bytes for a house. The blob is already resized and re-encoded by the caller. `meta` is the photo's
-   * room, tags and caption when they are known at once (the condition record's *Add a photo* chooses MOVE_IN), stamped
-   * `metaUpdatedAt = now` and waiting to be pushed.
-   */
-  async addPhoto(
-    houseId: string,
-    blob: Blob,
-    id: string = uuid(),
-    now: number = Date.now(),
-    meta?: Pick<PhotoMeta, 'roomId' | 'tags' | 'caption'>,
-  ): Promise<AddPhotoResult> {
-    if ((await this.photosOf(houseId)).length >= MAX_PHOTOS_PER_HOUSE) return { ok: false, reason: 'limit' };
-    const db = await this.db();
-    const record: PhotoRecord = {
-      id,
-      houseId,
-      blob,
-      contentType: blob.type || 'image/jpeg',
-      sizeBytes: blob.size,
-      createdAt: isoNow(now),
-      updatedAt: isoNow(now),
-      deleted: false,
-      syncVersion: 0,
-      uploaded: false,
-    };
-    const clean = meta ? cleanMeta({ ...meta, metaUpdatedAt: now }) : null;
-    await db.put('photos', clean && hasMeta({ ...clean, metaUpdatedAt: 0 }) ? withPhotoMeta(record, clean, true) : record);
-    this.touch();
-    return { ok: true, id };
-  }
-
-  /**
-   * Saves a photo's room, tags and caption (docs/11 5.7): coerced, stamped `metaUpdatedAt = now` and marked for the next
-   * sync. Nothing is written, and `false` comes back, when the photo is gone or the meta is what it already is.
-   */
-  async setPhotoMeta(id: string, meta: Pick<PhotoMeta, 'roomId' | 'tags' | 'caption'>, now: number = Date.now()): Promise<boolean> {
-    const db = await this.db();
-    const existing = await db.get<PhotoRecord>('photos', id);
-    if (!existing || existing.deleted) return false;
-    const clean = cleanMeta({ ...meta, metaUpdatedAt: 1 });
-    const before = photoMetaOf(existing);
-    if (before.roomId === clean.roomId && before.caption === clean.caption && before.tags.join('\n') === clean.tags.join('\n')) return false;
-    // Strictly newer than what is stored, so two edits inside one millisecond still order.
-    const stamp = Math.max(now, before.metaUpdatedAt + 1);
-    await db.put('photos', withPhotoMeta(existing, { ...clean, metaUpdatedAt: stamp }, true));
-    this.touch();
-    return true;
-  }
-
-  /** Applies the meta a server row carries when it is strictly newer than the stored one (last write wins). */
-  async applyPhotoMetaFromServer(id: string, incoming: PhotoMeta): Promise<boolean> {
-    const db = await this.db();
-    const existing = await db.get<PhotoRecord>('photos', id);
-    if (!existing || existing.deleted) return false;
-    if (!incomingWins(photoMetaOf(existing).metaUpdatedAt, incoming.metaUpdatedAt)) return false;
-    await db.put('photos', withPhotoMeta(existing, incoming, false));
-    this.touch();
-    return true;
-  }
-
-  /** The push of a photo's meta went through: the flag clears only when the meta was not edited again meanwhile. */
-  async markPhotoMetaClean(id: string, pushedAt: number): Promise<void> {
-    const db = await this.db();
-    const existing = await db.get<PhotoRecord>('photos', id);
-    if (existing && existing.metaDirty && (existing.metaUpdatedAt ?? 0) === pushedAt) {
-      const { metaDirty: _dirty, ...clean } = existing;
-      await db.put('photos', clean);
-    }
-  }
-
-  /** The photos of one house tagged MOVE_IN, oldest first: the condition record (docs/11 5.24). */
-  async conditionPhotos(houseId: string): Promise<PhotoRecord[]> {
-    return (await this.photosOf(houseId)).filter((p) => photoMetaOf(p).tags.some((t) => t === MOVE_IN_TAG));
   }
 
   /**
@@ -491,42 +423,7 @@ export class LocalStore {
     return changed;
   }
 
-  /**
-   * Drops the bytes now. A photo the server already has keeps a tombstone so the delete is pushed on the next
-   * sync (threat model F-15); one that never left this browser is removed outright.
-   */
-  async deletePhoto(id: string, now: number = Date.now()): Promise<void> {
-    const db = await this.db();
-    const existing = await db.get<PhotoRecord>('photos', id);
-    if (!existing) return;
-    if (existing.uploaded) {
-      await db.put('photos', { ...existing, blob: null, deleted: true, updatedAt: isoNow(now) });
-    } else {
-      await db.delete('photos', id);
-    }
-    this.touch();
-  }
-
-  /** Forgets a photo completely (used when the server confirms a delete, or a tombstone arrives from elsewhere). */
-  async forgetPhoto(id: string): Promise<void> {
-    const db = await this.db();
-    await db.delete('photos', id);
-    this.touch();
-  }
-
-  async putPhotoRecord(record: PhotoRecord): Promise<void> {
-    const db = await this.db();
-    await db.put('photos', record);
-    this.touch();
-  }
-
   // ---- Import (S4b-BL-75) ----
-
-  /** Every record of one `type`, tombstones included: an import's last-write-wins comparison. */
-  async allRecordsOf(type: string): Promise<RecordRecord[]> {
-    const db = await this.db();
-    return db.getAllByIndex<RecordRecord>('records', 'type', type);
-  }
 
   /**
    * Writes the rows an import chose, as they are (the caller stamped and marked them; `ImportService`), then bumps the
@@ -553,72 +450,6 @@ export class LocalStore {
     return db.get<VisitRecord>('visits', id);
   }
 
-  // ---- Records (docs/11 5.30 item 2: every other Sprint 4b entity, in one store) ----
-
-  /** The live records of one `type`, through the `type` index, oldest edit first. */
-  async recordsOf(type: string): Promise<RecordRecord[]> {
-    const db = await this.db();
-    const rows = await db.getAllByIndex<RecordRecord>('records', 'type', type);
-    return sortRecords(rows.filter((r) => !r.deleted));
-  }
-
-  async getRecord(type: string, id: string): Promise<RecordRecord | undefined> {
-    const db = await this.db();
-    const record = await db.get<RecordRecord>('records', [type, id]);
-    return record && !record.deleted ? record : undefined;
-  }
-
-  /**
-   * Saves a local edit of one record: stamps `updatedAt` and marks it dirty. The sync version of the stored row is
-   * kept, as for a house.
-   *
-   * @throws LocalDataError when the type or id is not usable, or the payload is over the server's cap.
-   */
-  async saveRecord(
-    type: string,
-    id: string,
-    payload: Record<string, unknown>,
-    now: number = Date.now(),
-  ): Promise<RecordRecord> {
-    const db = await this.db();
-    const existing = await db.get<RecordRecord>('records', [type, id]);
-    const record = recordFromDto(
-      { type, id, payload, updatedAt: isoNow(now), deleted: false, syncVersion: existing?.syncVersion ?? 0 },
-      true,
-    );
-    await db.put('records', record);
-    this.touch();
-    return record;
-  }
-
-  /** Marks a record deleted: a tombstone with an empty payload, so other devices learn about it. */
-  async deleteRecord(type: string, id: string, now: number = Date.now()): Promise<void> {
-    const db = await this.db();
-    const existing = await db.get<RecordRecord>('records', [type, id]);
-    if (!existing) return;
-    await db.put<RecordRecord>('records', { ...existing, payload: {}, deleted: true, dirty: true, updatedAt: isoNow(now) });
-    this.touch();
-  }
-
-  async putRecordFromServer(dto: RecordDto): Promise<void> {
-    const db = await this.db();
-    await db.put('records', recordFromDto(dto, false));
-    this.touch();
-  }
-
-  async markRecordClean(type: string, id: string, pushedUpdatedAt: string | null | undefined): Promise<void> {
-    const db = await this.db();
-    const existing = await db.get<RecordRecord>('records', [type, id]);
-    if (existing && millis(existing.updatedAt) === millis(pushedUpdatedAt)) {
-      await db.put('records', { ...existing, dirty: false });
-    }
-  }
-
-  async dirtyRecords(): Promise<RecordRecord[]> {
-    const db = await this.db();
-    return sortRecords((await db.getAll<RecordRecord>('records')).filter((r) => r.dirty));
-  }
-
   /**
    * After the sync found its server reset (S4b-BL-20, `SyncService`): every house, visit and record, tombstones
    * included, is marked dirty and every stored photo not uploaded, so the next push sends everything this browser holds. The
@@ -636,648 +467,25 @@ export class LocalStore {
     for (const record of await db.getAll<RecordRecord>('records')) {
       if (!record.dirty) await db.put('records', { ...record, dirty: true });
     }
-    for (const photo of await db.getAll<PhotoRecord>('photos')) {
-      if (photo.deleted) continue;
-      const resendBytes = !!photo.blob && photo.uploaded;
-      const resendMeta = (photo.metaUpdatedAt ?? 0) > 0 && photo.metaDirty !== true;
-      if (resendBytes || resendMeta) {
-        await db.put('photos', { ...photo, ...(resendBytes ? { uploaded: false } : {}), ...(resendMeta ? { metaDirty: true } : {}) });
-      }
-    }
+    await this.photos.markAllForResync();
     this.touch();
-  }
-
-  // ---- Brokers (docs/11 5.25, slice 1b: records of type `broker`; the house keeps copies of the contact) ----
-
-  /** The live brokers, oldest edit first; a row whose payload is not a broker (a blank name) is skipped. */
-  async brokers(): Promise<BrokerRow[]> {
-    return brokerRows(await this.recordsOf(BROKER_TYPE));
-  }
-
-  /**
-   * Saves a broker (create or update) and rewrites the name and phone copies on every live house linked to it, so the
-   * exports, the search and an old app keep showing the contact.
-   *
-   * @throws LocalDataError when the name is blank or too long.
-   */
-  async saveBroker(id: string, broker: Broker, now: number = Date.now()): Promise<BrokerRow> {
-    const clean = brokerFromPayload({ ...broker });
-    if (!clean) throw new LocalDataError('error.badRecord');
-    const record = await this.saveRecord(BROKER_TYPE, id, brokerToPayload(clean), now);
-    const db = await this.db();
-    for (const house of await db.getAll<HouseRecord>('houses')) {
-      if (house.deleted || house.brokerId !== id) continue;
-      if (house.contactName === clean.name && house.contactPhone === (clean.phone ?? null)) continue;
-      await db.put('houses', { ...house, contactName: clean.name, contactPhone: clean.phone ?? null, dirty: true, updatedAt: isoNow(now) });
-    }
-    this.touch();
-    return { id, updatedAt: record.updatedAt ?? null, broker: clean };
-  }
-
-  /** Deletes a broker (a tombstone); its houses lose the link and keep the contact details they hold. */
-  async deleteBroker(id: string, now: number = Date.now()): Promise<void> {
-    await this.deleteRecord(BROKER_TYPE, id, now);
-    const db = await this.db();
-    for (const house of await db.getAll<HouseRecord>('houses')) {
-      if (house.brokerId === id) await db.put('houses', { ...house, brokerId: null, dirty: true, updatedAt: isoNow(now) });
-    }
-    this.touch();
-  }
-
-  /** The live houses linked to a broker, in list order, for the broker's page. */
-  async brokerHouses(id: string): Promise<HouseRecord[]> {
-    return sortByCreated((await this.rawHouses()).filter((h) => !h.deleted && h.brokerId === id));
-  }
-
-  /**
-   * What {@link saveHouse} does about the broker. A house linked to a broker that exists gets that broker's name and
-   * phone as its contact. A house with a phone and no link is linked to the broker with the same number, or to a new
-   * one made from it (`ensureBroker`); a blank phone never makes a broker. An id that names no broker is left alone.
-   */
-  private async withBroker(house: HouseDto, now: number): Promise<HouseDto> {
-    if (house.brokerId) {
-      const known = (await this.brokers()).find((row) => row.id === house.brokerId);
-      return known ? linked(house, known) : house;
-    }
-    const phone = (house.contactPhone ?? '').trim();
-    if (phone === '') return house;
-    const found = (await this.brokers()).find((row) => samePhone(row.broker.phone, phone));
-    if (found) return linked(house, found);
-    const name = (house.contactName ?? '').trim() || phone;
-    const broker: Broker = { name: name.slice(0, MAX_BROKER_NAME), phone: phone.slice(0, MAX_BROKER_PHONE) };
-    return linked(house, await this.saveBroker(uuid(), broker, now));
-  }
-
-  /** Runs {@link moveContactsToBrokers} again (it does nothing once the flag is set); returns the houses it linked. */
-  async migrateContactsToBrokers(): Promise<number> {
-    return this.moveContactsToBrokers(await this.rawDb());
-  }
-
-  /**
-   * The one-off migration (slice 1b): each live house with a phone and no broker is linked to a broker made from its
-   * contact, one broker per distinct number (the last ten digits; "+91 98400 11111", "098400-11111" and
-   * "9840011111" are one). A broker that already has the number is reused. The flag `brokers.migrated` is set at the
-   * end, so a person who later unlinks a house on purpose is never re-linked, and a run that stopped half way
-   * resumes. Works on the raw database because {@link db} waits for it.
-   */
-  private async moveContactsToBrokers(db: LocalDb, now: number = Date.now()): Promise<number> {
-    if (await db.get<SettingRecord>('settings', SETTING_KEYS.brokersMigrated)) return 0;
-    const houses = sortByCreated(
-      (await db.getAll<HouseRecord>('houses')).filter((h) => !h.deleted && !h.brokerId && (h.contactPhone ?? '').trim() !== ''),
-    );
-    const groups = new Map<string, HouseRecord[]>();
-    for (const house of houses) {
-      const phone = (house.contactPhone ?? '').trim();
-      // A number too short to compare stands only for itself.
-      const key = phoneKey(phone) ?? `raw:${phone}`;
-      groups.set(key, [...(groups.get(key) ?? []), house]);
-    }
-    const existing = brokerRows(
-      (await db.getAllByIndex<RecordRecord>('records', 'type', BROKER_TYPE)).filter((r) => !r.deleted),
-    );
-    let linkedHouses = 0;
-    for (const [key, members] of groups) {
-      // The newest edit names the broker.
-      const latest = members.reduce((a, b) => (millis(b.updatedAt) >= millis(a.updatedAt) ? b : a));
-      let row = existing.find((r) => (phoneKey(r.broker.phone) ?? `raw:${(r.broker.phone ?? '').trim()}`) === key);
-      if (!row) {
-        const phone = (latest.contactPhone ?? '').trim();
-        const name = (latest.contactName ?? '').trim() || phone;
-        const broker: Broker = { name: name.slice(0, MAX_BROKER_NAME), phone: phone.slice(0, MAX_BROKER_PHONE) };
-        const record = recordFromDto(
-          { type: BROKER_TYPE, id: uuid(), payload: brokerToPayload(broker), updatedAt: isoNow(now), deleted: false, syncVersion: 0 },
-          true,
-        );
-        await db.put('records', record);
-        row = { id: record.id, updatedAt: record.updatedAt ?? null, broker };
-        existing.push(row);
-      }
-      for (const house of members) {
-        await db.put('houses', { ...house, brokerId: row.id, dirty: true, updatedAt: isoNow(now) });
-        linkedHouses += 1;
-      }
-    }
-    await db.put<SettingRecord>('settings', { key: SETTING_KEYS.brokersMigrated, value: '1' });
-    if (linkedHouses > 0) this.touch();
-    return linkedHouses;
-  }
-
-  // ---- Criteria and the rating share (docs/11 5.4, slice 2: records of type `criterion` and `preference`) ----
-
-  /** The live criterion records (only what differs from the defaults), oldest edit first; a bad key is skipped. */
-  async criterionRows(): Promise<CriterionRow[]> {
-    const out: CriterionRow[] = [];
-    for (const row of await this.recordsOf(CRITERION_TYPE)) {
-      const criterion = criterionFromPayload(row.id, row.payload);
-      if (criterion) out.push({ key: row.id, updatedAt: row.updatedAt ?? null, criterion });
-    }
-    return out;
-  }
-
-  /** The live preference records, oldest edit first; a row without a text value is skipped. */
-  async preferenceRows(): Promise<PreferenceRow[]> {
-    const out: PreferenceRow[] = [];
-    for (const row of await this.recordsOf(PREFERENCE_TYPE)) {
-      const value = row.payload['value'];
-      if (typeof value === 'string') out.push({ key: row.id, value, updatedAt: row.updatedAt ?? null });
-    }
-    return out;
-  }
-
-  /** The effective scoring: the defaults merged with the criterion records and the rating-share preference. */
-  async scoring(): Promise<Scoring> {
-    return scoringOf(await this.criterionRows(), await this.preferenceRows());
-  }
-
-  /**
-   * Saves a criterion, writing only what differs from the defaults: a built-in that equals its default has its record
-   * deleted, any other is written. A custom criterion needs a label (at most 60 characters); a new one is refused
-   * when there are already {@link MAX_CRITERIA} criteria (the ten built-ins included).
-   *
-   * @throws LocalDataError `error.badRecord` for a key that is neither built-in nor custom, or a bad label;
-   *   `criteria.max` when the cap is reached.
-   */
-  async saveCriterion(criterion: Criterion, now: number = Date.now()): Promise<void> {
-    const builtIn = isBuiltInKey(criterion.key);
-    if (!builtIn && !isCustomKey(criterion.key)) throw new LocalDataError('error.badRecord');
-    if (builtIn && isDefaultCriterion(criterion)) {
-      await this.deleteRecord(CRITERION_TYPE, criterion.key, now);
-      return;
-    }
-    if (!builtIn) {
-      const label = criterion.label?.trim() ?? '';
-      if (label === '' || label.length > MAX_CRITERION_LABEL) throw new LocalDataError('error.badRecord');
-      if (!(await this.getRecord(CRITERION_TYPE, criterion.key)) && (await this.criterionCount()) >= MAX_CRITERIA) {
-        throw new LocalDataError('criteria.max');
-      }
-    }
-    await this.saveRecord(CRITERION_TYPE, criterion.key, criterionToPayload({ ...criterion, label: criterion.label?.trim() }), now);
-  }
-
-  /** Saves several criteria (a re-ordering, a weight change on each): each as {@link saveCriterion}. */
-  async saveCriteria(list: readonly Criterion[], now: number = Date.now()): Promise<void> {
-    for (const criterion of list) await this.saveCriterion(criterion, now);
-  }
-
-  /**
-   * Adds a custom criterion at the end of the list: a new key `c_` and 8 lowercase hex characters (a key that clashes
-   * with any record, a deleted one included, is drawn again), weight Medium unless given, not a must-have.
-   * `newKey` is a seam for tests.
-   *
-   * @throws LocalDataError `error.badRecord` for a blank or too long label; `criteria.max` at 40 criteria.
-   */
-  async addCriterion(
-    label: string,
-    weight: Weight = 2,
-    now: number = Date.now(),
-    newKey: () => string = newCustomKey,
-  ): Promise<Criterion> {
-    const text = label.trim();
-    if (text === '' || text.length > MAX_CRITERION_LABEL) throw new LocalDataError('error.badRecord');
-    if ((await this.criterionCount()) >= MAX_CRITERIA) throw new LocalDataError('criteria.max');
-    const db = await this.db();
-    let key = newKey();
-    for (let attempt = 0; attempt < 50 && (await db.get<RecordRecord>('records', [CRITERION_TYPE, key])); attempt++) key = newKey();
-    if (await db.get<RecordRecord>('records', [CRITERION_TYPE, key])) throw new LocalDataError('error.badRecord');
-    const sort = (await this.scoring()).criteria.reduce((max, c) => Math.max(max, c.sort), -1) + 1;
-    const criterion: Criterion = { key, label: text, weight, mustHave: false, minScore: 3, sort };
-    await this.saveCriterion(criterion, now);
-    return criterion;
-  }
-
-  /**
-   * Deletes a custom criterion (a tombstone). Refused while any live house has a score under its key, so no score is
-   * left without a name; archive it instead. Built-ins can only be archived.
-   *
-   * @throws LocalDataError `error.badRecord` for a built-in or unknown key; `criteria.inUse` when a house scored it.
-   */
-  async deleteCriterion(key: string, now: number = Date.now()): Promise<void> {
-    if (!isCustomKey(key)) throw new LocalDataError('error.badRecord');
-    if (await this.criterionInUse(key)) throw new LocalDataError('criteria.inUse');
-    await this.deleteRecord(CRITERION_TYPE, key, now);
-  }
-
-  /** True when a live house has a checklist score under `key`. */
-  async criterionInUse(key: string): Promise<boolean> {
-    return (await this.rawHouses()).some((h) => !h.deleted && typeof h.checklist?.[key] === 'number');
-  }
-
-  /** Stores the rating share (0..1); the default 0.5 needs no record, so it deletes it. */
-  async setRatingShare(share: number, now: number = Date.now()): Promise<void> {
-    const value = ratingShareValue(Math.min(1, Math.max(0, share)));
-    if (Number(value) === DEFAULT_RATING_SHARE) await this.deleteRecord(PREFERENCE_TYPE, RATING_SHARE_KEY, now);
-    else await this.saveRecord(PREFERENCE_TYPE, RATING_SHARE_KEY, { value }, now);
-  }
-
-  /** "Reset to defaults": deletes every criterion and preference record (tombstones, so other devices follow). */
-  async resetCriteria(now: number = Date.now()): Promise<void> {
-    for (const row of await this.recordsOf(CRITERION_TYPE)) await this.deleteRecord(CRITERION_TYPE, row.id, now);
-    for (const row of await this.recordsOf(PREFERENCE_TYPE)) await this.deleteRecord(PREFERENCE_TYPE, row.id, now);
-  }
-
-  /** The ten built-ins plus the live custom records: what the cap of 40 counts (archived ones included). */
-  private async criterionCount(): Promise<number> {
-    const custom = (await this.recordsOf(CRITERION_TYPE)).filter((r) => !isBuiltInKey(r.id)).length;
-    return BUILT_IN_KEYS.length + custom;
-  }
-
-  // ---- Viewing questions (docs/11 5.5, slice 3a: records of type `question`) ----
-
-  /** The live question records, oldest edit first; a row whose payload is not a question (a blank text) is skipped. */
-  async questionRows(): Promise<QuestionRow[]> {
-    const out: QuestionRow[] = [];
-    for (const row of await this.recordsOf(QUESTION_TYPE)) {
-      const question = questionFromPayload(row.id, row.payload);
-      if (question) out.push({ id: row.id, updatedAt: row.updatedAt ?? null, question });
-    }
-    return out;
-  }
-
-  /** The bank, archived questions included, by `sort` then id. */
-  async questions(): Promise<Question[]> {
-    return sortQuestions((await this.questionRows()).map((r) => r.question));
-  }
-
-  /**
-   * Seeds the bank: for each default whose id has NO record a clean record stamped {@link DEFAULT_QUESTIONS_SEEDED_AT}
-   * with the text in [language] (hi, ta or te; anything else English; S4b-BL-90a). A tombstone counts as a record, so
-   * a default the person deleted is not brought back.
-   * Returns how many were written.
-   */
-  async seedQuestions(language: string, now: number = Date.now()): Promise<number> {
-    const db = await this.db();
-    return this.writeDefaults(db, language, now, false);
-  }
-
-  /**
-   * Seeds once per install: the first call sets the local setting `questions.seeded` (not synced), so later starts do
-   * nothing and a bank the person emptied stays empty until *Reset to defaults*. `language` is read at each use
-   * (the language the app is in then), also after *Remove all data* seeded the bank again.
-   */
-  async seedQuestionsOnce(language: () => string, now: number = Date.now()): Promise<void> {
-    this.seedLanguage = language;
-    const db = await this.db();
-    if (await db.get<SettingRecord>('settings', SETTING_KEYS.questionsSeeded)) return;
-    await this.writeDefaults(db, language(), now, false);
-    await db.put<SettingRecord>('settings', { key: SETTING_KEYS.questionsSeeded, value: '1' });
-  }
-
-  /**
-   * *Reset to defaults*: every default id gets its record again, whatever state it was in (deleted, edited, archived),
-   * with the text in [language]; the person's own questions stay. A default that would take the bank past
-   * {@link MAX_QUESTIONS} is not brought back.
-   */
-  async resetQuestions(language: string, now: number = Date.now()): Promise<number> {
-    const db = await this.db();
-    return this.writeDefaults(db, language, now, true);
-  }
-
-  private async writeDefaults(db: LocalDb, language: string, now: number, overwrite: boolean): Promise<number> {
-    const rows = await db.getAllByIndex<RecordRecord>('records', 'type', QUESTION_TYPE);
-    const byId = new Map(rows.map((r) => [r.id, r]));
-    let live = rows.filter((r) => !r.deleted).length;
-    let written = 0;
-    for (const def of DEFAULT_QUESTIONS) {
-      const existing = byId.get(def.id);
-      if (existing && !overwrite) continue;
-      if ((!existing || existing.deleted) && live >= MAX_QUESTIONS) continue;
-      if (!existing || existing.deleted) live += 1;
-      const record = recordFromDto(
-        {
-          type: QUESTION_TYPE,
-          id: def.id,
-          payload: questionToPayload(defaultQuestion(def, language)),
-          // A seed is clean and stamped DEFAULT_QUESTIONS_SEEDED_AT (S4b-BL-90a): never pushed, and whatever another
-          // device did to it wins when pulled. *Reset to defaults* is the person's own edit: now, dirty.
-          updatedAt: isoNow(overwrite ? now : DEFAULT_QUESTIONS_SEEDED_AT),
-          deleted: false,
-          syncVersion: existing?.syncVersion ?? 0,
-        },
-        overwrite,
-      );
-      await db.put('records', record);
-      written += 1;
-    }
-    if (written > 0) this.touch();
-    return written;
-  }
-
-  /**
-   * Saves a question (an edit, an archive, a move): only that record is written. A default keeps its fixed id.
-   *
-   * @throws LocalDataError `error.badRecord` for an id that is neither a default's nor `q_` and 8 hex characters, or a
-   *   blank or over-long text; `questions.max` when a new question would be the 101st.
-   */
-  async saveQuestion(question: Question, now: number = Date.now()): Promise<void> {
-    if (!isDefaultQuestionId(question.id) && !isCustomQuestionId(question.id)) throw new LocalDataError('error.badRecord');
-    const text = question.text.trim();
-    if (text === '' || text.length > MAX_QUESTION_TEXT) throw new LocalDataError('error.badRecord');
-    if (!(await this.getRecord(QUESTION_TYPE, question.id)) && (await this.recordsOf(QUESTION_TYPE)).length >= MAX_QUESTIONS) {
-      throw new LocalDataError('questions.max');
-    }
-    await this.saveRecord(QUESTION_TYPE, question.id, questionToPayload({ ...question, text }), now);
-  }
-
-  /** Saves several questions (a move renumbers two or more): each as {@link saveQuestion}. */
-  async saveQuestions(list: readonly Question[], now: number = Date.now()): Promise<void> {
-    for (const question of list) await this.saveQuestion(question, now);
-  }
-
-  /**
-   * Adds a custom question at the end of the bank: a new id `q_` and 8 lowercase hex characters (an id that clashes with
-   * any record, a deleted one included, is drawn again). `newId` is a seam for tests.
-   *
-   * @throws LocalDataError `error.badRecord` for a blank or over-long text; `questions.max` at 100 questions.
-   */
-  async addQuestion(
-    text: string,
-    category: QuestionCategory = 'OTHER',
-    appliesTo: QuestionScope = 'BOTH',
-    now: number = Date.now(),
-    newId: () => string = newQuestionId,
-  ): Promise<Question> {
-    const asked = text.trim();
-    if (asked === '' || asked.length > MAX_QUESTION_TEXT) throw new LocalDataError('error.badRecord');
-    if ((await this.recordsOf(QUESTION_TYPE)).length >= MAX_QUESTIONS) throw new LocalDataError('questions.max');
-    const db = await this.db();
-    let id = newId();
-    for (let attempt = 0; attempt < 50 && (await db.get<RecordRecord>('records', [QUESTION_TYPE, id])); attempt++) id = newId();
-    if (await db.get<RecordRecord>('records', [QUESTION_TYPE, id])) throw new LocalDataError('error.badRecord');
-    const sort = (await this.questions()).reduce((max, q) => Math.max(max, q.sort), -1) + 1;
-    const question: Question = { id, text: asked, category, appliesTo, defaultOn: false, sort };
-    await this.saveQuestion(question, now);
-    return question;
-  }
-
-  /** Deletes a question, a seeded one too (a tombstone): a deleted default stays deleted until *Reset to defaults*. */
-  async deleteQuestion(id: string, now: number = Date.now()): Promise<void> {
-    await this.deleteRecord(QUESTION_TYPE, id, now);
-  }
-
-  // ---- Viewings (docs/11 5.8, slice 3b-1: records of type `viewing`) ----
-
-  /** The live viewing records, oldest edit first; a row that is not a viewing (no house, no time) is skipped as untrusted. */
-  async viewingRows(): Promise<ViewingRow[]> {
-    const out: ViewingRow[] = [];
-    for (const row of await this.recordsOf(VIEWING_TYPE)) {
-      const viewing = viewingFromPayload(row.id, row.payload);
-      if (viewing) out.push({ id: row.id, updatedAt: row.updatedAt ?? null, viewing });
-    }
-    return out;
-  }
-
-  /** Every live viewing, by `startsAt` then id. */
-  async viewings(): Promise<Viewing[]> {
-    return sortViewings((await this.viewingRows()).map((r) => r.viewing));
-  }
-
-  /** The viewings of one house (a house that is gone keeps its viewings; this still finds them by id). */
-  async viewingsOf(houseId: string): Promise<Viewing[]> {
-    return (await this.viewings()).filter((v) => v.houseId === houseId);
-  }
-
-  /** The earliest PLANNED viewing of the house at or after `nowMs`, or null. */
-  async nextViewing(houseId: string, nowMs: number = Date.now()): Promise<Viewing | null> {
-    return nextViewingOf(await this.viewings(), houseId, nowMs);
-  }
-
-  /**
-   * `v_` and 8 lowercase hex characters, an id no record of type `viewing` has, a tombstone included (an id that
-   * clashes is drawn again). `newId` is a seam for tests.
-   */
-  async newViewingId(newId: () => string = newViewingIdRandom): Promise<string> {
-    const db = await this.db();
-    for (let attempt = 0; attempt < 50; attempt++) {
-      const id = newId();
-      if (!(await db.get<RecordRecord>('records', [VIEWING_TYPE, id]))) return id;
-    }
-    throw new LocalDataError('error.badRecord');
-  }
-
-  /**
-   * Saves a viewing: only that record is written, and only when it differs from what is stored (so an unchanged form
-   * does not touch `updatedAt` or the sync queue). A new one is the 5 001st refused.
-   *
-   * @throws LocalDataError `error.badRecord` for a bad id, a blank house, a start that is not positive, a duration
-   *   outside 5..480, a kind, status or reminder outside the lists, or a `withWhom` or `notes` over its cap;
-   *   `viewings.max` at 5 000 live viewings.
-   */
-  async saveViewing(viewing: Viewing, now: number = Date.now()): Promise<Viewing> {
-    const clean: Viewing = { ...viewing, houseId: viewing.houseId.trim() };
-    if (clean.withWhom !== undefined) clean.withWhom = clean.withWhom.trim();
-    if (clean.notes !== undefined) clean.notes = clean.notes.trim();
-    if (
-      !isViewingId(clean.id) ||
-      clean.houseId === '' ||
-      clean.houseId.length > MAX_ID_LENGTH ||
-      (clean.visitId?.length ?? 0) > MAX_ID_LENGTH ||
-      !Number.isSafeInteger(clean.startsAt) ||
-      clean.startsAt <= 0 ||
-      !Number.isInteger(clean.durationMin) ||
-      clean.durationMin < MIN_DURATION_MIN ||
-      clean.durationMin > MAX_DURATION_MIN ||
-      !VIEWING_KINDS.includes(clean.kind) ||
-      !VIEWING_STATUSES.includes(clean.status) ||
-      !REMIND_OPTIONS.includes(clean.remindMin) ||
-      (clean.withWhom?.length ?? 0) > MAX_WITH_WHOM ||
-      (clean.notes?.length ?? 0) > MAX_VIEWING_NOTES
-    ) {
-      throw new LocalDataError('error.badRecord');
-    }
-    const payload = viewingToPayload(clean);
-    const existing = await this.getRecord(VIEWING_TYPE, clean.id);
-    if (existing) {
-      if (JSON.stringify(existing.payload) === JSON.stringify(payload)) return viewingFromPayload(clean.id, payload) as Viewing;
-    } else if ((await this.recordsOf(VIEWING_TYPE)).length >= MAX_VIEWINGS) {
-      throw new LocalDataError('viewings.max');
-    }
-    await this.saveRecord(VIEWING_TYPE, clean.id, payload, now);
-    return viewingFromPayload(clean.id, payload) as Viewing;
-  }
-
-  /** Deletes a viewing (a tombstone the next sync sends). The house, if it still exists, is not touched. */
-  async deleteViewing(id: string, now: number = Date.now()): Promise<void> {
-    await this.deleteRecord(VIEWING_TYPE, id, now);
-  }
-
-  /** *It happened* / *Mark viewing done*: status DONE, and `visitId` when a visit is given (else the old one is kept). */
-  async markViewingDone(id: string, visitId?: string | null, now: number = Date.now()): Promise<Viewing> {
-    const row = await this.getRecord(VIEWING_TYPE, id);
-    const viewing = row ? viewingFromPayload(id, row.payload) : null;
-    if (!viewing) throw new LocalDataError('error.notFoundLocal');
-    return this.saveViewing({ ...viewing, status: 'DONE', ...(visitId ? { visitId } : {}) }, now);
-  }
-
-  // ---- Hunting areas, my places and area notes (docs/11 "Design of slice 4a": records of type `area`, `place`, `areanote`) ----
-
-  /** The live area records, oldest edit first; a row that is not an area (bad name or point) is skipped as untrusted. */
-  async areaRows(): Promise<AreaRow[]> {
-    const out: AreaRow[] = [];
-    for (const row of await this.recordsOf(AREA_TYPE)) {
-      const area = areaFromPayload(row.id, row.payload);
-      if (area) out.push({ id: row.id, updatedAt: row.updatedAt ?? null, area });
-    }
-    return out;
-  }
-
-  /** Every live area, by name then id. */
-  async areas(): Promise<Area[]> {
-    return sortByName((await this.areaRows()).map((r) => r.area), (a) => a.name);
-  }
-
-  /** A fresh `a_` id that no area record, a deleted one included, has (`newId` is a seam for tests). */
-  async newAreaId(newId: () => string = newAreaIdRandom): Promise<string> {
-    return this.freshId(AREA_TYPE, newId);
-  }
-
-  /**
-   * Saves an area: only that record is written, and only when it differs from what is stored. The name is trimmed.
-   *
-   * @throws LocalDataError `error.badRecord` for a bad id, a blank or over-long name, a point or radius out of range;
-   *   `areas.max` when a new area would be the 21st.
-   */
-  async saveArea(area: Area, now: number = Date.now()): Promise<Area> {
-    const clean: Area = { ...area, name: area.name.trim() };
-    if (
-      !isRecordKey(clean.id) ||
-      clean.name === '' ||
-      clean.name.length > MAX_AREA_NAME ||
-      !validLat(clean.lat) ||
-      !validLon(clean.lon) ||
-      !validRadius(clean.radiusM)
-    ) {
-      throw new LocalDataError('error.badRecord');
-    }
-    const payload = areaToPayload(clean);
-    await this.writeIfChanged(AREA_TYPE, clean.id, payload, MAX_AREAS, 'areas.max', now);
-    return areaFromPayload(clean.id, payload) as Area;
-  }
-
-  /** Deletes an area (a tombstone). Its notes stay but reach no house until the area is back. */
-  async deleteArea(id: string, now: number = Date.now()): Promise<void> {
-    await this.deleteRecord(AREA_TYPE, id, now);
-  }
-
-  async placeRows(): Promise<PlaceRow[]> {
-    const out: PlaceRow[] = [];
-    for (const row of await this.recordsOf(PLACE_TYPE)) {
-      const place = placeFromPayload(row.id, row.payload);
-      if (place) out.push({ id: row.id, updatedAt: row.updatedAt ?? null, place });
-    }
-    return out;
-  }
-
-  /** Every live place, by name then id. */
-  async places(): Promise<Place[]> {
-    return sortByName((await this.placeRows()).map((r) => r.place), (p) => p.name);
-  }
-
-  async newPlaceId(newId: () => string = newPlaceIdRandom): Promise<string> {
-    return this.freshId(PLACE_TYPE, newId);
-  }
-
-  /** @throws LocalDataError `error.badRecord` for a bad id, name (1..60) or point; `places.max` when a new place would be the 11th. */
-  async savePlace(place: Place, now: number = Date.now()): Promise<Place> {
-    const clean: Place = { ...place, name: place.name.trim() };
-    if (!isRecordKey(clean.id) || clean.name === '' || clean.name.length > MAX_PLACE_NAME || !validLat(clean.lat) || !validLon(clean.lon)) {
-      throw new LocalDataError('error.badRecord');
-    }
-    const payload = placeToPayload(clean);
-    await this.writeIfChanged(PLACE_TYPE, clean.id, payload, MAX_PLACES, 'places.max', now);
-    return placeFromPayload(clean.id, payload) as Place;
-  }
-
-  async deletePlace(id: string, now: number = Date.now()): Promise<void> {
-    await this.deleteRecord(PLACE_TYPE, id, now);
-  }
-
-  /** The live area-note records (every one, whether or not its area still exists), oldest edit first. */
-  async areaNoteRows(): Promise<AreaNoteRow[]> {
-    const out: AreaNoteRow[] = [];
-    for (const row of await this.recordsOf(AREA_NOTE_TYPE)) {
-      const note = areaNoteFromPayload(row.id, row.payload);
-      if (note) out.push({ id: row.id, updatedAt: row.updatedAt ?? null, note });
-    }
-    return out;
-  }
-
-  /** Every live note, newest edit first. */
-  async areaNotes(): Promise<AreaNoteRow[]> {
-    return newestFirst(await this.areaNoteRows());
-  }
-
-  async newAreaNoteId(newId: () => string = newAreaNoteIdRandom): Promise<string> {
-    return this.freshId(AREA_NOTE_TYPE, newId);
-  }
-
-  /**
-   * @throws LocalDataError `error.badRecord` for a bad id, neither or both of `areaId` (<= 64) and `street` (1..100),
-   *   or a blank or over-long text (1..1000); `areaNotes.max` when a new note would be the 201st.
-   */
-  async saveAreaNote(note: AreaNote, now: number = Date.now()): Promise<AreaNote> {
-    const clean: AreaNote = { id: note.id, text: note.text.trim() };
-    const areaId = note.areaId?.trim();
-    const street = note.street?.trim();
-    if (areaId) clean.areaId = areaId;
-    if (street) clean.street = street;
-    if (
-      !isRecordKey(clean.id) ||
-      (clean.areaId === undefined) === (clean.street === undefined) ||
-      (clean.areaId?.length ?? 0) > MAX_AREA_ID ||
-      (clean.street?.length ?? 0) > MAX_STREET ||
-      clean.text === '' ||
-      clean.text.length > MAX_NOTE_TEXT
-    ) {
-      throw new LocalDataError('error.badRecord');
-    }
-    const payload = areaNoteToPayload(clean);
-    await this.writeIfChanged(AREA_NOTE_TYPE, clean.id, payload, MAX_AREA_NOTES, 'areaNotes.max', now);
-    return areaNoteFromPayload(clean.id, payload) as AreaNote;
-  }
-
-  async deleteAreaNote(id: string, now: number = Date.now()): Promise<void> {
-    await this.deleteRecord(AREA_NOTE_TYPE, id, now);
-  }
-
-  private async freshId(type: string, newId: () => string): Promise<string> {
-    const db = await this.db();
-    for (let attempt = 0; attempt < 50; attempt++) {
-      const id = newId();
-      if (!(await db.get<RecordRecord>('records', [type, id]))) return id;
-    }
-    throw new LocalDataError('error.badRecord');
-  }
-
-  /** Writes a record only when its payload differs from the stored one; a new record past `cap` live ones is refused. */
-  private async writeIfChanged(
-    type: string,
-    id: string,
-    payload: Record<string, unknown>,
-    cap: number,
-    capKey: 'areas.max' | 'places.max' | 'areaNotes.max',
-    now: number,
-  ): Promise<void> {
-    const existing = await this.getRecord(type, id);
-    if (existing) {
-      if (JSON.stringify(existing.payload) === JSON.stringify(payload)) return;
-    } else if ((await this.recordsOf(type)).length >= cap) {
-      throw new LocalDataError(capKey);
-    }
-    await this.saveRecord(type, id, payload, now);
   }
 
   // ---- Settings ----
 
+  /** A per-browser setting, or null when unset. Settings are never synced or exported. */
   async setting(key: string): Promise<string | null> {
     const db = await this.db();
     return (await db.get<SettingRecord>('settings', key))?.value ?? null;
   }
 
+  /** Stores a per-browser setting. */
   async setSetting(key: string, value: string): Promise<void> {
     const db = await this.db();
     await db.put<SettingRecord>('settings', { key, value });
   }
 
+  /** Removes a per-browser setting. */
   async removeSetting(key: string): Promise<void> {
     const db = await this.db();
     await db.delete('settings', key);
@@ -1288,6 +496,7 @@ export class LocalStore {
     return (await this.setting(SETTING_KEYS.lengthUnit)) === 'M' ? 'M' : 'FT';
   }
 
+  /** Stores the room length unit preference. */
   async setLengthUnit(unit: LengthUnit): Promise<void> {
     await this.setSetting(SETTING_KEYS.lengthUnit, unit);
   }
@@ -1297,16 +506,19 @@ export class LocalStore {
     return (await this.setting(SETTING_KEYS.viewingsRemind)) !== '0';
   }
 
+  /** Stores whether viewing reminders are on. */
   async setViewingsRemind(on: boolean): Promise<void> {
     await this.setSetting(SETTING_KEYS.viewingsRemind, on ? '1' : '0');
   }
 
+  /** A numeric setting; unset or not a number reads as 0. */
   async numberSetting(key: string): Promise<number> {
     const raw = await this.setting(key);
     const n = raw === null ? Number.NaN : Number(raw);
     return Number.isFinite(n) ? n : 0;
   }
 
+  /** The stored sync positions, one per list; each is 0 before the first sync. */
   async cursors(): Promise<Cursors> {
     return {
       house: await this.numberSetting(SETTING_KEYS.houseCursor),
@@ -1360,8 +572,7 @@ export class LocalStore {
     const db = await this.db();
     await db.clear();
     await clearCacheStorage();
-    // An empty browser still starts with the standard questions, as a new install does.
-    if (this.seedLanguage) await this.seedQuestionsOnce(this.seedLanguage);
+    await this.questions.seedAgainIfAsked();
     this.touch();
   }
 }
@@ -1402,36 +613,7 @@ async function clearCacheStorage(): Promise<void> {
   }
 }
 
-/** The brokers among some `broker` records, as rows; a payload that is not a broker is skipped as untrusted. */
-function brokerRows(rows: readonly RecordRecord[]): BrokerRow[] {
-  const out: BrokerRow[] = [];
-  for (const row of sortRecords(rows)) {
-    const broker = brokerFromPayload(row.payload);
-    if (broker) out.push({ id: row.id, updatedAt: row.updatedAt ?? null, broker });
-  }
-  return out;
-}
-
-/** The house linked to a broker: its id, and the broker's name and phone as the contact copies. */
-function linked(house: HouseDto, row: BrokerRow): HouseDto {
-  return { ...house, brokerId: row.id, contactName: row.broker.name, contactPhone: row.broker.phone ?? null };
-}
-
-/** Records in backup order (docs/11 5.30 item 3): by last edit, then id. */
-function sortRecords(rows: readonly RecordRecord[]): RecordRecord[] {
-  return [...rows].sort((a, b) => cmp(a.updatedAt ?? '', b.updatedAt ?? '') || cmp(a.id, b.id));
-}
-
 /** Visits in export order: by arrival, then id. */
 function sortVisits(rows: readonly VisitRecord[]): VisitRecord[] {
-  return [...rows].sort((a, b) => cmp(a.arrivedAt, b.arrivedAt) || cmp(a.id, b.id));
-}
-
-/** Export and display order everywhere: oldest first by createdAt, ties broken by id. */
-function sortByCreated<T extends { createdAt?: string | null; id: string }>(rows: readonly T[]): T[] {
-  return [...rows].sort((a, b) => cmp(a.createdAt ?? '', b.createdAt ?? '') || cmp(a.id, b.id));
-}
-
-function cmp(a: string, b: string): number {
-  return a < b ? -1 : a > b ? 1 : 0;
+  return [...rows].sort((a, b) => compareText(a.arrivedAt, b.arrivedAt) || compareText(a.id, b.id));
 }

@@ -18,6 +18,7 @@
 
 package app.doorprints.server.photo;
 
+import app.doorprints.server.common.BadRequestException;
 import app.doorprints.server.common.ConflictException;
 import app.doorprints.server.common.NotFoundException;
 import app.doorprints.server.config.AppProperties;
@@ -31,6 +32,11 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Photo storage rules: per-house limit, retry-safe upload, tombstoned delete, and last-write-wins edits of the
+ * person's room, tags and caption. Every write takes the sync lock first (see {@link SyncVersions}) and gives the
+ * photo a new sync version.
+ */
 @Service
 public class PhotoService {
 
@@ -68,10 +74,14 @@ public class PhotoService {
             throw new ConflictException("Photo limit reached: at most " + maxPerHouse + " photos per house");
         }
         var clean = ImageSanitizer.sanitize(bytes);
-        photos.save(new Photo(photoId, houseId, clean.contentType(), clean.data(), Instant.now(), versions.next()));
+        photos.save(new Photo(photoId, houseId, clean.contentType(), clean.data(), clock.now(), versions.next()));
         return photoId;
     }
 
+    /**
+     * The photo with its bytes.
+     * @throws NotFoundException if it does not exist or is deleted
+     */
     @Transactional(readOnly = true)
     public Photo getLive(UUID id) {
         return photos.findById(id).filter(p -> !p.isDeleted())
@@ -84,7 +94,7 @@ public class PhotoService {
         versions.lock();
         var photo = photos.findById(id).orElse(null);
         if (photo == null || photo.isDeleted()) return;
-        photo.markDeleted(Instant.now(), versions.next());
+        photo.markDeleted(clock.now(), versions.next());
     }
 
     /**
@@ -113,7 +123,7 @@ public class PhotoService {
         try {
             stamp = clock.accept(Instant.ofEpochMilli(metaUpdatedAt), "metaUpdatedAt").toEpochMilli();
         } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("metaUpdatedAt is out of range (check the device clock)");
+            throw new BadRequestException("metaUpdatedAt is out of range (check the device clock)");
         }
         return photos.applyMeta(current.id(), PhotoMeta.orNull(roomId), PhotoMeta.writeTags(tags),
                 PhotoMeta.orNull(caption), Math.max(stamp, current.metaUpdatedAt() + 1), now, versions.next()) > 0;
@@ -125,11 +135,17 @@ public class PhotoService {
         return photos.findMetadataById(id);
     }
 
+    /**
+     * Ids of a house's live photos, oldest first.
+     */
     @Transactional(readOnly = true)
     public List<UUID> liveIds(UUID houseId) {
         return photos.findIdsByHouseId(houseId);
     }
 
+    /**
+     * Metadata of photos changed after a sync version, deletions included, without the image bytes.
+     */
     @Transactional(readOnly = true)
     public List<PhotoDto> changesSince(long since) {
         return photos.findChangesSince(since);

@@ -23,6 +23,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import app.doorprints.data.Repository
 import app.doorprints.ui.res.*
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.getString
@@ -45,17 +46,30 @@ suspend fun offerDeletedHouseUndo(
     snackbar: SnackbarHostState,
     deletedLabel: suspend () -> String?,
     restore: suspend () -> Unit,
+    /**
+     * The delete is final: the snackbar closed without *Undo*, or the screen was left (this coroutine cancelled). Runs
+     * under [NonCancellable], like [restore]; the Map and the house list sweep the house's saved walks here (docs/11
+     * 5.27.6). A missed run is caught by the next trigger (app start, Hunt start, sync end, import end).
+     */
+    onFinal: suspend () -> Unit = {},
 ) {
     val label = deletedLabel() ?: return
     val name = label.ifBlank { getString(Res.string.house_unnamed) }
-    val result = snackbar.showSnackbar(
-        message = getString(Res.string.house_deleted, name),
-        actionLabel = getString(Res.string.common_undo),
-        withDismissAction = true,
-        duration = SnackbarDuration.Long,
-    )
+    val result = try {
+        snackbar.showSnackbar(
+            message = getString(Res.string.house_deleted, name),
+            actionLabel = getString(Res.string.common_undo),
+            withDismissAction = true,
+            duration = SnackbarDuration.Long,
+        )
+    } catch (e: CancellationException) {
+        withContext(NonCancellable) { onFinal() }
+        throw e
+    }
     if (result == SnackbarResult.ActionPerformed) {
         withContext(NonCancellable) { restore() }
+    } else {
+        withContext(NonCancellable) { onFinal() }
     }
 }
 
@@ -68,5 +82,38 @@ suspend fun offerDeletedHouseUndo(repo: Repository, snackbar: SnackbarHostState,
     offerDeletedHouseUndo(
         snackbar,
         deletedLabel = { repo.getHouse(houseId)?.takeIf { it.deleted }?.label },
-        restore = { repo.getHouse(houseId)?.takeIf { it.deleted }?.let { repo.saveHouse(it.copy(deleted = false)) } },
+        restore = { repo.restoreHouse(houseId) },
+        onFinal = { repo.sweepWalksOfDeletedHouses() },
     )
+
+/**
+ * "Deleted from Schools: 12" with *Undo* (deletion safeguards PR 3, docs/02 T-D): shown by Settings > What you track after
+ * *Delete all in this space*. *Undo* (within the snackbar's 10 s) brings the [gone] rows back through [restore], one batch,
+ * and says "Restored to Schools: 12". [onFinal] runs when the delete is final (the snackbar closed without *Undo*, or the
+ * screen was left), under [NonCancellable], as in [offerDeletedHouseUndo]: the sweep of the saved walks of those houses.
+ */
+suspend fun offerSpaceDeleteUndo(
+    snackbar: SnackbarHostState,
+    kindName: String,
+    gone: List<String>,
+    restore: suspend (List<String>) -> List<String>,
+    onFinal: suspend () -> Unit = {},
+) {
+    val result = try {
+        snackbar.showSnackbar(
+            message = getString(Res.string.delete_deleted_many, kindName, gone.size.toString()),
+            actionLabel = getString(Res.string.common_undo),
+            withDismissAction = true,
+            duration = SnackbarDuration.Long,
+        )
+    } catch (e: CancellationException) {
+        withContext(NonCancellable) { onFinal() }
+        throw e
+    }
+    if (result == SnackbarResult.ActionPerformed) {
+        val back = withContext(NonCancellable) { restore(gone) }
+        snackbar.showSnackbar(getString(Res.string.delete_restored_many, kindName, back.size.toString()))
+    } else {
+        withContext(NonCancellable) { onFinal() }
+    }
+}

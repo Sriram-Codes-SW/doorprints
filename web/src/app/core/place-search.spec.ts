@@ -21,7 +21,8 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GeocodeService } from './geocode.service';
-import { NOMINATIM_SEARCH, RequestThrottle, placeOf, searchParams } from './place-search';
+import { NOMINATIM_SEARCH, RequestThrottle, inIndia, placeOf, searchParams } from './place-search';
+import placeVectors from '../../../../docs/schemas/india-place-vectors.json';
 
 /**
  * The locality lookup of a shared listing (S4b-BL-83): the request, the one-a-second throttle and the answer, without
@@ -41,6 +42,58 @@ describe('place search', () => {
     expect(searchParams('   ', 'en')).toBeNull();
   });
 
+  // S4b-BL-174: the search text of a locality in eight regions and four scripts goes out as typed (whitespace folded, nothing
+  // cut, no PIN code or Indic letter lost), in the app language.
+  it.each([
+    ['  Sector 21,\n Chandigarh 160022 ', 'en', 'Sector 21, Chandigarh 160022'],
+    ['Bandra West, Mumbai 400050', 'en', 'Bandra West, Mumbai 400050'],
+    ['Candolim,   Goa 403515', 'en', 'Candolim, Goa 403515'],
+    ['Sanjauli, Shimla 171006', 'en', 'Sanjauli, Shimla 171006'],
+    ['Beltola Tiniali, Guwahati 781028', 'en', 'Beltola Tiniali, Guwahati 781028'],
+    ['Kakkanad, Kochi 682030', 'en', 'Kakkanad, Kochi 682030'],
+    ['मालवीय नगर,  जयपुर', 'hi', 'मालवीय नगर, जयपुर'],
+    ['அடையாறு, சென்னை 600020', 'ta', 'அடையாறு, சென்னை 600020'],
+    ['గచ్చిబౌలి, హైదరాబాద్', 'te', 'గచ్చిబౌలి, హైదరాబాద్'],
+    ['সল্টলেক সেক্টর ৩, কলকাতা', 'en', 'সল্টলেক সেক্টর ৩, কলকাতা'],
+  ])('searches for %j as %j in %s', (typed, language, q) => {
+    expect(searchParams(typed, language)).toEqual({ q, format: 'jsonv2', limit: '1', countrycodes: 'in', 'accept-language': language });
+  });
+
+  // S4b-BL-174c: a result in a neighbour's town is not usable even though it is inside India's bounding box, a town of India
+  // beside the same border is, and the places the Government of India depicts as India are India: the vectors the apps read.
+  describe('the outline of India (S4b-BL-174c)', () => {
+    type Point = { name: string; lat: number; lon: number };
+    const vectors = placeVectors as unknown as { places: Point[]; borderTowns: Point[]; abroad: Point[] };
+
+    it.each([...vectors.places, ...vectors.borderTowns].map((p) => [p.name, p] as const))('keeps %s', (_name, p) => {
+      expect(inIndia(p.lat, p.lon)).toBe(true);
+      expect(placeOf([{ lat: String(p.lat), lon: String(p.lon) }])).toEqual({ lat: p.lat, lon: p.lon, label: null });
+    });
+
+    it.each(vectors.abroad.map((p) => [p.name, p] as const))('refuses %s', (_name, p) => {
+      expect(inIndia(p.lat, p.lon)).toBe(false);
+      expect(placeOf([{ lat: String(p.lat), lon: String(p.lon) }])).toBeNull();
+    });
+
+    it('skips a neighbour that comes first and takes the next result in India', () => {
+      expect(placeOf([{ lat: '23.8103', lon: '90.4125' }, { lat: '23.8315', lon: '91.2868', display_name: 'Agartala' }]))
+        .toEqual({ lat: 23.8315, lon: 91.2868, label: 'Agartala' });
+      expect(placeOf([{ lat: '23.8103', lon: '90.4125' }, { lat: '6.9271', lon: '79.8612' }])).toBeNull();
+    });
+
+    it('keeps the islands and refuses the sea and the world', () => {
+      for (const [lat, lon] of [[11.6234, 92.7265], [6.7456, 93.8403], [10.5626, 72.6369], [8.2845, 73.0498]]) expect(inIndia(lat, lon)).toBe(true);
+      for (const [lat, lon] of [[4.1755, 73.5093], [51.5, -0.12], [1.3521, 103.8198], [15.0, 88.0], [0, 0]]) expect(inIndia(lat, lon)).toBe(false);
+    });
+  });
+
+  it('cuts a very long address on a whole character, never inside an emoji of a forwarded message (a lone half would make the request fail)', () => {
+    const q = searchParams('a'.repeat(199) + '\u{1F3E0} Bandra West', 'en')!.q;
+    expect(q).toBe('a'.repeat(199) + '\u{1F3E0}'); // 200 characters, the emoji whole (it took two UTF-16 units, and the 200th was cut in half before)
+    expect(() => encodeURIComponent(q)).not.toThrow();
+    expect(Array.from(searchParams('\u{1F3E0}'.repeat(300), 'en')!.q)).toHaveLength(200);
+  });
+
   it('reads the first usable answer and nothing from an empty or odd one', () => {
     expect(placeOf([{ lat: '12.9784', lon: '77.6408', display_name: 'Indiranagar, Bengaluru' }])).toEqual({ lat: 12.9784, lon: 77.6408, label: 'Indiranagar, Bengaluru' });
     expect(placeOf([{ lat: 'x', lon: '1' }, { lat: '13.05', lon: '80.28' }])).toEqual({ lat: 13.05, lon: 80.28, label: null });
@@ -48,6 +101,33 @@ describe('place search', () => {
     expect(placeOf({ error: 'nope' })).toBeNull();
     expect(placeOf([{ lat: '0', lon: '0' }])).toBeNull();
     expect(placeOf([{ lat: '95', lon: '10' }])).toBeNull();
+  });
+
+  it('reads the street and the locality out of an address the way Nominatim writes it in each region (S4b-BL-174)', async () => {
+    // Which parts a town has differs: a metro has a suburb, a hill station a village or a pedestrian street, Goa a village,
+    // a small city only its city. The first of the usual parts that is present wins; none gives null.
+    const cases: [string, Record<string, string>, string | null, string | null][] = [
+      ['Bandra West, Mumbai', { road: 'Hill Road', suburb: 'Bandra West', city: 'Mumbai' }, 'Hill Road', 'Bandra West'],
+      ['Saket, Delhi', { residential: 'Press Enclave Road', neighbourhood: 'Saket', city: 'New Delhi' }, 'Press Enclave Road', 'Saket'],
+      ['Salt Lake, Kolkata', { road: 'Sector III Main Road', city_district: 'Bidhannagar', city: 'Kolkata' }, 'Sector III Main Road', 'Bidhannagar'],
+      ['Mall Road, Shimla', { pedestrian: 'The Mall', town: 'Shimla' }, 'The Mall', 'Shimla'],
+      ['Candolim, Goa', { road: 'Fort Aguada Road', village: 'Candolim' }, 'Fort Aguada Road', 'Candolim'],
+      ['Beltola, Guwahati', { road: 'Beltola Road', suburb: 'Beltola', town: 'Guwahati' }, 'Beltola Road', 'Beltola'],
+      ['Jaipur', { city: 'Jaipur' }, null, 'Jaipur'],
+      ['a field', { state: 'Gujarat' }, null, null],
+    ];
+    vi.useFakeTimers();
+    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
+    const geocode = TestBed.inject(GeocodeService);
+    const http = TestBed.inject(HttpTestingController);
+    for (const [name, address, street, locality] of cases) {
+      let got: unknown = 'pending';
+      geocode.reverse(20, 78).subscribe((r) => (got = r));
+      await vi.advanceTimersByTimeAsync(1000);
+      http.expectOne((r) => r.url.endsWith('/reverse')).flush({ display_name: `${name}, India`, address });
+      expect(got, name).toEqual({ address: `${name}, India`, street, locality });
+    }
+    http.verify();
   });
 
   it('lets one request through a second', () => {

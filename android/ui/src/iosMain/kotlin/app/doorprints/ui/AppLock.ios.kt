@@ -31,6 +31,11 @@ import platform.darwin.dispatch_get_main_queue
 // The app lock on iOS (docs/11 5.19): LocalAuthentication's device-owner policy, which offers Face ID or Touch ID and
 // falls back to the passcode. Face ID needs NSFaceIDUsageDescription in the app's Info.plist (ios/project.yml).
 
+/**
+ * iPhone's check: LocalAuthentication's device-owner policy (Face ID or Touch ID, then the passcode). A phone with no
+ * passcode answers [CredentialCheck.NO_SCREEN_LOCK]; anything but a pass is [CredentialCheck.CANCELLED]. The reply is
+ * moved to the main thread.
+ */
 @Composable
 actual fun rememberDeviceCredentialCheck(title: String, onResult: (CredentialCheck) -> Unit): () -> Unit {
     val latest by rememberUpdatedState(onResult)

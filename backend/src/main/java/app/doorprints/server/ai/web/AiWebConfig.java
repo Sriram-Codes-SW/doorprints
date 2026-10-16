@@ -19,6 +19,7 @@
 package app.doorprints.server.ai.web;
 
 import app.doorprints.server.ai.config.AiProperties;
+import app.doorprints.server.common.TokenBucketRateLimiter;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -30,6 +31,9 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class AiWebConfig {
 
+    /**
+     * Builds the AI and MCP limiters from the configured rates and registers the filter at order 3.
+     */
     @Bean
     public FilterRegistrationBean<AiRateLimitFilter> aiRateLimitFilter(AiProperties props) {
         var rl = props.rateLimit();

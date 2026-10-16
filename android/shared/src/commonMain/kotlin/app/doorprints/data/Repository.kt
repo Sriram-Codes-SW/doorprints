@@ -18,7 +18,17 @@
 
 package app.doorprints.data
 
+import app.doorprints.shared.model.Candidates
+import app.doorprints.shared.model.KindTally
+import app.doorprints.shared.ai.AiProviderConfig
+import app.doorprints.shared.ai.AiQuality
 import app.doorprints.shared.api.AskResponseDto
+import app.doorprints.shared.trace.TracePoint
+import app.doorprints.shared.trace.TraceWalk
+import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import app.doorprints.shared.api.HouseDraftDto
 import app.doorprints.shared.api.PairPolledDto
 import app.doorprints.shared.api.PairStartedDto
@@ -37,6 +47,9 @@ import app.doorprints.shared.export.ExportPreference
 import app.doorprints.shared.export.ImportMode
 import app.doorprints.shared.model.Broker
 import app.doorprints.shared.model.Criterion
+import app.doorprints.shared.model.KindSetting
+import app.doorprints.shared.model.KindSettingRules
+import app.doorprints.shared.model.SpaceView
 import app.doorprints.shared.model.HouseAnswer
 import app.doorprints.shared.model.PhotoMeta
 import app.doorprints.shared.model.Question
@@ -68,11 +81,29 @@ import kotlinx.coroutines.flow.StateFlow
  */
 enum class AiOff { NO_SERVER, SERVER, DEVICE, OPT_IN }
 
+/**
+ * The one door the screens use for everything the phone remembers: houses, visits, photos, brokers, scoring,
+ * questions, viewings, areas, settings, the path trace, AI, sync and the copies. Writes are local edits (dirty,
+ * `updatedAt` now) followed by a request for a sync soon; reads are flows or snapshots of live rows, tombstones
+ * hidden. [CommonRepository] is the implementation both apps share.
+ */
 interface Repository {
     val settings: SettingsStore
 
     /** Live houses, newest edit first. */
     val houses: Flow<List<HouseEntity>>
+
+    /**
+     * The live candidates [space] holds, newest edit first (S4b-BL-303). The store reads one space's rows through the `kind` index;
+     * this default filters [houses] in memory by the same rule ([SpaceView.holds]), for a store that has no index of its own.
+     */
+    fun housesOf(space: SpaceView): Flow<List<HouseEntity>> = houses.map { list -> list.filter { space.holds(it.kind) } }
+
+    /** How many live candidates each kind holds and when the newest changed, for the chooser's cards (S4b-BL-303); a kind with none is absent. */
+    val kindTallies: Flow<List<KindTally>>
+        get() = houses.map { list ->
+            list.groupBy { it.kind }.map { (kind, rows) -> KindTally(kind, rows.size, rows.maxOf { it.updatedAt }) }
+        }
 
     /** Live visits per live house. */
     val visitCounts: Flow<List<HouseVisitCount>>
@@ -93,8 +124,31 @@ interface Repository {
     /** Turns a house into a tombstone (see [saveHouse]); nothing when there is no such house. */
     suspend fun deleteHouse(id: String)
 
+    /**
+     * *Delete all in this space* (deletion safeguards PR 3, docs/02 T-D): tombstones the live houses among [ids] in ONE
+     * transaction, each stamped later than the row it replaces. The caller names the ids of one space; this reads no other
+     * row. A house that is already deleted or missing is skipped (its tombstone and its time stay as they are). Returns the
+     * ids deleted.
+     */
+    suspend fun deleteHouses(ids: List<String>): List<String>
+
+    /**
+     * Brings a tombstone back (*Undo*, *Recently deleted*): `deleted = false`, `updatedAt` moved past the tombstone's, dirty,
+     * so a sync carries it (last write wins). Its photos and visits were never removed by the delete. False when the house
+     * is missing or not deleted. Only this row is written.
+     */
+    suspend fun restoreHouse(id: String): Boolean
+
+    /** [restoreHouse] for many at once (*Undo* of *Delete all in this space*); returns the ids brought back. */
+    suspend fun restoreHouses(ids: List<String>): List<String>
+
+    /** Every tombstone, newest first, for *Recently deleted* (`DeleteScope.binRows` picks one space's, younger than 30 days). */
+    fun observeDeletedHouses(): Flow<List<HouseEntity>>
+
+    /** Writes [visit] as a local edit (`updatedAt` now, dirty) and asks for a sync soon. */
     suspend fun saveVisit(visit: VisitEntity)
     suspend fun getVisit(id: String): VisitEntity?
+    /** Turns a visit into a tombstone (see [deleteHouse]); nothing when there is no such visit. */
     suspend fun deleteVisit(id: String)
 
     /** Records a "been here" visit for a house, now. */
@@ -104,11 +158,63 @@ interface Repository {
 
     /** The path trace of the last [TRACK_KEPT_DAYS] days, oldest first (docs/11 5.27; this phone only). */
     val trackPoints: Flow<List<TrackPointEntity>>
+    /** Appends one point to the path trace; local to this phone, never synced. */
     suspend fun saveTrackPoint(point: TrackPointEntity)
     /** Points older than [before] go (the retention limit; the engine calls it when Hunt mode starts). */
     suspend fun pruneTrack(before: Long)
-    /** *Clear the path* in Settings. */
+    /** *Clear the path* in Settings: the 30-day trace only (saved walks stay). */
     suspend fun clearTrack()
+
+    // Saved walks and the walks the Map, the alert and the place check read (docs/11 5.27.6, S4b-FR-14). Local only.
+    // Each has a default so a fake `Repository` of a test need not know them.
+
+    /** *Saved walks: n* in Settings: the saved walks of live houses. */
+    val savedWalkCount: Flow<Int> get() = flowOf(0)
+
+    /** The *Saved walks* card of a house: newest first, the walks of a deleted house hidden at once. */
+    fun savedWalksOf(houseId: String): Flow<List<SavedWalkSummary>> = flowOf(emptyList())
+
+    /**
+     * *Save with a house*: moves the walk [walkId] out of the 30-day trace into a saved walk of [houseId] in one
+     * transaction, or refuses (too long, 20 a house, 200 a device) and changes nothing.
+     */
+    suspend fun saveWalk(houseId: String, walkId: Long): SaveWalkResult = SaveWalkResult.NoSuchWalk
+
+    /** *Delete this walk* in the sheet: the walk's points leave the 30-day trace. */
+    suspend fun deleteTraceWalk(walkId: Long) {}
+
+    /** *Delete walk* on a house page. */
+    suspend fun deleteSavedWalk(id: String) {}
+
+    /** *Delete all saved walks*. */
+    suspend fun deleteAllSavedWalks() {}
+
+    /** One saved walk's points, for *Show on map*; null when it is gone or its bytes do not decode. */
+    suspend fun savedWalkPoints(id: String): List<TracePoint>? = null
+
+    /**
+     * The walk to ask *Save this walk?* about (docs/11 5.27.6): the newest walk id in the trace that is not
+     * [liveWalkId], is above `walkAskedUpTo` and has at least 5 points and 100 m; null when none.
+     */
+    suspend fun lastEndedWalk(liveWalkId: Long = 0): Long? = null
+
+    /** Every walk stored: the 30-day trace split into walks, and every saved walk of a live house (the check, the Map). */
+    suspend fun walks(): List<TraceWalk> = emptyList()
+
+    /**
+     * [walks], one at a time (the place check, docs/11 5.27.13): a saved walk is read and decoded when the collector asks for
+     * it, so the saved walks are never all in memory together. The default wraps [walks].
+     */
+    fun placeWalks(): Flow<TraceWalk> = flow { for (w in walks()) emit(w) }
+
+    /** The walks the alert compares the live walk [liveWalkId] with: [walks] without the live one. */
+    suspend fun walksOtherThan(liveWalkId: Long): List<List<TracePoint>> = emptyList()
+
+    /** Emits at once and after each change to the trace, the saved walks or the houses (never part of `localRowsFlow`). */
+    fun walksChanged(): Flow<Unit> = emptyFlow()
+
+    /** Deletes every saved walk whose house is a tombstone or missing (when a delete is final; docs/11 5.27.6). */
+    suspend fun sweepWalksOfDeletedHouses() {}
 
     /** Deletes the photo's local file now; a photo the server has is queued for deletion on the next sync. */
     suspend fun deletePhoto(photo: PhotoEntity)
@@ -223,7 +329,13 @@ interface Repository {
      * *Reset to defaults*: every default is written again in [language] whatever its record says (a deleted or edited
      * default comes back); the person's own questions stay.
      */
-    suspend fun resetQuestions(language: String)
+    suspend fun resetQuestions(language: String, kind: String = Candidates.BASELINE_KIND)
+
+    /**
+     * Seeds [kind]'s own bank once, in [language] (`questions.seeded.<kind>`; kinds PR 29, docs/03 section 18.23): the school's six
+     * questions the first time its questions are opened. Nothing for the house, whose seed is [seedQuestionsOnce]'s.
+     */
+    suspend fun seedKindQuestionsOnce(kind: String, language: String)
 
     /**
      * Saves one question (coerced; `IllegalArgumentException` for a bad id or a text outside 1..300). Nothing is written
@@ -243,6 +355,7 @@ interface Repository {
         category: QuestionCategory = QuestionCategory.OTHER,
         appliesTo: QuestionScope = QuestionScope.BOTH,
         defaultOn: Boolean = false,
+        kind: String = Candidates.BASELINE_KIND,
     ): String
 
     /** Deletes a question, seeded or custom (a tombstone; a deleted default stays deleted until Reset). */
@@ -326,6 +439,7 @@ interface Repository {
 
     suspend fun newPlaceId(): String
 
+    /** Deletes a place (a tombstone). */
     suspend fun deletePlace(id: String)
 
     /** The live area notes, newest first (ties by id), each with its `updatedAt`, now and after each change. */
@@ -341,8 +455,13 @@ interface Repository {
 
     suspend fun newAreaNoteId(): String
 
+    /** Deletes an area note (a tombstone). */
     suspend fun deleteAreaNote(id: String)
 
+    /**
+     * Asks the saved server for its stats, to tell the person whether the address and key work; the failure is
+     * returned, not thrown.
+     */
     suspend fun testConnection(): Result<StatsDto>
 
     /**
@@ -353,6 +472,12 @@ interface Repository {
 
     /** Why AI is not offered, or null when it is ([aiEnabled]). */
     val aiOff: StateFlow<AiOff?>
+
+    /** Whether AI answers from the person's own key on this phone (which reads any space; the server's reads only the kinds [aiServerKinds] names). */
+    val aiOwnKey: StateFlow<Boolean>
+
+    /** The kinds the server's Ask and Plan accept, from its status (S4b-BL-290); none for an older server or while the house is the only kind. */
+    val aiServerKinds: StateFlow<List<String>> get() = NoServerKinds
     suspend fun refreshAiStatus(): Boolean
 
     /** Turns this phone's *AI features* switch on or off; [aiEnabled] follows at once. */
@@ -366,11 +491,29 @@ interface Repository {
     /** Forgets the Gemini key; AI goes back to the server, if one is connected. */
     suspend fun removeGeminiKey()
 
+    /**
+     * Saves the *AI speed and cost* choice (S4b-BL-198 step 2): only the own-key Gemini client reads it; for any other
+     * service it is kept and ignored. [removeGeminiKey] forgets it.
+     */
+    suspend fun setAiQuality(quality: AiQuality)
+
     /** Chooses who answers AI requests; the Gemini key, if any, is kept. */
     suspend fun setAiProvider(choice: AiProviderChoice)
 
     /** Whether Google accepts [key]: one tiny request, nothing saved. */
     suspend fun testGeminiKey(key: String): Result<Unit>
+
+    /**
+     * Saves the person's AI choice for this device (docs/03 §13.2, ADR-35) and answers AI requests with it: [config]
+     * (the address and the model are for an OpenAI-compatible endpoint; Gemini keeps neither) and [key] (blank for a
+     * model on the person's own computer). Fails with an [IllegalArgumentException] naming the problem (a
+     * [app.doorprints.shared.ai.BaseUrlReason] wire name, or `model`, or `kind`) and saves nothing. [removeGeminiKey]
+     * clears the choice again.
+     */
+    suspend fun saveAiProviderConfig(config: AiProviderConfig, key: String)
+
+    /** Whether the provider answers with [config] and [key]: one tiny request, nothing saved (docs/03 §13.2, *Test*). */
+    suspend fun testAiProvider(config: AiProviderConfig, key: String): Result<Unit>
 
     // Pairing (docs/03 §12.1, ADR-25): the app gets a device key of its own, with no key typed.
 
@@ -383,8 +526,16 @@ interface Repository {
     /** Redeems a connect link's invite and returns the device key; an [ApiException] with code 410 when it was used. */
     suspend fun redeemInvite(link: ConnectLink, deviceName: String): String
     suspend fun extractListing(text: String): HouseDraftDto
-    suspend fun ask(question: String): AskResponseDto
-    suspend fun planVisits(request: PlanRequest): PlanResponseDto
+
+    /** As above for a candidate of another kind the extract fills (kinds PR 7, S4b-BL-211); a house's call is the one above. */
+    suspend fun extractListing(text: String, kind: String): HouseDraftDto = extractListing(text)
+
+    /**
+     * Ask and Plan read one space (kinds PR C, S4b-BL-289; docs/03 §18.13): a [space] reads that space's candidates only
+     * (on this device's AI; the server's Ask and Plan take no kind, S4b-BL-290), `null` every candidate, as before.
+     */
+    suspend fun ask(question: String, space: SpaceView? = null): AskResponseDto
+    suspend fun planVisits(request: PlanRequest, space: SpaceView? = null): PlanResponseDto
 
     /** Two-way sync; photo transfers only when [photosAllowed]. Throws on failure; see [SyncOutcome.fromError]. */
     suspend fun sync(photosAllowed: Boolean = true): SyncOutcome
@@ -417,6 +568,10 @@ interface Repository {
         records: Map<String, Long> = emptyMap(),
     ): UndoResult
 
+    /**
+     * What the phone knows about one street: its live houses and visits and the first visit, for the Hunt card and
+     * the street alert.
+     */
     data class StreetInfo(val street: String, val houses: Int, val visits: Int, val firstVisit: Long?)
 
     companion object {
@@ -452,6 +607,8 @@ interface Repository {
         val areaNotes: List<ExportAreaNote> = emptyList(),
         /** The houses deleted here, id to the `updatedAt` of the delete: an update file's deletions (S4b-BL-82). */
         val deletedHouses: Map<String, Long> = emptyMap(),
+        /** What this device tracks (kinds PR C, S4b-BL-274): a backup's `search` object names the kinds on and the default. */
+        val kinds: KindSetting = KindSetting(),
     )
 
     /** What is already on this phone, for the import preview's last-write-wins comparison (tombstones included). */
@@ -560,3 +717,5 @@ interface Repository {
      */
     data class UndoResult(val removed: Int, val kept: Int, val keptHouses: Set<String> = emptySet())
 }
+
+private val NoServerKinds: StateFlow<List<String>> = kotlinx.coroutines.flow.MutableStateFlow<List<String>>(emptyList())

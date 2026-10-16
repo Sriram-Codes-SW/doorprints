@@ -18,6 +18,7 @@
 
 package app.doorprints.server.ai.vertex;
 
+import app.doorprints.server.ai.web.AiExceptionHandlers;
 import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.genai.errors.ApiException;
@@ -335,6 +336,91 @@ class VertexGenerateContentContractTest {
         assertThat(result.entity().citedHouseIds()).containsExactly("0b3f2c1e-5d6a-4f7b-9c8d-1e2f3a4b5c6d");
     }
 
+    // What a provider safety block does on the server today (S4b-BL-232, docs/ai/ai-design.md 15; S4b-BL-233 declines a finish
+    // reason that keeps text, see below; these two shapes are what is left). Shapes: ai.google.dev/api/generate-content, promptFeedback.blockReason
+    // (no candidates) and a candidate finishReason SAFETY.
+
+    static final String PROMPT_BLOCKED = """
+            {
+              "promptFeedback": {
+                "blockReason": "SAFETY"
+              },
+              "usageMetadata": {
+                "promptTokenCount": 9,
+                "totalTokenCount": 9
+              },
+              "modelVersion": "gemini-3.5-flash",
+              "responseId": "5fbRaOnZIdOq2PgP-L3P8Ag"
+            }
+            """;
+
+    static final String ANSWER_BLOCKED = """
+            {
+              "candidates": [
+                {
+                  "finishReason": "SAFETY"
+                }
+              ],
+              "usageMetadata": {
+                "promptTokenCount": 412,
+                "totalTokenCount": 412
+              },
+              "modelVersion": "gemini-3.5-flash",
+              "responseId": "6fbRaPoaJeOq2PgP-L3P8Ag"
+            }
+            """;
+
+    @Test
+    void todayABlockedPromptAndASafetyFinishFailTheStructuredCallAfterOneRequest() {
+        var seen = new java.util.ArrayList<String>();
+        for (var body : List.of(PROMPT_BLOCKED, ANSWER_BLOCKED)) {
+            replies.clear();
+            requestBodies.clear();
+            replies.add(new Reply(200, body));
+
+            String outcome;
+            try {
+                var result = ChatClient.create(model(0)).prompt().user("q").call().responseEntity(ModelAnswer.class);
+                outcome = "returned entity=" + result.entity() + " text=" + result.response().getResult().getOutput().getText();
+            } catch (RuntimeException e) {
+                outcome = "threw " + e.getClass().getName() + " cause=" + app.doorprints.server.ai.ProviderErrors.cause(e);
+            }
+            seen.add(outcome + " requests=" + requestBodies.size());
+        }
+        // Order is the loop's: first PROMPT_BLOCKED (promptFeedback.blockReason SAFETY, no candidates), then ANSWER_BLOCKED
+        // (candidate finishReason SAFETY). This pins TODAY's behaviour (observed in CI): both fail inside Spring AI with an
+        // internal exception, after one request and with no cause ProviderErrors can classify. A change in
+        // Spring AI that exposes the block reason (S4b-BL-233, docs/ai/ai-design.md 15.3) must change this test on purpose.
+        assertThat(seen).as("observed outcomes").containsExactly(
+                "threw java.lang.NullPointerException cause=null requests=1",
+                "threw java.util.NoSuchElementException cause=null requests=1");
+    }
+
+    /**
+     * S4b-BL-233: a candidate withheld for a safety finish reason that still carries text (the shared vector "answer withheld:
+     * PROHIBITED_CONTENT, even with partial text") reaches {@link app.doorprints.server.ai.SafetyBlockAdvisor} with its finish
+     * reason and is declined. A candidate with no content at all (above) and a blocked prompt fail inside Spring AI before any
+     * advisor sees them: the part of 15.3 that stays a generic 503, pinned by the test above.
+     */
+    @Test
+    void aSafetyFinishThatKeepsPartialTextIsDeclinedAndOtherFinishReasonsAreNot() {
+        for (var reason : List.of("PROHIBITED_CONTENT", "SAFETY", "BLOCKLIST", "SPII", "RECITATION")) {
+            replies.clear();
+            requestBodies.clear();
+            replies.add(new Reply(200, JSON_RESPONSE.replace("\"finishReason\": \"STOP\"", "\"finishReason\": \"" + reason + "\"")));
+            var client = ChatClient.builder(model(0)).defaultAdvisors(new app.doorprints.server.ai.SafetyBlockAdvisor()).build();
+            var thrown = catchThrowable(() -> client.prompt().user("q").call().responseEntity(ModelAnswer.class));
+            assertThat(thrown).as(reason).isInstanceOf(app.doorprints.server.ai.ProviderBlockedException.class);
+            assertThat(requestBodies).as("never asked again").hasSize(1);
+        }
+        for (var reason : List.of("STOP", "MAX_TOKENS", "OTHER", "LANGUAGE")) {
+            replies.clear();
+            replies.add(new Reply(200, JSON_RESPONSE.replace("\"finishReason\": \"STOP\"", "\"finishReason\": \"" + reason + "\"")));
+            var client = ChatClient.builder(model(0)).defaultAdvisors(new app.doorprints.server.ai.SafetyBlockAdvisor()).build();
+            assertThat(client.prompt().user("q").call().responseEntity(ModelAnswer.class).entity()).as(reason).isNotNull();
+        }
+    }
+
     @Test
     void functionCallRoundTripSendsTheThoughtSignatureBack() {
         replies.add(new Reply(200, FUNCTION_CALL_RESPONSE));
@@ -374,7 +460,7 @@ class VertexGenerateContentContractTest {
         assertThat(ProviderErrors.isQuotaExhausted(thrown)).isTrue();
 
         // What the app's clients and the eval harness see: 503 + code AI_QUOTA_EXHAUSTED + Retry-After.
-        var response = new AiExceptionHandler().aiUnavailable(new AiUnavailableException("Answering failed", thrown));
+        var response = AiExceptionHandlers.of(null).aiUnavailable(new AiUnavailableException("Answering failed", thrown));
         assertThat(response.getStatusCode().value()).isEqualTo(503);
         assertThat(response.getHeaders().getFirst(HttpHeaders.RETRY_AFTER)).isEqualTo("60");
         assertThat(response.getBody()).isNotNull();
@@ -391,7 +477,7 @@ class VertexGenerateContentContractTest {
         assertThat(requestBodies).hasSize(1);
         assertThat(rootApiException(thrown).code()).isEqualTo(403);
         assertThat(ProviderErrors.isQuotaExhausted(thrown)).isFalse();
-        var response = new AiExceptionHandler(handlerProps())
+        var response = AiExceptionHandlers.of(handlerProps())
                 .aiUnavailable(new AiUnavailableException("Answering failed", thrown));
         assertThat(response.getStatusCode().value()).isEqualTo(503);
         assertThat(response.getHeaders().getFirst(HttpHeaders.RETRY_AFTER)).isNull();
@@ -416,7 +502,7 @@ class VertexGenerateContentContractTest {
         assertThat(ProviderErrors.httpFailure(thrown))
                 .contains(new ProviderErrors.HttpFailure(ProviderErrors.Call.CHAT, 404));
 
-        var response = new AiExceptionHandler(handlerProps())
+        var response = AiExceptionHandlers.of(handlerProps())
                 .aiUnavailable(new AiUnavailableException("Answering failed", thrown));
         assertThat(response.getStatusCode().value()).isEqualTo(503);
         assertThat(response.getBody()).isNotNull();
@@ -425,7 +511,7 @@ class VertexGenerateContentContractTest {
                 .doesNotContain("AI_VERTEX_EMBEDDING_LOCATION").doesNotContain(PROJECT);
 
         // AI Studio setups (or a handler without settings) get no Vertex hint.
-        var aiStudio = new AiExceptionHandler(AiProperties.defaults())
+        var aiStudio = AiExceptionHandlers.of(AiProperties.defaults())
                 .aiUnavailable(new AiUnavailableException("Answering failed", thrown));
         assertThat(aiStudio.getBody()).isNotNull();
         assertThat(aiStudio.getBody().getProperties()).doesNotContainKey(AiExceptionHandler.SETUP_HINT_PROPERTY);

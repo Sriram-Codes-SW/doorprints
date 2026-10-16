@@ -50,7 +50,7 @@ describe('OnDeviceAiService (ADR-26)', () => {
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
-        { provide: LocalStore, useValue: { allHouses: async () => houses, allVisits: async () => [], viewings: async () => [], areas: async () => areas, places: async () => places, areaNoteRows: async () => noteRows } },
+        { provide: LocalStore, useValue: { allHouses: async () => houses, allVisits: async () => [], viewings: { all: async () => [] }, areas: { all: async () => areas }, places: { all: async () => places }, areaNotes: { rows: async () => noteRows } } },
       ],
     });
     http = TestBed.inject(HttpTestingController);
@@ -90,6 +90,16 @@ describe('OnDeviceAiService (ADR-26)', () => {
     req.flush(reply({ answer: 'House h1 is quiet [house:h1] [house:nope].', citedHouseIds: ['h1', 'nope'] }));
     const res = await answer;
     expect(res.grounded).toBe(true);
+    expect(res.citations.map((c) => c.houseId)).toEqual(['h1']);
+  });
+
+  it('removes a link or image the model put into an answer, as the server does (S4b-BL-178)', async () => {
+    houses = [house('h1', { notes: 'Quiet street, photos at https://example.com/l/1.' })];
+    const answer = ai.ask('AIzaTestKey1234', 'Which house is quiet?');
+    const req = await geminiRequest();
+    req.flush(reply({ answer: 'Quiet [house:h1] ![x](https://evil.example/t.png?d=1) see https://evil.example/log and https://example.com/l/1', citedHouseIds: ['h1'] }));
+    const res = await answer;
+    expect(res.answer).toBe('Quiet [house:h1] x see [link removed] and https://example.com/l/1');
     expect(res.citations.map((c) => c.houseId)).toEqual(['h1']);
   });
 

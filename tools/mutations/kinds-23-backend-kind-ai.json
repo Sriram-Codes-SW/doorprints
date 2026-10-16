@@ -1,0 +1,244 @@
+{
+  "spec": [
+    "backend/src/test/java/app/doorprints/server/ai/rag/RagServiceKindScopeTest.java",
+    "backend/src/test/java/app/doorprints/server/ai/agent/KindScopedPlanTest.java",
+    "backend/src/test/java/app/doorprints/server/ai/web/AskPlanKindRequestTest.java",
+    "backend/src/test/java/app/doorprints/server/ai/web/AiControllerKindTest.java",
+    "backend/src/test/java/app/doorprints/server/ai/web/AiStatusControllerTest.java",
+    "backend/src/test/java/app/doorprints/server/ai/eval/SchoolSetTest.java"
+  ],
+  "maven": [
+    "-Dtest=RagServiceKindScopeTest,KindScopedPlanTest,AskPlanKindRequestTest,AiControllerKindTest,AiStatusControllerTest,SchoolSetTest",
+    "-Djava.version=21"
+  ],
+  "mutations": [
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/rag/RagService.java",
+      "find": "        if (kind != null) kinds.require(kind);\n",
+      "replace": "",
+      "expect": "aKindOutsideTheListIsA400BeforeAnythingIsTouched"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/rag/RagService.java",
+      "find": "                docs = inKind(docs, kind, rows);\n",
+      "replace": "",
+      "expect": "aSchoolKindIsSearchedByItsStampAndReadsOnlyRowsOfThatKind"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/rag/RagService.java",
+      "find": "                visited = inKind(visited, kind, rows);\n",
+      "replace": "",
+      "expect": "aVisitQuestionSearchesTheStampAgainAndDropsOtherKindsFromBothLists"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/rag/RagService.java",
+      "find": "return row != null && kind.equals(row.getKind());",
+      "replace": "return row == null || kind.equals(row.getKind());",
+      "expect": "aDocumentWithNoStoredRowCannotBeShownToBeOfTheKindAndIsDropped"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/rag/RagService.java",
+      "find": "String stamp = kind == null || kinds.of(kind) == null ? null : kind;",
+      "replace": "String stamp = null;",
+      "expect": "aSchoolKindIsSearchedByItsStampAndReadsOnlyRowsOfThatKind"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/rag/RagService.java",
+      "find": "int fetch = kind == null || stamp != null ? topK : topK * SCOPE_OVERFETCH;",
+      "replace": "int fetch = topK;",
+      "expect": "theHouseKindIsNarrowedByTheRowsAndFetchesMoreToMakeUpForWhatIsDropped"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/rag/RagService.java",
+      "find": "return kinds.readAs(kind).refusal();",
+      "replace": "return AskPrompts.I_DONT_KNOW;",
+      "expect": "nothingOfTheKindIsTheKindsOwnSentenceAndNoModelCall"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/rag/RagService.java",
+      "find": "                if (docs != null && docs.size() > topK) docs = docs.subList(0, topK);\n",
+      "replace": "",
+      "expect": "whatIsKeptOfAKindIsCappedAtTheTopKAfterTheNarrowing"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/rag/RagService.java",
+      "find": ".filterExpression(AskPrompts.filter(filters, null, stamp))",
+      "replace": ".filterExpression(AskPrompts.filter(filters, null, null))",
+      "expect": "aSchoolKindIsSearchedByItsStampAndReadsOnlyRowsOfThatKind"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/rag/RagService.java",
+      "find": ".filterExpression(AskPrompts.filter(filters, !negated, stamp))",
+      "replace": ".filterExpression(AskPrompts.filter(filters, !negated, null))",
+      "expect": "aVisitQuestionSearchesTheStampAgainAndDropsOtherKindsFromBothLists"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/rag/AskPrompts.java",
+      "find": "FilterExpressionBuilder.Op op = kind == null ? null : b.eq(\"kind\", kind);",
+      "replace": "FilterExpressionBuilder.Op op = null;",
+      "expect": "theStampIsAndedWithTheFiltersAndTheVisitedFlag"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/rag/AskPrompts.java",
+      "find": "if (f == null && visited == null && kind == null) return null;",
+      "replace": "if (f == null && visited == null) return null;",
+      "expect": "theStampIsAndedWithTheFiltersAndTheVisitedFlag"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/rag/AskModels.java",
+      "find": "@Pattern(regexp = House.KIND_PATTERN) String kind) {\n        /** A call that names no kind. */",
+      "replace": "String kind) {\n        /** A call that names no kind. */",
+      "expect": "aMalformedKindIsRefusedByTheValidatorOnBothCalls"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/PlanModels.java",
+      "find": "@Pattern(regexp = House.KIND_PATTERN) String kind) {\n        /** A request that names no kind. */",
+      "replace": "String kind) {\n        /** A request that names no kind. */",
+      "expect": "aMalformedKindIsRefusedByTheValidatorOnBothCalls"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/web/AiController.java",
+      "find": "return rag.ask(body.question(), body.filters(), body.kind());",
+      "replace": "return rag.ask(body.question(), body.filters(), null);",
+      "expect": "askPassesItsKindAndAnAbsentKindIsNull"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/VisitPlannerService.java",
+      "find": "        if (request.kind() != null) kinds.require(request.kind());\n",
+      "replace": "",
+      "expect": "aKindOutsideTheListIsA400BeforeAnyToolOrModelCall"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/VisitPlannerService.java",
+      "find": "new VisitPlannerTools(queries, request.startLat(), request.startLon(), request.kind());",
+      "replace": "new VisitPlannerTools(queries, request.startLat(), request.startLon(), null);",
+      "expect": "aSchoolPlanReadsOnlySchoolsAndTheSchoolsPlannerTextOfTheVectors"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/VisitPlannerService.java",
+      "find": ".system(systemPrompt(request.startLat(), request.startLon(), maxStops, kindWords))\n                    .user(userText(request, nonce))\n                    .tools(tools)",
+      "replace": ".system(systemPrompt(request.startLat(), request.startLon(), maxStops))\n                    .user(userText(request, nonce))\n                    .tools(tools)",
+      "expect": "aSchoolPlanReadsOnlySchoolsAndTheSchoolsPlannerTextOfTheVectors"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/VisitPlannerService.java",
+      "find": ".system(systemPrompt(request.startLat(), request.startLon(), maxStops, kindWords))\n                    .user(userText(request, nonce) + \"\\n\\n\" + limitNotice",
+      "replace": ".system(systemPrompt(request.startLat(), request.startLon(), maxStops))\n                    .user(userText(request, nonce) + \"\\n\\n\" + limitNotice",
+      "expect": "theWrapUpAfterTheToolLimitReadsTheSameKindWithTheSameWords"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/VisitPlannerService.java",
+      "find": "var text = kind == null || kind.planSystem() == null ? AiKinds.HOUSE.planSystem() : kind.planSystem();",
+      "replace": "var text = kind == null ? AiKinds.HOUSE.planSystem() : kind.planSystem();",
+      "expect": "theSchoolsTextOnlyChangesTheWordsNotTheRulesAHouseHas"
+    },
+    {
+      "file": "backend/src/main/resources/kinds/school.prompts.json",
+      "find": "You plan school visits for one person who is choosing a school.",
+      "replace": "You plan house visits for one person who is choosing a school.",
+      "expect": "aSchoolPlanReadsOnlySchoolsAndTheSchoolsPlannerTextOfTheVectors"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/HouseSearchService.java",
+      "find": "houses.list(null).stream()\n                .filter(h -> inKind(h, kind))\n",
+      "replace": "houses.list(null).stream()\n",
+      "expect": "everyToolReadsTheKindsCandidatesOnly"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/HouseSearchService.java",
+      "find": ".stream().filter(h -> inKind(h, kind))\n                .sorted(NEAREST_FIRST)",
+      "replace": ".stream()\n                .sorted(NEAREST_FIRST)",
+      "expect": "everyToolReadsTheKindsCandidatesOnly"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/HouseSearchService.java",
+      "find": "return kind == null || kind.equals(AiKinds.kindOf(h.kind()));",
+      "replace": "return true;",
+      "expect": "everyToolReadsTheKindsCandidatesOnly"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/HouseQueries.java",
+      "find": "if (h.deleted() || !HouseSearchService.inKind(h, kind)) throw",
+      "replace": "if (h.deleted()) throw",
+      "expect": "theDetailsAndTheVisitsOfAnotherKindsCandidateAreAMissingOne"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/HouseQueries.java",
+      "find": "if (kind != null && !HouseSearchService.inKind(search.details(parseId(houseId)), kind)) {",
+      "replace": "if (false) {",
+      "expect": "theDetailsAndTheVisitsOfAnotherKindsCandidateAreAMissingOne"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/HouseQueries.java",
+      "find": "minBedrooms, null, minRating, limit), kind);",
+      "replace": "minBedrooms, null, minRating, limit), null);",
+      "expect": "everyToolReadsTheKindsCandidatesOnly"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/HouseQueries.java",
+      "find": "return search.nearby(lat, lon, radiusMeters == null ? 1000 : radiusMeters, kind);",
+      "replace": "return search.nearby(lat, lon, radiusMeters == null ? 1000 : radiusMeters, null);",
+      "expect": "everyToolReadsTheKindsCandidatesOnly"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/VisitPlannerTools.java",
+      "find": "minRating, limit, kind));",
+      "replace": "minRating, limit, null));",
+      "expect": "theToolboxPassesItsKindToEveryTool"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/VisitPlannerTools.java",
+      "find": "queries.nearbyHouses(lat, lon, radiusMeters, kind));",
+      "replace": "queries.nearbyHouses(lat, lon, radiusMeters, null));",
+      "expect": "theToolboxPassesItsKindToEveryTool"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/VisitPlannerTools.java",
+      "find": "return queries.houseDetails(houseId, kind);",
+      "replace": "return queries.houseDetails(houseId, null);",
+      "expect": "theToolboxPassesItsKindToEveryTool"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/agent/VisitPlannerTools.java",
+      "find": "return queries.visitHistory(houseId, kind);",
+      "replace": "return queries.visitHistory(houseId, null);",
+      "expect": "theToolboxPassesItsKindToEveryTool"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/web/AiStatusController.java",
+      "find": "var accepted = enabled && kinds.available().size() > 1 ? kinds.available() : null;",
+      "replace": "var accepted = enabled ? kinds.available() : null;",
+      "expect": "theStatusNamesTheKindsAskAndPlanAcceptOnlyBeyondTheHouse"
+    },
+    {
+      "file": "backend/src/main/java/app/doorprints/server/ai/web/AiStatusController.java",
+      "find": "@JsonInclude(JsonInclude.Include.NON_EMPTY) List<String> kinds)",
+      "replace": "List<String> kinds)",
+      "expect": "theKindOfAStatusIsLeftOutForAHouseOnlyServer"
+    },
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/InjectionScoring.java",
+      "find": "boolean school = \"school\".equals(kind);",
+      "replace": "boolean school = EvalScorer.EXTRACT.equals(type) && \"school\".equals(kind);",
+      "expect": "theSchoolsAskAndPlanAreLeakCheckedAgainstTheTextTheServerSendsForASchool"
+    },
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/InjectionScoring.java",
+      "find": "case EvalScorer.PLAN + \"/school\" -> planSources(app.doorprints.server.ai.kind.AiKinds.SCHOOL);",
+      "replace": "case EvalScorer.PLAN + \"/school\" -> planSources(null);",
+      "expect": "theSchoolsAskAndPlanAreLeakCheckedAgainstTheTextTheServerSendsForASchool"
+    },
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/InjectionScoring.java",
+      "find": "case EvalScorer.ASK + \"/school\" -> List.of(schoolAsk());",
+      "replace": "case EvalScorer.ASK + \"/school\" -> List.of(AskPrompts.build(\"\", List.of(), NONCE).system().replace(AskPrompts.I_DONT_KNOW, \"\"));",
+      "expect": "theSchoolsAskAndPlanAreLeakCheckedAgainstTheTextTheServerSendsForASchool"
+    },
+    {
+      "file": "docs/ai/evals/school-set.json",
+      "find": "\"input\": {\"kind\": \"school\", \"question\": \"Which of my schools follow the CBSE board and run a school bus?\"",
+      "replace": "\"input\": {\"question\": \"Which of my schools follow the CBSE board and run a school bus?\"",
+      "expect": "everyAskAndPlanCaseOfTheSchoolSetNamesItsKind"
+    }
+  ]
+}

@@ -28,10 +28,18 @@ import type { Area, AreaNoteRow, AreaRow, PlaceDistance, PlaceRow } from '../sha
 import { compareRanked, evaluateScore, scoringOf } from '../shared/scoring';
 import type { CriterionRow, PreferenceRow, ScoreResult, Scoring } from '../shared/scoring';
 import type { LengthUnit } from '../shared/room-sizes';
+import { ExportStrings } from './export-strings';
+import type { KindFields } from '../core/kind-fields';
+import { copyVoice, extraColumnsOf, extrasOf, type CopyKinds, type ExportExtra, type ExportExtraColumn } from './kind-copy';
+import type { SearchSpaces } from './backup-family';
+import { isBaselineKind } from '../core/kind-capabilities';
 
 /** The six deterministic formats of docs/11 §5.2. */
 export type ExportFormat = 'html' | 'pdf' | 'csv' | 'xlsx' | 'markdown' | 'backup';
 
+/**
+ * What the person chose on the export card: which houses, which photos, whether contacts go in, and the language of the file.
+ */
 export interface ExportOptions {
   /** Which houses go in: everything, only the shortlist, or the ids the user ticked. */
   scope: 'all' | 'shortlisted' | 'selected';
@@ -46,8 +54,14 @@ export interface ExportOptions {
   lang: Lang;
   /** Length unit for room dimensions in readable copies: 'FT' (feet+inches) or 'M' (metres). */
   lengthUnit?: 'FT' | 'M';
+  /**
+   * The space the copy is of (kinds PR B, S4b-BL-279): only that space's candidates go in and the file name carries its
+   * plural noun. Left out, the copy holds every candidate, as it always did; a backup never has one.
+   */
+  space?: string;
 }
 
+/** Everything included, in English: what the export card starts with. */
 export const DEFAULT_EXPORT_OPTIONS: ExportOptions = {
   scope: 'all',
   selectedIds: [],
@@ -78,6 +92,10 @@ export interface ExportHouse {
   areaNotes: readonly ExportAreaNote[];
   /** The distances from the house to my places (slice 4a), nearest first; empty for a house with no point. */
   distances: readonly PlaceDistance[];
+  /** The typed extras its kind reads through the kind file (kinds PR 6, S4b-BL-210); none for a house. */
+  extras?: readonly ExportExtra[];
+  /** The candidate's kind when it is not the house (S4b-BL-266): its labels and hidden places shape its own section of a copy. */
+  kind?: KindFields;
 }
 
 /** An area note that reaches a house, with where it comes from: the area's name or the street. */
@@ -144,11 +162,22 @@ export interface ExportBundle {
    * preference, so it is not one of the {@link ExportOptions} that are remembered with the export choices.
    */
   lengthUnit: LengthUnit;
+  /** The Houses table's columns for typed extras (kinds PR 6, S4b-BL-210): none in a copy of houses only. */
+  extraColumns?: readonly ExportExtraColumn[];
+  /**
+   * The kind the copy speaks in (S4b-BL-266): that of a copy whose candidates are all of one kind other than the house (or of
+   * a space's copy). Its words, headings and hidden places shape the copy; a copy of houses, or of several kinds, has none and
+   * is written as it always was.
+   */
+  voice?: KindFields;
+  /** The kinds enabled and the default (Settings > Kinds, S4b-BL-212), for the backup's `search`; none for the house alone. */
+  spaces?: SearchSpaces;
 }
 
 /** The contact fields; they are blanked rather than removed so every export has the same shape. */
 const CONTACT_FIELDS = ['contactName', 'contactPhone', 'brokerId'] as const;
 
+/** What `collect` is given: the store's rows, the chosen options and the one export time. */
 export interface CollectInput {
   houses: readonly HouseRecord[];
   visits: readonly VisitRecord[];
@@ -169,6 +198,12 @@ export interface CollectInput {
   areaNotes?: readonly AreaNoteRow[];
   /** The length preference of this device; feet when left out. */
   lengthUnit?: LengthUnit;
+  /** How the candidates' kinds are read (S4b-BL-210); left out, every candidate is copied as a house is. */
+  kinds?: CopyKinds;
+  /** The kinds enabled and the default (S4b-BL-212), for the backup's `search`; left out for the house alone. */
+  spaces?: SearchSpaces;
+  /** Whether a candidate is in the space of `options.space` (left out: every candidate is). */
+  inSpace?: (h: HouseRecord) => boolean;
   exportedAt: string;
   options: ExportOptions;
 }
@@ -186,6 +221,7 @@ export function collect(input: CollectInput): ExportBundle {
   const chosen = live
     .filter((h) => (options.scope === 'shortlisted' ? h.status === 'SHORTLISTED' : true))
     .filter((h) => (options.scope === 'selected' ? options.selectedIds.includes(h.id) : true))
+    .filter((h) => input.inSpace?.(h) ?? true)
     .filter((h) => options.includeRejected || h.status !== 'REJECTED')
     .map(stripContacts(options.includeContacts))
     .sort(byCreatedThenId);
@@ -213,8 +249,10 @@ export function collect(input: CollectInput): ExportBundle {
     .sort((a, b) => Date.parse(a.updatedAt ?? '') - Date.parse(b.updatedAt ?? '') || compare(a.id, b.id));
   const scoring = scoringOf(criteria, preferences);
   const chosenIds = new Set(chosen.map((h) => h.id));
+  // A copy of every candidate of every space carries what belongs to none; a copy of one space only what is its own.
+  const whole = options.scope === 'all' && !input.inSpace;
   const viewings = (input.viewings ?? [])
-    .filter((row) => options.scope === 'all' || chosenIds.has(row.viewing.houseId))
+    .filter((row) => whole || chosenIds.has(row.viewing.houseId))
     .map((row) => (options.includeContacts ? row : withoutWhom(row)))
     .sort((a, b) => Date.parse(a.updatedAt ?? '') - Date.parse(b.updatedAt ?? '') || compare(a.id, b.id));
   const viewingsByHouse = new Map<string, Viewing[]>();
@@ -229,11 +267,15 @@ export function collect(input: CollectInput): ExportBundle {
   const areaNotes = byEdit(input.areaNotes ?? []);
   const liveAreas: Area[] = areas.map((r) => r.area);
   const areaNames = new Map(liveAreas.map((a) => [a.id, a.name]));
+  const kinds = input.kinds;
+  const words = ExportStrings.of(options.lang);
 
   const houses: ExportHouse[] = chosen.map((house) => {
     const wantPhotos =
       options.photos === 'all' || (options.photos === 'shortlisted' && house.status === 'SHORTLISTED');
     const result = evaluateScore(house.checklist, house.rating, scoring);
+    const extras = kinds ? extrasOf(house, kinds, words) : [];
+    const own = kinds?.fieldsOf(house.kind);
     return {
       house,
       score: result.overall,
@@ -251,8 +293,12 @@ export function collect(input: CollectInput): ExportBundle {
         source: row.note.areaId !== undefined ? (areaNames.get(row.note.areaId) ?? '') : (row.note.street ?? ''),
       })),
       distances: nearestFirst(distancesToPlaces(house, places.map((r) => r.place))),
+      ...(extras.length ? { extras } : {}),
+      ...(own && !isBaselineKind(own.kind) ? { kind: own } : {}),
     };
   });
+  const extraColumns = kinds ? extraColumnsOf(chosen, kinds) : [];
+  const voice = kinds ? copyVoice(chosen, kinds, input.inSpace ? options.space : undefined) : undefined;
 
   return {
     exportedAt: input.exportedAt,
@@ -267,8 +313,11 @@ export function collect(input: CollectInput): ExportBundle {
     areas,
     places,
     areaNotes,
-    brokers: options.includeContacts ? collectBrokers(input.brokers ?? [], houses, options.scope === 'all') : [],
+    brokers: options.includeContacts ? collectBrokers(input.brokers ?? [], houses, whole) : [],
     lengthUnit: input.lengthUnit ?? 'FT',
+    ...(extraColumns.length ? { extraColumns } : {}),
+    ...(voice ? { voice } : {}),
+    ...(input.spaces && !(input.spaces.kinds.length === 1 && isBaselineKind(input.spaces.kinds[0])) ? { spaces: input.spaces } : {}),
     counts: {
       houses: houses.length,
       visits: houses.reduce((n, h) => n + h.visits.length, 0),

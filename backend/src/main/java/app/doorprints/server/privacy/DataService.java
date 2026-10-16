@@ -32,8 +32,8 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.Duration;
-import java.time.Instant;
 
 /**
  * Data-subject rights for the single user (FR-032 erase, PRV-004/PRV-005 retention). The export half of FR-031
@@ -51,17 +51,19 @@ public class DataService {
     private final RecordRepository records;
     private final SyncVersions versions;
     private final Duration retention;
+    private final Clock clock;
 
     @PersistenceContext
     private EntityManager em;
 
     public DataService(HouseRepository houses, VisitRepository visits, PhotoRepository photos, RecordRepository records,
-                       SyncVersions versions, AppProperties props) {
+                       SyncVersions versions, AppProperties props, Clock clock) {
         this.houses = houses;
         this.visits = visits;
         this.photos = photos;
         this.records = records;
         this.versions = versions;
+        this.clock = clock;
         this.retention = Duration.ofDays(props.privacy().tombstoneRetentionDays());
     }
 
@@ -77,7 +79,7 @@ public class DataService {
         em.createNativeQuery("delete from house_checklist").executeUpdate();
         em.createNativeQuery("delete from house").executeUpdate();
         em.createNativeQuery("delete from record").executeUpdate();
-        // The optional pgvector table (V2) only exists when the extension is installed.
+        // The optional pgvector table (Flyway V1) only exists when the extension is installed.
         var hasVectorStore = em.createNativeQuery("select to_regclass('public.vector_store') is not null")
                 .getSingleResult();
         if (Boolean.TRUE.equals(hasVectorStore)) em.createNativeQuery("delete from vector_store").executeUpdate();
@@ -89,7 +91,7 @@ public class DataService {
     @Transactional
     public void purgeTombstones() {
         versions.lock();
-        var before = Instant.now().minus(retention);
+        var before = clock.instant().minus(retention);
         int p = photos.purgeTombstonesBefore(before);
         int v = visits.purgeTombstonesBefore(before);
         int h = houses.purgeTombstonesBefore(before);

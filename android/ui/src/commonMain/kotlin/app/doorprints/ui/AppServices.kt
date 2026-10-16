@@ -73,6 +73,9 @@ interface AppServices {
     /** The phone's offline map store (docs/11 5.20): the Map's *Save this area for offline* and Settings' list. */
     val offlineMaps: OfflineMapsServices get() = NoOfflineMaps
 
+    /** *Voice input* (S4b-BL-222): the microphone, its permission and the transcription; none (no microphone drawn) by default. */
+    val voice: VoiceServices get() = NoVoice
+
     /**
      * Sets every viewing reminder again from the stored viewings (docs/11 5.8, slice 3b-2): called on every resume, so
      * a permission granted in the system settings or a clock change is picked up. Android: the alarm scheduler; iOS:
@@ -160,6 +163,13 @@ interface LocationSource {
 
     /** True while precise location is allowed: a null [current] is then a real failure, not the user's choice. */
     fun hasPrecisePermission(): Boolean
+
+    /**
+     * One fix for *Have I been here?* (docs/11 5.27.13): the best over up to [maxWaitMs], ending at the first reading of
+     * [goodAccuracyM] or better ([bestOf]); a stale or last-known fix is never used. Null without precise location or when
+     * none came. The default is no fix: a platform that has none says "could not get your location".
+     */
+    suspend fun best(maxWaitMs: Long = 15_000, goodAccuracyM: Double = 50.0): PlaceFix? = null
 }
 
 /**
@@ -237,6 +247,14 @@ interface SettingsServices {
 
     /** The installed version name ("0.1.0"), or null. */
     fun appVersion(): String?
+
+    /**
+     * Settings > Google Drive (docs/15 §2): the platform's section, which draws its own divider, or nothing where the
+     * platform has none yet (the default).
+     */
+    @Composable
+    fun DriveSection() {
+    }
 }
 
 /**
@@ -250,13 +268,20 @@ interface MapServices {
     val hunt: StateFlow<HuntState.State>
 
     /**
-     * Starts Hunt mode; false without starting when the location permission is missing (revoked since the Map last
-     * checked) or the system refuses the start.
+     * Starts Hunt mode for the space of [kind] (docs/03 section 18.20: the walk belongs to the space it was started in);
+     * false without starting when the location permission is missing (revoked since the Map last checked), the system
+     * refuses the start, or the kind has no Hunt mode.
      */
-    fun startHunt(): Boolean
+    fun startHunt(kind: String): Boolean
 
     /** The user turned Hunt mode off. */
     fun stopHunt()
+
+    /**
+     * *Finish walk* on the Hunt card (docs/11 5.27.6): the walk now recorded ends and the next kept point starts a new
+     * one; Hunt mode keeps running. Does nothing while Hunt mode is off.
+     */
+    fun finishWalk() {}
 
     /** Closes the "Hunt mode stopped because…" card. */
     fun clearHuntStopReason()

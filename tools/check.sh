@@ -26,16 +26,15 @@
 #
 # An area is picked from the same paths as its CI workflow's path filter (S4b-BL-105): android from android.yml's
 # (android/**, docs/schemas/**, web/public/geo/**, the two AI test-vector files), ios from the inputs of the iOS klib
-# compile in shared-ios.yml's, web from web.yml's (web/**, docs/schemas/**, .github/firebase-tools/**) and guide from
-# pages.yml's (guide/**, the Android screenshots); geo (the boundary-data tests) has no workflow and is picked by
-# web/scripts/geo/, web/public/geo/, the app's copy, tools/soi-verify.py and docs/ops/soi-review-pack.md. Keep them in
-# step when a filter changes. The backend is not an area (mvn verify needs PostGIS): a change to backend.yml's inputs
-# prints a reminder.
+# compile in shared-ios.yml's, web from web.yml's (web/**, docs/schemas/**, tools/fake-ai-provider/**, .github/firebase-tools/**) and guide from
+# pages.yml's (guide/**, the Android screenshots, tools/guide-search-check/**, the AI golden set); geo (the boundary-data tests) has no
+# workflow and is picked by web/scripts/geo/, web/public/geo/, the app's copy, tools/soi-verify.py and docs/ops/soi-review-pack.md. Keep them
+# in step when a filter changes. The backend is not an area (mvn verify needs PostGIS): a change to backend.yml's inputs prints a reminder.
 #
 # The Android Gradle checks are one Gradle invocation (Gradle parallelises the modules itself); the iOS klib compile
 # needs the Kotlin/Native toolchain and runs as its own Gradle build after the Android one (a second Gradle build in
-# the same project directory would contend for the lock), so "android" and "ios" are one sequence; web, the guide, geo
-# and the licence headers run beside it.
+# the same project directory would contend for the lock), so "android" and "ios" are one sequence; web, the guide, geo and
+# the licence headers, the document-version check, the floor guard and the file-size budget (always) run beside it.
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -46,19 +45,19 @@ mkdir -p "$LOGS"
 areas_for() {
   local changed areas="licence"
   changed="$(cat)"
-  grep -qE '^(android/|docs/schemas/|web/public/geo/|docs/ai/evals/parity-vectors\.json$|web/src/app/core/ai/parity-vectors\.json$|\.github/workflows/android\.yml$)' \
+  grep -qE '^(android/|docs/schemas/|web/public/geo/|tools/fake-ai-provider/|docs/ai/evals/parity-vectors\.json$|web/src/app/core/ai/parity-vectors\.json$|\.github/workflows/android\.yml$)' \
     <<<"$changed" && areas="$areas android"
   grep -qE '^(android/(shared|ui)/(src/(commonMain|iosMain|nativeMain)/|build\.gradle\.kts$)|android/(build\.gradle\.kts|settings\.gradle\.kts|gradle\.properties)$|android/gradle/|ios/|\.github/workflows/shared-ios\.yml$)' \
     <<<"$changed" && areas="$areas ios"
-  grep -qE '^(web/|docs/schemas/|\.github/firebase-tools/|\.github/workflows/web\.yml$)' <<<"$changed" && areas="$areas web"
-  grep -qE '^(guide/|android/app/src/test/screenshots/|\.github/workflows/pages\.yml$)' <<<"$changed" && areas="$areas guide"
+  grep -qE '^(web/|docs/schemas/|tools/fake-ai-provider/|\.github/firebase-tools/|\.github/workflows/web\.yml$)' <<<"$changed" && areas="$areas web"
+  grep -qE '^(guide/|android/app/src/test/screenshots/|tools/guide-search-check/|docs/ai/evals/golden-set\.json$|\.github/workflows/pages\.yml$)' <<<"$changed" && areas="$areas guide"
   # geo: the boundary data's builders and tests, the data files they check and the Survey of India review pack
   # (S4b-BL-114; no CI workflow of its own, so these paths are this script's).
   grep -qE '^(web/scripts/geo/|web/public/geo/|android/app/src/main/assets/geo/|tools/soi-verify\.py$|docs/ops/soi-review-pack\.md$)' \
     <<<"$changed" && areas="$areas geo"
   grep -qE '^(backend/|docs/ai/evals/|docs/schemas/|docker-compose\.yml$|web/src/app/export/backup-export\.ts$|web/src/app/export/golden/|android/shared/src/commonMain/kotlin/app/doorprints/shared/export/Backup\.kt$|\.github/workflows/backend\.yml$)' \
     <<<"$changed" && echo "Backend inputs changed: run cd backend && mvn -B -ntp verify (needs PostGIS, see backend.yml); not run here." >&2
-  [ "$areas" = "licence" ] && [ -n "$changed" ] && echo "No android, iOS, web, guide or geo input changed: licence headers only." >&2
+  [ "$areas" = "licence" ] && [ -n "$changed" ] && echo "No android, iOS, web, guide or geo input changed: licence headers and document versions only." >&2
   echo "$areas"
 }
 
@@ -97,15 +96,25 @@ gradle_seq() {
 }
 
 has licence && start licence python3 "$ROOT/.github/scripts/licence-headers.py" --check
+# Always, like the licence headers: the documents' version rows (S4b-BL-156) and the sprint log's status words (no In review without a PR); pure Node, about a tenth of a second.
+has licence && start docs-versions bash -c "cd '$ROOT' && node --test tools/check-docs-versions.test.mjs && node tools/check-docs-versions.mjs && node --test tools/check-sprint-status.test.mjs && node tools/check-sprint-status.mjs"
+# Always: the generated words of the kind files (docs/03 §18.25): web/.../kind-words.generated.ts and shared/.../KindWordData.kt are what docs/schemas/kinds/*.json say.
+has licence && start kind-words bash -c "cd '$ROOT' && node --test tools/gen-kind-words.test.mjs && node tools/gen-kind-words.mjs --check"
+# Always: the kind tripwire (kinds PR 32, docs/03 section 18.26): no source names the house kind outside tools/kind-literals-allow.json, none names zz_all, the map rules read no kind.
+has licence && start kind-literals bash -c "cd '$ROOT' && node --test tools/check-kind-literals.test.mjs && node tools/check-kind-literals.mjs"
+# Always: the floor guard (S4b-BL-157), this branch against origin/main; exit 2 (no origin/main) fails here too.
+has licence && start floor bash -c "cd '$ROOT' && node --test tools/check-floor.test.mjs && node tools/check-floor.mjs"
+# Always: the file-size budget (S4b-BL-205; warn at 600 lines, fail at 900, the allowlist in tools/size-budget.json only shrinks).
+has licence && start size-budget bash -c "cd '$ROOT' && node --test tools/check-size-budget.test.mjs && node tools/check-size-budget.mjs"
 if has android || has ios; then start gradle gradle_seq; fi
-has web && start web bash -c "cd '$ROOT/web' && npx ng test --watch=false && CI=true npm run test:ci && npm run build"
+has web && start web bash -c "cd '$ROOT' && node tools/check-specs.mjs && node tools/check-templates.mjs && node --test tools/*.test.mjs && cd web && npx ng test --watch=false && CI=true npm run test:ci && npm run build && cd ../tools/live-ui && npm ci --no-audit --no-fund && npx playwright install chromium && GATE_DEV_KINDS=1 node layout-gate.js"
 # --strict fails on errors; a WARNING line once passed locally and failed CI (docs/14 §7), so it fails here too.
 guide_check() {
   cd "$ROOT/guide" || return 1
   local out rc
   out="$(mkdocs build --strict --site-dir "$LOGS/site" 2>&1)"; rc=$?
   echo "$out"
-  [ "$rc" -eq 0 ] && ! grep -q "WARNING" <<<"$out"
+  [ "$rc" -eq 0 ] && ! grep -q "WARNING" <<<"$out" && node --test "$ROOT/tools/guide-search-check/ai-cases.test.mjs" && node "$ROOT/tools/guide-search-check/ai-cases.mjs" && node "$ROOT/tools/guide-search-check/site-check.mjs" "$LOGS/site"
 }
 has guide && start guide guide_check
 # The boundary-data pipeline's unit tests (Python standard library only; docs/ops/soi-review-pack.md).

@@ -18,18 +18,32 @@
 
 import { ApplicationConfig, inject, provideAppInitializer } from '@angular/core';
 import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
-import { TitleStrategy, provideRouter, withComponentInputBinding, withRouterConfig } from '@angular/router';
-import { routes } from './app.routes';
+import {
+  TitleStrategy,
+  provideRouter,
+  withComponentInputBinding,
+  withNavigationErrorHandler,
+  withRouterConfig,
+} from '@angular/router';
+import { routesFor } from './app.routes';
+import { spacesOn } from './core/kind-setting';
 import { apiInterceptor } from './core/api.interceptor';
+import { ChunkRecovery } from './core/chunk-recovery';
 import { LocalStore } from './data/local-store.service';
 import { I18nTitleStrategy } from './i18n/i18n-title.strategy';
 import { initialLang } from './i18n/translation.service';
 
 // Angular 21+ is zoneless by default, so no zone.js / provideZoneChangeDetection here.
+/**
+ * The app's providers: the router (a Back that a guard cancels leaves history as it was), the HTTP client with the API
+ * interceptor, translated route titles, and the one-time seeding of the question bank before the first screen.
+ * Zoneless.
+ */
 export const appConfig: ApplicationConfig = {
   providers: [
     provideRouter(
-      routes,
+      // Today's routes with one kind enabled; the chooser and the spaces with two or more (kinds PR 8, S4b-BL-212).
+      routesFor(spacesOn()),
       withComponentInputBinding(),
       // A Back (popstate) that a guard cancels — "Keep editing" in the house page's unsaved-changes dialog — must
       // leave history as it was. The default, 'replace', writes the house URL over the entry the browser had just
@@ -37,6 +51,9 @@ export const appConfig: ApplicationConfig = {
       // nothing in an installed app whose first entry was the map. 'computed' goes forward again with historyGo()
       // and leaves the previous entry alone (UX lead review 2026-09-22).
       withRouterConfig({ canceledNavigationResolution: 'computed' }),
+      // A lazy page whose script fails to load is tried again once, then the tab reloads once, then a message offers
+      // Try again; every other navigation error is left alone (core/chunk-recovery.ts).
+      withNavigationErrorHandler((error) => inject(ChunkRecovery).handle(error)),
     ),
     provideHttpClient(withFetch(), withInterceptors([apiInterceptor])),
     // Route titles below are translation keys; this strategy translates them and follows language changes.
@@ -45,7 +62,7 @@ export const appConfig: ApplicationConfig = {
     // stop the app, which then simply starts with an empty bank the person can reset.
     provideAppInitializer(() =>
       inject(LocalStore)
-        .seedQuestionsOnce(initialLang)
+        .questions.seedOnce(initialLang)
         .catch(() => undefined),
     ),
   ],

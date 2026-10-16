@@ -34,7 +34,7 @@ import kotlin.test.assertTrue
 /**
  * S4b-BL-52: a photo's file is found from its id in the current photo folder, never from the row's stored full path.
  * An iOS app's container folder changes when the app is updated, so a row written before the update names a folder
- * that is gone; `CommonRepository.photoFileOf` (built on [CommonRepository.photoFileIn]) still reaches the file.
+ * that is gone; `CommonRepository.photoFileOf` (built on [PhotoStore.fileIn]) still reaches the file.
  * That `photoFileOf` creates nothing is checked on Android in `PhotoFileByIdTest`.
  */
 class PhotoFileTest {
@@ -49,7 +49,7 @@ class PhotoFileTest {
         val current = "/var/mobile/Containers/Data/Application/9Z8Y-NEW/Library/Application Support/photos"
         val row = photoRow("p1", "$old/p1.jpg")
 
-        val file = CommonRepository.photoFileIn(current, row.id)
+        val file = PhotoStore.fileIn(current, row.id)
 
         assertEquals(Path(current, "p1.jpg"), file)
         assertNotEquals(Path(row.path), file)
@@ -67,7 +67,7 @@ class PhotoFileTest {
             val row = photoRow("p1", Path(oldDir, "p1.jpg").toString())
             assertFalse(fs.exists(Path(row.path)), "the stored path is stale")
 
-            val file = CommonRepository.photoFileIn(newDir.toString(), row.id)
+            val file = PhotoStore.fileIn(newDir.toString(), row.id)
             assertTrue(fs.exists(file))
             assertContentEquals(bytes, fs.source(file).buffered().use { it.readByteArray() })
         } finally {

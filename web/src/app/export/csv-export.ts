@@ -37,13 +37,18 @@ import type { Cell, ExportTable } from './export-rows';
  * `brokers.csv` follows when the copy has brokers and `rooms.csv` when it has rooms and `criteria.csv` when it has criterion records (slice 2) and `answers.csv` when a house has answers (slice 3a) and `viewings.csv` when the copy has viewings (slice 3b-1).
  */
 
+/** The four CSV files every copy has, in file order. */
 export const CSV_FILES = ['houses.csv', 'scores.csv', 'visits.csv', 'photos.csv'] as const;
+/** The name of one of the four always-present CSV files. */
 export type CsvFileName = (typeof CSV_FILES)[number];
 /** The four files of every copy, `brokers.csv` when it has brokers (slice 1b) and `rooms.csv` when it has rooms (slice 1c). */
 export type CsvTables = Record<CsvFileName, string> & { 'brokers.csv'?: string; 'rooms.csv'?: string; 'criteria.csv'?: string; 'answers.csv'?: string; 'viewings.csv'?: string };
 
 const CRLF = '\r\n';
 
+/**
+ * The CSV text of each table of the copy, keyed by file name (`houses.csv`, `scores.csv`, and so on), straight from the shared table rows.
+ */
 export function buildCsvTables(bundle: ExportBundle): CsvTables {
   const out: Record<string, string> = {};
   for (const table of exportTables(bundle)) out[`${table.name}.csv`] = csvTable(table);

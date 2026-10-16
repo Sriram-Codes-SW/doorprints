@@ -10,7 +10,7 @@ android/.kotlin/
 *.keystore
 *.jks
 # Angular / Node
-web/node_modules/
+web/node_modules
 web/dist/
 web/.angular/
 # IDEs
@@ -21,5 +21,12 @@ web/.angular/
 .env
 # find_shared_stretches.py tile cache
 web/scripts/geo/.tilecache/
-tools/live-ui/node_modules/
+tools/live-ui/node_modules
 tools/live-ui/out/
+tools/guide-shots/out/
+
+# Per-deploy site configuration: CI overwrites web/public/config.js from env (googleClientId, googleRedirectUri)
+# Default config.js is tracked; CI updates it at build/deploy time
+
+# Agent sessions on a fresh clone create their git worktrees here
+.claude/worktrees/

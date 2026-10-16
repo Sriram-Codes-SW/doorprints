@@ -1,0 +1,21 @@
+{
+  "spec": "web/src/app/core/ai/ai-core.spec.ts",
+  "mutations": [
+    {"file": "web/src/app/core/ai/ai-core.ts", "find": "if (links >= 2) warnings", "replace": "if (links > 2) warnings", "expect": "warns about several links"},
+    {"file": "web/src/app/core/ai/ai-core.ts", "find": "if (links >= 2) warnings", "replace": "if (links >= 1) warnings", "expect": "warns about several links"},
+    {"file": "web/src/app/core/ai/ai-core.ts", "find": "${links} links, check", "replace": "${links + 1} links, check", "expect": "warns about several links"},
+    {"file": "web/src/app/core/ai/ai-core.ts", "find": "if (listingUrl != null) {\n    // The model picked", "replace": "if (listingUrl == null) {\n    // The model picked", "expect": "warns about several links"},
+    {"file": "web/src/app/core/ai/ai-core.ts", "find": "seen.add(link.slice(0, end));", "replace": "seen.add(link.slice(0, end) + seen.size);", "expect": "counts the different http(s) links"},
+    {"file": "web/src/app/core/ai/ai-core.ts", "find": "const LINK_TAIL = '.,;:!?*';", "replace": "const LINK_TAIL = '.,;:!?';", "expect": "counts the different http(s) links"},
+    {"file": "web/src/app/core/ai/ai-core.ts", "find": "const LINK_TAIL = '.,;:!?*';", "replace": "const LINK_TAIL = '';", "expect": "counts the different http(s) links"},
+    {"file": "web/src/app/core/ai/ai-core.ts", "find": "if (end > link.indexOf('//') + 2)", "replace": "if (end > 0)", "expect": "counts the different http(s) links"},
+    {"file": "web/src/app/core/ai/ai-core.ts", "find": "if (end > link.indexOf('//') + 2)", "replace": "if (end >= link.indexOf('//') + 2)", "expect": "counts the different http(s) links"},
+    {"file": "web/src/app/core/ai/ai-core.ts", "find": "for (const m of text.matchAll(URL_TEXT)) {\n    const link", "replace": "for (const m of text.matchAll(/https:\\/\\/[A-Za-z0-9\\-._~:/?#@!$&*+,;=%]+/gi)) {\n    const link", "expect": "counts the different http(s) links"},
+    {"file": "web/src/app/core/ai/ai-core.ts", "find": "if (t.length <= cap) return", "replace": "if (t.length <= cap + 1) return", "expect": "cuts the pasted text"},
+    {"file": "web/src/app/core/ai/ai-core.ts", "find": "let end = cap;", "replace": "let end = cap - 1;", "expect": "cuts the pasted text"},
+    {"file": "web/src/app/core/ai/ai-core.ts", "find": "leftOut: t.length - end }", "replace": "leftOut: t.length - end - 1 }", "expect": "cuts the pasted text"},
+    {"file": "web/src/app/core/ai/ai-core.ts", "find": "last >= 0xd800 &&", "replace": "last >= 0xdc00 &&", "expect": "cuts the pasted text"},
+    {"file": "web/src/app/core/ai/ai-core.ts", "find": "last <= 0xdbff", "replace": "last <= 0xdfff", "expect": "cuts the pasted text"},
+    {"file": "web/src/app/core/ai/ai-core.ts", "find": "const t = text.trim();", "replace": "const t = text;", "expect": "cuts the pasted text"}
+  ]
+}

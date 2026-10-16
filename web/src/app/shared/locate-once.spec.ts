@@ -16,8 +16,8 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { describe, expect, it, vi } from 'vitest';
-import { LOCATE_OPTIONS, locateOnce } from './locate-once';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { LOCATE_BEST, LOCATE_OPTIONS, locateBest, locateOnce } from './locate-once';
 
 /** A browser Geolocation that keeps the request open until the test answers it, like a pending permission prompt. */
 class PendingGeolocation implements Geolocation {
@@ -118,5 +118,138 @@ describe('locateOnce', () => {
     expect(gone).not.toHaveBeenCalled();
     geo.answer(0.5, 0.5);
     expect(gone).toHaveBeenCalledTimes(1);
+  });
+});
+
+/** A Geolocation whose `watchPosition` the test drives: fixes and errors on demand, and what was cleared. */
+class WatchingGeolocation implements Geolocation {
+  success: PositionCallback | null = null;
+  error: PositionErrorCallback | null = null;
+  options: PositionOptions | undefined;
+  watches = 0;
+  cleared: number[] = [];
+
+  getCurrentPosition(): void {
+    throw new Error('not used');
+  }
+
+  watchPosition(success: PositionCallback, error?: PositionErrorCallback | null, options?: PositionOptions): number {
+    this.watches += 1;
+    this.success = success;
+    this.error = error ?? null;
+    this.options = options;
+    return 7;
+  }
+
+  clearWatch(id: number): void {
+    this.cleared.push(id);
+  }
+
+  fix(accuracy: number, lat = 12.97): void {
+    this.success?.({ coords: { latitude: lat, longitude: 77.59, accuracy }, timestamp: 0 } as unknown as GeolocationPosition);
+  }
+
+  fail(code: number): void {
+    this.error?.({ code, message: '', PERMISSION_DENIED: 1, POSITION_UNAVAILABLE: 2, TIMEOUT: 3 } as unknown as GeolocationPositionError);
+  }
+}
+
+/**
+ * *Have I been here?* asks for one fresh fix (docs/11 5.27.13): a watch, stopped at the first fix of 50 m or better or
+ * at 15 s, when the best fix so far decides. Never a stale fix, never kept.
+ */
+describe('locateBest', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  const handlers = (gone = false) => ({ gone: () => gone, found: vi.fn(), timedOut: vi.fn(), failed: vi.fn() });
+
+  it('watches with a fresh precise fix (no cached position) and the 15 s, 50 m limits', () => {
+    const geo = new WatchingGeolocation();
+    locateBest(handlers(), geo);
+    expect(geo.watches).toBe(1);
+    expect(geo.options).toEqual({ enableHighAccuracy: true, maximumAge: 0 });
+    expect(LOCATE_BEST).toEqual({ maxWaitMs: 15_000, maxAccuracyM: 50 });
+  });
+
+  it('uses the first fix of 50 m or better, stops the watch and ignores later fixes', () => {
+    const geo = new WatchingGeolocation();
+    const h = handlers();
+    locateBest(h, geo);
+    geo.fix(50);
+    expect(h.found).toHaveBeenCalledTimes(1);
+    expect(h.found.mock.calls[0][0].coords.accuracy).toBe(50);
+    expect(geo.cleared).toEqual([7]);
+    geo.fix(5);
+    vi.advanceTimersByTime(20_000);
+    expect(h.found).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores a worse fix while a better one may come, and at 15 s the best so far decides', () => {
+    const geo = new WatchingGeolocation();
+    const h = handlers();
+    locateBest(h, geo);
+    geo.fix(90, 1);
+    geo.fix(60, 2);
+    geo.fix(75, 3);
+    vi.advanceTimersByTime(14_999);
+    expect(h.found).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1);
+    expect(h.found).toHaveBeenCalledTimes(1);
+    expect(h.found.mock.calls[0][0].coords.accuracy).toBe(60);
+    expect(h.timedOut).not.toHaveBeenCalled();
+    expect(geo.cleared).toEqual([7]);
+  });
+
+  it('says timed out when nothing came at all, and treats an unavailable position as waiting', () => {
+    const geo = new WatchingGeolocation();
+    const h = handlers();
+    locateBest(h, geo);
+    geo.fail(2);
+    vi.advanceTimersByTime(15_000);
+    expect(h.timedOut).toHaveBeenCalledTimes(1);
+    expect(h.found).not.toHaveBeenCalled();
+    expect(h.failed).not.toHaveBeenCalled();
+  });
+
+  it('reports a refused permission at once and stops', () => {
+    const geo = new WatchingGeolocation();
+    const h = handlers();
+    locateBest(h, geo);
+    geo.fail(1);
+    expect(h.failed).toHaveBeenCalledTimes(1);
+    expect(geo.cleared).toEqual([7]);
+    vi.advanceTimersByTime(20_000);
+    expect(h.timedOut).not.toHaveBeenCalled();
+  });
+
+  it('drops every answer once the page is gone, and still stops the watch', () => {
+    const geo = new WatchingGeolocation();
+    const h = handlers(true);
+    locateBest(h, geo);
+    geo.fix(10);
+    expect(h.found).not.toHaveBeenCalled();
+    expect(geo.cleared).toEqual([7]);
+    const geo2 = new WatchingGeolocation();
+    const h2 = handlers(true);
+    locateBest(h2, geo2);
+    geo2.fail(1);
+    vi.advanceTimersByTime(20_000);
+    expect(h2.failed).not.toHaveBeenCalled();
+    expect(h2.timedOut).not.toHaveBeenCalled();
+  });
+
+  it('can be cancelled: the watch and the timer stop and nothing is reported', () => {
+    const geo = new WatchingGeolocation();
+    const h = handlers();
+    const cancel = locateBest(h, geo);
+    geo.fix(90);
+    cancel();
+    expect(geo.cleared).toEqual([7]);
+    vi.advanceTimersByTime(20_000);
+    expect(h.found).not.toHaveBeenCalled();
+    expect(h.timedOut).not.toHaveBeenCalled();
+    cancel();
+    expect(geo.cleared).toEqual([7]);
   });
 });

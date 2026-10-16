@@ -33,14 +33,16 @@ import kotlin.time.TimeSource
 
 /**
  * AI with the person's own Gemini key, on this device (docs/03 §13.1, ADR-26): the same three calls as the server's
- * `/api/ai` endpoints, the same prompts, limits and checks (the common core in this package), and Gemini called directly
- * ([GeminiClient]). [houses] reads the saved houses when Ask or Plan needs them. At most [RATE_LIMIT] requests a
+ * `/api/ai` endpoints, the same prompts, limits and checks (the common core in this package), and the model called directly
+ * ([GeminiClient] or [OpenAiCompatClient], docs/03 §13.2). [houses] reads the saved houses when Ask or Plan needs them. At most [RATE_LIMIT] requests a
  * minute, as the server allows.
  */
 class OnDeviceAi(
-    private val gemini: GeminiClient,
+    private val gemini: JsonChatModel,
     private val houses: suspend () -> List<AiHouse>,
     private val clock: TimeSource = TimeSource.Monotonic,
+    /** The developer flag of the hidden kinds (kinds PR 7, S4b-BL-211): only then is a school read through its kind ([KindAi]). */
+    private val devKinds: Boolean = false,
 ) {
     companion object {
         const val MAX_INPUT_CHARS = 8000
@@ -61,8 +63,8 @@ class OnDeviceAi(
             putJsonObject("properties") {
                 put("label", str("Short human label, e.g. '2BHK near Indiranagar metro'"))
                 put("address", str("Full postal address as written in the listing"))
-                put("street", str("Street / road name only"))
-                put("locality", str("Locality / neighbourhood / area"))
+                put("street", str("Street / road name only, e.g. 'MG Road'; null when no road is named"))
+                put("locality", str("Locality / neighbourhood / area inside the city, e.g. 'Indiranagar', 'Sector 56'; never the city or district alone. When the listing names only a road, repeat the road here"))
                 put("price", str("Monthly rent or sale price in rupees exactly as written, e.g. '25,000' or '1.2 Cr'"))
                 put("priceType", str("RENT or SALE"))
                 put("bedrooms", str("Number of bedrooms, e.g. '2' for 2BHK"))
@@ -143,38 +145,69 @@ class OnDeviceAi(
         recent.addLast(now)
     }
 
-    suspend fun extractListing(text: String): HouseDraftDto {
+    /** Reads [text] into a checked draft. Refuses a blank or over-long text; counts towards the rate limit. */
+    suspend fun extractListing(text: String, kind: String? = null): HouseDraftDto {
         require(text.isNotBlank()) { "text is empty" }
         require(text.length <= MAX_INPUT_CHARS) { "text is longer than $MAX_INPUT_CHARS characters" }
+        // Kinds PR 7 (S4b-BL-211): a school's listing (flag on) gets the school's prompt, schema and checks.
+        val k = kind?.let { KindAi.of(it, devKinds) }
+        require(kind == null || (k != null && k.extract.isNotEmpty())) { "kind $kind has no listing extract" }
         admit()
+        if (k != null) {
+            val p = KindAi.extractionPrompt(k, text, PromptSafety.nonce())
+            return KindAi.sanitize(k, parse<JsonObject>(gemini.generateJson(p.system, p.user, KindAi.SCHOOL_LISTING_SCHEMA, 0.0)), text)
+        }
         val prompt = AiPrompts.extraction(text, PromptSafety.nonce())
         val raw = parse<RawListing>(gemini.generateJson(prompt.system, prompt.user, LISTING_SCHEMA, 0.0))
         return DraftSanitizer.sanitize(raw, text)
     }
 
-    suspend fun ask(question: String, filters: AskFilters? = null): AskResponseDto {
+    /**
+      * Answers [question] from the saved houses with citations. With no house to send it answers with the refusal
+      * sentence
+     * and makes no model call. The answer is checked by [AskChecks]; an unusable one becomes the refusal. [holds] reads one
+     * space (kinds PR C, S4b-BL-289): only the houses whose kind it accepts are sent; the default sends every one.
+     */
+    suspend fun ask(question: String, filters: AskFilters? = null, holds: (String?) -> Boolean = { true }, kind: String? = null): AskResponseDto {
         require(question.isNotBlank()) { "question is empty" }
         require(question.length <= MAX_QUESTION_CHARS) { "question is longer than $MAX_QUESTION_CHARS characters" }
-        val docs = OnDeviceSelection.forAsk(houses(), question, filters)
-        if (docs.isEmpty()) return AskResponseDto(AiPrompts.I_DONT_KNOW, emptyList(), false, 0)
+        val viewed = houses().filter { holds(it.kind) }.map { KindAi.askView(it, devKinds) }
+        val docs = OnDeviceSelection.forAsk(viewed, question, filters) { KindAi.aiText(it, devKinds) }
+        // The words of the prompt and of the refusal are the kind's when every record sent is of one built-in kind (S4b-BL-269);
+        // a house, a mix and the flag off keep the house's. With nothing to send the space's [kind] speaks, if the caller names one.
+        val k = KindAi.promptKind(docs.map { it.id }, viewed, devKinds)
+        if (docs.isEmpty()) return AskResponseDto(KindAi.refusalOf(kind, devKinds), emptyList(), false, 0)
         admit()
-        val prompt = AiPrompts.ask(question, docs.map { it.id to it.text }, PromptSafety.nonce())
+        val pairs = docs.map { it.id to it.text }
+        val prompt = if (k != null) KindAi.askPrompt(k, question, pairs, PromptSafety.nonce()) else AiPrompts.ask(question, pairs, PromptSafety.nonce())
         val answer = parse<ModelAnswer>(gemini.generateJson(prompt.system, prompt.user, ANSWER_SCHEMA, 0.1))
-        if (answer?.answer.isNullOrBlank()) return AskResponseDto(AiPrompts.I_DONT_KNOW, emptyList(), false, docs.size)
-        val citations = AskChecks.citations(answer!!, docs, question)
-        return AskResponseDto(answer.answer!!.trim(), citations, citations.isNotEmpty(), docs.size)
+        if (answer?.answer.isNullOrBlank()) return AskResponseDto(k?.refusal ?: AiPrompts.I_DONT_KNOW, emptyList(), false, docs.size)
+        val text = AnswerText.clean(answer!!.answer!!.trim(), docs.joinToString("\n") { it.text })
+        val citations = AskChecks.citations(answer.copy(answer = text), docs, question)
+        return AskResponseDto(text, citations, citations.isNotEmpty(), docs.size)
     }
 
-    suspend fun planVisits(request: PlanRequest): PlanResponseDto {
+    /**
+      * A walking plan from the request's start point over the nearest saved houses. A model that answers unusably falls
+      * back to
+     * the nearest-neighbour order ([PlanChecks]); a request that fails outright is thrown, since nothing was planned.
+     */
+    suspend fun planVisits(request: PlanRequest, holds: (String?) -> Boolean = { true }): PlanResponseDto {
         require(request.question.isNotBlank()) { "question is empty" }
         require(request.question.length <= MAX_QUESTION_CHARS) { "question is longer than $MAX_QUESTION_CHARS characters" }
+        // The server's PlanRequest bounds (docs/ai/ai-design.md 9); a NaN is outside both ranges.
+        require(request.startLat in -90.0..90.0 && request.startLon in -180.0..180.0) { "the start point is not on Earth" }
         val maxStops = minOf(request.maxStops ?: MAX_STOPS, MAX_STOPS).coerceAtLeast(1)
-        val candidates = OnDeviceSelection.forPlan(houses(), request.startLat, request.startLon)
+        val viewed = houses().filter { holds(it.kind) }.map { KindAi.planView(it, devKinds) }
+        val candidates = OnDeviceSelection.forPlan(viewed, request.startLat, request.startLon) { KindAi.planExtras(it, devKinds) }
         val seen = LinkedHashMap<String, PlanCandidate>().apply { candidates.forEach { put(it.id, it) } }
         if (candidates.isEmpty()) return PlanChecks.assemble(AgentPlan(null, emptyList()), seen, emptyList(), request.startLat, request.startLon, maxStops)
         admit()
-        val prompt = AiPrompts.plan(request.question, request.startLat, request.startLon, maxStops,
-            OnDeviceSelection.candidateLines(candidates), PromptSafety.nonce())
+        // As Ask: the kind's words when every candidate sent is of one built-in kind, else the house's (S4b-BL-269).
+        val k = KindAi.promptKind(candidates.map { it.id }, viewed, devKinds)
+        val lines = OnDeviceSelection.candidateLines(candidates)
+        val prompt = if (k != null) KindAi.planPrompt(k, request.question, request.startLat, request.startLon, maxStops, lines, PromptSafety.nonce())
+        else AiPrompts.plan(request.question, request.startLat, request.startLon, maxStops, lines, PromptSafety.nonce())
         // As on the server: a model that answers but not usably falls back to the candidates by distance; a request
         // that fails outright (key, quota, network) is reported, since nothing was planned.
         val plan = runCatching { parse<AgentPlan>(gemini.generateJson(prompt.system, prompt.user, PLAN_SCHEMA, 0.2)) }

@@ -25,7 +25,8 @@ import kotlinx.serialization.json.Json
 /**
  * One kind of record in the `records` table (docs/11 5.30 item 2, ADR-28): its [name], the column the rows are
  * filed under and the `type` on the wire, and the [serializer] of the payload class. A new kind of data is one
- * `@Serializable` class and one of these; no table, DAO or migration. None is defined yet: slice 1 adds brokers.
+ * `@Serializable` class and one of these; no table, DAO or migration. Each kind is declared beside its payload class
+ * (for example `BrokerType` in `Broker.kt`).
  */
 class RecordType<T>(val name: String, val serializer: KSerializer<T>) {
     init {

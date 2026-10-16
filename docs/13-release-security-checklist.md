@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | The manual part of the release security gate: the one-hour list per release, and the scope of the deep self-run pentest |
-| Version | 0.1 |
-| Date | 2026-09-29 |
+| Version | 0.20 |
+| Date | 2026-10-15 |
 | Author | Claude (Code), lead |
 | Status | Draft. Written (story S4b-SEC-3); **not yet run on a release candidate**, which is the story's last acceptance item |
 
@@ -13,6 +13,25 @@
 | Version | Date | Author | Change |
 |---|---|---|---|
 | 0.1 | 2026-09-29 | Claude (Code), lead | First version (S4b-SEC-3, owner decision 1 of 2026-09-23, [10](10-sprint-log.md) §12.5): what the list is for and when it runs (1), what must be true before it starts (2), the list itself, about one hour, in eight parts (3), how a result is judged and recorded (4), the deep self-run pentest's scope (5), and a record to copy for each release (6). [06](06-test-plan.md) §11.1 gives each automated check its owner and threshold. |
+| 0.2 | 2026-10-02 | Claude (Code), lead | **Re-scoped for D-28** (S4b-BL-74; design [15](15-google-drive-backup-and-sharing.md)): there is no hosted server, so no server-side OAuth, OIDC, sessions or data-fiduciary case; new part I, Google sign-in and Drive (client OAuth with PKCE on the iPhone, Play services on Android, the GIS token model on the website; token storage; the one scope `drive.file`; what sits in the person's Drive; deleting it); G3 rewritten (the right to erasure is the in-app deletion); §1 and §5 name Drive's go-live instead of Sprint 5's sign-in. |
+| 0.3 | 2026-10-02 | Claude (Code), lead | Part I gains I10..I14 for the owner's additions to [15](15-google-drive-backup-and-sharing.md) v0.2: encryption with device keys and the recovery key, device authentication for deletes, the required screen lock, photos on mobile data. |
+| 0.4 | 2026-10-02 | Claude (Code), lead | I15, the authenticator app ([15](15-google-drive-backup-and-sharing.md) §10.5). |
+| 0.5 | 2026-10-02 | Claude (Code), lead | After the review of [15](15-google-drive-backup-and-sharing.md) v0.4: I5 depends on the Android sign-in choice; I14 for the QR enrolment and the recovery public key; new I16 (a restored old `keys.json` refused) and I17 (Limited Use and the privacy page). |
+| 0.6 | 2026-10-02 | Claude (Code), lead | The owner decided [15](15-google-drive-backup-and-sharing.md) (v0.5): I15 (authenticator app) deferred; I12 for the website's PRF-only rule; I5 with Android's browser-and-PKCE default. |
+| 0.7 | 2026-10-02 | Claude (Code), lead | The encryption core is built (S4b-BL-125, [15](15-google-drive-backup-and-sharing.md) §9.9): I10, I11, I14 and I16 name the unit tests that already hold their rules on Linux (TC-U-128, TC-U-130, TC-U-127; [06](06-test-plan.md)), so the release run checks the real Drive and the screens; I14 adds the website's recovery key in Firefox and Safari ([02](02-threat-model.md) RR-27). I13 is unchanged (the screen lock is S4b-BL-127). |
+| 0.8 | 2026-10-02 | Claude (Code), lead | I11 adds a list re-wrapped under another folder key (the review of S4b-BL-125: refused by the pin and the recovery anchor, TC-U-132). |
+| 0.9 | 2026-10-10 | Claude (Code), engineer | **Voice input, planned** ([03](03-design.md) ADR-37, S4b-BL-218): F11 (voice off by default, permissions asked at use, no audio at rest) and G4, the privacy note and Play data-safety answer to be done at voice pull request 5 (S4b-BL-222), a Planned note and not a claim. |
+| 0.10 | 2026-10-14 | Claude (Code), engineer | **Part J, kinds and spaces** (S4b-BL-216; [02](02-threat-model.md) v0.77 T-E13, T-T21, T-I49, T-D15): J1..J7, run on every release (web, Android, server) until the owner opens a kind's release gate, and again after it; the release record gains line J. |
+| 0.11 | 2026-10-14 | Claude (Code), engineer | **J1** notes the two unit tests that read the build config (S4b-BL-309: `release-kinds.spec.ts`, `ReleaseKindsTest`); the hand check stays for a workflow that adds a `--define` or a `-P` property. |
+| 0.12 | 2026-10-14 | Claude (Code), engineer | §2 and §6: the release APK for a Play release comes from `release.yml` (a draft GitHub Release, C-02); its notes say *not approved* and this gate is what approves it; the record gains the draft's tag. |
+| 0.13 | 2026-10-15 | Claude (Code), engineer | **B1 and F11:** the header row names `microphone=(self)` (voice input on the website, S4b-BL-221, TC-S-23, TC-S-51); F11's website clause is now a fact, the phones' clauses stay planned. |
+| 0.14 | 2026-10-15 | Claude (Code), engineer | **Voice input on Android (S4b-BL-222):** F11's Android clause is now a fact (TC-S-52, TC-I-52; the manifest, the permission at the tap, no audio at rest); **C1** and **C5** name `RECORD_AUDIO` (the permission list); **G4** is written (the in-app disclosure, the rationale and the data-safety answer), still a note until a Play release. |
+| 0.15 | 2026-10-15 | Claude (Code), engineer | **F11 on the iPhone** (S4b-BL-223): the iPhone clause is a fact to check on a build: `NSMicrophoneUsageDescription` is in `Info.plist` and its four `InfoPlist.strings`, the built `Info.plist` has no `audio` background mode (`shared-ios.yml`), the prompt appears only after a tap on *Speak* and the rationale (MT-104), recording ends when the app leaves the front (MT-105) and no audio file is in the app's container (MT-107). C5 names the iPhone's prompt. G4's note covers both phones; no form is submitted. |
+| 0.16 | 2026-10-15 | Claude (Code), engineer | **Part J rewritten for "compiled in, off"** (owner, 2026-10-15; `feat/kinds-23-ship-school-web`): J1 the production build lists exactly `house,school` and offers the house alone (the switch off, no chooser); J2 a stored `kinds.experimental=1` is the feature, not a bypass; J4 wording; J3, J5-J7 unchanged. |
+| 0.17 | 2026-10-15 | Claude (Code), engineer | **F11 and Sarvam (S4b-BL-224):** F11 gains the Sarvam clause (its own key slot, the host named, the 30 s stop; MT-109, MT-110). |
+| 0.18 | 2026-10-15 | Claude (Code), engineer | **Part J, the phones: "compiled in, off"** (owner, 2026-10-15; `feat/kinds-24-ship-school-phones`): new J8 (the release APK and the iPhone list `house,school` and offer the house alone; the switch is the only way to the school; the phones' half of J1) |
+| 0.19 | 2026-10-15 | Claude (Code), engineer | **Part H: every kind** (owner constraint, `feat/kinds-25-capabilities-schema`): H2 runs on the house space and on each other released kind's space; new H3, the kind-file validator rejects map keys. |
+| 0.20 | 2026-10-16 | Claude (Code), engineer | H3 names the tripwire script and the per-kind boundary spec ([03](03-design.md) §18.26); H1 and H2 are re-read and unchanged (H2 still wants the TC-M-25 run, now also in a school's space, TC-M-89). |
 
 ## 1. What this is, and when it runs
 
@@ -21,13 +40,15 @@ release security gate exists and passes**, and once it exists, every web deploy 
 
 1. **Automated**, in CI on every push: the checks in [06](06-test-plan.md) §11.1, each with its tool, owner and threshold.
 2. **Manual, about one hour per release**: this document's section 3.
-3. **A deep self-run pentest** before the Play Store launch and again before Sprint 5's Google sign-in goes live: section 5.
+3. **A deep self-run pentest** before the Play Store launch and again before Google Drive sign-in goes to production: section 5.
 
 Run section 3 on the **release candidate**: the exact commit, APK and web build that would ship. It runs before:
 
 - a Play Store release (any track, internal testing included);
-- a server that anyone outside the owner's own devices can reach (the hosted server of Sprint 5, or a self-hosted one
-  opened to the internet);
+- a server that anyone outside the owner's own devices can reach (a self-hosted one opened to the internet; there is
+  no hosted server, D-28);
+- publishing the Google Cloud project's sign-in to production, so that people beyond the listed test users can connect
+  Google Drive ([15](15-google-drive-backup-and-sharing.md) §2.3, decision 7);
 - a web deploy, once this gate exists. A web-only deploy runs parts A, B, F (if AI changed) and H only; the rest
   covers code that did not change.
 
@@ -39,8 +60,10 @@ real landlord's name or phone, never the owner's own house list.
 - [ ] Every workflow on the release commit is green: Web, Backend, Android, Shared-iOS, Security, CodeQL.
 - [ ] The artifacts are at hand: `backend-zap-api-scan` and the Trivy image output (Backend), `android-mobsf-report`
       (Android), the Security run's licence-check log.
-- [ ] A release APK built from that commit (signed, from `android.yml`'s `release` job, for a Play release; unsigned
-      from the `mobsf` job otherwise).
+- [ ] A release APK built from that commit (signed, for a Play release: the **draft GitHub Release** that `release.yml` makes
+      from the pushed tag, [07](07-secure-build-and-deploy.md) §5, whose notes say it is not approved until this list passes; or
+      `android.yml`'s `release` job artifact; unsigned from the `mobsf` job otherwise). Check its `.sha256` and that the signer
+      fingerprint in the notes is the one in the README.
 - [ ] Tools: Docker (MobSF, and ZAP if needed), an Android emulator or a test phone with `adb`, a desktop browser with
       developer tools, `curl`, and for a public server `testssl.sh`.
 - [ ] A test house list: three houses, one with the payloads `<img src=x onerror=alert(1)>` as its label and
@@ -68,7 +91,7 @@ On the release build: the live site for a deploy that already happened, or `npx 
 
 | # | Check (OWASP WSTG) | How | Pass |
 |---|---|---|---|
-| B1 | Headers (WSTG-CONF-07, -12, -14) | `curl -sI https://doorprints.web.app/` | CSP, HSTS, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy` and frame refusal as in `web/firebase.json` (TC-S-23) |
+| B1 | Headers (WSTG-CONF-07, -12, -14) | `curl -sI https://doorprints.web.app/` | CSP, HSTS, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy` and frame refusal as in `web/firebase.json` (TC-S-23); the `Permissions-Policy` reads `geolocation=(self), camera=(self), microphone=(self), payment=(), usb=()` with no `*` (the microphone since S4b-BL-221, voice input) |
 | B2 | Stored XSS (WSTG-INPV-02) | Add the test house with the payload label; open the map, the list, the house page, *Save a copy* as HTML and the print view | The payload shows as text everywhere; nothing runs (TC-S-16) |
 | B3 | Dangerous links (WSTG-CLNT-04) | Open the house with `javascript:alert(1)` as its listing URL | The link is not clickable or does nothing |
 | B4 | Malicious backup (WSTG-BUSL-09) | *Import a backup* with the TC-S-17 files (zip slip, bomb, hash mismatch) | Each one is refused with a message; no house changed |
@@ -82,11 +105,11 @@ On the release APK.
 
 | # | Check (OWASP MASTG / MASVS) | How | Pass |
 |---|---|---|---|
-| C1 | Manifest (MASVS-PLATFORM, -NETWORK) | `aapt2 dump xmltree --file AndroidManifest.xml app-release.apk` | `debuggable` absent or false; `allowBackup` as documented; only the reviewed components exported; no cleartext outside the dev-host config (S4b-BL-64) |
+| C1 | Manifest (MASVS-PLATFORM, -NETWORK) | `aapt2 dump xmltree --file AndroidManifest.xml app-release.apk` | `debuggable` absent or false; `allowBackup` as documented; only the reviewed components exported; no cleartext outside the dev-host config (S4b-BL-64); **the permission list is the reviewed one** (the location pair, background location for the area wake-up only, notifications, the foreground-service types, exact alarms, boot, biometric, internet and network state, and `RECORD_AUDIO` for voice input, S4b-BL-222: one `uses-permission`, with `android.hardware.microphone` as `required=false`); a new permission is documented first (TC-S-52 reads this one) |
 | C2 | Signature (MASVS-RESILIENCE) | `apksigner verify --print-certs app-release.apk` | Verifies; the SHA-256 matches the published fingerprint (TC-S-15). *n/a* for an unsigned candidate |
 | C3 | Logs (MASVS-STORAGE) | `adb logcat` while adding, syncing and exporting the test houses | No contact name, phone, note text or exact location in the log |
 | C4 | Deep links (MASVS-PLATFORM) | The TC-S-12 `adb shell am start` commands | No crash; bad input ignored |
-| C5 | Permissions at use | Fresh install; walk to Hunt mode | Location asked only when needed, with the rationale; *Only this time* and *Deny* both handled |
+| C5 | Permissions at use | Fresh install; walk to Hunt mode; turn on *Voice input* and tap the microphone | Location asked only when needed, with the rationale; *Only this time* and *Deny* both handled; **the microphone is not asked at install or start-up, only after the tap and the rationale; *Not now* and *Deny* leave the field working** (MT-82; on the iPhone iOS asks once, MT-104) |
 | C6 | Files the user saves | *Save a copy* and the weekly backup | Written only where the user chose (the system picker), never to shared storage unasked |
 | C7 | Captive portal (TC-S-13) | Only when sync changed | As TC-S-13 |
 
@@ -130,6 +153,7 @@ Run **AI evals** (`ai-evals.yml`, manual) on the release commit first. The golde
 | F8 | LLM08 Vector and embedding weaknesses | One store per deployment; deletion (TC-AI-08) | Passed |
 | F9 | LLM09 Misinformation | Citations and refusal (TC-AI-02, TC-AI-03) | Thresholds met |
 | F10 | LLM10 Unbounded consumption | Quota and limits (TC-AI-07); the provider's spend cap (AI-015) | Cap set; 429 seen at the quota |
+| F11 | Voice input (planned, [03](03-design.md) ADR-37; only when voice is in this release) | *Voice input* is **off by default** on a fresh install (Settings > AI features) and on the website; the microphone permission is **asked at first use**, with a rationale, never at install or start-up (Android `RECORD_AUDIO` is not requested before a tap); the microphone button is hidden for a provider that cannot transcribe; the audio is in no backup, copy or sync file (T-I48 tests); the disclosure names the host; the website's `Permissions-Policy` has `microphone=(self)` (shipped with the web voice pull request, S4b-BL-221: TC-S-23, TC-S-51, B1); **on Android (S4b-BL-222: TC-S-52, TC-I-52) the recorder is `AudioRecord` into memory with no file, `RECORD_AUDIO` is requested from one place after a tap and a rationale, recording is foreground only, and the manifest and backup rules take no audio**; **on the iPhone (S4b-BL-223: TC-S-53, `shared-ios.yml`) the recorder is an `AVAudioEngine` tap into memory with no file, `NSMicrophoneUsageDescription` is in `Info.plist` and the four `InfoPlist.strings`, no `audio` background mode is declared, the system question comes only after a tap and the rationale, and recording ends when the app leaves the front** | Still true, or voice is not in this release **Sarvam (S4b-BL-224):** if the release offers Sarvam, its key is in a slot of its own that no backup, copy, sync or Drive file holds (TC-U-265, TC-S-51..TC-S-53), the disclosure names `api.sarvam.ai`, and a Sarvam recording stops at 30 s (MT-109). |
 
 ### G. Privacy: the DPDP Act and Play's data safety (5 minutes)
 
@@ -137,14 +161,51 @@ Run **AI evals** (`ai-evals.yml`, manual) on the release commit first. The golde
 |---|---|---|
 | G1 | What the release collects, sends and keeps | Matches [04](04-data-flow-diagrams.md) and the privacy note in the apps; a new flow is documented first |
 | G2 | Play's data-safety form (Play release only) | Its answers match G1: location and contacts stay on the device or go to the user's own server; map tiles see the IP address; AI text goes to the chosen provider only when AI is on |
-| G3 | The DPDP Act, 2023 | Personal use is outside the Act ([01](01-requirements.md) §9, section 3(c)(i)). **A hosted server (Sprint 5) makes Doorprints a data fiduciary for its users**: before that release, the notice, consent, the grievance contact, deletion on request and breach reporting are in place, reviewed with the owner |
+| G3 | The DPDP Act, 2023 | Personal use is outside the Act ([01](01-requirements.md) §9, section 3(c)(i)). There is no hosted server (D-28): the owner never receives anyone's data, so Doorprints holds nothing to notify about or erase on request. **The person's right to erasure is exercised directly in the app**: *Delete this backup*, *Delete all backups* and *Delete everything Doorprints keeps in my Google Drive* work on every platform and really delete (I7), *Remove all data* clears a device, and the privacy page ([15](15-google-drive-backup-and-sharing.md) S4b-BL-121) says in plain words what each does, what stays (other devices, shared copies others imported, Google's own retention) and how to remove Doorprints' access at Google. Recheck if a hosted service is ever added |
+| G4 | Voice input in the privacy note in the apps and in Play's data-safety form (Play release only; written in S4b-BL-222, **a note until a Play release exists**) | The in-app privacy note is the *Voice input* setting's disclosure, the button's hint and the permission rationale: audio goes from the phone to the AI provider the person configured (host and list price named), only when *Voice input* is on, anything said is sent as audio and a spoken number is not redacted first, and Doorprints does not store or share it. The form's answer: audio and voice data, collected, sent to a third party the person chose, optional, off by default, not stored or shared by Doorprints; the microphone permission rationale matches [04](04-data-flow-diagrams.md) DF-49 and [11](11-feature-parity-and-export-spec.md) 5.18a. No form is submitted (no Play release, owner decision 2026-09-23) |
+
+### I. Google sign-in and Drive (10 minutes; only once Drive is built, [15](15-google-drive-backup-and-sharing.md))
+
+| # | Check | How | Pass |
+|---|---|---|---|
+| I1 | The scopes asked for | Google Auth Platform > Data access, and the consent screen each app shows | Exactly `drive.file`; no other scope (no `drive`, `drive.appdata`, `openid`) |
+| I2 | No secret in the apps | Search the APK, the website's bundle and the iOS app for the web client's secret and any `client_secret` | None; only client ids, the iOS URL scheme, the Picker browser key and the project number |
+| I3 | The Picker key's restrictions | Credentials > the API key | Websites `https://doorprints.web.app/*` only, API *Google Picker API* only |
+| I4 | Client OAuth | iPhone: the authorisation request carries `code_challenge` (S256) and `state`, the token request `code_verifier` and no secret; Android: the grant through Play services; website: the GIS token popup works with the release's COOP (`same-origin-allow-popups`) and CSP | As said; the callback refuses a wrong `state` |
+| I5 | Token storage | Website: developer tools > Application (no token in `localStorage`, `sessionStorage` or IndexedDB); iPhone: the Keychain item is *this device only*; Android (the browser with PKCE, the default decided 2026-10-02): the refresh token only sealed by a Keystore key bound to the screen lock (with the Play-services fallback: no token at all); all: `adb logcat` / the console during a sync | No token anywhere but memory and the iPhone's Keychain; no token in a log |
+| I6 | What sits in the person's Drive | drive.google.com with the test account after a backup, a sync and a share | Only the *Doorprints* folder of [15](15-google-drive-backup-and-sharing.md) §5.1; contact details absent where they were left out; the shared file shared as *Viewer* with only the chosen account |
+| I7 | Deleting | *Delete this backup*, *Delete all backups*, *Delete everything …* on the test account (TC-M-48) | The files are gone and not in Drive's bin; sharing removed first; automatic backup stays off; another device asks before backing up again |
+| I8 | Disconnect and revoke | *Disconnect Google Drive*, then *Disconnect on all devices*, then Google's *third-party connections* page | Each does what 15 §3.5 says; no local data deleted; the app shows *Google Drive disconnected* |
+| I9 | Untrusted files | Put the TC-S-17 files (zip slip, bomb, hash mismatch) into the test account's *Doorprints/Sync* and *Backups* and share one from a second account | Each refused with a message; nothing written |
+| I10 | Encryption | Download a backup, a sync file and a photo from the test account's Drive; open Drive's preview | Each starts with `DPX1` and shows no house text, name or JPEG header; Drive's preview shows nothing; file names and `appProperties` carry no house data. The format's own refusals are unit-tested since S4b-BL-125 (TC-U-128) |
+| I11 | `keys.json` and downgrade | Add an entry to `keys.json` by hand, and put a plain (unencrypted) sync file in *Sync* | The entry is refused and reported; the plain file is ignored. The MAC and the `NOT_DPX` refusal are unit-tested since S4b-BL-125 (TC-U-128, TC-U-130); the report and the ignore rule come with S4b-BL-116/-118; and replace `keys.json` by one made with another folder key wrapped to every listed device (TC-U-132's forge, by hand): every device and the recovery key refuse it |
+| I12 | Device authentication (TC-M-50) | *Delete all backups* and *Delete everything* on each phone; cancel once; wait over a minute once | The phone's own check every time, nothing deleted on cancel, asked again after the minute; the website offers L2/L3 only with a passkey whose PRF extension seals its key, otherwise L1 only |
+| I13 | The screen lock (TC-M-51) | Connect on a phone with no lock; then with a lock, connect and remove the lock | Refused without a lock; paused with its message after removal, no upload or delete; re-enrolment needed afterwards |
+| I14 | Recovery key and enrolment (TC-M-52, TC-M-53) | Save the recovery key at connect; a fresh device sees the existing folder and writes nothing until it joins; enrol it by QR code and once by the code fallback; revoke it; open a backup made after the revoke with the recovery key on a fresh browser | As 15 §9.3..§9.5: no silent adoption, a swapped key refused, the recovery key opens post-revoke files without having been typed in between; it appears nowhere in the app's storage, logs or Drive. The recovery key's derivation, check symbol and post-revoke wrap are unit-tested since S4b-BL-125 (TC-U-127, TC-U-130); on the website, open with the recovery key in Chromium, Firefox and Safari ([02](02-threat-model.md) RR-27) |
+| I15 | Authenticator app (TC-M-55; **deferred**, owner 2026-10-02: n/a until S4b-BL-129) | Set it up; use a code on the website; replay it; five wrong codes; download `keys.json` | A replayed code and the sixth try are refused; the lock lasts 5 minutes; `keys.json` holds the secret only wrapped; a valid code alone never approves a device unattended |
+| I16 | Rollback | Revoke a device, then bring back the older `keys.json` with Drive's *Manage versions* | Every device refuses it and says so; the revoked device's later files are skipped. The refusal (`ROLLED_BACK`) and the skip rule are unit-tested since S4b-BL-125 (TC-U-130, TC-U-131); the words and the report come with S4b-BL-126/-118 |
+| I17 | Google's user-data policy | The privacy page and the consent screen | The page says what 15 S4b-BL-121 lists, including the Limited Use sentence; the consent screen links it |
 
 ### H. India's boundaries (5 minutes)
 
 | # | Check | Pass |
 |---|---|---|
 | H1 | The geospatial self-certification, [03](03-design.md) §11.1, re-read against DST's guidelines and negative list | Still true for this release |
-| H2 | TC-M-25 on the release build (web and Android) | Passed |
+| H2 | TC-M-25 on the release build (web and Android), on the house space and on each other released kind's space | Passed |
+| H3 | The kind-file validator rejects map keys: the schema test `kind-capabilities.spec.ts` ("a kind file has no map configuration"), `KindCapabilitiesVectorsTest.aKindFileHasNoMapConfiguration` and `KindCapabilitiesFileTest.theSchemaHasNoMapConfigurationAndMapIsABooleanOnly` pass, as do the tripwire `tools/check-kind-literals.mjs` (no map-rules file names a kind, no source names `zz_all`) and `india-boundaries-kinds.spec.ts` (the boundary style is byte-identical for every kind) | Passed |
+
+### J. Kinds, spaces and deletion (10 minutes; every release, [02](02-threat-model.md) T-E13, T-T21, T-I49, T-D15)
+
+| # | Check | Pass |
+|---|---|---|
+| J1 | **Compiled in, off.** Owner decision 2026-10-15: the release build lists the school (*available*) but does not release it (*released* is `RELEASED_KINDS`, the house alone); only the person's switch offers it. The website's production configuration lists exactly `house,school` (`angular.json` `define`; the build command and the `start` and `test` scripts add none), and in a private window `/` is the map, there is no chooser, Your data shows *Experimental: more than houses* **off** with no kind rows, and `/k/school` goes back to the home page. The tagline, the meta description, the manifest and `about.html` still say houses (`seo.spec.ts`). The server runs with `KINDS_AVAILABLE` unset or `house`: listing the school there is the operator's own choice (`KINDS_AVAILABLE=house,school`), not part of the release. (The phones' `AVAILABLE_KINDS` are J8.) (Unit tests `release-kinds.spec.ts` and `experimental-off.spec.ts` fail on a changed define or a changed released list; this check covers the workflow's command line and the built artefact.) | All true. A change to what is released is a deliberate decision of the owner, recorded in [10](10-sprint-log.md) |
+| J2 | **A stored switch is the feature, not a bypass.** In the release build set `doorprints.kinds.experimental` to `1` by hand (it is what turning the switch on stores): the school is offered in Your data and, once shown, the chooser appears, as the person would get it. `doorprints.dev.kinds` set to `school` does nothing (a development build only), and `doorprints.kinds.enabled` naming a kind while the switch is off, or a backup whose `search` names `school` while it is off, changes nothing a person sees | With the switch off the app is the house alone: nothing is listed, drawn or sent to the AI as a school; with it on, only what *What you track* shows |
+| J3 | **A hostile file.** Import a file with `search` of `{"kinds":["constructor","__proto__"],"defaultKind":"constructor"}`, a candidate of kind `constructor`, and an extra of the wrong type and out of range | The file imports or is refused for its usual reasons only; no error screen; the candidate is drawn as a house |
+| J4 | **No delete reaches another kind.** With two kinds shown (the release build with the switch on, or a development build): *Delete all in this space* in one, then look at the other; *Recently deleted* of each; one delete then *Undo* | The other space has every entry; each list shows its own space's deletions; the second bulk action within 10 seconds waits |
+| J5 | **The global deletions say so.** *Remove all data* lists every kind's count; Drive deletion level 3 says *all kinds*; `DELETE /api/data` answers 428 without its `X-Confirm-Delete` header (E) | Said in words before the action |
+| J6 | **AI input of a kind.** With a kind available: the evals' kind cases (TC-AI-04, `kind-ai-vectors.json`) pass; an extra with an instruction as its text, a number out of range or a money value with a foreign cadence is left out of the document; the contact's name and phone do not appear | Passed |
+| J7 | **The index follows the list.** After `KINDS_AVAILABLE` changes, `POST /api/ai/reindex` has been run (T-I49) | Done, or the list did not change |
+| J8 | **The phones: compiled in, off** (owner, 2026-10-15; the phones' half of J1). The release APK's `AVAILABLE_KINDS` is `"house,school"` and `DEV_KINDS` is `false` (`BuildConfig`, or `aapt`/`jadx` of the signed APK); the iPhone's `IOS_AVAILABLE_KINDS` is the same (`ReleaseKindsTest`, `IosKindsGateTest`), `KindSettingRules.RELEASED` is the house alone, and the iPhone's Info.plist names no kind. On a fresh install of each: the Map is the first screen, no chooser, no chip, Settings has *What you track* with *Experimental: more than houses* **off** and no kind rows; a school entry that arrives by import or sync is listed as a house and is not searched, read by the AI or copied as a school, and a stored `kinds.enabled` or `kinds.default` naming the school changes nothing while the switch is off. Turn the switch on and *Show Schools*: the chooser appears. The switch hint and the school listing tips say *preview* (hi, ta, te under review). The tagline and the store listing still say houses | All true. Releasing a second kind (adding it to `RELEASED`) is a deliberate decision of the owner, recorded in [10](10-sprint-log.md) |
 
 ## 4. Judging and recording
 
@@ -158,12 +219,13 @@ Run **AI evals** (`ai-evals.yml`, manual) on the release commit first. The golde
 
 ## 5. The deep self-run pentest
 
-Before the **Play Store launch**, and again before **Sprint 5's Google sign-in** goes live. Time box: two days, with
+Before the **Play Store launch**, and again before **Google Drive sign-in goes to production**. Time box: two days, with
 the owner. It is run by us on our own systems: no third party, no paid tool (zero cost).
 
 **In scope:** the release APK; the web app on a preview deploy or served locally; the backend in its release image
 with PostGIS, on a private network or a test host; its API, `/mcp`, the AI endpoints (with a capped test key) and
-sync; from Sprint 5, Google sign-in (the OAuth flow, the session, account linking and sign-out).
+sync; once Drive is built, the client OAuth flows on the three platforms, token storage, the Drive files, sharing
+and deletion ([15](15-google-drive-backup-and-sharing.md); [02](02-threat-model.md) §10).
 
 **Out of scope:** Google's, Firebase's and the tile providers' systems; the phone's operating system; load or denial
 of service; social engineering; anything not ours. Nothing against `https://doorprints.web.app` beyond normal use and
@@ -178,8 +240,11 @@ the passive ZAP baseline the first-deploy checks already run ([06](06-test-plan.
 - Android: MASVS L1 with the MASTG tests for storage, crypto, network, platform and code, plus a Frida or objection
   session on a rooted emulator (root detection is not a requirement; the point is to see what an attacker with the
   device sees).
-- Server: OWASP ASVS level 2 for authentication, session, access control and API; from Sprint 5 its OAuth and OIDC
-  requirements (state, PKCE, redirect URI, token audience).
+- Server: OWASP ASVS level 2 for authentication, session, access control and API (the self-hosted server; there is
+  no hosted one, D-28).
+- Client OAuth: ASVS's OAuth client requirements and RFC 8252 (OAuth for native apps) for the phones (PKCE, state, the
+  redirect, no embedded web view), the GIS token model on the website, and every file read from Drive treated as
+  untrusted ([02](02-threat-model.md) T-T15).
 - AI: the Top 10 for LLM applications with hand-made payloads beyond the golden set.
 
 **Tools:** OWASP ZAP (active scan and manual requests), Burp Suite Community, MobSF, Frida and objection,
@@ -191,7 +256,7 @@ report, as findings in [02](02-threat-model.md) and a summary in [10](10-sprint-
 ## 6. Release record (copy for each release)
 
 ```
-Release: <version>  Commit: <sha>  Date: <yyyy-mm-dd>  Run by: <name>
+Release: <version>  Commit: <sha>  Tag / draft release: <vX.Y.Z, link>  Date: <yyyy-mm-dd>  Run by: <name>
 Kind: Play release / public server / web deploy
 A automated gate   pass / fail   notes:
 B web              pass / fail / n/a
@@ -201,7 +266,9 @@ E server           pass / fail / n/a
 F LLM Top 10       pass / fail / n/a   AI evals run: <link>
 G privacy          pass / fail
 H boundaries       pass / fail
+J kinds and spaces pass / fail
+I Google Drive     pass / fail / n/a
 Findings: <F- ids>   Accepted risks: <02 §7 RR- ids, expiry>
-Pentest (Play launch or Sprint 5 only): <date, report link>
+Pentest (Play launch or Drive go-live only): <date, report link>
 Decision: ship / do not ship   Owner: <name>
 ```

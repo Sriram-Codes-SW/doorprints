@@ -30,12 +30,14 @@ import type { HouseDto } from '../../core/models';
  */
 export const DRAFT_PREFIX = 'doorprints.houseDraft:';
 
+/** An unsaved house form as kept in sessionStorage. */
 export interface StoredDraft {
   draft: HouseDto;
   /** A new house opened without a position: whether the pin had been put. */
   locationSet: boolean;
 }
 
+/** The storage key for a route: the house id, or a new house by its starting position. */
 export function draftKey(id: string | null, lat: string | null, lon: string | null): string {
   if (id) return DRAFT_PREFIX + id;
   return DRAFT_PREFIX + (lat && lon ? `new:${lat},${lon}` : 'new:');
@@ -61,6 +63,7 @@ export function parseStoredDraft(raw: string | null): StoredDraft | null {
   }
 }
 
+/** The kept draft for `key`, or null when there is none, it is corrupt, or storage is blocked. */
 export function readDraft(key: string): StoredDraft | null {
   try {
     return typeof sessionStorage === 'undefined' ? null : parseStoredDraft(sessionStorage.getItem(key));
@@ -69,6 +72,7 @@ export function readDraft(key: string): StoredDraft | null {
   }
 }
 
+/** Keeps the draft; silently does nothing when storage is blocked or full. */
 export function writeDraft(key: string, value: StoredDraft): void {
   try {
     sessionStorage.setItem(key, JSON.stringify(value));
@@ -77,6 +81,7 @@ export function writeDraft(key: string, value: StoredDraft): void {
   }
 }
 
+/** Forgets the kept draft, after a save, a discard or a deliberate leave. */
 export function clearDraft(key: string): void {
   try {
     sessionStorage.removeItem(key);

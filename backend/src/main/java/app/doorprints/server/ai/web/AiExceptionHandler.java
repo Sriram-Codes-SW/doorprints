@@ -23,7 +23,6 @@ import app.doorprints.server.ai.config.AiProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -38,48 +37,82 @@ public class AiExceptionHandler {
 
     /** Problem-detail {@code code} when the provider (AI Studio or Vertex AI) answered 429 / RESOURCE_EXHAUSTED. */
     public static final String QUOTA_EXHAUSTED_CODE = "AI_QUOTA_EXHAUSTED";
+    /**
+     * HTTP status when the quota or credit is used up for the day or for good (S4b-BL-244): payment required. The clients
+     * read the status (the phones' {@code kindFor}, the website's {@code aiErrorMsg}) and say "free quota or credit is
+     * used up", not "try again later". A per-minute limit stays 503 with {@code Retry-After}.
+     */
+    public static final HttpStatus QUOTA_SPENT_STATUS = HttpStatus.PAYMENT_REQUIRED;
+    /** Problem-detail {@code code} when the provider's own safety system declined the text (S4b-BL-233); HTTP 422. */
+    public static final String DECLINED_CODE = "AI_DECLINED";
     /** Suggested wait for clients after a provider quota error (per-minute quotas reset within a minute). */
     static final String QUOTA_RETRY_AFTER_SECONDS = "60";
     /** Problem-detail property with an owner setup hint (Vertex AI 401/403/404: auth, IAM, model not in location). */
     public static final String SETUP_HINT_PROPERTY = "setupHint";
 
+    /**
+     * Problem-detail property saying why the call failed: {@code provider} (HTTP error, timeout, connect failure of the
+     * model provider) or {@code model} (output that could not be parsed); see {@link ProviderErrors#cause}.
+     */
+    public static final String CAUSE_PROPERTY = "cause";
+
     /** Null in unit tests that build the handler directly: then no Vertex setup hints are added. */
     private final AiProperties props;
 
-    /** For tests: no provider settings, so no setup hints. */
-    public AiExceptionHandler() {
-        this((AiProperties) null);
-    }
-
-    public AiExceptionHandler(AiProperties props) {
-        this.props = props;
-    }
-
-    /** Spring: {@code AiProperties} is bound by {@code @ConfigurationPropertiesScan}; tolerate its absence (slices). */
-    @Autowired
+    /**
+     * Spring: {@code AiProperties} is bound by {@code @ConfigurationPropertiesScan}; tolerate its absence (slices).
+     * Tests build the handler through {@code AiExceptionHandlers.of}.
+     */
     public AiExceptionHandler(ObjectProvider<AiProperties> props) {
-        this(props.getIfAvailable());
+        this.props = props.getIfAvailable();
     }
 
     /**
-     * Always 503 (the apps already show "AI provider unavailable" for it); a quota error additionally carries
+     * 503 (the apps show "AI provider unavailable" for it); a per-minute quota error additionally carries
      * {@code code: AI_QUOTA_EXHAUSTED} and {@code Retry-After: 60} so callers (the eval harness, future UI) can tell it
-     * apart from an outage without parsing text.
+     * apart from an outage without parsing text. A quota or credit that is spent (402, a daily quota, S4b-BL-244) is
+     * HTTP 402 with the same code, {@code retryable: false} and no {@code Retry-After}. A provider's safety block
+     * (S4b-BL-233) is HTTP 422 {@code AI_DECLINED}, {@code retryable: false}.
      */
     @ExceptionHandler(AiUnavailableException.class)
     public ResponseEntity<ProblemDetail> aiUnavailable(AiUnavailableException e) {
-        // Log the cause class and message only: provider errors can echo parts of the prompt.
+        // Log the kind of failure only: the cause's class and the provider's HTTP status. Never the cause's message
+        // (nor a stack trace, which carries it): provider errors can echo parts of the prompt, which holds the
+        // person's notes (SEC-016, PRV-011).
         var cause = e.getCause();
+        if (ProviderErrors.isDeclined(e)) {
+            // The kind only, as below: no provider text and no stack trace (it carries the provider's words).
+            log.warn("{} [provider declined the text] ({})", e.getMessage(), cause == null ? "-" : cause.getClass().getSimpleName());
+            var declined = ProblemDetail.forStatusAndDetail(HttpStatus.UNPROCESSABLE_ENTITY,
+                    e.getMessage() + ". The AI provider declined this text; nothing was changed. Edit the wording and try again.");
+            declined.setProperty("retryable", false);
+            declined.setProperty("code", DECLINED_CODE);
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(declined);
+        }
         boolean quota = ProviderErrors.isQuotaExhausted(e);
+        boolean spent = quota && ProviderErrors.isQuotaSpent(e);
         String hint = quota ? null : vertexSetupHint(e);
-        log.warn("{}{} ({}: {}){}", e.getMessage(), quota ? " [provider quota exhausted]" : "",
-                cause == null ? "-" : cause.getClass().getSimpleName(),
-                cause == null ? "-" : abbreviate(cause.getMessage()),
+        var status = ProviderErrors.httpFailure(e).map(f -> " HTTP " + f.status()).orElse("");
+        log.warn("{}{} ({}{}){}", e.getMessage(), spent ? " [provider quota or credit spent]" : quota ? " [provider quota exhausted]" : "",
+                cause == null ? "-" : cause.getClass().getSimpleName(), status,
                 hint == null ? "" : " [setup: " + hint + "]");
+        if (spent) {
+            // No provider text, no Retry-After: waiting does not help; the apps word it from the status alone.
+            var gone = ProblemDetail.forStatusAndDetail(QUOTA_SPENT_STATUS, e.getMessage()
+                    + ". The AI provider's free quota or credit is used up; it will not recover by waiting a minute.");
+            gone.setProperty("retryable", false);
+            gone.setProperty("code", QUOTA_EXHAUSTED_CODE);
+            var why = ProviderErrors.cause(e);
+            if (why != null) gone.setProperty(CAUSE_PROPERTY, why);
+            return ResponseEntity.status(QUOTA_SPENT_STATUS).body(gone);
+        }
         var problem = ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE, quota
                 ? e.getMessage() + ". The AI provider's quota or rate limit is exhausted; try again later."
                 : e.getMessage() + ". The AI provider is unavailable or its free quota is exhausted; try again later.");
         problem.setProperty("retryable", true);
+        // S4b-BL-200: provider (HTTP/timeout/connect) or model (unreadable output); absent when it cannot be told.
+        var why = ProviderErrors.cause(e);
+        if (why != null) problem.setProperty(CAUSE_PROPERTY, why);
         if (hint != null) problem.setProperty(SETUP_HINT_PROPERTY, hint);
         var response = ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE);
         if (quota) {
@@ -118,10 +151,5 @@ public class AiExceptionHandler {
                     + "setup (docs/ai/vertex-setup.md).";
             default -> null;
         };
-    }
-
-    private static String abbreviate(String s) {
-        if (s == null) return "-";
-        return s.length() <= 200 ? s : s.substring(0, 200) + "…";
     }
 }

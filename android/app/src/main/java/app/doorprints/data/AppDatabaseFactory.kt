@@ -20,6 +20,7 @@ package app.doorprints.data
 
 import android.content.Context
 import androidx.room.Room
+import java.util.concurrent.Executor
 
 /**
  * Opens the app's Room database on Android (CMP-4 P4a). [AppDatabase], its entities, DAOs and `MIGRATION_1_2` live in
@@ -28,7 +29,8 @@ import androidx.room.Room
  * the framework SQLite through its SupportSQLite open helper: the same file, journal mode (WAL where the device
  * supports it), threads and invalidation tracking as before the move.
  */
-fun AppDatabase.Companion.create(context: Context): AppDatabase =
+fun AppDatabase.Companion.create(context: Context, executor: Executor? = null): AppDatabase =
     Room.databaseBuilder(context, AppDatabase::class.java, DatabaseFile.resolve(context))
         .addMigrations(*AppDatabase.MIGRATIONS)
+        .apply { if (executor != null) setQueryExecutor(executor).setTransactionExecutor(executor) }
         .build()

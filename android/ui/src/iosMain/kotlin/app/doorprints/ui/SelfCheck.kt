@@ -143,6 +143,10 @@ private sealed interface Result {
     class Skip(val reason: String) : Result
 }
 
+/**
+ * Runs every check in order, each printing its own line, then prints the overall result: PASS when none failed (a skip
+ * is not a failure), otherwise FAIL.
+ */
 private suspend fun runSelfCheck() {
     val results = listOf(
         check("resources") {
@@ -260,7 +264,7 @@ private suspend fun huntCheck(): Result {
     )
     repo.saveHouse(house)
     try {
-        val started = withContext(Dispatchers.Main) { IosHunt.start() }
+        val started = withContext(Dispatchers.Main) { IosHunt.start(house.kind) }
         if (!started) return Result.Fail("Hunt mode did not start")
         try {
             HuntState.state.first { it.nearestHouse?.id == house.id }
@@ -352,7 +356,9 @@ private suspend fun copiesCheck(): Result {
             val opened = BackupArchive.open(source, iosArchiveTools)
             if (opened !is ArchiveOpen.Ok) return Result.Fail("the backup did not open (${(opened as ArchiveOpen.Failed).problem})")
             val archive = opened.archive
-            if (archive.data != BackupData.of(bundle)) return Result.Fail("the rows read back differ")
+            // The copy is the new backup family (kinds step 3), read back as the rows of the family before: only the
+            // format number of those rows differs from what was built.
+            if (archive.data != BackupData.of(bundle).copy(format = archive.data.format)) return Result.Fail("the rows read back differ")
             if (!archive.photoBytes("photos/p_selfcheck.jpg").contentEquals(photo)) return Result.Fail("the photo read back differs")
             val check = ArchiveImports.preview(IosAppContainer.repository, archive, path, null) { NSUUID().UUIDString.lowercase() }
             if (check.copy.newHouses != 1) return Result.Fail("the preview has ${check.copy.newHouses} new houses, not 1")

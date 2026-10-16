@@ -48,6 +48,9 @@ export interface ImportOutcome {
   undo: CopyUndo | null;
 }
 
+/**
+ * The rows a COPY import added, each with the `updatedAt` it was written with, so *Undo* removes only those that were not edited since.
+ */
 export interface CopyUndo {
   houses: Map<string, number>;
   visits: Map<string, number>;
@@ -70,9 +73,9 @@ export class ImportService {
   async localVersions(): Promise<LocalVersions> {
     const houses = await this.store.allHouses();
     const visits = await this.store.allVisits();
-    const photos = await this.store.allPhotos();
-    const versions = async (type: string) => new Map((await this.store.allRecordsOf(type)).map((r) => [r.id, millis(r.updatedAt)]));
-    const live = async (type: string) => new Set((await this.store.allRecordsOf(type)).filter((r) => !r.deleted).map((r) => r.id));
+    const photos = await this.store.photos.all();
+    const versions = async (type: string) => new Map((await this.store.records.allOfType(type)).map((r) => [r.id, millis(r.updatedAt)]));
+    const live = async (type: string) => new Set((await this.store.records.allOfType(type)).filter((r) => !r.deleted).map((r) => r.id));
     return {
       houses: new Map(houses.map((h) => [h.id, millis(h.updatedAt)])),
       visits: new Map(visits.map((v) => [v.id, millis(v.updatedAt)])),
@@ -206,8 +209,8 @@ export class ImportService {
     await this.store.putImported({ records, houses, visits, photos });
     // Photos already here whose meta is newer in the file: only the meta, marked for the next sync.
     for (const p of actions.photoMeta) {
-      const here = await this.store.getPhoto(p.id);
-      if (here && !here.deleted) await this.store.putPhotoRecord(withPhotoMeta(here, cleanMeta(p), true));
+      const here = await this.store.photos.get(p.id);
+      if (here && !here.deleted) await this.store.photos.put(withPhotoMeta(here, cleanMeta(p), true));
     }
     let removed = 0;
     for (const id of actions.removedHouseIds) {
@@ -252,13 +255,13 @@ export class ImportService {
       if (row && !row.deleted && millis(row.updatedAt) === at && !(row.houseId && keptHouses.has(row.houseId))) await this.store.deleteVisit(id, now);
     }
     for (const id of undo.photos) {
-      const row = await this.store.getPhoto(id);
-      if (row && !row.deleted && !keptHouses.has(row.houseId)) await this.store.deletePhoto(id, now);
+      const row = await this.store.photos.get(id);
+      if (row && !row.deleted && !keptHouses.has(row.houseId)) await this.store.photos.delete(id, now);
     }
     for (const [key, at] of undo.records) {
       const [type, id] = key.split('\n');
-      const row = await this.store.getRecord(type, id);
-      if (row && millis(row.updatedAt) === at) await this.store.deleteRecord(type, id, now);
+      const row = await this.store.records.get(type, id);
+      if (row && millis(row.updatedAt) === at) await this.store.records.delete(type, id, now);
     }
     return { removed, kept };
   }
@@ -270,6 +273,7 @@ function houseRecord(h: BackupHouse, syncVersion: number): HouseRecord {
   return houseFromDto(dto, true);
 }
 
+/** A backup visit as this browser stores it, marked dirty so it is pushed. */
 function visitRecord(v: BackupVisit, syncVersion: number): VisitRecord {
   const dto = {
     ...v,
@@ -282,6 +286,7 @@ function visitRecord(v: BackupVisit, syncVersion: number): VisitRecord {
   return visitFromDto(dto, true);
 }
 
+/** A backup photo as this browser stores it: the verified bytes as a JPEG blob, with its metadata, not yet uploaded. */
 function photoRecord(p: BackupPhoto, bytes: Uint8Array): PhotoRecord {
   const blob = new Blob([bytes as BlobPart], { type: 'image/jpeg' });
   const record: PhotoRecord = {

@@ -18,6 +18,13 @@
 
 package app.doorprints.data
 
+import app.doorprints.shared.model.Candidates
+import app.doorprints.shared.ai.AiKind
+import app.doorprints.shared.ai.AiProviderConfig
+import app.doorprints.shared.ai.AiQuality
+import app.doorprints.shared.voice.VoiceChoice
+import app.doorprints.shared.voice.VoiceProvider
+import app.doorprints.shared.trace.RepeatLook
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
@@ -36,6 +43,8 @@ import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 import app.doorprints.shared.api.IsoTime
 import app.doorprints.shared.model.HuntReminders
+import app.doorprints.shared.model.KindSetting
+import app.doorprints.shared.model.KindSettingRules
 import app.doorprints.shared.model.LengthUnit
 import app.doorprints.shared.sync.SyncOutcome
 import app.doorprints.export.decodeGrants
@@ -79,6 +88,18 @@ data class AppSettings(
     /** The person's own Gemini key, decrypted in memory only; kept like [apiKey] by its own [SecretStore]. */
     val geminiKey: String = "",
     /**
+     * Which AI answers on this device (docs/03 §13.2, ADR-35) and where: plain settings beside the key, never secret,
+     * never exported, never in [toString] (the address can name a computer in the house). A device from before
+     * ADR-35 has no kind saved and reads as Gemini.
+     */
+    val aiProviderConfig: AiProviderConfig = AiProviderConfig.GEMINI,
+    /**
+     * *AI speed and cost* (S4b-BL-198 step 2, docs/ai/ai-design.md 13.2): how long Gemini may think. A plain preference,
+     * never secret, never exported; kept while AI is off or another service is chosen, but only the own-key Gemini client
+     * reads it. Nothing saved, or anything unknown, is [AiQuality.QUALITY], which sends nothing (today's behaviour).
+     */
+    val aiQuality: AiQuality = AiQuality.DEFAULT,
+    /**
      * The app lock (docs/11 5.19, S4b-FR-5): the phone's own screen lock (PIN, pattern, fingerprint or face) is asked
      * when the app opens and when it comes back after [appLockAfterSeconds] in the background. Off by default.
      */
@@ -90,6 +111,15 @@ data class AppSettings(
      * phone only, for 30 days. Off by default.
      */
     val pathTrace: Boolean = false,
+    /** *How repeated paths look* (docs/11 5.27.4): per device, a display choice, never exported. */
+    val repeatLook: RepeatLook = RepeatLook.CLEAR,
+    /** *Warn me when I walk a path again* (docs/11 5.27.5): off by default, per device. */
+    val repeatAlert: Boolean = false,
+    /**
+     * The newest walk id the *Save this walk?* sheet has handled (docs/11 5.27.6); 0 when none. A timestamp of where
+     * the person walked, so it is never in [toString] and never exported.
+     */
+    val walkAskedUpTo: Long = 0,
     /** The people updates are shared with (docs/11 5.28), on this phone only; never synced or exported. */
     val shareContacts: List<ShareContact> = emptyList(),
     /** How room sizes are shown and typed (slice 1c, `units.length`): on this phone only, never synced or backed up. */
@@ -98,6 +128,7 @@ data class AppSettings(
     /** Last four characters of the Gemini key, for Settings' masked hint. */
     val geminiKeyHint get() = if (geminiKey.length >= 8) geminiKey.takeLast(4) else ""
 
+    /** Whether both a server address and a key are saved. */
     val serverConfigured get() = serverUrl.isNotBlank() && apiKey.isNotBlank()
 
     /** Last four characters of the key, for a masked hint in Settings (the full key is never shown again). */
@@ -114,8 +145,8 @@ data class AppSettings(
             "lastSyncAt=$lastSyncAt, lastSync=$lastSync, syncFailures=$syncFailures, syncFailingSince=$syncFailingSince, " +
             "lastSyncOkAt=$lastSyncOkAt, autoBackup=$autoBackup, autoBackupFolder=$autoBackupFolder, " +
             "autoBackupKeep=$autoBackupKeep, lastAutoBackupAt=$lastAutoBackupAt, lastAutoBackupError=$lastAutoBackupError, " +
-            "aiFeatures=$aiFeatures, aiProvider=$aiProvider, geminiKey=${if (geminiKey.isEmpty()) "none" else "set"}, " +
-            "appLock=$appLock, appLockAfterSeconds=$appLockAfterSeconds, pathTrace=$pathTrace, " +
+            "aiFeatures=$aiFeatures, aiProvider=$aiProvider, geminiKey=${if (geminiKey.isEmpty()) "none" else "set"}, aiKind=${aiProviderConfig.kind.wire}, aiQuality=${aiQuality.wire}, " +
+            "appLock=$appLock, appLockAfterSeconds=$appLockAfterSeconds, pathTrace=$pathTrace, repeatLook=$repeatLook, repeatAlert=$repeatAlert, " +
             "shareContacts=${shareContacts.size}, lengthUnit=$lengthUnit)"
 }
 
@@ -160,14 +191,47 @@ object AppLockTimes {
     fun valid(seconds: Int?): Int = seconds?.takeIf { it in CHOICES } ?: DEFAULT
 }
 
+/**
+ * How the guided tour ended (S4b-FR-39): finished to its last step, or left early. Either way it is not offered again by
+ * itself; *Take the tour* in Settings starts it again. [wire] is what is stored, the same words as the website's
+ * `doorprints.tour` (`done`, `skipped`).
+ */
+enum class TourEnd(val wire: String) {
+    DONE("done"),
+    SKIPPED("skipped"),
+    ;
+
+    companion object {
+        /** Null when no tour has ended here; any other stored text counts as seen (the website treats any value so). */
+        fun fromWire(value: String?): TourEnd? = when (value) {
+            null -> null
+            DONE.wire -> DONE
+            else -> SKIPPED
+        }
+    }
+}
+
 /** Who answers AI requests: the connected server, or Gemini directly with the person's own key (ADR-26). */
 enum class AiProviderChoice { SERVER, DEVICE }
 
+/**
+ * The phone's settings in a DataStore, with secrets (the server key, the person's own AI key) kept in a
+ * [SecretStore] instead. Settings are read as one [AppSettings] flow; each `save` function is one atomic edit, and
+ * a change that makes old sync state meaningless (a different server) resets it in the same edit.
+ */
 class SettingsStore(
     private val dataStore: DataStore<Preferences>,
     private val secrets: SecretStore,
     /** Where the person's own Gemini key is kept (docs/03 §13.1); null where a platform has none (tests). */
     private val geminiSecrets: SecretStore? = null,
+    /** The kinds this build ships (kinds PR C, S4b-BL-274): the default is the house alone; the release build passes the house and the school, compiled in and off ([KindSettingRules.availableOf]). */
+    val availableKinds: List<String> = listOf(Candidates.BASELINE_KIND),
+    /**
+     * Where the person's own Sarvam key for speech to text is kept (ADR-37, voice PR 7): a slot of its own beside [geminiSecrets]
+     * (`sarvamKeyEnc` on Android, the Keychain item `sarvam_key` on the iPhone), never in [AppSettings] and so in no backup,
+     * copy, sync or share file (TC-U-170 pattern); null where a platform has none (tests).
+     */
+    private val sarvamSecrets: SecretStore? = null,
     private val now: () -> Long = { IsoTime.nowMillis() },
 ) {
     companion object {
@@ -212,11 +276,21 @@ class SettingsStore(
         val aiFeatures = booleanPreferencesKey("aiFeatures")
         /** [AppSettings.aiProvider], by name. */
         val aiProvider = stringPreferencesKey("aiProvider")
+        /** [AppSettings.aiProviderConfig]: the kind (wire name), the base URL and the model; not secrets, never exported. */
+        val aiKind = stringPreferencesKey("aiKind")
+        val aiBaseUrl = stringPreferencesKey("aiBaseUrl")
+        val aiModel = stringPreferencesKey("aiModel")
+        /** [AppSettings.aiQuality], by wire name (`quality`, `balanced`, `economy`): the web's `doorprints.ai-quality`. */
+        val aiQuality = stringPreferencesKey("aiQuality")
         /** [AppSettings.appLock] and [AppSettings.appLockAfterSeconds]. */
         val appLock = booleanPreferencesKey("appLock")
         val appLockAfter = intPreferencesKey("appLockAfterSeconds")
         /** [AppSettings.pathTrace]. */
         val pathTrace = booleanPreferencesKey("pathTrace")
+        /** [AppSettings.repeatLook], by name; [AppSettings.repeatAlert]; [AppSettings.walkAskedUpTo]. Local only. */
+        val repeatLook = stringPreferencesKey("repeatLook")
+        val repeatAlert = booleanPreferencesKey("repeatAlert")
+        val walkAskedUpTo = longPreferencesKey("walkAskedUpTo")
         /** [AppSettings.shareContacts], as JSON. */
         val shareContacts = stringPreferencesKey("shareContacts")
         val brokersMigrated = booleanPreferencesKey("brokers.migrated")
@@ -235,6 +309,18 @@ class SettingsStore(
         val areaWakeup = booleanPreferencesKey("areas.wakeup")
         /** The one-time "Area wake-up is off because…" card of My areas (slice 4b), set when the permission is lost. */
         val areaWakeupOffNotice = booleanPreferencesKey("areas.wakeupOffNotice")
+        /** How the guided tour ended, `done` or `skipped` ([TourEnd.wire]): this device's own choice, never exported, synced or backed up. */
+        val tour = stringPreferencesKey("tour")
+        /** What this device tracks (kinds PR C, S4b-BL-274): the website's `doorprints.kinds.*`, the same values; device-local, never synced. */
+        val kindsExperimental = stringPreferencesKey("kinds.experimental")
+        val kindsEnabled = stringPreferencesKey("kinds.enabled")
+        val kindsDefault = stringPreferencesKey("kinds.default")
+        /** The chooser's one hint has been dismissed (`done`): the website's `doorprints.chooser.hint`. */
+        val chooserHint = stringPreferencesKey("chooser.hint")
+        /** *Voice input* (S4b-BL-222, the website's `doorprints.voice`): this phone's own switch, off by default, never exported, synced or backed up. */
+        val voiceInput = booleanPreferencesKey("voice.input")
+        /** Which service writes out the words, `sarvam` or absent for the person's AI provider (voice PR 7): the website's `doorprints.voice-provider`. */
+        val voiceProvider = stringPreferencesKey("voice.provider")
     }
 
     /** When area [id] last notified (or was dismissed), a key per area (slice 4b): `areas.lastNotified.<id>`. */
@@ -261,13 +347,38 @@ class SettingsStore(
             aiFeatures = p[Keys.aiFeatures] ?: false,
             aiProvider = AiProviderChoice.entries.firstOrNull { it.name == p[Keys.aiProvider] } ?: AiProviderChoice.SERVER,
             geminiKey = geminiSecrets?.get(p) ?: "",
+            aiProviderConfig = AiProviderConfig(
+                kind = AiKind.fromWire(p[Keys.aiKind]),
+                baseUrl = p[Keys.aiBaseUrl] ?: "",
+                model = p[Keys.aiModel] ?: "",
+            ),
+            aiQuality = AiQuality.fromWire(p[Keys.aiQuality]),
             appLock = p[Keys.appLock] ?: false,
             appLockAfterSeconds = AppLockTimes.valid(p[Keys.appLockAfter]),
             pathTrace = p[Keys.pathTrace] ?: false,
+            repeatLook = RepeatLook.entries.firstOrNull { it.name == p[Keys.repeatLook] } ?: RepeatLook.CLEAR,
+            repeatAlert = p[Keys.repeatAlert] ?: false,
+            walkAskedUpTo = p[Keys.walkAskedUpTo] ?: 0,
             shareContacts = ShareContact.decode(p[Keys.shareContacts]),
             lengthUnit = LengthUnit.fromWire(p[Keys.lengthUnit]),
         )
     }
+
+    /**
+     * The *Voice input* switch and the provider choice it works with, for the microphone button and the setting: it reads no
+     * secret (the key stays in its slot), so it never fails while a key cannot be read; a file that cannot be read gives off.
+     */
+    val voiceChoice: Flow<VoiceChoice> = dataStore.data
+        .map { p ->
+            VoiceChoice(
+                enabled = p[Keys.voiceInput] ?: false,
+                config = AiProviderConfig(AiKind.fromWire(p[Keys.aiKind]), p[Keys.aiBaseUrl] ?: "", p[Keys.aiModel] ?: ""),
+                provider = VoiceProvider.fromWire(p[Keys.voiceProvider]),
+                sarvamKeySaved = sarvamKeyOf(p).isNotBlank(),
+            )
+        }
+        .distinctUntilChanged()
+        .catch { emit(VoiceChoice()) }
 
     /**
      * The length setting alone (slice 1c), for an export and a screen that needs nothing else: it reads no secret, so
@@ -342,6 +453,72 @@ class SettingsStore(
         return wasOn
     }
 
+    /**
+     * How the guided tour ended on this device, or null when it has not (the one-time offer on the Map or the list is then
+     * shown). Reads no secret; a file that cannot be read counts as seen, so the offer never repeats over a failed write.
+     */
+    fun tourEnd(): Flow<TourEnd?> = dataStore.data
+        .map { p -> TourEnd.fromWire(p[Keys.tour]) }
+        .catch { emit(TourEnd.SKIPPED) }
+        .distinctUntilChanged()
+
+    /** Remembers how the tour ended; the offer does not come again. */
+    suspend fun setTourEnd(end: TourEnd) = dataStore.edit { it[Keys.tour] = end.wire }
+
+    /**
+     * What this device tracks (*Settings > What you track*): the kinds the build ships ([availableKinds]) with the stored
+     * switch, list and default. Reads no secret; a file that cannot be read counts as the house alone, as every doubt does.
+     */
+    fun kindSetting(): Flow<KindSetting> = dataStore.data
+        .map { p -> KindSetting(availableKinds, p[Keys.kindsExperimental], p[Keys.kindsEnabled], p[Keys.kindsDefault]) }
+        .catch { emit(KindSetting(availableKinds)) }
+        .distinctUntilChanged()
+
+    /**
+     * Whether a candidate of a kind other than the house is read as that kind (its typed extras in the AI and in a readable
+     * copy): the developer flag [devKinds], or a second kind *offered* now, which is the person's *Experimental: more than
+     * houses* switch on in a build that lists one. With the switch off and no flag this is false, so a build that lists the
+     * school is the house build in everything the AI and the copies read (docs/03 §18.12, the twin of the website's `kindsOn`).
+     */
+    suspend fun kindsOn(devKinds: Boolean = false): Boolean = devKinds || kindSetting().first().offered.size > 1
+
+    /** Applies [change] to what is stored and stores the result (a null value removing its key): one atomic edit, so two taps never undo each other. */
+    suspend fun editKindSetting(change: (KindSetting) -> KindSetting) = dataStore.edit {
+        val next = change(KindSetting(availableKinds, it[Keys.kindsExperimental], it[Keys.kindsEnabled], it[Keys.kindsDefault]))
+        fun put(key: Preferences.Key<String>, value: String?) {
+            if (value == null) it.remove(key) else it[key] = value
+        }
+        put(Keys.kindsExperimental, next.experimental)
+        put(Keys.kindsEnabled, next.enabledText)
+        put(Keys.kindsDefault, next.defaultText)
+    }
+
+    /** Whether the chooser still shows its one hint (*Tap a card to switch*): until it is dismissed, once. A file that cannot be read shows none. */
+    fun chooserHintShown(): Flow<Boolean> = dataStore.data
+        .map { p -> p[Keys.chooserHint] != "done" }
+        .catch { emit(false) }
+        .distinctUntilChanged()
+
+    suspend fun dismissChooserHint() = dataStore.edit { it[Keys.chooserHint] = "done" }
+
+    /**
+     * Takes the kinds and default a backup names, only on a device that never chose (neither list nor default stored): a
+     * hint, never applied over a choice (S4b-BL-212), and only the built-in kinds are kept (`KindSettingRules.knownSpaces`,
+     * S4b-BL-307). Returns whether it was taken.
+     */
+    suspend fun adoptKinds(kinds: List<String>, default: String): Boolean {
+        val (known, chosen) = KindSettingRules.knownSpaces(kinds, default) ?: return false
+        var taken = false
+        dataStore.edit {
+            if (it[Keys.kindsEnabled] == null && it[Keys.kindsDefault] == null) {
+                it[Keys.kindsEnabled] = KindSettingRules.listText(known)
+                it[Keys.kindsDefault] = chosen
+                taken = true
+            }
+        }
+        return taken
+    }
+
     /** Whether My areas still has to say once why the wake-up switched itself off. */
     fun areaWakeupOffNotice(): Flow<Boolean> = dataStore.data
         .map { p -> p[Keys.areaWakeupOffNotice] ?: false }
@@ -367,6 +544,7 @@ class SettingsStore(
         dataStore.edit { p -> stale.forEach { p.remove(longPreferencesKey(it)) } }
     }
 
+    /** The settings as they are now, read once. */
     suspend fun current() = settings.first()
 
     /**
@@ -410,7 +588,7 @@ class SettingsStore(
 
     /** Moves a plaintext key from v0.1 into the encrypted slot. Safe to call on every start. */
     suspend fun migrateLegacyKey() {
-        secrets.editing {
+        secrets.editing({ dataStore.data.first() }) {
             dataStore.edit {
                 val plain = it[Keys.apiKeyPlain] ?: return@edit
                 if (plain.isNotBlank()) secrets.put(it, plain)
@@ -424,8 +602,12 @@ class SettingsStore(
      * so the key never has to be shown in the text field again (threat model AB-02). Inside [SecretStore.editing],
      * so a key kept outside the settings is put back if the settings cannot be written (S4b-BL-30).
      */
-    suspend fun saveServer(url: String, key: String) = secrets.editing { saveServerEdit(url, key) }
+    suspend fun saveServer(url: String, key: String) = secrets.editing({ dataStore.data.first() }) { saveServerEdit(url, key) }
 
+    /**
+     * The edit behind [saveServer]: a different address resets the sync cursors (a full download), and a new
+     * address or key clears the sync-failure record, which belonged to the old setup.
+     */
     private suspend fun saveServerEdit(url: String, key: String) = dataStore.edit {
         val clean = url.trim().trimEnd('/')
         val changed = it[Keys.serverUrl] != clean
@@ -449,6 +631,7 @@ class SettingsStore(
         }
     }
 
+    /** Saves the Hunt mode alert radius and the minimum stay. */
     suspend fun saveTracking(alertRadiusM: Int, minStayMinutes: Int) = dataStore.edit {
         it[Keys.alertRadius] = alertRadiusM
         it[Keys.minStay] = minStayMinutes
@@ -458,6 +641,48 @@ class SettingsStore(
 
     suspend fun saveAiFeatures(on: Boolean) = dataStore.edit { it[Keys.aiFeatures] = on }
 
+    /** The saved Sarvam key, or "" when there is none or it cannot be read now (a locked iPhone). Never printed. */
+    private fun sarvamKeyOf(p: Preferences): String = try {
+        sarvamSecrets?.get(p) ?: ""
+    } catch (e: SecretUnavailableException) {
+        ""
+    }
+
+    /** The person's own Sarvam key, read at the moment of a voice call and passed straight to the transcriber; "" when none. */
+    suspend fun sarvamKey(): String = sarvamKeyOf(dataStore.data.first())
+
+    /** The last four characters of the Sarvam key (a key of 8 or more), for "saved (ends …)"; empty otherwise. */
+    val sarvamKeyHint: Flow<String> = dataStore.data
+        .map { p -> sarvamKeyOf(p).let { if (it.length >= 8) it.takeLast(4) else "" } }
+        .distinctUntilChanged()
+        .catch { emit("") }
+
+    /** Saves the Sarvam key ([key] trimmed; blank removes it). Only ever sent to api.sarvam.ai. */
+    suspend fun saveSarvamKey(key: String) {
+        val store = checkNotNull(sarvamSecrets) { "No place for a Sarvam key on this platform" }
+        store.editing({ dataStore.data.first() }) {
+            dataStore.edit { if (key.isBlank()) store.clear(it) else store.put(it, key.trim()) }
+        }
+    }
+
+    /** Forgets the Sarvam key and goes back to the person's AI provider for speech. */
+    suspend fun removeSarvamKey() {
+        val store = sarvamSecrets ?: return
+        store.editing({ dataStore.data.first() }) {
+            dataStore.edit {
+                store.clear(it)
+                it.remove(Keys.voiceProvider)
+            }
+        }
+    }
+
+    /** Chooses which service writes out the words. */
+    suspend fun saveVoiceProvider(provider: VoiceProvider) =
+        dataStore.edit { if (provider == VoiceProvider.SARVAM) it[Keys.voiceProvider] = provider.wire else it.remove(Keys.voiceProvider) }
+
+    /** Turns *Voice input* on or off (the setting turns the microphone button on; nothing is recorded or kept by this). */
+    suspend fun saveVoiceInput(on: Boolean) = dataStore.edit { if (on) it[Keys.voiceInput] = true else it.remove(Keys.voiceInput) }
+
     /** Turns the app lock on or off; the caller has checked the phone's credential first (AppLockGate). */
     suspend fun saveAppLock(on: Boolean) = dataStore.edit { it[Keys.appLock] = on }
 
@@ -465,6 +690,15 @@ class SettingsStore(
     suspend fun saveAppLockAfter(seconds: Int) = dataStore.edit { it[Keys.appLockAfter] = AppLockTimes.valid(seconds) }
 
     suspend fun savePathTrace(on: Boolean) = dataStore.edit { it[Keys.pathTrace] = on }
+
+    suspend fun saveRepeatLook(look: RepeatLook) = dataStore.edit { it[Keys.repeatLook] = look.name }
+
+    suspend fun saveRepeatAlert(on: Boolean) = dataStore.edit { it[Keys.repeatAlert] = on }
+
+    /** The *Save this walk?* watermark (docs/11 5.27.6): only ever moves forward. */
+    suspend fun saveWalkAskedUpTo(walkId: Long) = dataStore.edit {
+        if (walkId > (it[Keys.walkAskedUpTo] ?: 0)) it[Keys.walkAskedUpTo] = walkId
+    }
 
     /** Adds a person to share updates with (docs/11 5.28); the name trimmed, a duplicate name not added twice. */
     suspend fun addShareContact(name: String): ShareContact? {
@@ -487,6 +721,7 @@ class SettingsStore(
         it[Keys.shareContacts] = ShareContact.encode(current.map { c -> if (c.id == id) c.copy(lastSharedAt = at) else c })
     }
 
+    /** Removes the contact with [id] from the share list. */
     suspend fun removeShareContact(id: String) = dataStore.edit {
         it[Keys.shareContacts] = ShareContact.encode(ShareContact.decode(it[Keys.shareContacts]).filter { c -> c.id != id })
     }
@@ -504,25 +739,47 @@ class SettingsStore(
 
     suspend fun markQuestionsSeeded() = dataStore.edit { it[Keys.questionsSeeded] = true }
 
+    /** A kind's own question bank was seeded on this install (kinds PR 29, docs/03 section 18.23): `questions.seeded.<kind>`, not synced. */
+    suspend fun questionsSeededFor(kind: String): Boolean = dataStore.data.first()[booleanPreferencesKey("questions.seeded.$kind")] ?: false
+
+    suspend fun markQuestionsSeededFor(kind: String) = dataStore.edit { it[booleanPreferencesKey("questions.seeded.$kind")] = true }
+
     suspend fun saveAiProvider(choice: AiProviderChoice) = dataStore.edit { it[Keys.aiProvider] = choice.name }
 
-    /** Saves the person's own Gemini key ([key] trimmed, not blank) and chooses on-device AI. */
-    suspend fun saveGeminiKey(key: String) {
-        val store = checkNotNull(geminiSecrets) { "No place for a Gemini key on this platform" }
-        store.editing {
+    /** Saves the person's own Gemini key ([key] trimmed, not blank) and chooses on-device AI with Gemini. */
+    suspend fun saveGeminiKey(key: String) = saveAiProviderConfig(AiProviderConfig.GEMINI, key)
+
+    /**
+     * Saves the person's AI choice (docs/03 §13.2): [config] and [key] (trimmed; blank for a model on the person's own
+     * computer, which clears the slot), and chooses on-device AI. Gemini keeps no base URL or model.
+     */
+    suspend fun saveAiProviderConfig(config: AiProviderConfig, key: String) {
+        val store = checkNotNull(geminiSecrets) { "No place for an AI key on this platform" }
+        val gemini = config.kind == AiKind.GEMINI
+        store.editing({ dataStore.data.first() }) {
             dataStore.edit {
-                store.put(it, key.trim())
+                if (key.isBlank()) store.clear(it) else store.put(it, key.trim())
+                it[Keys.aiKind] = config.kind.wire
+                it[Keys.aiBaseUrl] = if (gemini) "" else config.baseUrl.trim()
+                it[Keys.aiModel] = if (gemini) "" else config.model.trim()
                 it[Keys.aiProvider] = AiProviderChoice.DEVICE.name
             }
         }
     }
 
-    /** Forgets the Gemini key; AI goes back to the server. */
+    /** Saves the *AI speed and cost* choice (S4b-BL-198 step 2); read by the own-key Gemini client only. */
+    suspend fun saveAiQuality(quality: AiQuality) = dataStore.edit { it[Keys.aiQuality] = quality.wire }
+
+    /** Forgets the AI key and the kind, address, model and *AI speed and cost* choice with it; AI goes back to the server. */
     suspend fun removeGeminiKey() {
         val store = geminiSecrets ?: return
-        store.editing {
+        store.editing({ dataStore.data.first() }) {
             dataStore.edit {
                 store.clear(it)
+                it.remove(Keys.aiKind)
+                it.remove(Keys.aiBaseUrl)
+                it.remove(Keys.aiModel)
+                it.remove(Keys.aiQuality)
                 it[Keys.aiProvider] = AiProviderChoice.SERVER.name
             }
         }
@@ -540,8 +797,10 @@ class SettingsStore(
         if (outcome.kind == SyncOutcome.Kind.OK) it[Keys.lastSyncOkAt] = at
     }
 
+    /** How far each kind of row has been pulled from the remote (a position the sync only compares and stores). */
     data class Cursors(val house: Long, val visit: Long, val photo: Long, val record: Long = 0L)
 
+    /** The saved pull cursors; 0 for a kind never pulled. */
     suspend fun cursors(): Cursors {
         val p = dataStore.data.first()
         return Cursors(
@@ -588,6 +847,7 @@ class SettingsStore(
         it[Keys.autoBackupKeep] = keep.coerceIn(1, 20)
     }
 
+    /** Records when the last automatic backup ran and its error text (empty on success). */
     suspend fun saveAutoBackupResult(at: Long, error: String) = dataStore.edit {
         it[Keys.lastAutoBackupAt] = at
         it[Keys.lastAutoBackupError] = error

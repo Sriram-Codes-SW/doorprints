@@ -18,8 +18,10 @@
 
 package app.doorprints.server.backup;
 
+import app.doorprints.server.record.ViewingPayload;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+import tools.jackson.databind.ObjectMapper;
 
 import java.util.Set;
 
@@ -60,4 +62,25 @@ public record BackupViewing(
     public static final Set<String> KINDS = Set.of("FIRST", "SECOND", "FOLLOW_UP");
     public static final Set<String> STATUSES = Set.of("PLANNED", "DONE", "CANCELLED");
     public static final Set<Integer> REMINDERS = Set.of(0, 15, 30, 60, 120, 1440);
+
+    /**
+     * This row as the payload of a {@code viewing} record: keys in the format's order, the house as {@code candidateId}
+     * (S4b-BL-247; a payload stored before says {@code houseId} and is still read, {@link ViewingPayload}),
+     * {@code huntReminder} only when true, {@code withWhom}, {@code notes} and {@code visitId} only when set. The
+     * website and the phone write the same text ({@code docs/schemas/viewing-payload-vectors.json}).
+     */
+    public String toPayload(ObjectMapper json) {
+        var payload = json.createObjectNode();
+        payload.put(ViewingPayload.KEY, houseId);
+        payload.put("startsAt", startsAt);
+        payload.put("durationMin", durationMin == null ? DEFAULT_DURATION : durationMin);
+        payload.put("kind", kind == null ? "FIRST" : kind);
+        payload.put("status", status == null ? "PLANNED" : status);
+        payload.put("remindMin", remindMin == null ? 60 : remindMin);
+        if (Boolean.TRUE.equals(huntReminder)) payload.put("huntReminder", true);
+        if (withWhom != null && !withWhom.isEmpty()) payload.put("withWhom", withWhom);
+        if (notes != null && !notes.isEmpty()) payload.put("notes", notes);
+        if (visitId != null && !visitId.isEmpty()) payload.put("visitId", visitId);
+        return payload.toString();
+    }
 }

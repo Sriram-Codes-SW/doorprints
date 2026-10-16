@@ -26,13 +26,15 @@ package app.doorprints.shared.ai
  * [Redactor.freeText] for what the user types freely (label, checklist keys, listing URL, notes): the whole saved name
  * and every name part of 3+ letters that is not an honorific. [Redactor.place] for address, street and locality: the
  * whole name only, so "Kumar Park" survives. Both remove the saved phone (8+ digits, any separators) and anything that
- * looks like a phone number. Placeholders [CONTACT] and [PHONE].
+ * looks like a phone number or an email address (the address goes whole, before the name parts). Placeholders [CONTACT],
+ * [PHONE] and [EMAIL].
  *
  * Written without character-class intersections and `\R`, which Kotlin/Native's regex does not share with the JVM.
  */
 object ContactRedactor {
     const val CONTACT = "[contact]"
     const val PHONE = "[phone]"
+    const val EMAIL = "[email]"
 
     /** Line prefix under which documents indexed before the fix stored the contact name. */
     private val STORED_CONTACT_LINE =
@@ -43,9 +45,44 @@ object ContactRedactor {
         "(?<![\\p{L}\\p{M}\\p{N}+])(?:" +
             "\\+\\d(?:[ .()\\-]{0,2}\\d){6,14}" + // +<cc> ... (7-15 digits)
             "|(?:(?:\\+?91|0)[ \\-]?)?[6-9](?:[ .\\-]?\\d){9}" + // Indian mobile
-            "|0\\d{2,4}[ \\-]?\\d{3,4}[ \\-]?\\d{3,4}" + // STD code + landline
+            "|\\(?0\\d{2,4}\\)?[ \\-]?\\d{3,4}[ \\-]?\\d{3,4}" + // STD code (also "(022)") + landline
             "|\\d{10,15}" + // long digit run
             ")(?!$WORD)",
+    )
+
+    /** The zero of each script whose ten digits follow it: Arabic-Indic, Urdu, Devanagari, Bengali, Gurmukhi, Gujarati, Odia, Tamil, Telugu, Kannada, Malayalam. */
+    private val DIGIT_ZEROS = intArrayOf(0x0660, 0x06F0, 0x0966, 0x09E6, 0x0A66, 0x0AE6, 0x0B66, 0x0BE6, 0x0C66, 0x0CE6, 0x0D66)
+
+    /** [s] with those scripts' digits written as 0-9, one character for one character (every digit is in the BMP). */
+    internal fun asciiDigits(s: String): String {
+        val out = StringBuilder(s.length)
+        for (c in s) {
+            val zero = if (c.code >= 0x0660) DIGIT_ZEROS.firstOrNull { c.code in it..it + 9 } else null
+            out.append(if (zero == null) c else '0' + (c.code - zero))
+        }
+        return out.toString()
+    }
+
+    /** [s] with every match of [regex] replaced by [PHONE]; the matching reads native digits as 0-9, the rest of [s] is kept. */
+    private fun replaceInDigits(regex: Regex, s: String): String {
+        val matches = regex.findAll(asciiDigits(s)).toList()
+        if (matches.isEmpty()) return s
+        val out = StringBuilder()
+        var last = 0
+        for (m in matches) {
+            out.append(s, last, m.range.first).append(PHONE)
+            last = m.range.last + 1
+        }
+        return out.append(s, last, s.length).toString()
+    }
+
+    /**
+     * An email address: local part (letters, digits, `._%+-`), `@`, a dotted domain. A URL or a bare handle is not one.
+     * The lookbehind makes the match start at the front of a run (linear time, and a long local part goes whole).
+     */
+    private val EMAIL_LIKE = Regex(
+        "(?<![\\p{L}\\p{M}\\p{N}._%+-])[\\p{L}\\p{M}\\p{N}._%+-]+@[\\p{L}\\p{N}-]+(?:\\.[\\p{L}\\p{N}-]+)+" +
+            "(?![\\p{L}\\p{M}\\p{N}])",
     )
     private val HONORIFICS = setOf(
         "mr", "mrs", "ms", "miss", "dr", "sri", "shri", "smt", "kumari", "sir", "madam", "uncle", "aunty", "auntie",
@@ -63,9 +100,11 @@ object ContactRedactor {
         return forContact(contactName, contactPhone).freeText(STORED_CONTACT_LINE.replace(text, ""))
     }
 
-    /** Only the generic phone-number rule, for text with no known contact. */
-    fun redactPhones(text: String?): String? = if (text.isNullOrEmpty()) text else PHONE_LIKE.replace(text, PHONE)
+    /** Only the generic rules (phone-like numbers, then email addresses), for text with no known contact. */
+    fun redactGeneric(text: String?): String? =
+        if (text.isNullOrEmpty()) text else EMAIL_LIKE.replace(replaceInDigits(PHONE_LIKE, text), EMAIL)
 
+    /** Redacts one house's contact name and phone from text; made with [forContact]. */
     class Redactor internal constructor(contactName: String?, contactPhone: String?) {
         private val fullName: List<Regex>
         private val nameParts: List<Regex>
@@ -99,7 +138,7 @@ object ContactRedactor {
         /** Place fields (address, street, locality): the whole name, the saved phone and phone-like numbers. */
         fun place(s: String?): String? {
             if (s.isNullOrEmpty()) return s
-            var out = phones(s)
+            var out = generic(s)
             for (p in fullName) out = p.replace(out, CONTACT)
             return out
         }
@@ -112,9 +151,10 @@ object ContactRedactor {
             return out
         }
 
-        private fun phones(s: String): String {
-            val out = savedPhone?.replace(s, PHONE) ?: s
-            return PHONE_LIKE.replace(out, PHONE)
+        /** The rules that need no name: the saved phone, phone-like numbers, then email addresses (before the name parts). */
+        private fun generic(s: String): String {
+            val out = savedPhone?.let { replaceInDigits(it, s) } ?: s
+            return EMAIL_LIKE.replace(replaceInDigits(PHONE_LIKE, out), EMAIL)
         }
 
         private companion object {
@@ -152,6 +192,8 @@ object ContactRedactor {
                 val variants = linkedSetOf(digits)
                 if (digits.length > 10) variants += digits.takeLast(10)
                 if (digits.startsWith("0") && digits.length > MIN_SAVED_PHONE_DIGITS) variants += digits.substring(1)
+                // A metro landline (0 + 2-digit STD code + 8 digits) is often written in a note without its STD code (S4b-BL-174a).
+                if (digits.length == 11 && digits.startsWith("0")) variants += digits.substring(3)
                 val alternatives = variants.map { v -> v.toList().joinToString("[ .()\\-]{0,2}") }
                 return Regex("(?<!\\d)\\+?(?:${alternatives.joinToString("|")})(?!\\d)")
             }

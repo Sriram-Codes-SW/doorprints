@@ -18,6 +18,7 @@
 
 package app.doorprints.server.sync;
 
+import app.doorprints.server.common.BadRequestException;
 import app.doorprints.server.config.AppProperties;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -51,7 +52,8 @@ public class ClientClock {
         this(Clock.systemUTC(), props.sync().maxClockSkewSeconds(), props.sync().maxFutureDays());
     }
 
-    ClientClock(Clock clock, int maxSkewSeconds, int maxFutureDays) {
+    /** With a given clock, so a test can fix the time every class that takes a {@code ClientClock} reads. */
+    public ClientClock(Clock clock, int maxSkewSeconds, int maxFutureDays) {
         this.clock = clock;
         this.maxSkew = Duration.ofSeconds(maxSkewSeconds);
         this.maxFuture = Duration.ofDays(maxFutureDays);
@@ -80,7 +82,7 @@ public class ClientClock {
 
     private void check(Instant t, String field, Instant now) {
         if (t.isBefore(EARLIEST) || t.isAfter(now.plus(maxFuture))) {
-            throw new IllegalArgumentException(field + " is out of range (check the device clock): " + t);
+            throw new BadRequestException(field + " is out of range (check the device clock): " + t);
         }
     }
 }

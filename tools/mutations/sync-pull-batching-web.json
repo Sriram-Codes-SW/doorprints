@@ -1,0 +1,41 @@
+{
+  "spec": "web/src/app/data/sync-pull-batching.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/data/sync.service.ts",
+      "find": "export const PULL_READ_CHUNK = 500;",
+      "replace": "export const PULL_READ_CHUNK = 1;",
+      "expect": "reads 1,001 pulled rows with only 2 more reads per store than 1 row"
+    },
+    {
+      "file": "web/src/app/data/sync.service.ts",
+      "find": "found.push(...(await read(unique.slice(from, from + PULL_READ_CHUNK))));",
+      "replace": "found.push(...(await read(unique.slice(from + 1, from + PULL_READ_CHUNK))));",
+      "expect": "merges exactly as before"
+    },
+    {
+      "file": "web/src/app/data/sync.service.ts",
+      "find": "from += PULL_READ_CHUNK) {",
+      "replace": "from += PULL_READ_CHUNK + 1) {",
+      "expect": "merges exactly as before"
+    },
+    {
+      "file": "web/src/app/data/sync.service.ts",
+      "find": "from += PULL_READ_CHUNK) {",
+      "replace": "from += PULL_READ_CHUNK - 1) {",
+      "expect": "splits at exactly 500"
+    },
+    {
+      "file": "web/src/app/data/sync.service.ts",
+      "find": "photoSeen.has(change.id) ? await this.store.getPhoto(change.id) : photos.get(change.id)",
+      "replace": "photoSeen.has(change.id) ? await this.store.getPhoto(change.id) : undefined",
+      "expect": "photos: a tombstone forgets a local photo"
+    },
+    {
+      "file": "web/src/app/data/sync.service.ts",
+      "find": "const house = photoHouses.get(change.houseId);",
+      "replace": "const house = undefined as HouseRecord | undefined;",
+      "expect": "photos: a tombstone forgets a local photo"
+    }
+  ]
+}

@@ -19,17 +19,22 @@
 package app.doorprints.ui
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.staticCompositionLocalOf
+import app.doorprints.shared.model.BuiltInKind
 import app.doorprints.shared.model.Checklist
 import app.doorprints.shared.model.Criterion
 import app.doorprints.shared.model.HouseStatus
+import app.doorprints.shared.model.KindLabels
 import app.doorprints.shared.model.RoomType
 import app.doorprints.shared.model.AnswerStatus
+import app.doorprints.shared.model.DefaultQuestions
 import app.doorprints.shared.model.QuestionCategory
 import app.doorprints.shared.model.QuestionScope
 import app.doorprints.shared.model.ViewingGroup
 import app.doorprints.shared.model.PhotoTags
 import app.doorprints.shared.model.ViewingKind
 import app.doorprints.shared.model.ViewingStatus
+import app.doorprints.shared.model.CompareCriteria
 import app.doorprints.ui.res.*
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
@@ -40,15 +45,66 @@ import org.jetbrains.compose.resources.stringResource
  * (`HouseStatus.labelRes`) for the Hunt notification, with the same text (`StringParityTest`).
  */
 
-/** Translated label of a status (`status_*`). */
+/**
+ * The Compose string a kind label names (kinds PR 3, S4b-BL-207: [KindLabels] in `:shared` gives the key, as the kind
+ * file does). A key that is not a string of `:ui` fails at once (`KindLabelsScreensTest` checks every one).
+ */
+fun kindStringResource(key: String): StringResource =
+    Res.allStringResources[key] ?: error("No Compose string '$key' for a kind label")
+
+/**
+ * The house kind's string for a field (`field.<id>`, with the money [cadence] where it matters) or a section heading
+ * (`section.<id>`), as the form and its sections read them (kinds PR 4, S4b-BL-255). A place the kind gives no text
+ * fails at once: a screen asks only for the places it draws.
+ */
+fun kindField(id: String, cadence: String? = null): StringResource = KindLabels.HOUSE.fieldText(id, cadence)
+
+fun kindSection(id: String): StringResource = KindLabels.HOUSE.sectionText(id)
+
+/** A section's heading in the given kind's labels (the viewings card and list are headed by the kind's own, kinds PR 29). */
+fun kindSection(labels: KindLabels, id: String): StringResource = labels.sectionText(id)
+
+fun kindRef(ref: String): StringResource = KindLabels.HOUSE.refText(ref)
+
+/** The same for any kind (the form draws the candidate's own kind since kinds PR 5, S4b-BL-209). */
+fun KindLabels.fieldText(id: String, cadence: String? = null): StringResource =
+    kindStringResource(checkNotNull(field(id, cadence)?.key) { "$kind has no text for field.$id" })
+
+fun KindLabels.sectionText(id: String): StringResource =
+    kindStringResource(checkNotNull(section(id)?.key) { "$kind has no text for section.$id" })
+
+fun KindLabels.refText(ref: String): StringResource =
+    kindStringResource(checkNotNull(resolve(ref)?.key) { "$kind has no text for $ref" })
+
+/** A status's name in this kind's words (every kind labels the five fixed names): the screens that list statuses read it (S4b-BL-256). */
+fun KindLabels.statusText(status: HouseStatus): StringResource = kindStringResource(status(status))
+
+/**
+ * The developer flag of the hidden schools kind (kinds PR 5, S4b-BL-209; `DevKinds` in `:shared`): false unless the app
+ * provides true, which only an Android debug build made with `-Pdoorprints.devKinds=true` does (`BuildConfig.DEV_KINDS`);
+ * the iPhone app never does. With it false nothing changes: no kind picker, a new candidate is a house.
+ */
+val LocalDevKinds = staticCompositionLocalOf { false }
+
+/**
+ * Whether a candidate of a kind other than the house is read as that kind (its fields, its search words, its copy): the developer
+ * flag, or a second kind offered by the person's *Experimental: more than houses* switch (S4b-BL-212). [DoorprintsRoot] provides
+ * it from the settings; with the switch off a build that lists the school reads every candidate as a house, as the house build does.
+ * The developer's kind picker stays on [LocalDevKinds] alone. Read it with [kindsOn].
+ */
+val LocalKindsOn = staticCompositionLocalOf { false }
+
+/** The flag the screens read kinds by: [LocalKindsOn] or [LocalDevKinds]. */
+@Composable
+fun kindsOn(): Boolean = LocalKindsOn.current || LocalDevKinds.current
+
+private val STATUS_RESOURCES: Map<HouseStatus, StringResource> by lazy {
+    HouseStatus.entries.associateWith { kindStringResource(KindLabels.HOUSE.status(it)) }
+}
+
+/** Translated label of a status (`status_*`): the house kind's, through the resolver (S4b-BL-207). */
 val HouseStatus.labelResource: StringResource
-    get() = when (this) {
-        HouseStatus.NEW -> Res.string.status_NEW
-        HouseStatus.SHORTLISTED -> Res.string.status_SHORTLISTED
-        HouseStatus.REJECTED -> Res.string.status_REJECTED
-        HouseStatus.TAKEN -> Res.string.status_TAKEN
-        HouseStatus.NOT_CHOSEN -> Res.string.status_NOT_CHOSEN
-    }
+    get() = STATUS_RESOURCES.getValue(this)
 
 /** Translated name of a room type (`room_type_*`, slice 1c): a room's name when it has none of its own. */
 val RoomType.labelResource: StringResource
@@ -77,6 +133,14 @@ val QuestionCategory.labelResource: StringResource
     }
 
 /** Rent, Buy or Both (`question_scope_*`, slice 3a): which houses a question is for. */
+/**
+ * The header of a question category in the space of [kind]: that kind's own word when its question file has one (the school's, kinds PR 29), else the
+ * house's `question_category_*` string, so a house is word for word what it was and a category the kind does not word falls back to it.
+ */
+@Composable
+fun QuestionCategory.label(kind: String): String =
+    DefaultQuestions.categoryLabel(kind, this, uiLanguage()) ?: stringResource(labelResource)
+
 val QuestionScope.labelResource: StringResource
     get() = when (this) {
         QuestionScope.RENT -> Res.string.question_scope_RENT
@@ -138,20 +202,9 @@ val PHOTO_TAG_LABELS: Map<String, StringResource> = mapOf(
  */
 object ChecklistResources {
     val items: Map<String, StringResource> = Checklist.keys.associateWith { key ->
-        when (key) {
-            "water" -> Res.string.check_water
-            "power" -> Res.string.check_power
-            "parking" -> Res.string.check_parking
-            "sunlight" -> Res.string.check_sunlight
-            "ventilation" -> Res.string.check_ventilation
-            "noise" -> Res.string.check_noise
-            "security" -> Res.string.check_security
-            "maintenance" -> Res.string.check_maintenance
-            "neighbourhood" -> Res.string.check_neighbourhood
-            "commute" -> Res.string.check_commute
-            // A key added to :shared must get a translated label here first (ModelLabelsTest checks this).
-            else -> error("No label for checklist key '$key'")
-        }
+        // The house kind's label, through the resolver (S4b-BL-207). A key added to :shared must get a translated
+        // label in the kind first (ModelLabelsTest and KindLabelsScreensTest check this).
+        kindStringResource(KindLabels.HOUSE.check(key) ?: error("No label for checklist key '$key'"))
     }
 }
 
@@ -163,6 +216,14 @@ val CriterionWeights: List<StringResource> = listOf(
 /** A criterion's name on screen: a built-in's translated name, a custom one's own label (else its key). */
 @Composable
 fun Criterion.displayName(): String = ChecklistResources.items[key]?.let { stringResource(it) } ?: label ?: key
+
+/**
+ * A criterion's name in a kind's words (kinds PR 27, docs/03 §18.21): the house's as [displayName] (its strings are not
+ * touched); another kind's through its own labels, the key when it has none.
+ */
+@Composable
+fun Criterion.displayName(kind: BuiltInKind): String =
+    if (CompareCriteria.usesPersonScoring(kind)) displayName() else kind.labels.check(key)?.let { stringResource(kindStringResource(it)) } ?: displayName()
 
 /** First viewing, Second viewing, Follow-up (`viewings_kind_*`, slice 3b-1). */
 val ViewingKind.labelResource: StringResource

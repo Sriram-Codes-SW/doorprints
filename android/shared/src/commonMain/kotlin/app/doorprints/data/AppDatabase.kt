@@ -18,6 +18,7 @@
 
 package app.doorprints.data
 
+import app.doorprints.shared.model.KindTally
 import androidx.room.*
 import androidx.room.migration.Migration
 import androidx.sqlite.SQLiteConnection
@@ -33,7 +34,15 @@ import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import app.doorprints.shared.model.Candidates
+import app.doorprints.shared.model.HouseCost
 
+/**
+ * Room's converters from the model's structured values (checklist, rooms, answers, move-in, photo tags) to JSON
+ * text and back. The rooms, answers, move-in and tags read leniently: text that does not decode reads as empty,
+ * never as a crash.
+ */
 class Converters {
     private val mapSerializer = MapSerializer(String.serializer(), Int.serializer())
 
@@ -68,6 +77,16 @@ class Converters {
     @TypeConverter
     fun jsonToMoveIn(json: String?): MoveIn? = MoveIn.coerced(MoveIn.decode(json))
 
+    /** A candidate's extras (Room version 12) as compact JSON in their order; null for none, never `{}`. */
+    @TypeConverter
+    fun extrasToJson(extras: JsonObject?): String? = extras?.takeIf { it.isNotEmpty() }?.toString()
+
+    /** Read leniently: text that is not a JSON object (never written here) reads as no extras, not a crash. */
+    @TypeConverter
+    fun jsonToExtras(json: String?): JsonObject? =
+        json?.takeIf { it.isNotBlank() }?.let { runCatching { Json.parseToJsonElement(it) as? JsonObject }.getOrNull() }
+            ?.takeIf { it.isNotEmpty() }
+
     private val tagsSerializer = ListSerializer(String.serializer())
 
     /** A photo's tags (slice 5) as a JSON array; null for none, never `[]`. */
@@ -81,10 +100,30 @@ class Converters {
             ?.let { PhotoTags.coerced(it) }?.takeIf { it.isNotEmpty() }
 }
 
+/**
+ * The `houses` table. Reads hide tombstones unless they say otherwise; `dirty`, `markClean` and `versions` serve
+ * the sync loop and the import preview. A row is marked clean only while its `updatedAt` is still the one that was
+ * pushed, so an edit made during a sync stays dirty.
+ */
 @Dao
 interface HouseDao {
     @Query("SELECT * FROM houses WHERE deleted = 0 ORDER BY updatedAt DESC")
     fun observeAll(): Flow<List<HouseEntity>>
+
+    /**
+     * The live candidates of these kinds, newest edit first, read through `index_houses_kind` (S4b-BL-303): one space of the
+     * list, so a screen of a space does not read the other spaces' rows. `kinds` is never empty (the caller answers that itself).
+     */
+    @Query("SELECT * FROM houses WHERE deleted = 0 AND kind IN (:kinds) ORDER BY updatedAt DESC")
+    fun observeKinds(kinds: List<String>): Flow<List<HouseEntity>>
+
+    /** The live candidates of every kind but these, newest edit first: the default space also holds a kind this build does not have. */
+    @Query("SELECT * FROM houses WHERE deleted = 0 AND kind NOT IN (:kinds) ORDER BY updatedAt DESC")
+    fun observeKindsExcept(kinds: List<String>): Flow<List<HouseEntity>>
+
+    /** One row per kind that has a live candidate: how many, and when the newest changed (the chooser's cards). */
+    @Query("SELECT kind, COUNT(*) AS count, MAX(updatedAt) AS updated FROM houses WHERE deleted = 0 GROUP BY kind")
+    fun observeKindTallies(): Flow<List<KindTally>>
 
     @Query("SELECT * FROM houses WHERE deleted = 0")
     suspend fun all(): List<HouseEntity>
@@ -94,6 +133,10 @@ interface HouseDao {
 
     @Query("SELECT * FROM houses WHERE id = :id")
     suspend fun get(id: String): HouseEntity?
+
+    /** The stored houses with these ids, tombstones included, in one query; at most `CommonRepository.PULL_READ_CHUNK` ids (SQLite's variable limit). */
+    @Query("SELECT * FROM houses WHERE id IN (:ids)")
+    suspend fun getMany(ids: List<String>): List<HouseEntity>
 
     @Upsert
     suspend fun upsert(house: HouseEntity)
@@ -125,6 +168,14 @@ interface HouseDao {
     @Query("SELECT id FROM houses WHERE deleted = 1")
     suspend fun deletedIds(): List<String>
 
+    /** The tombstones themselves, in one query: the Drive sync writes them to the other devices (no `get` per id). */
+    @Query("SELECT * FROM houses WHERE deleted = 1")
+    suspend fun deleted(): List<HouseEntity>
+
+    /** The tombstones, newest first, for *Recently deleted* (the space and the 30 days are `DeleteScope.binRows`). */
+    @Query("SELECT * FROM houses WHERE deleted = 1 ORDER BY updatedAt DESC")
+    fun observeDeleted(): Flow<List<HouseEntity>>
+
     /**
      * The tombstones of [deletedIds] that have reached the server (pushed from here, or pulled from another device):
      * only those were purged there, so only their photos need fresh ids on a restore (Android review, round 13).
@@ -141,6 +192,7 @@ interface HouseDao {
     fun observeForBroker(brokerId: String): Flow<List<HouseEntity>>
 }
 
+/** The `visits` table, read and marked clean like [HouseDao]. */
 @Dao
 interface VisitDao {
     @Query("SELECT * FROM visits WHERE deleted = 0 AND houseId = :houseId ORDER BY arrivedAt DESC")
@@ -154,6 +206,10 @@ interface VisitDao {
 
     @Query("SELECT * FROM visits WHERE id = :id")
     suspend fun get(id: String): VisitEntity?
+
+    /** The stored visits with these ids, tombstones included, in one query (see [HouseDao.getMany]). */
+    @Query("SELECT * FROM visits WHERE id IN (:ids)")
+    suspend fun getMany(ids: List<String>): List<VisitEntity>
 
     @Upsert
     suspend fun upsert(visit: VisitEntity)
@@ -182,6 +238,10 @@ interface VisitDao {
     @Query("SELECT id, updatedAt FROM visits")
     suspend fun versions(): List<RowVersion>
 
+    /** The deleted visits themselves, in one query (the Drive sync writes the tombstones to the other devices). */
+    @Query("SELECT * FROM visits WHERE deleted = 1")
+    suspend fun deleted(): List<VisitEntity>
+
     /**
      * Live visits with no house, for the import (Android review, round 12): after a synced house delete the server
      * sends that house's visits back unlinked, and a restore of the house puts them back in it.
@@ -194,6 +254,10 @@ interface VisitDao {
     suspend fun liveForHouse(houseId: String): List<VisitEntity>
 }
 
+/**
+ * The `photos` table: the rows, the upload and delete queues (`uploaded`, `deleted`) and the metadata flags
+ * (`metaDirty`) that the photo sync works through.
+ */
 @Dao
 interface PhotoDao {
     @Query("SELECT * FROM photos WHERE houseId = :houseId AND deleted = 0 ORDER BY createdAt")
@@ -220,6 +284,10 @@ interface PhotoDao {
 
     @Query("SELECT * FROM photos WHERE id = :id")
     suspend fun get(id: String): PhotoEntity?
+
+    /** The stored photo rows with these ids, deleted ones included, in one query (see [HouseDao.getMany]). */
+    @Query("SELECT * FROM photos WHERE id IN (:ids)")
+    suspend fun getMany(ids: List<String>): List<PhotoEntity>
 
     @Query("DELETE FROM photos WHERE id = :id")
     suspend fun delete(id: String)
@@ -253,6 +321,7 @@ interface PhotoDao {
     suspend fun markAllMetaDirty()
 }
 
+/** The `track_points` table, the path trace of the last days; local to this phone and never synced. */
 @Dao
 interface TrackDao {
     /** The trace of the last days, oldest first, for the map's line (docs/11 5.27). */
@@ -268,6 +337,72 @@ interface TrackDao {
 
     @Query("DELETE FROM track_points")
     suspend fun deleteAll()
+
+    /** The trace of the last days, read once, oldest first. */
+    @Query("SELECT * FROM track_points WHERE at >= :since ORDER BY at")
+    suspend fun since(since: Long): List<TrackPointEntity>
+
+    /** The points of one walk, oldest first. */
+    @Query("SELECT * FROM track_points WHERE walkId = :walkId ORDER BY at")
+    suspend fun ofWalk(walkId: Long): List<TrackPointEntity>
+
+    /** *Delete this walk* and the move into `saved_walks`: the walk's points go. */
+    @Query("DELETE FROM track_points WHERE walkId = :walkId")
+    suspend fun deleteWalk(walkId: Long)
+
+    /** The walk ids newer than the watermark, newest first, other than the live walk's (docs/11 5.27.6). */
+    @Query("SELECT DISTINCT walkId FROM track_points WHERE walkId > :askedUpTo AND walkId != :liveWalkId ORDER BY walkId DESC")
+    suspend fun walkIdsAbove(askedUpTo: Long, liveWalkId: Long): List<Long>
+}
+
+/**
+ * The `saved_walks` table (Room version 11): every read joins `houses` and skips a tombstone, so a deleted house's walks
+ * are hidden at once and come back with *Undo*; [sweepOfDeletedHouses] removes them when the delete is final.
+ */
+@Dao
+interface SavedWalkDao {
+    @Insert
+    suspend fun insert(walk: SavedWalkEntity)
+
+    /** Every saved walk of a live house with its bytes, newest first (the Map and the detection). */
+    @Query("SELECT w.* FROM saved_walks w JOIN houses h ON h.id = w.houseId WHERE h.deleted = 0 ORDER BY w.startedAt DESC")
+    suspend fun live(): List<SavedWalkEntity>
+
+    /** [live] without the bytes (same order): the walks are then read one at a time with [get]. */
+    @Query("SELECT w.id, w.startedAt FROM saved_walks w JOIN houses h ON h.id = w.houseId WHERE h.deleted = 0 ORDER BY w.startedAt DESC")
+    suspend fun liveRefs(): List<SavedWalkRef>
+
+    /** One house's saved walks without the bytes, newest first. */
+    @Query(
+        "SELECT w.id, w.houseId, w.startedAt, w.endedAt, w.pointCount, w.lengthM FROM saved_walks w " +
+            "JOIN houses h ON h.id = w.houseId WHERE h.deleted = 0 AND w.houseId = :houseId ORDER BY w.startedAt DESC",
+    )
+    fun observeForHouse(houseId: String): Flow<List<SavedWalkSummary>>
+
+    @Query("SELECT * FROM saved_walks WHERE id = :id")
+    suspend fun get(id: String): SavedWalkEntity?
+
+    /** The count shown in Settings: the walks of live houses. */
+    @Query("SELECT COUNT(*) FROM saved_walks w JOIN houses h ON h.id = w.houseId WHERE h.deleted = 0")
+    fun observeCount(): Flow<Int>
+
+    /** For the 20-a-house limit. */
+    @Query("SELECT COUNT(*) FROM saved_walks WHERE houseId = :houseId")
+    suspend fun countForHouse(houseId: String): Int
+
+    /** For the 200-a-device limit. */
+    @Query("SELECT COUNT(*) FROM saved_walks")
+    suspend fun count(): Int
+
+    @Query("DELETE FROM saved_walks WHERE id = :id")
+    suspend fun delete(id: String)
+
+    @Query("DELETE FROM saved_walks")
+    suspend fun deleteAll()
+
+    /** A saved walk never outlives its house: every walk whose house is a tombstone or missing goes. */
+    @Query("DELETE FROM saved_walks WHERE houseId NOT IN (SELECT id FROM houses WHERE deleted = 0)")
+    suspend fun sweepOfDeletedHouses(): Int
 }
 
 /**
@@ -287,6 +422,10 @@ interface RecordDao {
     /** Tombstones included: the sync's last-write-wins needs a deleted row's `updatedAt` too. */
     @Query("SELECT * FROM records WHERE type = :type AND id = :id")
     suspend fun get(type: String, id: String): RecordEntity?
+
+    /** The stored records of one [type] with these ids, tombstones included, in one query (see [HouseDao.getMany]). */
+    @Query("SELECT * FROM records WHERE type = :type AND id IN (:ids)")
+    suspend fun getMany(type: String, ids: List<String>): List<RecordEntity>
 
     @Upsert
     suspend fun upsert(record: RecordEntity)
@@ -329,10 +468,16 @@ interface RecordDao {
 @Database(
     entities = [
         HouseEntity::class, VisitEntity::class, PhotoEntity::class, TrackPointEntity::class, RecordEntity::class,
+        SavedWalkEntity::class,
     ],
-    version = 10,
+    version = 13,
     exportSchema = true,
 )
+/**
+ * The phone's Room database (houses, visits, photos, path trace, records, saved walks), one for Android and iOS.
+ * The version, [MIGRATIONS] and the exported schema files are pinned by `RoomSchemaTest`, so a table change cannot
+ * reach an installed app unmigrated.
+ */
 @TypeConverters(Converters::class)
 @ConstructedBy(AppDatabaseConstructor::class)
 abstract class AppDatabase : RoomDatabase() {
@@ -341,6 +486,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun photos(): PhotoDao
     abstract fun track(): TrackDao
     abstract fun records(): RecordDao
+    abstract fun savedWalks(): SavedWalkDao
 
     companion object {
         /**
@@ -354,11 +500,6 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
-        /**
-         * Every migration, in order, for the three builders (Android's `AppDatabaseFactory`, iOS's `AppDatabaseIos`,
-         * the tests): a new version adds its migration here once (readiness review 2026-09-29, docs/14 §8 finding 6)
-         * and pins its `<version>.json` in `RoomSchemaTest`.
-         */
         /** v3 (S4b-FR-2, 2026-09-29): the path trace's `track_points`, a local-only table (never synced). */
         val MIGRATION_2_3 = object : Migration(2, 3) {
             override fun migrate(connection: SQLiteConnection) {
@@ -462,9 +603,118 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * v11 (S4b-FR-14, 2026-10-06): saved walks (docs/11 5.27.6, docs/03 §6.2). `track_points.walkId` (0 = no id, so
+         * the rows from before are split by the gap rule alone) with its index, and the local-only `saved_walks` table.
+         * The SQL is Room's own, from `11.json`.
+         */
+        val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(connection: SQLiteConnection) {
+                connection.execSQL("ALTER TABLE track_points ADD COLUMN `walkId` INTEGER NOT NULL DEFAULT 0")
+                connection.execSQL("CREATE INDEX IF NOT EXISTS `index_track_points_walkId` ON `track_points` (`walkId`)")
+                connection.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `saved_walks` (`id` TEXT NOT NULL, `houseId` TEXT NOT NULL, " +
+                        "`startedAt` INTEGER NOT NULL, `endedAt` INTEGER NOT NULL, `savedAt` INTEGER NOT NULL, " +
+                        "`pointCount` INTEGER NOT NULL, `lengthM` INTEGER NOT NULL, `points` BLOB NOT NULL, PRIMARY KEY(`id`))",
+                )
+                connection.execSQL("CREATE INDEX IF NOT EXISTS `index_saved_walks_houseId` ON `saved_walks` (`houseId`)")
+                connection.execSQL("CREATE INDEX IF NOT EXISTS `index_saved_walks_startedAt` ON `saved_walks` (`startedAt`)")
+            }
+        }
+
+        /**
+         * v12 (kinds step 4, S4b-BL-206; docs/03 ADR-36 §18.4 doors 3, 5 and 7): every house is rewritten in place as a
+         * candidate. The table is made again in `12.json`'s layout (SQLite cannot drop a column on every Android this
+         * app runs on): `kind` (`house`), `money_amount` and `money_cadence` from `price` and `priceType` (`RENT` is
+         * `month`, `SALE` `once`, no type no cadence), and `extras` from the bedrooms, area, floor and the eleven
+         * `cost_*` columns ([Candidates.extrasOf]); every other column is copied as it is, the dirty flag included, so
+         * nothing is sent again and nothing is lost. Room runs a migration in one transaction: a failure leaves version 11.
+         */
+        val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(connection: SQLiteConnection) {
+                connection.execSQL(HOUSES_V12.replace("`houses`", "`houses_v12`"))
+                val kept = HOUSE_COLUMNS_KEPT.joinToString(", ") { "`$it`" }
+                connection.execSQL("INSERT INTO `houses_v12` ($kept, `kind`) SELECT $kept, '${Candidates.HOUSE_KIND}' FROM `houses`")
+                val read = connection.prepare(
+                    "SELECT `id`, `price`, `priceType`, `bedrooms`, `areaSqft`, `floor`, " +
+                        HOUSE_COST_COLUMNS.joinToString(", ") { "`cost_$it`" } + " FROM `houses`",
+                )
+                val write = connection.prepare(
+                    "UPDATE `houses_v12` SET `money_amount` = ?, `money_cadence` = ?, `extras` = ? WHERE `id` = ?",
+                )
+                try {
+                    while (read.step()) {
+                        fun long(i: Int): Long? = if (read.isNull(i)) null else read.getLong(i)
+                        fun int(i: Int): Int? = long(i)?.toInt()
+                        val priceType = if (read.isNull(2)) null else read.getText(2)
+                        val money = Candidates.moneyOf(long(1), priceType)
+                        val cost = HouseCost(
+                            deposit = long(6), depositMonths = int(7), maintenance = long(8),
+                            maintenanceIncluded = long(9)?.let { it != 0L }, brokerage = long(10), brokerageMonths = int(11),
+                            lockInMonths = int(12), noticeMonths = int(13),
+                            availableFrom = if (read.isNull(14)) null else read.getText(14), myOffer = long(15),
+                            agreedPrice = long(16),
+                        )
+                        val extras = Candidates.extrasOf(int(3), int(4), int(5), cost.orNull(), money?.cadence, null)
+                        if (money == null && extras == null) continue
+                        write.reset()
+                        money?.amount?.let { write.bindLong(1, it) } ?: write.bindNull(1)
+                        money?.cadence?.let { write.bindText(2, it) } ?: write.bindNull(2)
+                        extras?.let { write.bindText(3, it.toString()) } ?: write.bindNull(3)
+                        write.bindText(4, read.getText(0))
+                        write.step()
+                    }
+                } finally {
+                    read.close()
+                    write.close()
+                }
+                connection.execSQL("DROP TABLE `houses`")
+                connection.execSQL("ALTER TABLE `houses_v12` RENAME TO `houses`")
+                connection.execSQL("CREATE INDEX IF NOT EXISTS `index_houses_street` ON `houses` (`street`)")
+            }
+        }
+
+        /**
+         * v13 (S4b-BL-303, 2026-10-15): `index_houses_kind` on `houses.kind`, so a space's list and the chooser's tally read the
+         * rows of a kind through an index instead of the whole table. No row changes. The SQL is Room's own, from `13.json`.
+         */
+        val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(connection: SQLiteConnection) {
+                connection.execSQL("CREATE INDEX IF NOT EXISTS `index_houses_kind` ON `houses` (`kind`)")
+            }
+        }
+
+        /** The `houses` table of version 12, Room's own SQL from `12.json`. */
+        private const val HOUSES_V12 =
+            "CREATE TABLE IF NOT EXISTS `houses` (`id` TEXT NOT NULL, `label` TEXT NOT NULL, `address` TEXT, " +
+                "`street` TEXT, `locality` TEXT, `lat` REAL NOT NULL, `lon` REAL NOT NULL, `status` TEXT NOT NULL, " +
+                "`rating` INTEGER, `contactName` TEXT, `contactPhone` TEXT, `listingUrl` TEXT, `notes` TEXT, " +
+                "`locationSource` TEXT, `rooms` TEXT, `answers` TEXT, `moveIn` TEXT, `brokerId` TEXT, " +
+                "`checklist` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, " +
+                "`deleted` INTEGER NOT NULL, `dirty` INTEGER NOT NULL, `kind` TEXT NOT NULL, `extras` TEXT, " +
+                "`money_amount` INTEGER, `money_cadence` TEXT, PRIMARY KEY(`id`))"
+
+        /** The columns version 12 keeps from version 11, copied as they are. */
+        private val HOUSE_COLUMNS_KEPT = listOf(
+            "id", "label", "address", "street", "locality", "lat", "lon", "status", "rating", "contactName",
+            "contactPhone", "listingUrl", "notes", "locationSource", "rooms", "answers", "moveIn", "brokerId", "checklist",
+            "createdAt", "updatedAt", "deleted", "dirty",
+        )
+
+        /** Version 11's eleven `cost_*` columns, in [HouseCost]'s order (the migration reads them by position). */
+        private val HOUSE_COST_COLUMNS = listOf(
+            "deposit", "depositMonths", "maintenance", "maintenanceIncluded", "brokerage", "brokerageMonths",
+            "lockInMonths", "noticeMonths", "availableFrom", "myOffer", "agreedPrice",
+        )
+
+        /**
+         * Every migration, in order, for the three builders (Android's `AppDatabaseFactory`, iOS's `AppDatabaseIos`,
+         * the tests): a new version adds its migration here once (readiness review 2026-09-29, docs/14 §8 finding 6)
+         * and pins its `<version>.json` in `RoomSchemaTest`.
+         */
         val MIGRATIONS: Array<Migration> = arrayOf(
             MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8,
-            MIGRATION_8_9, MIGRATION_9_10,
+            MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13,
         )
     }
 }

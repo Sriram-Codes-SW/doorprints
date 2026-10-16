@@ -17,6 +17,7 @@
  */
 
 import { Component, computed, effect, inject, input, signal } from '@angular/core';
+import type { TKey } from '../../i18n/en';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
@@ -24,6 +25,7 @@ import { Announcer } from '../../core/announcer.service';
 import { errorMsg } from '../../core/format';
 import { LocalDataService } from '../../core/local-data.service';
 import { TPipe } from '../../i18n/t.pipe';
+import { HOUSE_KEYS } from '../../core/kind-labels';
 import { Msg } from '../../i18n/translation.service';
 import { MAX_NOTE_TEXT, areasReaching, distancesToPlaces, notesReaching } from '../../shared/area';
 import type { Area, AreaNoteRow, HousePoint, Place } from '../../shared/area';
@@ -42,12 +44,12 @@ type NoteForm = 'street' | 'area' | null;
   imports: [FormsModule, RouterLink, TPipe],
   template: `
     <section class="card" aria-labelledby="house-area-notes-heading">
-      <h2 id="house-area-notes-heading">{{ 'areaNotes.heading' | t }}</h2>
+      <h2 id="house-area-notes-heading">{{ L.section('areaNotes') | t }}</h2>
       @if (failure(); as f) {
         <p class="error small" role="alert">{{ f.key | t: f.params }}</p>
       }
       @if (reaching().length === 0) {
-        <p id="house-area-notes-none" class="muted">{{ 'areaNotes.none' | t }}</p>
+        <p id="house-area-notes-none" class="muted">{{ none() | t }}</p>
       } @else {
         <ul class="notes">
           @for (row of reaching(); track row.id) {
@@ -73,7 +75,7 @@ type NoteForm = 'street' | 'area' | null;
               >
                 <option value="">{{ 'areaNotes.areaPick' | t }}</option>
                 @if (inReach().length) {
-                  <optgroup [label]="'areaNotes.inReach' | t">
+                  <optgroup [label]="inReachLabel() | t">
                     @for (a of inReach(); track a.id) {
                       <option [value]="a.id">{{ a.name }}</option>
                     }
@@ -155,11 +157,17 @@ type NoteForm = 'street' | 'area' | null;
   `,
 })
 export class HouseAreaNotesCard {
+  /** The kind's section heading (S4b-BL-255). */
+  protected readonly L = HOUSE_KEYS;
   private readonly api = inject(LocalDataService);
   private readonly announcer = inject(Announcer);
 
   /** The house as it stands on the page (its point and street), so the notes follow an edit. */
   readonly house = input.required<HousePoint>();
+  /** The line for no notes, in the candidate's kind's words (a school's, S4b-BL-212). */
+  readonly none = input<TKey>('areaNotes.none');
+  /** The heading of the areas the candidate is in (the kind's words; S4b-BL-256). */
+  readonly inReachLabel = input<TKey>('areaNotes.inReach');
 
   protected readonly areas = signal<Area[]>([]);
   private readonly notes = signal<AreaNoteRow[]>([]);
@@ -190,6 +198,7 @@ export class HouseAreaNotesCard {
     });
   }
 
+  /** Reads the areas and notes; shows none if the store cannot be read. */
   private async reload(): Promise<void> {
     try {
       this.areas.set(await firstValueFrom(this.api.areas()));
@@ -200,6 +209,7 @@ export class HouseAreaNotesCard {
     }
   }
 
+  /** Where a note comes from, as words: the area's name or the street. */
   protected sourceOf(row: AreaNoteRow): Msg {
     const n = row.note;
     const name = n.areaId !== undefined ? this.areas().find((a) => a.id === n.areaId)?.name : undefined;
@@ -208,6 +218,9 @@ export class HouseAreaNotesCard {
       : { key: 'areaNotes.fromStreet', params: { street: n.street ?? '' } };
   }
 
+  /**
+   * Opens the form for a street note or an area note. An area note needs at least one area, otherwise the card says so.
+   */
   protected start(kind: 'street' | 'area'): void {
     this.noAreas.set(false);
     if (kind === 'area' && this.areas().length === 0) {
@@ -226,6 +239,7 @@ export class HouseAreaNotesCard {
     this.open.set(null);
   }
 
+  /** Saves the new note for the street (the house's own) or the chosen area, after checking the text and the area. */
   protected async save(): Promise<void> {
     const kind = this.open();
     if (!kind || this.saving()) return;
@@ -262,7 +276,7 @@ export class HouseAreaNotesCard {
   template: `
     @if (rows().length) {
       <section class="card" aria-labelledby="house-distances-heading">
-        <h2 id="house-distances-heading">{{ 'distances.heading' | t }}</h2>
+        <h2 id="house-distances-heading">{{ L.section('distances') | t }}</h2>
         <ul class="distances">
           @for (d of rows(); track d.place.id) {
             <li>{{ 'distances.row' | t: { name: d.place.name, km: d.km, min: d.minutes } }}</li>
@@ -283,6 +297,8 @@ export class HouseAreaNotesCard {
   `,
 })
 export class HouseDistancesCard {
+  /** The kind's section heading (S4b-BL-255). */
+  protected readonly L = HOUSE_KEYS;
   private readonly api = inject(LocalDataService);
 
   readonly house = input.required<HousePoint>();

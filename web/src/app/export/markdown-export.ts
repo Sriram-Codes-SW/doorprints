@@ -16,11 +16,9 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import type { Dict, TKey } from '../i18n/en';
+import type { Dict } from '../i18n/en';
 import {
   escapeMarkdown,
-  formatCoord,
-  formatDate,
   formatDateTime,
   formatDecimal,
   formatPrice,
@@ -28,9 +26,8 @@ import {
   tr,
 } from './deterministic';
 import type { ExportBundle, ExportHouse } from './export-model';
-import { brokerEntries, checklistEntries, checklistLabel, costEntries, labelOf, statusText } from './html-export';
-import { brokerLine } from '../shared/broker';
-import { floorWords } from '../shared/house-floor';
+import { brokerEntries } from './html-export';
+import { checklistEntries, checklistLabel, costFacts, costHeading, detailFacts, labelOf, rankingShows, sectionShown, statusText, voiced } from './copy-facts';
 import { movingInView, photoNote, answerCells, answerDisplayColumns, areaNoteCells, areaNoteDisplayColumns, distanceCells, distanceDisplayColumns, criteriaTable, customLabels, display, ratingShareLine, roomCells, roomDisplayColumns, stringsOf, viewingCells, viewingDisplayColumns } from './export-rows';
 import { optionSummaryKeys } from './option-summary';
 import { photoFileName } from './photo-names';
@@ -44,21 +41,21 @@ export function buildMarkdown(bundle: ExportBundle, dict: Dict): string {
   const out: string[] = [];
   const { counts, options } = bundle;
 
-  out.push(`# ${escapeMarkdown(tr(dict, 'exp.title'))}`, '');
+  out.push(`# ${escapeMarkdown(tr(dict, voiced(bundle, 'exp.title')))}`, '');
   out.push(escapeMarkdown(tr(dict, 'exp.subtitle')), '');
   out.push(escapeMarkdown(tr(dict, 'exp.exportedAt', { date: formatDateTime(bundle.exportedAt) })), '');
   out.push(
-    escapeMarkdown(tr(dict, 'exp.counts', { houses: counts.houses, visits: counts.visits, photos: counts.photos })),
+    escapeMarkdown(tr(dict, voiced(bundle, 'exp.counts'), { houses: counts.houses, visits: counts.visits, photos: counts.photos })),
     '',
   );
   if (ratingShareLine(bundle)) out.push(escapeMarkdown(ratingShareLine(bundle)), '');
   out.push(`## ${escapeMarkdown(tr(dict, 'exp.optionsHeading'))}`, '');
-  for (const key of optionSummaryKeys(options)) out.push(`- ${escapeMarkdown(tr(dict, key))}`);
+  for (const key of optionSummaryKeys(options)) out.push(`- ${escapeMarkdown(tr(dict, voiced(bundle, key)))}`);
   out.push('');
   out.push(`> ${escapeMarkdown(tr(dict, options.includeContacts ? 'exp.privacyContacts' : 'exp.privacyNoContacts'))}`, '');
 
   if (bundle.houses.length === 0) {
-    out.push(escapeMarkdown(tr(dict, 'exp.noHouses')), '');
+    out.push(escapeMarkdown(tr(dict, voiced(bundle, 'exp.noHouses'))), '');
     out.push(...brokersSection(bundle, dict));
     out.push(...criteriaSection(bundle));
     out.push('---', '', escapeMarkdown(tr(dict, 'exp.footer')), '');
@@ -67,25 +64,26 @@ export function buildMarkdown(bundle: ExportBundle, dict: Dict): string {
 
   out.push(`## ${escapeMarkdown(tr(dict, 'exp.ranking'))}`, '');
   // The Must-haves column is there only when some house of the copy misses one: an empty column says nothing.
-  const anyMissed = bundle.ranking.some((entry) => entry.result.failedMustHave.length > 0);
+  const show = rankingShows(bundle);
+  const anyMissed = show.score && bundle.ranking.some((entry) => entry.result.failedMustHave.length > 0);
   out.push(
     row([
       tr(dict, 'exp.colRank'),
-      tr(dict, 'exp.colHouse'),
-      tr(dict, 'common.score'),
-      tr(dict, 'compare.price'),
+      tr(dict, voiced(bundle, 'exp.colHouse')),
+      ...(show.score ? [tr(dict, 'common.score')] : []),
+      ...(show.price ? [tr(dict, 'compare.price')] : []),
       tr(dict, 'house.status'),
       ...(anyMissed ? [tr(dict, 'exp.colMustHave')] : []),
     ]),
   );
-  out.push(separator(anyMissed ? 6 : 5));
+  out.push(separator(3 + (show.score ? 1 : 0) + (show.price ? 1 : 0) + (anyMissed ? 1 : 0)));
   bundle.ranking.forEach((entry, index) => {
     out.push(
       row([
         String(index + 1),
         labelOf(entry.house.label, dict),
-        entry.score === null ? tr(dict, 'house.notScored') : formatDecimal(entry.score, 1),
-        formatPrice(dict, entry.house.price, entry.house.priceType),
+        ...(show.score ? [entry.score === null ? tr(dict, 'house.notScored') : formatDecimal(entry.score, 1)] : []),
+        ...(show.price ? [formatPrice(dict, entry.house.price, entry.house.priceType)] : []),
         statusText(entry.house.status, dict),
         ...(anyMissed ? [entry.result.failedMustHave.length > 0 ? `✕ ${tr(dict, 'exp.mustHaveMissed')}` : ''] : []),
       ]),
@@ -102,44 +100,14 @@ export function buildMarkdown(bundle: ExportBundle, dict: Dict): string {
 }
 
 function houseSection(entry: ExportHouse, position: number, bundle: ExportBundle, dict: Dict): string[] {
-  const { house, score, visits, photos } = entry;
+  const { house, visits, photos } = entry;
   const label = labelOf(house.label, dict);
   const labels = customLabels(bundle);
+  const shows = (ref: string) => sectionShown(bundle, ref, entry);
   const out: string[] = [];
   out.push(`## ${position}. ${escapeMarkdown(label)}`, '');
 
-  const facts: [string, string][] = [];
-  const push = (key: TKey, value: string) => {
-    if (value && value !== '–') facts.push([tr(dict, key), value]);
-  };
-  const bedrooms = house.bedrooms ?? null;
-  const rating = house.rating ?? null;
-  push('house.status', statusText(house.status, dict));
-  push('compare.overall', score === null ? tr(dict, 'house.notScored') : formatDecimal(score, 1));
-  if (entry.result.scored > 0) {
-    push('exp.coverageLabel', tr(dict, 'exp.coverage', { n: entry.result.scored, total: entry.result.active }));
-  }
-  if (entry.result.failedMustHave.length > 0) {
-    push('exp.mustHaveMissed', entry.result.failedMustHave.map((key) => checklistLabel(key, dict, labels)).join(', '));
-  }
-  push('compare.price', formatPrice(dict, house.price, house.priceType));
-  if (bedrooms !== null) push('compare.bhk', tr(dict, 'common.bhk', { n: bedrooms }));
-  if (house.areaSqft != null) push('compare.area', tr(dict, 'common.sqft', { n: house.areaSqft }));
-  if (house.floor != null) push('house.floor', floorWords((k, p) => tr(dict, k, p), house.floor));
-  if (rating !== null) push('compare.rating', tr(dict, 'common.stars', { n: rating }));
-  push('house.address', house.address ?? '');
-  push('house.street', house.street ?? '');
-  push('house.locality', house.locality ?? '');
-  push('house.location', `${formatCoord(house.lat)}, ${formatCoord(house.lon)}`);
-  if (house.locationSource === 'APPROX') push('house.approx', tr(dict, 'common.yes'));
-  push('house.listingUrl', house.listingUrl ?? '');
-  if (bundle.options.includeContacts) {
-    push('house.contactName', house.contactName ?? '');
-    push('house.contactPhone', house.contactPhone ?? '');
-    const broker = bundle.brokers.find((b) => b.id === house.brokerId);
-    push('house.broker', broker ? brokerLine(broker.broker) : '');
-  }
-  push('exp.fieldSaved', formatDate(house.createdAt));
+  const facts = detailFacts(entry, bundle, dict);
 
   if (facts.length) {
     out.push(row([tr(dict, 'exp.colField'), tr(dict, 'exp.colValue')]));
@@ -148,9 +116,9 @@ function houseSection(entry: ExportHouse, position: number, bundle: ExportBundle
     out.push('');
   }
 
-  const cost = costEntries(house, dict);
+  const cost = costFacts(entry, bundle, dict);
   if (cost.length) {
-    out.push(`### ${escapeMarkdown(tr(dict, 'house.cost'))}`, '');
+    out.push(`### ${escapeMarkdown(costHeading(entry, bundle, dict))}`, '');
     out.push(row([tr(dict, 'exp.colField'), tr(dict, 'exp.colValue')]));
     out.push(separator(2));
     for (const [name, value] of cost) out.push(row([name, value]));
@@ -158,7 +126,7 @@ function houseSection(entry: ExportHouse, position: number, bundle: ExportBundle
   }
 
   // The rooms (slice 1c), after the cost and before the checklist.
-  const rooms = roomCells(entry, bundle.lengthUnit, stringsOf(bundle));
+  const rooms = shows('section.rooms') ? roomCells(entry, bundle.lengthUnit, stringsOf(bundle)) : [];
   if (rooms.length) {
     out.push(`### ${escapeMarkdown(stringsOf(bundle).get('table.rooms'))}`, '');
     out.push(row(roomDisplayColumns(bundle)));
@@ -168,7 +136,7 @@ function houseSection(entry: ExportHouse, position: number, bundle: ExportBundle
   }
 
   // The questions (slice 3a), after the rooms and before the checklist; open ones first.
-  const questions = answerCells(entry, stringsOf(bundle));
+  const questions = shows('section.questions') ? answerCells(entry, stringsOf(bundle)) : [];
   if (questions.length) {
     out.push(`### ${escapeMarkdown(stringsOf(bundle).get('section.questions'))}`, '');
     out.push(row(answerDisplayColumns(bundle)));
@@ -178,7 +146,7 @@ function houseSection(entry: ExportHouse, position: number, bundle: ExportBundle
   }
 
   // The viewings (slice 3b-1), after the questions and before the checklist; upcoming first, then newest first.
-  const viewings = viewingCells(entry, stringsOf(bundle), bundle.options.includeContacts);
+  const viewings = shows('section.viewings') ? viewingCells(entry, stringsOf(bundle), bundle.options.includeContacts) : [];
   if (viewings.length) {
     out.push(`### ${escapeMarkdown(stringsOf(bundle).get('section.viewings'))}`, '');
     const columns = viewingDisplayColumns(bundle);
@@ -190,8 +158,8 @@ function houseSection(entry: ExportHouse, position: number, bundle: ExportBundle
 
   // Area notes and distances (slice 4a), after the viewings and before the checklist.
   for (const [heading, columns, list] of [
-    [stringsOf(bundle).get('section.areaNotes'), areaNoteDisplayColumns(bundle), areaNoteCells(entry)],
-    [stringsOf(bundle).get('section.distances'), distanceDisplayColumns(bundle), distanceCells(entry)],
+    [stringsOf(bundle).get('section.areaNotes'), areaNoteDisplayColumns(bundle), shows('section.areaNotes') ? areaNoteCells(entry) : []],
+    [stringsOf(bundle).get('section.distances'), distanceDisplayColumns(bundle), shows('section.distances') ? distanceCells(entry) : []],
   ] as const) {
     if (!list.length) continue;
     out.push(`### ${escapeMarkdown(heading)}`, '');
@@ -202,7 +170,7 @@ function houseSection(entry: ExportHouse, position: number, bundle: ExportBundle
   }
 
   // Moving in (slice 5), after the distances and before the checklist: date, notes, then the items with a tick.
-  const movingIn = movingInView(entry, stringsOf(bundle));
+  const movingIn = shows('section.moveIn') ? movingInView(entry, stringsOf(bundle)) : { facts: [], items: [] };
   if (movingIn.facts.length || movingIn.items.length) {
     out.push(`### ${escapeMarkdown(stringsOf(bundle).get('section.movingIn'))}`, '');
     if (movingIn.facts.length) {
@@ -215,7 +183,7 @@ function houseSection(entry: ExportHouse, position: number, bundle: ExportBundle
     if (movingIn.items.length) out.push('');
   }
 
-  const checklist = checklistEntries(house.checklist);
+  const checklist = shows('section.checklist') ? checklistEntries(house.checklist) : [];
   if (checklist.length) {
     out.push(`### ${escapeMarkdown(tr(dict, 'house.checklist'))}`, '');
     out.push(row([tr(dict, 'compare.criterion'), tr(dict, 'common.score')]));
@@ -256,7 +224,7 @@ function houseSection(entry: ExportHouse, position: number, bundle: ExportBundle
 
 /** The **Brokers** section after the houses (slice 1b): a table per broker of the copy. */
 function brokersSection(bundle: ExportBundle, dict: Dict): string[] {
-  if (bundle.brokers.length === 0) return [];
+  if (bundle.brokers.length === 0 || !sectionShown(bundle, 'field.brokerId')) return [];
   const out: string[] = [`## ${escapeMarkdown(tr(dict, 'brokers.title'))}`, ''];
   for (const b of bundle.brokers) {
     out.push(`### ${escapeMarkdown(b.broker.name)}`, '');
@@ -272,7 +240,7 @@ function brokersSection(bundle: ExportBundle, dict: Dict): string[] {
 
 /** The **Criteria** section after the brokers (slice 2): name, weight, must-have, minimum score and archived. */
 function criteriaSection(bundle: ExportBundle): string[] {
-  if (bundle.criteria.length === 0) return [];
+  if (bundle.criteria.length === 0 || !sectionShown(bundle, 'section.checklist')) return [];
   const table = criteriaTable(bundle);
   const strings = stringsOf(bundle);
   const shown = [1, 2, 3, 4, 5];

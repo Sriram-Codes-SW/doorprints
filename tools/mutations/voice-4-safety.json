@@ -1,0 +1,119 @@
+{
+ "spec": "web/src/app/core/voice/voice-safety.spec.ts",
+ "mutations": [
+  {
+   "file": "web/src/app/shared/voice-button.ts",
+   "find": "this.recorder = null;\n    const spoken =",
+   "replace": "this.recorder = null;\n    console.log(clip.bytes);\n    const spoken =",
+   "expect": "a whole spoken turn leaves no audio"
+  },
+  {
+   "file": "web/src/app/core/voice/voice-input.service.ts",
+   "find": "transcribe(clip: RecordedClip, kind: string): Promise<Transcript> {",
+   "replace": "transcribe(clip: RecordedClip, kind: string): Promise<Transcript> {\n    sessionStorage.setItem('voiceClip', String(clip.bytes.length));",
+   "expect": "a whole spoken turn leaves no audio"
+  },
+  {
+   "file": "web/src/app/core/voice/voice-input.service.ts",
+   "find": "transcribe(clip: RecordedClip, kind: string): Promise<Transcript> {",
+   "replace": "transcribe(clip: RecordedClip, kind: string): Promise<Transcript> {\n    indexedDB.open('voice');",
+   "expect": "a whole spoken turn leaves no audio"
+  },
+  {
+   "file": "web/src/app/core/voice/voice-input.service.ts",
+   "find": "transcribe(clip: RecordedClip, kind: string): Promise<Transcript> {",
+   "replace": "transcribe(clip: RecordedClip, kind: string): Promise<Transcript> {\n    URL.createObjectURL(new Blob([clip.bytes as BlobPart]));",
+   "expect": "a whole spoken turn leaves no audio"
+  },
+  {
+   "file": "web/src/app/core/voice/voice-input.service.ts",
+   "find": "this.ai.ownKey()",
+   "replace": "localStorage.getItem('doorprints.gemini-key') ?? ''",
+   "expect": "the provider key path is the existing own-key path"
+  },
+  {
+   "file": "web/src/app/core/voice/voice-input.service.ts",
+   "find": "private readonly enabledState = signal(readVoice());",
+   "replace": "private readonly enabledState = signal(true);",
+   "expect": "T-I47: the setting off means no microphone button"
+  },
+  {
+   "file": "web/src/app/core/format.ts",
+   "find": "import { LocalDataError } from './local-error';",
+   "replace": "import { LocalDataError } from './local-error';\nimport { VOICE_INPUT_KEY } from './storage-keys';\nvoid VOICE_INPUT_KEY;",
+   "expect": "only the setting and the button use the voice code"
+  },
+  {
+   "file": "web/src/app/core/voice/audio-recorder.ts",
+   "find": "import { MAX_AUDIO_BYTES, MAX_AUDIO_MS } from '../ai/transcriber';",
+   "replace": "import { MAX_AUDIO_BYTES, MAX_AUDIO_MS } from '../ai/transcriber';\nconst keep = new Audio();\nvoid keep;",
+   "expect": "the voice source cannot store, log, copy or beacon audio"
+  },
+  {
+   "file": "web/public/sw.js",
+   "find": "if (request.method !== 'GET') return;",
+   "replace": "if (false) return;",
+   "expect": "the service worker leaves a POST"
+  },
+  {
+   "file": "web/firebase.json",
+   "find": "microphone=(self)",
+   "replace": "microphone=()",
+   "expect": "firebase.json allows the microphone for this origin only"
+  },
+  {
+   "file": "web/firebase.json",
+   "find": "microphone=(self)",
+   "replace": "microphone=*",
+   "expect": "firebase.json allows the microphone for this origin only"
+  },
+  {
+   "file": "web/src/app/core/voice/audio-recorder.ts",
+   "find": "window.addEventListener('pagehide', this.hide);",
+   "replace": "void this.hide;",
+   "expect": "page hide"
+  },
+  {
+   "file": "web/src/app/core/voice/audio-recorder.ts",
+   "find": "document.addEventListener('visibilitychange', this.visibility);",
+   "replace": "void this.visibility;",
+   "expect": "tab hidden"
+  },
+  {
+   "file": "web/src/app/shared/voice-button.ts",
+   "find": "ngOnDestroy(): void {\n    this.discard();",
+   "replace": "ngOnDestroy(): void {\n    void 0;",
+   "expect": "route change"
+  },
+  {
+   "file": "web/src/app/shared/voice-button.ts",
+   "find": "if (!this.voice.available()) this.discard();",
+   "replace": "if (false as boolean) this.discard();",
+   "expect": "the setting turned off"
+  },
+  {
+   "file": "web/src/app/core/voice/audio-recorder.ts",
+   "find": "this.timer = setTimeout(() => this.stopFor('time'), this.maxMs);",
+   "replace": "this.timer = setTimeout(() => this.stopFor('time'), this.maxMs * 2);",
+   "expect": "the time limit"
+  },
+  {
+   "file": "web/src/app/core/voice/audio-recorder.ts",
+   "find": "if (this.size + blob.size > MAX_AUDIO_BYTES) {",
+   "replace": "if (this.size + blob.size > MAX_AUDIO_BYTES * 2) {",
+   "expect": "the size cap"
+  },
+  {
+   "file": "web/src/app/core/voice/audio-recorder.ts",
+   "find": "rec.onerror = () => (this.size > 0 ? this.finish(true) : this.end('failed'));",
+   "replace": "rec.onerror = () => undefined;",
+   "expect": "error (the recorder fails)"
+  },
+  {
+   "file": "web/src/app/core/voice/audio-recorder.ts",
+   "find": "for (const t of this.stream.getTracks()) {\n        t.onended = null;",
+   "replace": "for (const t of [] as MediaStreamTrack[]) {\n        t.onended = null;",
+   "expect": "T-I47: the recorder and every track are stopped and released on every exit path"
+  }
+ ]
+}

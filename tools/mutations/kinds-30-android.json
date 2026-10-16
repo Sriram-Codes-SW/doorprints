@@ -1,0 +1,36 @@
+{
+  "spec": "android/shared/src/androidHostTest/kotlin/app/doorprints/shared/model/KindCapabilitiesVectorsTest.kt (with SchoolCopyVoiceTest)",
+  "gradle": [
+    ":shared:testAndroidHostTest",
+    "--tests",
+    "app.doorprints.shared.model.KindCapabilitiesVectorsTest",
+    "--tests",
+    "app.doorprints.shared.export.SchoolCopyVoiceTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/KindFilter.kt",
+      "find": "return KindCapabilities.of(fields.kind).filters.mapNotNull",
+      "replace": "return KindCapabilities.of(fields.kind).filters.drop(1).mapNotNull",
+      "expect": "onlyTheHouseIsTheBaselineKindAndTheFilterRowsAreTheFilesFilters"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/KindCapabilities.kt",
+      "find": "baseline = true,\n",
+      "replace": "",
+      "expect": "onlyTheHouseIsTheBaselineKindAndTheFilterRowsAreTheFilesFilters"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/KindCapabilities.kt",
+      "find": "|| list.toSet().size != list.size) return null\n                list.filterNotNull()",
+      "replace": ") return null\n                list.filterNotNull()",
+      "expect": "invalid"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/export/KindExportWords.kt",
+      "find": "\"section.questions\" to \"Questions for a visit\",",
+      "replace": "\"section.questions\" to \"Questions\",",
+      "expect": "theOverlayIsTheWebsitesWords"
+    }
+  ]
+}

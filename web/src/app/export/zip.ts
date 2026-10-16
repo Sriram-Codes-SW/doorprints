@@ -31,6 +31,7 @@
  * more than 5 000 entries in any case.
  */
 
+/** One file to put in a ZIP. */
 export interface ZipEntry {
   /** Path inside the archive, `/`-separated, no leading slash and no `..` segment. */
   path: string;
@@ -43,6 +44,9 @@ const EOCD_SIG = 0x06054b50;
 /** Bit 11: the file name is UTF-8. Needed for Hindi, Tamil and Telugu house labels in file names. */
 const FLAG_UTF8 = 0x0800;
 
+/**
+ * Writes a ZIP of stored (uncompressed) entries, all stamped with [modifiedAt]. The same entries and time always give the same bytes.
+ */
 export function zip(entries: readonly ZipEntry[], modifiedAt: Date): Uint8Array {
   const { time, date } = dosDateTime(modifiedAt);
   const encoder = new TextEncoder();
@@ -111,6 +115,7 @@ export function zip(entries: readonly ZipEntry[], modifiedAt: Date): Uint8Array 
   return concat([...parts, ...central, end]);
 }
 
+/** The parts joined into one new array. */
 export function concat(parts: readonly Uint8Array[]): Uint8Array {
   const total = parts.reduce((n, part) => n + part.length, 0);
   const out = new Uint8Array(total);
@@ -142,12 +147,14 @@ function buildCrcTable(): Uint32Array {
   return table;
 }
 
+/** The CRC-32 of [bytes] that each ZIP entry carries. */
 export function crc32(bytes: Uint8Array): number {
   let crc = 0xffffffff;
   for (let i = 0; i < bytes.length; i++) crc = CRC_TABLE[(crc ^ bytes[i]) & 0xff] ^ (crc >>> 8);
   return (crc ^ 0xffffffff) >>> 0;
 }
 
+/** The UTF-8 bytes of [text]. */
 export function utf8(text: string): Uint8Array {
   return new TextEncoder().encode(text);
 }

@@ -38,7 +38,8 @@ public record AppProperties(
         Privacy privacy,
         /* The web app's address, for the owner page's connect links (APP_WEB_URL); docs/03 §12.1. */
         String webUrl,
-        Pairing pairing) {
+        Pairing pairing,
+        Owner owner) {
 
     public AppProperties {
         rateLimit = rateLimit == null ? new RateLimit(null, null, null, null) : rateLimit;
@@ -46,17 +47,45 @@ public record AppProperties(
         sync = sync == null ? new Sync(null, null) : sync;
         privacy = privacy == null ? new Privacy(null) : privacy;
         webUrl = webUrl == null || webUrl.isBlank() ? "https://doorprints.web.app" : webUrl.replaceAll("/+$", "");
-        pairing = pairing == null ? new Pairing(null, null) : pairing;
+        pairing = pairing == null ? new Pairing(null, null, null, null) : pairing;
+        owner = owner == null ? new Owner(null) : owner;
+    }
+
+    /**
+     * Owner page settings. {@code setupLinkInLog} (OWNER_SETUP_LINK_IN_LOG, default false) is the owner's recovery
+     * switch (S4b-BL-188, docs/03 section 12.1): when on, the one-hour setup link is written to the log at a start
+     * even though a browser is signed in; the owner who lost their only signed-in browser uses it, then switches it
+     * off again.
+     */
+    public record Owner(Boolean setupLinkInLog) {
+        public Owner {
+            setupLinkInLog = Boolean.TRUE.equals(setupLinkInLog);
+        }
     }
 
     /**
      * The calls anyone can make without a key (pairing, signing in to the owner page), per client address (docs/03
-     * §12.1): a device polling every 3 seconds needs 20 a minute.
+     * section 12.1): a device polling every 3 seconds needs 20 a minute. {@code maxOpen} and {@code maxPerSource} cap
+     * the unexpired pairing requests open in all and from one source (S4b-BL-161; PAIRING_MAX_OPEN, default 50, and
+     * PAIRING_MAX_PER_SOURCE, default 5); unset means the default, below 1 stops startup. They are settings so the
+     * release gate's API scan can lift them, as it lifts the rate limits (S4b-BL-191).
      */
-    public record Pairing(Integer requestsPerMinute, Integer burst) {
+    public record Pairing(Integer requestsPerMinute, Integer burst, Integer maxOpen, Integer maxPerSource) {
+        public static final int DEFAULT_MAX_OPEN = 50;
+        public static final int DEFAULT_MAX_PER_SOURCE = 5;
+
         public Pairing {
             requestsPerMinute = positiveOr(requestsPerMinute, 40);
             burst = positiveOr(burst, 20);
+            maxOpen = atLeastOne(maxOpen, DEFAULT_MAX_OPEN, "app.pairing.max-open (PAIRING_MAX_OPEN)");
+            maxPerSource = atLeastOne(maxPerSource, DEFAULT_MAX_PER_SOURCE,
+                    "app.pairing.max-per-source (PAIRING_MAX_PER_SOURCE)");
+        }
+
+        private static int atLeastOne(Integer value, int fallback, String name) {
+            if (value == null) return fallback;
+            if (value < 1) throw new IllegalArgumentException(name + " must be at least 1, not " + value);
+            return value;
         }
     }
 

@@ -1,0 +1,461 @@
+{
+ "spec": "web/src/app/pages/house-detail/house-location.spec.ts",
+ "mutations": [
+  {
+   "file": "web/src/app/pages/house-detail/house-location.ts",
+   "find": "if (!this.canLocate || this.locating()) return;",
+   "replace": "if (!this.canLocate) return;",
+   "expect": "ignores a second press while the first is waiting"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-location.ts",
+   "find": "gone: this.deps.gone,",
+   "replace": "gone: () => false,",
+   "expect": "drops an answer that arrives after the page is gone"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-location.ts",
+   "find": "        this.coordsInvalid.set({ lat: false, lon: false });\n        this.placePin(round6(pos",
+   "replace": "        this.placePin(round6(pos",
+   "expect": "clears invalid typed coordinates"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-location.ts",
+   "find": "round6(pos.coords.latitude), round6(pos.coords.longitude), 'GPS')",
+   "replace": "round6(pos.coords.latitude), round6(pos.coords.longitude))",
+   "expect": "as GPS"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-location.ts",
+   "find": "round6(pos.coords.latitude), round6(pos.coords.longitude), 'GPS')",
+   "replace": "round6(pos.coords.longitude), round6(pos.coords.latitude), 'GPS')",
+   "expect": "as GPS"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-location.ts",
+   "find": "round6(pos.coords.latitude)",
+   "replace": "pos.coords.latitude",
+   "expect": "as GPS"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-location.ts",
+   "find": "this.deps.announcer.announce({ key: 'house.locationFound' });",
+   "replace": "",
+   "expect": "clears invalid typed coordinates and announces it"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-location.ts",
+   "find": "        this.locating.set(false);\n        this.message.set(null);",
+   "replace": "        this.message.set(null);",
+   "expect": "as GPS"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-location.ts",
+   "find": "        this.locating.set(false);\n        this.message.set(runResult({ key: locationErrorKey(err) }));",
+   "replace": "        this.message.set(runResult({ key: locationErrorKey(err) }));",
+   "expect": "says why it failed"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-location.ts",
+   "find": "runResult({ key: locationErrorKey(err) })",
+   "replace": "runResult({ key: 'house.locationFailed' })",
+   "expect": "says why it failed"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-location.ts",
+   "find": "    this.placed.set(true);\n    if (this.required()) {",
+   "replace": "    if (this.required()) {",
+   "expect": "puts the pin on a new house that had no position"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-location.ts",
+   "find": "    if (this.required()) {\n      this.required.set(false);",
+   "replace": "    if (this.required()) {",
+   "expect": "takes the refusal back when the pin is put by typing"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-location.ts",
+   "find": "if (this.deps.error()?.value.key === 'house.locationRequired') this.deps.error.set(null);",
+   "replace": "this.deps.error.set(null);",
+   "expect": "keeps a name failure showing when the pin is put"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-location.ts",
+   "find": "if (this.deps.error()?.value.key === 'house.locationRequired') this.deps.error.set(null);",
+   "replace": "",
+   "expect": "takes the refusal back when the pin is put by typing"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-location.ts",
+   "find": "current === 'APPROX' && source === 'MAP' ? 'APPROX' : source",
+   "replace": "source",
+   "expect": "keeps a house marked approximate approximate"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-location.ts",
+   "find": "current === 'APPROX' && source === 'MAP' ? 'APPROX' : source",
+   "replace": "current === 'APPROX' ? 'APPROX' : source",
+   "expect": "GPS replaces it"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-location.ts",
+   "find": "if (current !== 'APPROX') this.sourceBeforeApprox = current;",
+   "replace": "this.sourceBeforeApprox = current;",
+   "expect": "does not remember APPROX as the source before"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-location.ts",
+   "find": "if (current !== 'APPROX') this.sourceBeforeApprox = current;",
+   "replace": "",
+   "expect": "goes back to the source it was turned on from, each time"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-location.ts",
+   "find": "this.sourceBeforeApprox ?? 'MAP'",
+   "replace": "this.sourceBeforeApprox ?? 'GPS'",
+   "expect": "goes back to MAP when the house had no source"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-location.ts",
+   "find": "this.sourceBeforeApprox ?? 'MAP'",
+   "replace": "'MAP'",
+   "expect": "goes back to the source it was turned on from"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-location.ts",
+   "find": "    this.coordsInvalid.set({ lat: false, lon: false });\n    this.placePin(p.lat, p.lon);",
+   "replace": "    this.placePin(p.lat, p.lon);",
+   "expect": "clears a typed value that was invalid"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-location.ts",
+   "find": "parseCoordinate(input.value, axis === 'lat' ? 90 : 180)",
+   "replace": "parseCoordinate(input.value, axis === 'lat' ? 180 : 90)",
+   "expect": "accepts 90 as a latitude and 180 as a longitude"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-location.ts",
+   "find": "parseCoordinate(input.value, axis === 'lat' ? 90 : 180)",
+   "replace": "parseCoordinate(input.value, 90)",
+   "expect": "accepts 90 as a latitude and 180 as a longitude"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-location.ts",
+   "find": "this.coordsInvalid.update((c) => ({ ...c, [axis]: false }));\n    const lat",
+   "replace": "const lat",
+   "expect": "clears the mark for an axis once it is valid"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-location.ts",
+   "find": "const lat = axis === 'lat' ? round6(value) : d.lat;",
+   "replace": "const lat = axis === 'lat' ? value : d.lat;",
+   "expect": "moves the pin to a valid typed latitude"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-location.ts",
+   "find": "const lat = axis === 'lat' ? round6(value) : d.lat;",
+   "replace": "const lat = d.lat;",
+   "expect": "moves the pin to a valid typed latitude"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-location.ts",
+   "find": "const lon = axis === 'lon' ? round6(value) : d.lon;",
+   "replace": "const lon = d.lon;",
+   "expect": "moves the pin to a valid typed latitude"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-location.ts",
+   "find": "this.placed() ? null : 'location-unset'",
+   "replace": "'location-unset'",
+   "expect": "takes the refusal back when the pin is put by typing"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-location.ts",
+   "find": "this.coordsInvalid()[axis] ? 'coords-error' : null",
+   "replace": "'coords-error'",
+   "expect": "keeps an invalid typed value in the field"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-location.ts",
+   "find": "if (!d || this.placed()) return null;",
+   "replace": "if (!d) return null;",
+   "expect": "is not offered once the position is set"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-location.ts",
+   "find": "return d.locality?.trim() || d.address?.trim() || null;",
+   "replace": "return d.address?.trim() || d.locality?.trim() || null;",
+   "expect": "offers Find for the address, and for the locality in its place"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-location.ts",
+   "find": "return d.locality?.trim() || d.address?.trim() || null;",
+   "replace": "return d.locality?.trim() || null;",
+   "expect": "offers Find for the address"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-location.ts",
+   "find": "if (!place || this.finding()) return;",
+   "replace": "if (!place) return;",
+   "expect": "ignores a second press while the place is being looked up"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-location.ts",
+   "find": "search(place, this.deps.i18n.lang())",
+   "replace": "search(place, 'en')",
+   "expect": "looks the place up"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-location.ts",
+   "find": "        this.findRequest = null;\n        this.finding.set(false);\n        if (!found) {",
+   "replace": "        this.findRequest = null;\n        if (!found) {",
+   "expect": "shows the working label and ignores a second press"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-location.ts",
+   "find": "        this.findRequest = null;\n        this.finding.set(false);\n        this.message.set(runResult({ key: 'house.lookupFailed'",
+   "replace": "        this.findRequest = null;\n        this.message.set(runResult({ key: 'house.lookupFailed'",
+   "expect": "says why the lookup failed"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-location.ts",
+   "find": "runResult({ key: 'house.placeNotFound', params: { place } })",
+   "replace": "runResult({ key: 'house.lookupFailed', params: { reason: place } })",
+   "expect": "names the place that was not found"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-location.ts",
+   "find": "          return;\n        }\n        this.message.set(null);\n        this.placePin(round6(found.lat)",
+   "replace": "          return;\n        }\n        this.placePin(round6(found.lat)",
+   "expect": "a later success removes that message"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-location.ts",
+   "find": "round6(found.lat), round6(found.lon), 'APPROX')",
+   "replace": "round6(found.lat), round6(found.lon))",
+   "expect": "puts the pin there as approximate"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-location.ts",
+   "find": "round6(found.lat), round6(found.lon), 'APPROX')",
+   "replace": "found.lat, found.lon, 'APPROX')",
+   "expect": "puts the pin there as approximate"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-location.ts",
+   "find": "        this.foundMessage.set(runResult({ key: 'house.placeFound', params: { place } }));\n",
+   "replace": "",
+   "expect": "puts the pin there as approximate"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-location.ts",
+   "find": "        this.deps.announcer.announce({ key: 'house.placeFound', params: { place } });\n",
+   "replace": "",
+   "expect": "puts the pin there as approximate"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-location.ts",
+   "find": "if (!d || this.geocoding() || !this.placed()) return;",
+   "replace": "if (!d || this.geocoding()) return;",
+   "expect": "is disabled and sends nothing while the position is unset"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-location.ts",
+   "find": "if (!d || this.geocoding() || !this.placed()) return;",
+   "replace": "if (!d || !this.placed()) return;",
+   "expect": "is disabled while a lookup runs, and sends one request"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-location.ts",
+   "find": "reverse(d.lat, d.lon)",
+   "replace": "reverse(d.lon, d.lat)",
+   "expect": "fills the empty address, street and locality"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-location.ts",
+   "find": "        this.geocoding.set(false);\n        this.message.set(null);\n        void this.applyAddress(r);",
+   "replace": "        this.message.set(null);\n        void this.applyAddress(r);",
+   "expect": "is disabled while a lookup runs"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-location.ts",
+   "find": "        this.geocoding.set(false);\n        this.message.set(null);",
+   "replace": "        this.geocoding.set(false);",
+   "expect": "a later answer removes that message"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-location.ts",
+   "find": "        this.message.set(runResult({ key: 'house.lookupFailed', params: { reason: errorMsg(err) } }));\n        this.geocoding.set(false);",
+   "replace": "        this.message.set(runResult({ key: 'house.lookupFailed', params: { reason: errorMsg(err) } }));",
+   "expect": "says why the lookup failed, and a later answer removes"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-location.ts",
+   "find": "if (fill.conflicts.length > 0) {",
+   "replace": "if (fill.conflicts.length > 5) {",
+   "expect": "asks before replacing what was typed"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-location.ts",
+   "find": "        .join('\\n');\n      const answer",
+   "replace": "        .join(', ');\n      const answer",
+   "expect": "lists every typed value that differs, one per line"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-location.ts",
+   "find": "altKey: filled.length > 0 ? 'house.addressFillEmpty' : null",
+   "replace": "altKey: 'house.addressFillEmpty'",
+   "expect": "offers no \"fill empty only\" button when nothing is empty"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-location.ts",
+   "find": "if (answer === 'cancel') return;",
+   "replace": "",
+   "expect": "changes nothing and says nothing on Cancel"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-location.ts",
+   "find": "if (answer === 'confirm') {",
+   "replace": "if (answer) {",
+   "expect": "on \"Fill empty fields only\" fills the empty ones"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-location.ts",
+   "find": "          changes[c.field] = c.incoming;\n          filled.push(c.field);",
+   "replace": "          changes[c.field] = c.incoming;",
+   "expect": "asks before replacing what was typed, showing the old and new values"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-location.ts",
+   "find": "if (filled.length === 0) {",
+   "replace": "if (filled.length === 0 && false) {",
+   "expect": "says there was nothing new"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-location.ts",
+   "find": "    this.deps.patch(changes);\n    const fields",
+   "replace": "    const fields",
+   "expect": "fills the empty address, street and locality"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-location.ts",
+   "find": "    this.lookupRequest?.unsubscribe();\n",
+   "replace": "",
+   "expect": "drops an address that is found after the page is gone"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-location.ts",
+   "find": "    this.findRequest?.unsubscribe();\n",
+   "replace": "",
+   "expect": "drops a place that is found after the page is gone"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-detail-page.ts",
+   "find": "    this.position.stop();\n",
+   "replace": "",
+   "expect": "drops an address that is found after the page is gone"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-detail-page.ts",
+   "find": "gone: () => this.destroyed,",
+   "replace": "gone: () => false,",
+   "expect": "drops an answer that arrives after the page is gone"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-detail-page.ts",
+   "find": "        this.position.placed.set(false);\n",
+   "replace": "",
+   "expect": "warns that the pin is only a guess"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-detail-page.ts",
+   "find": "this.position.startZoom.set(Math.max(view.zoom, 12));",
+   "replace": "this.position.startZoom.set(view.zoom);",
+   "expect": "starts at the last map view, at zoom 12 at least"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-detail-page.ts",
+   "find": "this.position.startZoom.set(13);",
+   "replace": "this.position.startZoom.set(16);",
+   "expect": "starts at the newest house that is not deleted, one level out"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-detail-page.ts",
+   "find": "this.position.startZoom.set(COUNTRY_VIEW.zoom);",
+   "replace": "this.position.startZoom.set(13);",
+   "expect": "starts on the country when there is no view and no house"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-detail-page.ts",
+   "find": "    if (!this.position.placed()) {\n      this.position.required.set(true);",
+   "replace": "    if (!this.position.placed() && false) {\n      this.position.required.set(true);",
+   "expect": "refuses to save until it is put"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-detail-page.ts",
+   "find": "      this.position.required.set(true);\n",
+   "replace": "",
+   "expect": "refuses to save until it is put"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-detail-page.ts",
+   "find": "    if (invalid.lat || invalid.lon) {",
+   "replace": "    if (invalid.lat && invalid.lon) {",
+   "expect": "refuses to save while a typed coordinate is invalid"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-detail-page.ts",
+   "find": "document.getElementById(invalid.lat ? 'house-lat' : 'house-lon')",
+   "replace": "document.getElementById('house-lat')",
+   "expect": "sends focus to that field"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-detail-page.ts",
+   "find": "error: this.error,",
+   "replace": "error: signal<RunResult<Msg> | null>(null),",
+   "expect": "takes the refusal back when the pin is put by typing"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-detail-page.html",
+   "find": "[class]=\"position.required() ? 'error' : 'warn-box'\"",
+   "replace": "[class]=\"'warn-box'\"",
+   "expect": "refuses to save until it is put"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-detail-page.html",
+   "find": "[attr.aria-invalid]=\"position.required() || position.coordsInvalid().lon ? 'true' : null\"",
+   "replace": "[attr.aria-invalid]=\"position.coordsInvalid().lon ? 'true' : null\"",
+   "expect": "refuses to save until it is put"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-detail-page.html",
+   "find": "(moved)=\"position.onMoved($event)\"",
+   "replace": "(moved)=\"position.onMoved({ lat: 0, lon: 0 })\"",
+   "expect": "a drag or tap on the map moves the pin"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-detail-page.html",
+   "find": "[zoom]=\"position.startZoom()\"",
+   "replace": "[zoom]=\"16\"",
+   "expect": "starts at the last map view"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-detail-page.html",
+   "find": "[attr.aria-disabled]=\"position.geocoding() || !position.placed() ? 'true' : null\"",
+   "replace": "[attr.aria-disabled]=\"null\"",
+   "expect": "is disabled and sends nothing while the position is unset"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-detail-page.html",
+   "find": "@if (position.canLocate) {",
+   "replace": "@if (true) {",
+   "expect": "is not offered when the browser has no geolocation"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-detail-page.html",
+   "find": "@if (d.locationSource === 'APPROX') {\n            <p class=\"muted small\">{{ found.value",
+   "replace": "@if (true) {\n            <p class=\"muted small\">{{ found.value",
+   "expect": "stops saying where the pin is once the person turns Approximate off"
+  }
+ ]
+}

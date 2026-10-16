@@ -21,6 +21,11 @@ package app.doorprints.ui
 import app.doorprints.data.HouseEntity
 import app.doorprints.location.Place
 import app.doorprints.shared.api.HouseDraftDto
+import app.doorprints.shared.model.KindFields
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import app.doorprints.shared.listing.ListingText
 
 /*
  * The house form's and the lists' decisions that need no Android, written as pure functions so they are unit tested
@@ -70,20 +75,114 @@ fun fillPlace(
 /** A form field that "Fill in from listing text" can set, named in its result line. */
 enum class ListingField { NAME, ADDRESS, STREET, LOCALITY, PRICE, BHK, CONTACT, PHONE, LISTING, NOTES, AREA }
 
-/** What a listing fill did: the new draft, the fields it filled, and those it left because the user had typed them. */
+/**
+ * The lines that bracket what a listing fill wrote into the notes (S4b-BL-238): a second fill replaces that block instead
+ * of appending another, and the person's own notes around it are never touched. The same two lines as the website's
+ * `house-draft-merge.ts`, so a house synced between them keeps one block.
+ */
+const val LISTING_NOTES_START = "--- from listing ---"
+const val LISTING_NOTES_END = "--- end of listing ---"
+
+/**
+ * [current] notes with the listing block set to [block]: an existing block (from the start line to the end line, or to
+ * the end of the notes when the end line is missing) is replaced, otherwise the block is appended after the person's
+ * notes. A blank [block] removes the block. Idempotent: the same block twice gives the same notes.
+ */
+fun withListingBlock(current: String?, block: String): String {
+    val notes = current ?: ""
+    val wrapped = block.trim().takeIf { it.isNotEmpty() }?.let { "$LISTING_NOTES_START\n$it\n$LISTING_NOTES_END" } ?: ""
+    val start = notes.indexOf(LISTING_NOTES_START)
+    if (start < 0) return listOf(notes.trim(), wrapped).filter { it.isNotEmpty() }.joinToString("\n")
+    val endAt = notes.indexOf(LISTING_NOTES_END, start)
+    val after = if (endAt < 0) "" else notes.substring(endAt + LISTING_NOTES_END.length)
+    return listOf(notes.substring(0, start).trim(), wrapped, after.trim()).filter { it.isNotEmpty() }.joinToString("\n")
+}
+
+/** The value a field of [h] holds, for the "from the listing" marks ([remainingMarks]). */
+private fun fieldValue(h: HouseEntity, field: ListingField): Any? = when (field) {
+    ListingField.NAME -> h.label
+    ListingField.ADDRESS -> h.address
+    ListingField.STREET -> h.street
+    ListingField.LOCALITY -> h.locality
+    ListingField.PRICE -> h.price
+    ListingField.BHK -> h.bedrooms
+    ListingField.CONTACT -> h.contactName
+    ListingField.PHONE -> h.contactPhone
+    ListingField.LISTING -> h.listingUrl
+    ListingField.NOTES -> h.notes
+    ListingField.AREA -> h.areaSqft
+}
+
+/**
+ * The fields a fill wrote ([ListingMerge.filled], values in [ListingMerge.house]) that [current] still holds unchanged
+ * (S4b-BL-238): each keeps its "from the listing" mark until the person edits it. The notes are not marked (the block
+ * in them is its own mark).
+ */
+fun remainingMarks(merge: ListingMerge, current: HouseEntity): List<ListingField> =
+    merge.filled.filter { it != ListingField.NOTES && fieldValue(merge.house, it) == fieldValue(current, it) }
+
+/**
+ * The ids of a kind's extras a fill wrote ([ListingMerge.extrasFilled]) that [current] still holds unchanged (S4b-BL-272):
+ * the same rule as [remainingMarks] (a changed value, a money object too, loses its mark), in the order the fill wrote them.
+ */
+fun remainingExtraMarks(merge: ListingMerge, current: HouseEntity): List<String> =
+    merge.extrasFilled.filter { id -> merge.house.extrasOther?.get(id) == current.extrasOther?.get(id) }
+
+/**
+ * The zero-cost check on the one high-stakes field (S4b-BL-238): the no-AI parser's price ([ListingText.parse], the same
+ * regex the share sheet uses) against the model's. Both figures when they disagree, null when either has no price or
+ * both agree. A warning for the person to read, never a correction. The website's `priceDisagreement` says the same.
+ */
+fun priceDisagreement(text: String, draft: HouseDraftDto): Pair<Long, Long>? {
+    val ai = draft.price ?: return null
+    if (text.isBlank()) return null
+    val parsed = ListingText.parse(text).price ?: return null
+    return if (parsed == ai) null else parsed to ai
+}
+
+/**
+ * What a listing fill did: the new draft, the fields it filled, and those it left because the user had typed them; for a
+ * kind's typed extras (kinds PR 7, S4b-BL-211) the ids it filled and kept ([extrasFilled], [extrasKept]).
+ */
 data class ListingMerge(
     val house: HouseEntity,
     val filled: List<ListingField>,
     val kept: List<ListingField>,
+    val extrasFilled: List<String> = emptyList(),
+    val extrasKept: List<String> = emptyList(),
 )
+
+/**
+ * A listing's extras (kinds PR 7, S4b-BL-211) put into [m]'s draft by the house's rule (AI-004): only an **empty** extra of
+ * the kind's own ([KindFields.others]) is filled; one the person set keeps its value and is named in
+ * [ListingMerge.extrasKept]. A house's draft has no extras, so for a house [m] comes back as it is.
+ */
+fun mergeListingExtras(m: ListingMerge, a: HouseDraftDto, fields: KindFields): ListingMerge {
+    val incoming = a.extras ?: return m
+    val current = m.house.extrasOther ?: JsonObject(emptyMap())
+    val next = current.toMutableMap()
+    val filled = mutableListOf<String>()
+    val kept = mutableListOf<String>()
+    for (f in fields.others()) {
+        val v = incoming[f.id]?.takeUnless { it is JsonNull } ?: continue
+        val now = current[f.id]?.takeUnless { it is JsonNull || (it is JsonPrimitive && it.isString && it.content.isBlank()) }
+        when {
+            now == null -> { next[f.id] = v; filled += f.id }
+            now != v -> kept += f.id
+        }
+    }
+    if (filled.isEmpty() && kept.isEmpty()) return m
+    return m.copy(house = if (filled.isEmpty()) m.house else m.house.copy(extrasOther = JsonObject(next)), extrasFilled = filled, extrasKept = kept)
+}
 
 /**
  * Copies the AI suggestion [a] into the form [h], **only into empty fields** (UX review, whole-app audit): a
  * successful fill used to overwrite what the user had already typed. A field the listing has but the user already
  * filled with something else is left as it is and reported in [ListingMerge.kept]; one it fills is in
  * [ListingMerge.filled]. The name counts as empty while it is still the form's own default ([labelIsPlaceholder]).
- * The rent/buy choice goes with the price. Amenities join the listing's notes. Location, status, rating and checklist
- * are never touched, and nothing is saved until *Save*.
+ * The rent/buy choice goes with the price. The listing's notes and amenities go into the notes as one marked block
+ * ([withListingBlock], S4b-BL-238) after the person's own notes; a second fill replaces that block, so running Extract
+ * twice never duplicates text. Location, status, rating and checklist are never touched, and nothing is saved until *Save*.
  */
 fun mergeListing(h: HouseEntity, a: HouseDraftDto, labelIsPlaceholder: Boolean): ListingMerge {
     val filled = mutableListOf<ListingField>()
@@ -124,7 +223,8 @@ fun mergeListing(h: HouseEntity, a: HouseDraftDto, labelIsPlaceholder: Boolean):
             contactName = pick(ListingField.CONTACT, h.contactName, a.contactName, blank),
             contactPhone = pick(ListingField.PHONE, h.contactPhone, a.contactPhone, blank),
             listingUrl = pick(ListingField.LISTING, h.listingUrl, a.listingUrl, blank),
-            notes = pick(ListingField.NOTES, h.notes, listingNotes, blank),
+            notes = listingNotes?.let { withListingBlock(h.notes, it) }
+                ?.also { if (it != h.notes) filled += ListingField.NOTES } ?: h.notes,
         ),
         filled = filled,
         kept = kept,
@@ -254,6 +354,14 @@ private fun percentDecoded(s: String): String? {
     flush()
     return out.toString()
 }
+
+/**
+ * The checklist with [key] scored [n]. "–" ([n] null) clears the score, and so does tapping the chosen score again
+ * (kept as a shortcut for the same); any other value sets it. The other criteria's scores are left as they are,
+ * including those of archived criteria, which the form does not show.
+ */
+fun Map<String, Int>.withScore(key: String, n: Int?): Map<String, Int> =
+    if (n == null || this[key] == n) this - key else this + (key to n)
 
 /** An ASCII hex digit's value, or null (as Android's `UriCodec`: no other script's digits). */
 private fun hexValue(c: Char): Int? = when (c) {

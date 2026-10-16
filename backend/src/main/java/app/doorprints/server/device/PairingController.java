@@ -18,11 +18,15 @@
 
 package app.doorprints.server.device;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -37,12 +41,21 @@ import java.util.Map;
 @RestController
 public class PairingController {
 
+    /**
+     * Body of the start call: the name the device shows the owner.
+     */
     public record StartRequest(@Size(max = 200) String deviceName) {
     }
 
+    /**
+     * Body of the poll call.
+     */
     public record PollRequest(@NotBlank @Size(max = 100) String pollToken) {
     }
 
+    /**
+     * Body of the redeem call: the invite and a device name.
+     */
     public record RedeemRequest(@NotBlank @Size(max = 100) String invite, @Size(max = 200) String deviceName) {
     }
 
@@ -50,6 +63,9 @@ public class PairingController {
     public record PollResponse(String status, String deviceKey) {
     }
 
+    /**
+     * The device key, shown to the device only this once.
+     */
     public record KeyResponse(String deviceKey) {
     }
 
@@ -59,17 +75,39 @@ public class PairingController {
         this.pairing = pairing;
     }
 
+    /**
+     * A device asks to connect by code; the owner approves it on the owner page.
+     */
     @PostMapping("/api/pair/start")
-    public PairingService.Started start(@Valid @RequestBody StartRequest body) {
-        return pairing.start(body.deviceName());
+    public PairingService.Started start(@Valid @RequestBody StartRequest body, HttpServletRequest request) {
+        return pairing.start(body.deviceName(), request.getRemoteAddr());
     }
 
+    /**
+     * Too many requests are open, in all or from this address: 429 with {@code Retry-After}, the older requests kept
+     * (S4b-BL-161). The text is fixed and says nothing of the table.
+     */
+    @ExceptionHandler(PairingBusyException.class)
+    public ResponseEntity<Map<String, Object>> busy(PairingBusyException e) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header(HttpHeaders.RETRY_AFTER, Long.toString(e.retryAfterSeconds()))
+                .contentType(MediaType.APPLICATION_PROBLEM_JSON)
+                .body(Map.of("status", 429, "detail",
+                        "Too many devices are waiting to connect, retry in " + e.retryAfterSeconds() + "s"));
+    }
+
+    /**
+     * The device checks whether the owner approved; the device key comes with the first approved answer only.
+     */
     @PostMapping("/api/pair/poll")
     public PollResponse poll(@Valid @RequestBody PollRequest body) {
         var polled = pairing.poll(body.pollToken());
         return new PollResponse(polled.status().name().toLowerCase(Locale.ROOT), polled.deviceKey());
     }
 
+    /**
+     * The device connects with a one-time invite; 410 when the invite was used or has expired.
+     */
     @PostMapping("/api/pair/redeem")
     public ResponseEntity<?> redeem(@Valid @RequestBody RedeemRequest body) {
         return pairing.redeem(body.invite(), body.deviceName())

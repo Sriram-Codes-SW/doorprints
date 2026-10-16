@@ -1,0 +1,395 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "https://doorprints.web.app/schemas/kinds/kind.schema.json",
+ "title": "Doorprints kind file, doorprints-kind/1",
+ "description": "What a kind of candidate is (docs/03 ADR-36 and §18; S4b-BL-205): its labels, which of the fixed core fields and sections it shows, its typed extras and where they go, its statuses' labels, its checklist, its question scopes, what search reads and the AI contract slots. Built-in kinds only: the files ship embedded in both apps and the server, and one test per stack reads them (the default-questions.json pattern). Labels are always keys into the apps' dictionaries, never inline text, so the four languages and their review marks stay where they are. `format` names the file format (this schema); `version` is the kind's own revision, raised when a kind changes in a way a reader must know (a field's type, unit or cadence), never for a label key. A reader refuses a format it does not know and reads a lower or equal `version`.",
+ "type": "object",
+ "additionalProperties": false,
+ "required": ["format", "id", "version", "labels", "statuses", "sections", "core", "extras", "checklist", "questions", "search", "ai"],
+ "properties": {
+  "format": { "const": "doorprints-kind/1" },
+  "id": { "$ref": "#/$defs/kindId" },
+  "version": { "type": "integer", "minimum": 1, "maximum": 1000 },
+  "note": { "type": "string" },
+  "labels": {
+   "description": "The kind's own nouns. `new`: the new-candidate title; `many`: the list title; `delete`: the delete action.",
+   "type": "object",
+   "additionalProperties": false,
+   "required": ["new", "many", "delete"],
+   "properties": {
+    "new": { "$ref": "#/$defs/label" },
+    "many": { "$ref": "#/$defs/label" },
+    "delete": { "$ref": "#/$defs/label" }
+   }
+  },
+  "words": {
+   "description": "The words of a space's first screen and of its candidate page that name the kind (S4b-BL-278): the list heading, the map's region and its hint, the Add button and its hints, the search, the list's label and counts, the loading, empty and no-match lines, the create button and the area-notes lines, and since S4b-BL-316 the phone's other words that name the kind (Compare, the Assistant, the copies' scope, the map's location notes, the form's titles and questions, the walk check, the Areas and Places lines; and since kinds PR 26 the Hunt mode words, docs/03 §18.20: the alerts, the street line, the walk's notification and channel; `web` is null where only the phone has that word). Optional and additive (a reader that does not know it ignores it, so `format` stays `doorprints-kind/1`). Keys per stack as in `labels`; `android` is the Compose string (`null`: the phone shows no text there; both built-in files give it since S4b-BL-278 and S4b-BL-316, and `SpaceWords` and `PageWords` read it, with no table of their own). A kind with no `words` reads the house's.",
+   "type": "object",
+   "additionalProperties": false,
+   "propertyNames": { "enum": ["heading", "regionLabel", "regionHint", "add", "addHint", "addHintShort", "search", "listLabel", "shown", "loading", "emptyTitle", "emptyBody", "noMatch", "create", "areaNotesNone", "areaInReach", "unnamed", "addHintListing", "addHintListingShort", "compareHint", "comparePickMore", "compareChoose", "compareEmpty", "compareEmptyBody", "compareFootnote", "askLabel", "askHint", "askNotGrounded", "askSources", "planHint", "exportEmpty", "exportScope", "exportScopeAll", "exportIncludeRejected", "exportPhotosShortlisted", "locationOff", "needsPrecise", "locationOffNoHunt", "needsPreciseNoHunt", "saveNeedsLocation", "detailsTitle", "notFoundTitle", "notFound", "defaultLabel", "defaultLabelStreet", "discardNew", "deleteTitle", "pageNeedsPrecise", "savePhotosFirst", "walkButton", "walkPlace", "walkLabel", "walkApprox", "walksEmpty", "aiDisclosure", "aiDisclosureOwnKey", "placeFound", "placeNotFound", "openDetails", "areasEmptyBody", "notesEmpty", "areaDeleteBody", "placeDeleteBody", "placesEmptyBody", "huntSeen", "huntStreetText", "huntStreetTextSince", "huntStreetSeen", "huntStayTitle", "huntNotifyRationale", "huntLeftSpace", "huntNeedsKind", "huntOngoingText", "huntChannelAlerts", "huntChannelAlertsDesc", "huntNotificationsOff", "viewingPlan", "viewingNone", "viewingAll", "viewingsIntro", "viewingsEmpty", "viewingsDataBody", "questionsDataBody", "viewingChannel", "viewingChannelDesc", "viewingSoon", "viewingTitle", "viewingOpen", "viewingGone", "viewingDirections", "questionsIntro", "questionsEmpty", "questionsNoneToPick", "viewingBody", "viewingsHeading", "questionsRemove", "viewingsSaveFirst", "compareTitle", "compareNone", "compareAdd", "comparePicker", "compareCaption", "compareSearch", "compareOnlyOne", "askIntro", "planTitle", "planIntro", "planNoStops", "dataEmptyAction", "dataNoShortlisted", "dataNoneMatch", "dataCount", "dataPreview", "shareCreate", "shareHint", "titleNew", "titleDetails", "titleMap", "namePlaceholder", "nameRequired", "locationRequired", "locationUnset", "mapLabel", "saveFirstVisits", "listingHint", "fitTitle", "walkTitle", "areasIntro", "areasDataBody", "areasConfirmDelete", "placesDataBody", "placesIntro", "placesEmpty", "placesConfirmDelete", "expTitle", "expCounts", "expScopeAll", "expScopeShortlisted", "expScopeSelected", "expRejectedIncluded", "expRejectedLeftOut", "expPhotosAll", "expPhotosShortlisted", "expColName", "expNone", "viewingRemindText", "mapOnServerTitle", "mapOffline", "viewingIcsWord", "traceEndBody", "traceEndSave", "tracePickTitle", "tracePickSearch", "tracePickNone", "tracePickList", "tracePickNoMatch", "traceSaveFull", "listEmptyIos", "mapNotHere"] },
+   "patternProperties": {
+    "^[a-zA-Z]+$": {
+     "type": "object",
+     "additionalProperties": false,
+     "required": ["web"],
+     "properties": {
+      "web": { "oneOf": [{ "$ref": "#/$defs/webKey" }, { "type": "null" }] },
+      "android": { "oneOf": [{ "$ref": "#/$defs/androidKey" }, { "type": "null" }] }
+     }
+    }
+   }
+  },
+  "statuses": {
+   "description": "The five status names are fixed for every kind (HouseStatus.fromWire never changes); a kind gives each its label, in this order.",
+   "type": "array",
+   "minItems": 5,
+   "maxItems": 5,
+   "prefixItems": [
+    { "type": "object", "$ref": "#/$defs/status", "properties": { "id": { "const": "NEW" } } },
+    { "type": "object", "$ref": "#/$defs/status", "properties": { "id": { "const": "SHORTLISTED" } } },
+    { "type": "object", "$ref": "#/$defs/status", "properties": { "id": { "const": "REJECTED" } } },
+    { "type": "object", "$ref": "#/$defs/status", "properties": { "id": { "const": "TAKEN" } } },
+    { "type": "object", "$ref": "#/$defs/status", "properties": { "id": { "const": "NOT_CHOSEN" } } }
+   ],
+   "items": false
+  },
+  "sections": {
+   "description": "The sections of the candidate's page, in display order. A section left out is hidden for the kind; `visible: false` hides it too while keeping its place.",
+   "type": "array",
+   "minItems": 1,
+   "items": { "$ref": "#/$defs/section" }
+  },
+  "core": {
+   "description": "The fixed fields every candidate has on the wire, with the kind's label and placement. A core field left out is hidden for the kind (its value is still kept and synced). `label` and `location` are required on every candidate and so must be listed.",
+   "type": "array",
+   "minItems": 2,
+   "items": { "$ref": "#/$defs/coreField" },
+   "allOf": [
+    { "contains": { "type": "object", "properties": { "id": { "const": "label" } } } },
+    { "contains": { "type": "object", "properties": { "id": { "const": "location" } } } }
+   ]
+  },
+  "extras": {
+   "description": "The kind's typed fields, stored under `extras` on the candidate by `id`. Ids are unique within the kind and never reused for another meaning.",
+   "type": "array",
+   "maxItems": 60,
+   "items": { "$ref": "#/$defs/extra" }
+  },
+  "checklist": {
+   "description": "The built-in criteria, scored 0 to 5, in display order. Keys are stored in the candidate's `checklist` map and never change meaning.",
+   "type": "array",
+   "maxItems": 40,
+   "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["key", "label"],
+    "properties": {
+     "key": { "type": "string", "pattern": "^[a-z][a-z0-9_]{0,31}$" },
+     "label": { "$ref": "#/$defs/label" }
+    }
+   }
+  },
+  "questions": {
+   "description": "The seed of the question bank and what each question scope (`appliesTo`) means for this kind, in money cadences.",
+   "type": "object",
+   "additionalProperties": false,
+   "required": ["seed", "scopes"],
+   "properties": {
+    "seed": { "type": "string", "pattern": "^docs/schemas/[a-z0-9/-]+\\.json$" },
+    "scopes": {
+     "type": "array",
+     "minItems": 1,
+     "items": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "cadences"],
+      "properties": {
+       "id": { "type": "string", "pattern": "^[A-Z][A-Z_]{0,15}$" },
+       "cadences": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/cadence" } }
+      }
+     }
+    }
+   }
+  },
+  "search": {
+   "description": "What the list search reads: core or extra field ids, and the related records `rooms`, `questions`, `areaNotes` and `moveIn` (core `brokerId` means the linked broker's name, agency and fee terms).",
+   "type": "array",
+   "uniqueItems": true,
+   "items": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]{0,39}$" }
+  },
+  "ai": {
+   "description": "The AI contract slots (reserved; read by the server and both cores from kinds PR 7, S4b-BL-211). `extract`: what the listing extract fills; `ask`: what an Ask document line carries; `plan`: what Plan filters on; `never`: what a saved candidate never sends to a provider. `words` (optional, kinds PR 28): the English words the server's prompts and documents use for the kind.",
+   "type": "object",
+   "additionalProperties": false,
+   "required": ["extract", "ask", "plan", "never"],
+   "properties": {
+    "extract": { "$ref": "#/$defs/ids" },
+    "ask": { "$ref": "#/$defs/ids" },
+    "plan": { "$ref": "#/$defs/ids" },
+    "never": { "$ref": "#/$defs/ids" },
+    "words": { "$ref": "#/$defs/aiWords" }
+   }
+  },
+  "capabilities": {
+   "description": "What the kind can do beyond its fields, one switch or small setting per feature (docs/03 §18.19). Optional: a kind file without it, and a kind the app does not know, has the defaults (the map and the paths on, everything else off). A feature a kind leaves out is absent or false. Nothing here is text or a link: only booleans, small numbers and ids from the fixed lists below, so a kind file can never carry a prompt, a URL or markup. Read by `capabilitiesOf` (web `core/kind-capabilities.ts`, :shared `KindCapabilities`); the phones read the Hunt block (kinds PR 26).",
+   "type": "object",
+   "additionalProperties": false,
+   "properties": {
+    "map": { "description": "The kind's candidates are drawn on the map.", "type": "boolean" },
+    "hunt": {
+     "description": "Hunt mode (alerts near a saved place, stays that make a visit; docs/03 §18.20): `alertRadiusM` is how near, in metres, 30 to 300 (the default of the kind's radius; the house's own is the person's Settings value); `stayCreates` whether a stay at an unsaved place offers to save it as an entry of this kind; `streetMemory` whether the walk tells the person about streets this kind has saved places or visits on; `areas` whether an area wake-up may start a walk of this kind. The walk belongs to the space it was started in.",
+     "type": "object",
+     "additionalProperties": false,
+     "required": ["alertRadiusM", "stayCreates", "streetMemory", "areas"],
+     "properties": {
+      "alertRadiusM": { "type": "integer", "minimum": 30, "maximum": 300 },
+      "stayCreates": { "type": "boolean" },
+      "streetMemory": { "type": "boolean" },
+      "areas": { "type": "boolean" }
+     }
+    },
+    "rooms": { "description": "The rooms list (names, sizes, photos per room).", "type": "boolean" },
+    "moveIn": { "description": "The moving-in checklist.", "type": "boolean" },
+    "contacts": {
+     "description": "The candidate's contact: `role` is whose contact it is (a broker, an office, an agent); `autoCreateFromPhone` whether saving a phone number makes or links the address-book entry for it (the brokers list).",
+     "type": "object",
+     "additionalProperties": false,
+     "required": ["role", "autoCreateFromPhone"],
+     "properties": {
+      "role": { "enum": ["broker", "office", "agent"] },
+      "autoCreateFromPhone": { "type": "boolean" }
+     }
+    },
+    "viewings": {
+     "description": "Viewings with their questions; `questionsSeed` names the built-in question bank that seeds them (`house`, or `school` since kinds PR 29: docs/schemas/kinds/school-questions.json). A viewing of a kind other than the house is that kind's visit (open day), worded by the kind's `viewing*` words.",
+     "type": "object",
+     "additionalProperties": false,
+     "required": ["questionsSeed"],
+     "properties": {
+      "questionsSeed": { "enum": ["house", "school"] }
+     }
+    },
+    "compare": {
+     "description": "Compare: the criteria it scores, in order, as checklist keys or extra ids of this kind (at most ten).",
+     "type": "object",
+     "additionalProperties": false,
+     "required": ["criteria"],
+     "properties": {
+      "criteria": {
+       "type": "array",
+       "minItems": 1,
+       "maxItems": 10,
+       "uniqueItems": true,
+       "items": { "type": "string", "pattern": "^[a-z][A-Za-z0-9_]{0,39}$" }
+      }
+     }
+    },
+    "paths": { "description": "Walks and paths (the walks section, path tracing, place checks).", "type": "boolean" },
+    "baseline": { "description": "The kind whose paths, wire shape, copy file names and words are the app's original, from before there were kinds (the house; kinds PR 30): its pages keep their own addresses, its AI calls name no kind, its copies are not renamed. Only the house has it; false when absent.", "type": "boolean" },
+    "filters": { "description": "The extras of this kind the list and the map can be filtered by (kinds PR 30): ids of enum or switch extras of the kind, at most six, no repeats, in the order the rows are shown. None when absent.", "type": "array", "maxItems": 6, "uniqueItems": true, "items": { "type": "string", "pattern": "^[a-z][A-Za-z0-9_]{0,39}$" } },
+    "identity": {
+     "description": "How the kind looks in the chooser: an icon and a colour from the bundled lists. Not drawn yet.",
+     "type": "object",
+     "additionalProperties": false,
+     "required": ["icon", "colour"],
+     "properties": {
+      "icon": { "enum": ["home", "school", "building", "apartment", "shop", "hospital", "office", "park", "car", "bike", "bus", "train", "cart", "hotel", "restaurant", "gym", "book", "heart", "star", "flag", "key", "pin", "briefcase", "paw"] },
+      "colour": { "enum": ["terracotta", "indigo", "teal", "forest", "amber", "rose", "slate", "plum"] }
+     }
+    }
+   }
+  }
+ },
+ "$defs": {
+  "kindId": { "type": "string", "pattern": "^[a-z][a-z0-9_]{1,31}$" },
+  "fieldId": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]{0,39}$" },
+  "aiWord": {
+   "description": "One English word or short phrase the server's prompts and Ask documents speak in (kinds PR 28, docs/03 §18.22). Letters, digits, spaces and . , ' ( ) / - only, so a word can carry no markup, no line break, no colon (a document line's key ends at the first colon) and no instruction of any length.",
+   "type": "string",
+   "pattern": "^[A-Za-z][A-Za-z0-9 .,'()/-]{0,59}$"
+  },
+  "aiWords": {
+   "description": "The English words of the kind's AI text, optional (kinds PR 28): the server reads a kind through its file alone. `noun`: the first line's key of an Ask document (`School: <name>`) and the word of a generated label; `records`: the plural, the name of the Ask records' block (`schools-<nonce>`) and the word in the Ask refusal (`I don't know based on the schools you have saved.`); `extras`: for each typed extra an `ai` slot names, its `words` (the key of its document line) and, for an `enum`, the words of each option id. An extra the server's AI already knows by id (the house's bedrooms, area, floor and cost fields, `docs/03` §18.22) needs none. Nothing here is a prompt: the prompts are the server's, from these words.",
+   "type": "object",
+   "additionalProperties": false,
+   "required": ["noun", "records"],
+   "properties": {
+    "noun": { "$ref": "#/$defs/aiWord" },
+    "records": { "type": "string", "pattern": "^[a-z]{2,24}$" },
+    "extras": {
+     "type": "object",
+     "maxProperties": 60,
+     "propertyNames": { "$ref": "#/$defs/fieldId" },
+     "additionalProperties": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["words"],
+      "properties": {
+       "words": { "$ref": "#/$defs/aiWord" },
+       "options": {
+        "type": "object",
+        "maxProperties": 30,
+        "propertyNames": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{0,31}$" },
+        "additionalProperties": { "$ref": "#/$defs/aiWord" }
+       }
+      }
+     }
+    }
+   }
+  },
+  "ids": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]{0,39}$" } },
+  "webKey": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*(\\.[A-Za-z0-9_]+)+$" },
+  "androidKey": { "type": "string", "pattern": "^[a-z][A-Za-z0-9_]*$" },
+  "label": {
+   "description": "A key per stack into today's dictionaries: `web` in web/src/app/i18n (four languages), `android` in the Compose resources (four languages). null: that stack shows no text there. `byCadence`: another key while the money cadence is that one.",
+   "type": "object",
+   "additionalProperties": false,
+   "required": ["web", "android"],
+   "properties": {
+    "web": { "oneOf": [{ "$ref": "#/$defs/webKey" }, { "type": "null" }] },
+    "android": { "oneOf": [{ "$ref": "#/$defs/androidKey" }, { "type": "null" }] },
+    "byCadence": {
+     "type": "object",
+     "propertyNames": { "$ref": "#/$defs/cadence" },
+     "additionalProperties": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": { "web": { "$ref": "#/$defs/webKey" }, "android": { "$ref": "#/$defs/androidKey" } }
+     }
+    }
+   }
+  },
+  "status": {
+   "type": "object",
+   "additionalProperties": false,
+   "required": ["id", "label"],
+   "properties": { "id": { "type": "string" }, "label": { "$ref": "#/$defs/label" } }
+  },
+  "sectionId": {
+   "enum": ["details", "cost", "rooms", "questions", "viewings", "moveIn", "areaNotes", "distances", "location", "walks", "checklist", "visits", "photos"]
+  },
+  "section": {
+   "type": "object",
+   "additionalProperties": false,
+   "required": ["id", "label"],
+   "properties": {
+    "id": { "$ref": "#/$defs/sectionId" },
+    "label": { "$ref": "#/$defs/label" },
+    "visible": { "type": "boolean", "default": true }
+   }
+  },
+  "placement": {
+   "type": "object",
+   "required": ["section", "order"],
+   "properties": {
+    "section": { "$ref": "#/$defs/sectionId" },
+    "order": { "type": "integer", "minimum": 0, "maximum": 10000 },
+    "visible": { "type": "boolean", "default": true },
+    "forCadences": {
+     "description": "Shown only while the candidate's own money has one of these cadences, or none (kinds PR 4, S4b-BL-208: a house's rent-only cost fields hide for a sale). The value is kept and synced whatever the cadence.",
+     "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/cadence" }
+    },
+    "was": { "type": "string", "description": "Where the value lives in the backup family before the reset (S4b-BL-206), which every reader still reads." }
+   }
+  },
+  "cadence": {
+   "description": "How often an amount is paid. A money value on the wire is {\"amount\": whole rupees, \"cadence\": one of these}.",
+   "enum": ["once", "day", "week", "month", "quarter", "year"]
+  },
+  "better": {
+   "description": "Which way a number or an amount is better when candidates are compared (S4b-BL-292): the lower commute or fee, or the higher. Absent: no value is better than another, and Compare marks none. Optional and additive (a reader that does not know it ignores it).",
+   "enum": ["lower", "higher"]
+  },
+  "unit": {
+   "description": "The unit codes of number extras (closed list; adding one is additive, renaming one is a format change).",
+   "enum": ["count", "level", "sqft", "sqm", "cm", "m", "km", "minute", "day", "month", "year", "percent"]
+  },
+  "coreField": {
+   "allOf": [{ "$ref": "#/$defs/placement" }],
+   "type": "object",
+   "unevaluatedProperties": false,
+   "required": ["id", "label"],
+   "properties": {
+    "id": {
+     "enum": ["label", "status", "rating", "money", "address", "street", "locality", "contactName", "contactPhone", "brokerId", "listingUrl", "notes", "location", "locationSource"]
+    },
+    "label": { "$ref": "#/$defs/label" },
+    "cadences": {
+     "description": "money only: the cadences the person chooses from, in order, each with its label.",
+     "type": "array",
+     "minItems": 1,
+     "items": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label"],
+      "properties": {
+       "id": { "$ref": "#/$defs/cadence" },
+       "label": { "$ref": "#/$defs/label" },
+       "was": { "type": "string" }
+      }
+     }
+    }
+   },
+   "if": { "properties": { "id": { "const": "money" } } },
+   "then": { "required": ["cadences"] },
+   "else": { "not": { "required": ["cadences"] } }
+  },
+  "extra": {
+   "allOf": [
+    { "$ref": "#/$defs/placement" },
+    {
+     "if": { "properties": { "type": { "const": "number" } } },
+     "then": {
+      "required": ["integer", "unit"],
+      "properties": { "integer": { "type": "boolean" }, "min": { "type": "number" }, "max": { "type": "number" }, "unit": { "$ref": "#/$defs/unit" }, "better": { "$ref": "#/$defs/better" } }
+     }
+    },
+    {
+     "if": { "properties": { "type": { "const": "money" } } },
+     "then": {
+      "required": ["max"],
+      "properties": {
+       "max": { "type": "integer", "minimum": 1, "maximum": 1000000000000 },
+       "better": { "$ref": "#/$defs/better" },
+       "cadences": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "$ref": "#/$defs/cadence" } },
+       "cadenceFrom": { "const": "money", "description": "The amount is paid as often as the candidate's own money (an offer on the rent is per month)." }
+      },
+      "oneOf": [{ "required": ["cadences"] }, { "required": ["cadenceFrom"] }]
+     }
+    },
+    {
+     "if": { "properties": { "type": { "const": "text" } } },
+     "then": { "required": ["maxLength"], "properties": { "maxLength": { "type": "integer", "minimum": 1, "maximum": 2000 } } }
+    },
+    {
+     "if": { "properties": { "type": { "const": "enum" } } },
+     "then": {
+      "required": ["options"],
+      "properties": {
+       "options": {
+        "type": "array",
+        "minItems": 2,
+        "maxItems": 30,
+        "items": {
+         "type": "object",
+         "additionalProperties": false,
+         "required": ["id", "label"],
+         "properties": { "id": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{0,31}$" }, "label": { "$ref": "#/$defs/label" } }
+        }
+       }
+      }
+     }
+    }
+   ],
+   "type": "object",
+   "unevaluatedProperties": false,
+   "required": ["id", "type", "label"],
+   "properties": {
+    "id": { "$ref": "#/$defs/fieldId" },
+    "type": { "description": "The extras type vocabulary; a date is a calendar date YYYY-MM-DD, no time zone.", "enum": ["number", "money", "text", "enum", "date", "bool"] },
+    "label": { "$ref": "#/$defs/label" }
+   }
+  }
+ }
+}

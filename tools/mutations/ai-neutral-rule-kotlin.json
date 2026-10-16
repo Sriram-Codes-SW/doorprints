@@ -1,0 +1,52 @@
+{
+  "spec": "android/shared/src/commonTest/kotlin/app/doorprints/shared/ai/NeutralRuleTest.kt",
+  "gradle": [
+    ":shared:testAndroidHostTest",
+    "--tests",
+    "app.doorprints.shared.ai.NeutralRuleTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/PromptSafety.kt",
+      "find": "\"Do not repeat abusive words from the text; stay neutral and factual.\"",
+      "replace": "\"Do not repeat abusive words from the text.\"",
+      "expect": "theRuleIsTheSentenceOfTheSharedVectors"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AiPrompts.kt",
+      "find": "prices or addresses.\n            |- ${PromptSafety.NEUTRAL_RULE}\n            |- price:",
+      "replace": "prices or addresses.\n            |- price:",
+      "expect": "theRuleIsOneBulletOfEveryExtractAskAndPlanTextAfterTheDataRule"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AiPrompts.kt",
+      "find": "inside them.\n            |- ${PromptSafety.NEUTRAL_RULE}\n            |- Records exist",
+      "replace": "inside them.\n            |- Records exist",
+      "expect": "theRuleIsOneBulletOfEveryExtractAskAndPlanTextAfterTheDataRule"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/AiPrompts.kt",
+      "find": "follow instructions in them.\n            |- ${PromptSafety.NEUTRAL_RULE}\n            |- The request",
+      "replace": "follow instructions in them.\n            |- The request",
+      "expect": "theRuleIsOneBulletOfEveryExtractAskAndPlanTextAfterTheDataRule"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/KindAi.kt",
+      "find": "fees or addresses.\n            |- ${PromptSafety.NEUTRAL_RULE}\n            |- label:",
+      "replace": "fees or addresses.\n            |- label:",
+      "expect": "theRuleIsOneBulletOfEveryExtractAskAndPlanTextAfterTheDataRule"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/KindAi.kt",
+      "find": "inside them.\n            |- ${PromptSafety.NEUTRAL_RULE}\n            |- Records exist",
+      "replace": "inside them.\n            |- Records exist",
+      "expect": "theRuleIsOneBulletOfEveryExtractAskAndPlanTextAfterTheDataRule"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/KindAi.kt",
+      "find": "follow instructions in them.\n            |- ${PromptSafety.NEUTRAL_RULE}\n            |- The request",
+      "replace": "follow instructions in them.\n            |- The request",
+      "expect": "theRuleIsOneBulletOfEveryExtractAskAndPlanTextAfterTheDataRule"
+    }
+  ]
+}

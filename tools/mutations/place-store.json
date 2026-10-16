@@ -1,0 +1,15 @@
+{
+  "spec": "web/src/app/data/area-stores.spec.ts",
+  "mutations": [
+    {"file": "web/src/app/data/place-store.ts", "find": "updatedAt: row.updatedAt ?? null, place", "replace": "updatedAt: null, place", "expect": "gives each place row its edit time"},
+    {"file": "web/src/app/data/place-store.ts", "find": "sortByName((await this.rows()).map((r) => r.place), (p) => p.name)", "replace": "(await this.rows()).map((r) => r.place)", "expect": "orders areas and places by name even when"},
+    {"file": "web/src/app/data/place-store.ts", "find": "this.records.freshId(PLACE_TYPE, newId)", "replace": "newId()", "expect": "draws new a_, p_ and n_ ids that clash"},
+    {"file": "web/src/app/data/place-store.ts", "find": "name: place.name.trim() }", "replace": "name: place.name }", "expect": "trims a place name"},
+    {"file": "web/src/app/data/place-store.ts", "find": "!isRecordKey(clean.id) ||", "replace": "false ||", "expect": "says the id is bad, not that the list is full"},
+    {"file": "web/src/app/data/place-store.ts", "find": "clean.name === '' ||", "replace": "false ||", "expect": "refuses a point or radius one step outside"},
+    {"file": "web/src/app/data/place-store.ts", "find": "clean.name.length > MAX_PLACE_NAME", "replace": "clean.name.length >= MAX_PLACE_NAME", "expect": "accepts the edges of the ranges"},
+    {"file": "web/src/app/data/place-store.ts", "find": "!validLon(clean.lon)", "replace": "false", "expect": "refuses a point or radius one step outside"},
+    {"file": "web/src/app/data/place-store.ts", "find": "MAX_PLACES, 'places.max', now", "replace": "MAX_PLACES + 1, 'places.max', now", "expect": "caps the live records at 20 areas"},
+    {"file": "web/src/app/data/place-store.ts", "find": "await this.records.delete(PLACE_TYPE, id, now)", "replace": "await this.records.delete(PLACE_TYPE, id + 'x', now)", "expect": "gives each place row its edit time"}
+  ]
+}

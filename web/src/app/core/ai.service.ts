@@ -16,14 +16,21 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+import { isBaselineKind } from './kind-capabilities';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { Observable, defer } from 'rxjs';
+import { Observable, defer, throwError } from 'rxjs';
 import type { Msg } from '../i18n/translation.service';
 import { ConfigService } from './config.service';
 import { AI_OPT_IN_KEY, AI_PROVIDER_KEY, GEMINI_KEY_KEY } from './storage-keys';
-import { OnDeviceAiError, OnDeviceAiService } from './ai/on-device-ai.service';
-import { errorMsg } from './format';
+import { type AiProviderConfig, aiHostOf, clearAiConfig, isLocalHost, isUsable, readAiConfig, saveAiConfig } from './ai/ai-provider-config';
+import { type AiQuality, clearAiQuality, readAiQuality, saveAiQuality } from './ai/ai-quality';
+import { AnthropicChatModel } from './ai/anthropic';
+import { OpenAiCompatibleChatModel } from './ai/openai-compat';
+import { GeminiChatModel, type ModelRef, OnDeviceAiError, OnDeviceAiService } from './ai/on-device-ai.service';
+import { errorMsg, retryAfterSeconds } from './format';
+import { aiShownIn } from './space-scope';
+import { availableKinds } from './kind-setting';
 import type { HouseStatus, PriceType } from './models';
 
 // Types follow docs/ai/ai-design.md section 13 and the backend records in app.doorprints.server.ai.*
@@ -36,6 +43,11 @@ export interface AiStatus {
   embeddingModel: string | null;
   /** AI is on, but the server's owner turned it off for this device (docs/03 §12.1). Older servers omit it. */
   offForDevice?: boolean;
+  /**
+   * The kinds the server's Ask and Plan accept (`kind` in their requests, S4b-BL-290; the server's `app.kinds.available`). Left out
+   * while the house is the only one and by an older server, whose Ask and Plan would read every space.
+   */
+  kinds?: string[];
 }
 
 /**
@@ -44,7 +56,7 @@ export interface AiStatus {
  */
 export type AiOffReason = 'noServer' | 'server' | 'device' | 'optIn' | 'noKey';
 
-/** Who answers AI requests (docs/03 §13.1, ADR-26): the connected server, or Gemini from this browser with the person's own key. */
+/** Who answers AI requests (docs/03 §13.1, ADR-26): the connected server, or the person's own AI from this browser (Gemini, or any OpenAI-compatible endpoint: §13.2, ADR-35). */
 export type AiProvider = 'server' | 'device';
 
 /** A suggestion only; nothing is saved until the user saves the form. */
@@ -64,6 +76,8 @@ export interface HouseDraft {
   notes: string | null;
   amenities: string[];
   warnings: string[];
+  /** Kinds PR 7 (S4b-BL-211): a kind's typed extras the listing filled, in the wire's shape; never for a house. */
+  extras?: Record<string, unknown>;
 }
 
 export interface AskFilters {
@@ -80,6 +94,7 @@ export interface Citation {
   snippet: string | null;
 }
 
+/** The answer to a question about the saved houses and the houses it cites; `grounded` is true when it cites at least one, `retrieved` counts the houses the model was shown. */
 export interface AskResponse {
   answer: string;
   citations: Citation[];
@@ -105,6 +120,7 @@ export interface PlannedStop {
   walkMinutes: number;
 }
 
+/** A suggested order for visiting houses from a start point, with walking legs; `fallback` is true when the model's plan was unusable and the stops are the houses it found, nearest first. */
 export interface PlanResponse {
   summary: string | null;
   stops: PlannedStop[];
@@ -117,6 +133,14 @@ export interface PlanResponse {
 /** Same limits as the server defaults (app.ai.max-input-chars / max-question-chars). */
 export const AI_MAX_LISTING_CHARS = 8000;
 export const AI_MAX_QUESTION_CHARS = 1000;
+
+/** A call refused because AI is off ({@link AiOffReason}); nothing was sent. {@link aiErrorMsg} words it like the pages' own off notice. */
+export class AiOffError extends Error {
+  constructor(readonly reason: AiOffReason) {
+    super(`AI is off (${reason})`);
+    this.name = 'AiOffError';
+  }
+}
 
 /**
  * Optional AI features. Everything AI in the UI is hidden unless GET /api/ai/status says `enabled` (it is off by
@@ -141,8 +165,24 @@ export class AiService {
   /** The saved Gemini key's last four characters, or '' (the key itself is never shown again). */
   readonly geminiKeyHint = computed(() => (this.geminiKeyState().length >= 8 ? this.geminiKeyState().slice(-4) : ''));
   readonly hasGeminiKey = computed(() => this.geminiKeyState() !== '');
-  /** On-device AI with the person's own key: chosen, or no server to choose, and a key saved. */
-  readonly usesOwnKey = computed(() => (this.providerState() === 'device' || !this.config.configured()) && this.hasGeminiKey());
+  private readonly aiConfigState = signal<AiProviderConfig>(readAiConfig());
+  /** The person's own AI: its kind, base URL and model (docs/03 §13.2). Device-only; the key keeps the Gemini key's slot. */
+  readonly aiConfig = this.aiConfigState.asReadonly();
+  private readonly aiQualityState = signal<AiQuality>(readAiQuality());
+  /**
+   * The *AI speed and cost* choice (S4b-BL-198 step 2): Quality unless the person chose otherwise. Kept while AI is off or
+   * another service is chosen, but only the own-key Gemini adapter reads it.
+   */
+  readonly aiQuality = this.aiQualityState.asReadonly();
+  /** The host the person's own AI call goes to (shown in every disclosure), '' while none is set. */
+  readonly ownHost = computed(() => aiHostOf(this.aiConfigState()));
+  /**
+   * On-device AI with the person's own provider: chosen, or no server to choose, and what it needs saved (a Gemini key,
+   * or for an OpenAI-compatible one a valid base URL and a model, its key optional; for Anthropic a model and a key).
+   */
+  readonly usesOwnKey = computed(
+    () => (this.providerState() === 'device' || !this.config.configured()) && isUsable(this.aiConfigState(), this.hasGeminiKey()),
+  );
   readonly offReason = computed<AiOffReason | null>(() => {
     if (this.usesOwnKey()) return this.optInState() ? null : 'optIn';
     if (this.providerState() === 'device' || !this.config.configured()) {
@@ -157,6 +197,18 @@ export class AiService {
 
   /** AI shows: on in this browser and nothing missing for the chosen provider (with the own key chosen, not the server). */
   readonly enabled = computed(() => this.offReason() === null);
+
+  /** The kinds the connected server's Ask and Plan accept, from its status; none for an older server or while the house is the only kind. */
+  readonly serverKinds = computed<readonly string[]>(() => this.status()?.kinds ?? []);
+
+  /**
+   * Whether Ask and Plan are shown in the space of `kind` (kinds PR B, S4b-BL-279; `space-scope-vectors.json`
+   * `assistant`): the house whenever AI is on, as it was; any other kind only when this build offers it and the AI is the
+   * person's own, in this browser, or the server's with the kind named in its status (S4b-BL-290).
+   */
+  enabledFor(kind: string): boolean {
+    return aiShownIn(kind, availableKinds(), this.enabled(), this.usesOwnKey(), this.serverKinds());
+  }
 
   constructor() {
     this.refresh();
@@ -192,15 +244,34 @@ export class AiService {
     this.geminiKeyState.set(clean);
     try {
       (remember ? sessionStorage : localStorage).removeItem(GEMINI_KEY_KEY);
-      (remember ? localStorage : sessionStorage).setItem(GEMINI_KEY_KEY, clean);
+      // An empty key (a local AI server, or a key that must not follow a changed service) leaves nothing stored.
+      if (clean === '') (remember ? localStorage : sessionStorage).removeItem(GEMINI_KEY_KEY);
+      else (remember ? localStorage : sessionStorage).setItem(GEMINI_KEY_KEY, clean);
     } catch {
       // Storage unavailable: the key holds for this page only.
     }
     this.setProvider('device');
   }
 
-  /** Forgets the Gemini key; AI goes back to the server, if one is connected. */
+  /**
+   * Saves the choice of provider (kind, base URL, model; localStorage, never in a backup or sent to the server). The key
+   * is saved apart, as before ({@link saveGeminiKey}, with an empty key for a local server).
+   */
+  setAiConfig(config: AiProviderConfig): void {
+    this.aiConfigState.set(saveAiConfig(config));
+  }
+
+  /** Saves the *AI speed and cost* choice (localStorage, on this device only). */
+  setAiQuality(quality: AiQuality): void {
+    this.aiQualityState.set(saveAiQuality(quality));
+  }
+
+  /** Forgets the own key and the provider choice; AI goes back to the server, if one is connected. */
   removeGeminiKey(): void {
+    clearAiConfig();
+    clearAiQuality();
+    this.aiQualityState.set(readAiQuality());
+    this.aiConfigState.set(readAiConfig());
     this.geminiKeyState.set('');
     for (const s of [() => localStorage, () => sessionStorage]) {
       try {
@@ -217,9 +288,38 @@ export class AiService {
     return this.geminiKeyState();
   }
 
+  /**
+   * The saved own-AI key, read at the moment of a voice call and passed straight to the transcriber (ADR-37: the same slot
+   * and the same rules, no new secret handling); never stored by the caller.
+   */
+  ownKey(): string {
+    return this.geminiKeyState();
+  }
+
   /** Whether Google accepts [key]: one tiny request, nothing saved. Rejects with an [OnDeviceAiError]. */
   testGeminiKey(key: string): Promise<void> {
-    return this.onDevice.test(key.trim());
+    return this.onDevice.test(this.geminiRef(key.trim()));
+  }
+
+  /** *Test* for any kind: one tiny request with [config] and [key] as typed, nothing saved. Rejects with an [OnDeviceAiError]. */
+  testProvider(config: AiProviderConfig, key: string): Promise<void> {
+    return this.onDevice.test(this.modelFor(config, key.trim()));
+  }
+
+  /**
+   * Gemini with the key: the plain key (the model's own thinking level) for Quality, so nothing changes for anyone who
+   * has not touched *AI speed and cost*, else an adapter that asks for less thinking.
+   */
+  private geminiRef(key: string): ModelRef {
+    const quality = this.aiQualityState();
+    return quality === 'quality' ? key : new GeminiChatModel(this.http, key, quality);
+  }
+
+  /** Who answers a call for [config]: a Gemini key (the native adapter), an OpenAI-compatible model or Anthropic. */
+  private modelFor(config: AiProviderConfig, key: string): ModelRef {
+    if (config.kind === 'gemini') return this.geminiRef(key);
+    if (config.kind === 'openai-compatible') return new OpenAiCompatibleChatModel({ baseUrl: config.baseUrl, model: config.model }, key);
+    return new AnthropicChatModel({ baseUrl: config.baseUrl, model: config.model }, key);
   }
 
   /** Re-reads the status (after connecting or disconnecting). */
@@ -234,35 +334,87 @@ export class AiService {
     });
   }
 
+  private ownModel(): ModelRef {
+    return this.modelFor(this.aiConfigState(), this.geminiKeyState());
+  }
+
+  /**
+   * The guard of the three calls (S4b-BL-251): nothing is sent while {@link offReason} says AI is off, whoever calls, so
+   * a caller that forgets the pages' `@if (ai.enabled())` cannot send a listing out. The Observable errors with an
+   * {@link AiOffError} when subscribed; the setup tests ({@link testGeminiKey}, {@link testProvider}) are not guarded.
+   */
+  private guard(): Observable<never> | null {
+    const reason = this.offReason();
+    return reason === null ? null : throwError(() => new AiOffError(reason));
+  }
+
   // The same three calls, answered by the server or in this browser (ADR-26): the pages do not know which.
-  extractListing(text: string): Observable<HouseDraft> {
-    if (this.usesOwnKey()) return defer(() => this.onDevice.extractListing(this.geminiKeyState(), text));
-    return this.http.post<HouseDraft>('/api/ai/extract-listing', { text });
+  /**
+   * `kind` (kinds PR 7, S4b-BL-211): only for a candidate of a built-in kind other than the house that the listing extract
+   * fills, while the developer flag is on; a house's request is the text alone, as before.
+   */
+  extractListing(text: string, kind?: string): Observable<HouseDraft> {
+    const off = this.guard();
+    if (off) return off;
+    if (this.usesOwnKey()) {
+      return defer(() => (kind ? this.onDevice.extractListing(this.ownModel(), text, kind) : this.onDevice.extractListing(this.ownModel(), text)));
+    }
+    return this.http.post<HouseDraft>('/api/ai/extract-listing', kind ? { text, kind } : { text });
   }
 
-  ask(question: string, filters?: AskFilters): Observable<AskResponse> {
-    if (this.usesOwnKey()) return defer(() => this.onDevice.ask(this.geminiKeyState(), question, filters));
-    return this.http.post<AskResponse>('/api/ai/ask', filters ? { question, filters } : { question });
+  /**
+   * `kind` (kinds PR B, S4b-BL-279, S4b-BL-290): the space Ask reads, for a space other than the house only; the house's call is
+   * today's, with no `kind` in the body. On this device it reads that space; on the server it is sent as the request's `kind`
+   * when the server's status names it, and otherwise nothing is sent (an older server would read every space).
+   */
+  ask(question: string, filters?: AskFilters, kind?: string): Observable<AskResponse> {
+    const off = this.guard() ?? this.noServerSpace(kind);
+    if (off) return off;
+    if (this.usesOwnKey()) return defer(() => (kind ? this.onDevice.ask(this.ownModel(), question, filters, kind) : this.onDevice.ask(this.ownModel(), question, filters)));
+    const body = filters ? { question, filters } : { question };
+    return this.http.post<AskResponse>('/api/ai/ask', kind && !isBaselineKind(kind) ? { ...body, kind } : body);
   }
 
-  planVisits(request: PlanRequest): Observable<PlanResponse> {
-    if (this.usesOwnKey()) return defer(() => this.onDevice.planVisits(this.geminiKeyState(), request));
-    return this.http.post<PlanResponse>('/api/ai/plan-visits', request);
+  /** `kind`: as {@link ask}. */
+  planVisits(request: PlanRequest, kind?: string): Observable<PlanResponse> {
+    const off = this.guard() ?? this.noServerSpace(kind);
+    if (off) return off;
+    if (this.usesOwnKey()) return defer(() => (kind ? this.onDevice.planVisits(this.ownModel(), request, kind) : this.onDevice.planVisits(this.ownModel(), request)));
+    return this.http.post<PlanResponse>('/api/ai/plan-visits', kind && !isBaselineKind(kind) ? { ...request, kind } : request);
+  }
+
+  /** A space other than the house on a server that does not name the kind: nothing is sent (an older server would read every space). */
+  private noServerSpace(kind?: string): Observable<never> | null {
+    return kind && !isBaselineKind(kind) && !this.usesOwnKey() && !this.serverKinds().includes(kind) ? throwError(() => new AiOffError('noKey')) : null;
   }
 }
 
-/** Translated message for AI failures: 429 with Retry-After, 503 provider down/quota, else the generic mapping. */
-export function aiErrorMsg(err: unknown): Msg {
+/**
+ * Translated message for AI failures: 429 with Retry-After, 503 provider down/quota, else the generic mapping. [host] is
+ * the own AI's host when the caller knows it (the Connect page tests what is typed); otherwise the saved provider's.
+ */
+export function aiErrorMsg(err: unknown, host?: string): Msg {
+  if (err instanceof AiOffError) return aiOffMsg(err.reason);
   if (err instanceof OnDeviceAiError) {
+    const where = host ?? savedCompatHost();
     if (err.kind === 'rateLimited') return { key: 'ai.rateLimited', params: { s: err.retryAfter } };
-    if (err.kind === 'keyRejected') return { key: 'ai.keyRejected' };
+    if (err.kind === 'keyRejected') return where ? { key: 'ai.keyRejectedHost', params: { host: where } } : { key: 'ai.keyRejected' };
+    if (err.kind === 'modelNotFound') return { key: 'ai.modelNotFound' };
+    // The provider's own safety system declined the text (S4b-BL-232): one fixed message, never the provider's words.
+    if (err.kind === 'blocked') return { key: 'ai.blocked' };
+    // The key's free quota or credit is used up (S4b-BL-243): not a wait, so not the rate-limit words.
+    if (err.kind === 'quotaExhausted') return { key: 'ai.quotaExhausted' };
+    if (err.kind === 'unreachable' && where) return { key: isLocalHost(where) ? 'ai.unreachableLocal' : 'ai.unreachable', params: { host: where } };
     return { key: 'ai.providerDown' };
   }
   if (err instanceof HttpErrorResponse) {
     if (err.status === 429) {
-      const seconds = Number.parseInt(err.headers.get('Retry-After') ?? '', 10);
-      return { key: 'ai.rateLimited', params: { s: Number.isFinite(seconds) ? seconds : 60 } };
+      return { key: 'ai.rateLimited', params: { s: retryAfterSeconds(err) ?? 60 } };
     }
+    // The server's own AI says its provider quota or credit is spent with 402 (S4b-BL-244): not a wait, so not "try again".
+    if (err.status === 402) return { key: 'ai.quotaExhausted' };
+    // The server's own AI says its provider's safety system declined the text with 422 (S4b-BL-233): the same words as the own key's.
+    if (err.status === 422) return { key: 'ai.blocked' };
     if (err.status === 503) return { key: 'ai.providerDown' };
     if (err.status === 403) {
       const code = (err.error as { code?: unknown } | null)?.code;
@@ -272,6 +424,12 @@ export function aiErrorMsg(err: unknown): Msg {
     if (err.status === 404) return { key: 'ai.disabled' };
   }
   return errorMsg(err);
+}
+
+/** The saved host when the own AI is an OpenAI-compatible one or Anthropic; '' for Gemini (its words name Google). */
+function savedCompatHost(): string {
+  const config = readAiConfig();
+  return config.kind === 'gemini' ? '' : aiHostOf(config);
 }
 
 /** The words for an {@link AiOffReason}. */
@@ -322,6 +480,7 @@ function readOptIn(): boolean {
 /** Splits an answer into text and [house:<id>] citation markers, so markers can become links. */
 export type AnswerPart = { kind: 'text'; text: string } | { kind: 'cite'; houseId: string };
 
+/** Cuts `answer` at each `[house:<uuid>]` marker, in order; text between markers stays as text parts. */
 export function splitCitations(answer: string): AnswerPart[] {
   const parts: AnswerPart[] = [];
   const re = /\[house:([0-9a-fA-F-]{36})\]/g;

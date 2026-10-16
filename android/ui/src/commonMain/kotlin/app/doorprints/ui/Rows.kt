@@ -380,13 +380,14 @@ fun SwitchRow(
     enabled: Boolean = true,
     horizontalPadding: Dp = 16.dp,
     warning: String? = null,
+    modifier: Modifier = Modifier,
     onChange: (Boolean) -> Unit,
 ) {
     // The last warning shown, so the note keeps its text while it animates out. Not state: nothing redraws from it.
     val lastWarning = remember { arrayOfNulls<String>(1) }
     if (warning != null) lastWarning[0] = warning
     Column(
-        Modifier.fillMaxWidth().heightIn(min = 48.dp)
+        modifier.fillMaxWidth().heightIn(min = 48.dp)
             .toggleable(value = checked, enabled = enabled, role = Role.Switch, onValueChange = onChange)
             .padding(horizontal = horizontalPadding, vertical = 4.dp),
     ) {

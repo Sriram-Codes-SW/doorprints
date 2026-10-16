@@ -45,8 +45,13 @@ import app.doorprints.shared.model.HouseStatus
 import app.doorprints.shared.model.Scoring
 import app.doorprints.i18n.AppLocale
 import app.doorprints.ui.Formats
+import app.doorprints.ui.HuntSpace
+import app.doorprints.ui.HuntWords
+import app.doorprints.ui.RepeatAlerts
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import org.jetbrains.compose.resources.getString as composeString
 
 /**
  * "Hunt mode" on Android: a foreground service around the common [HuntEngine] (Sprint 4b, 2026-09-29; the rules were
@@ -54,25 +59,36 @@ import kotlinx.coroutines.launch
  * fused location client (GPS fixes every 15 s while walking, every 60 s while standing still, docs/09 L1), the battery
  * reading, the reverse geocoder, and the wording and posting of the alerts the engine asks for ([HuntEffects]).
  * Everything else, what a fix means, is the engine's, and the same on iPhone.
+ *
+ * The walk belongs to the space it was started in (docs/03 section 18.20, kinds PR 26): the start carries the kind
+ * ([EXTRA_HUNT_KIND]), the engine reads that kind's `capabilities.hunt`, and every alert's words, channel and "stay here?" entry
+ * are the kind's. Nothing here names a kind.
  */
 class HuntService : LifecycleService(), HuntEffects {
 
     private val repo by lazy { (application as DoorprintsApp).container.repository }
     private val fused by lazy { LocationServices.getFusedLocationProviderClient(this) }
     private val geocoder by lazy { ReverseGeocoder(this) }
-    private val engine by lazy {
-        HuntEngine(
-            data = HuntData.of(repo),
-            streets = { lat, lon -> geocoder.lookup(lat, lon)?.street },
-            battery = {
-                getSystemService(BatteryManager::class.java)?.let {
-                    BatteryLevel(it.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY), it.isCharging)
-                }
-            },
-            effects = this,
-            scope = lifecycleScope,
-        )
-    }
+
+    /** The kind of the walk and its engine, set when a walk starts (the engine reads that kind's Hunt capability). */
+    private var kind: String? = null
+    private var engine: HuntEngine? = null
+
+    private fun newEngine(kind: String) = HuntEngine(
+        data = HuntData.of(repo, kind),
+        streets = { lat, lon -> geocoder.lookup(lat, lon)?.street },
+        battery = {
+            getSystemService(BatteryManager::class.java)?.let {
+                BatteryLevel(it.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY), it.isCharging)
+            }
+        },
+        effects = this,
+        scope = lifecycleScope,
+        kind = kind,
+    )
+
+    /** The Hunt words of the live walk's kind; the walk's kind is set before any alert is asked for. */
+    private val words: HuntWords get() = HuntWords.of(kind.orEmpty())
 
     /** Set just before a stopSelf() the user did not ask for; the Map says why (see [HuntState.State.stopReason]). */
     private var stopReason: HuntState.StopReason? = null
@@ -84,7 +100,7 @@ class HuntService : LifecycleService(), HuntEffects {
 
     private val callback = object : LocationCallback() {
         override fun onLocationResult(result: LocationResult) {
-            result.lastLocation?.let { engine.onFix(it.latitude, it.longitude, it.accuracy, it.time) }
+            result.lastLocation?.let { engine?.onFix(it.latitude, it.longitude, it.accuracy, it.time) }
         }
     }
 
@@ -100,14 +116,29 @@ class HuntService : LifecycleService(), HuntEffects {
             stopSelf()
             return START_NOT_STICKY
         }
+        if (intent?.action == ACTION_FINISH_WALK) {
+            // *Finish walk* from the Map (docs/11 5.27.6): the walk ends, Hunt mode goes on (already in the foreground).
+            if (HuntState.state.value.active) {
+                engine?.finishWalk()
+                return START_STICKY
+            }
+            // Hunt mode is off (the service was stopping): this instance never went foreground, so it must not stay.
+            stopSelf(startId)
+            return START_NOT_STICKY
+        }
         val stopIntent = android.app.PendingIntent.getService(
             this, 0, Intent(this, HuntService::class.java).setAction(ACTION_STOP),
             android.app.PendingIntent.FLAG_IMMUTABLE,
         )
+        // The walk's kind: the start's, else (a restart of the service by the system, or an older intent) the default kind's, when it has Hunt.
+        val setting = runBlocking { repo.settings.kindSetting().first() }
+        val walkKind = HuntSpace.knownKind(intent?.getStringExtra(EXTRA_HUNT_KIND))?.takeIf { HuntSpace.has(it) }
+            ?: setting.default.takeIf { HuntSpace.has(it) } ?: setting.enabled.firstOrNull { HuntSpace.has(it) }
+        kind = walkKind
         val notification = NotificationCompat.Builder(this, Notifications.CHANNEL_HUNT)
             .setSmallIcon(R.drawable.ic_stat_doorprints)
             .setContentTitle(getString(R.string.notif_hunt_title))
-            .setContentText(getString(R.string.notif_hunt_text))
+            .setContentText(runCatching { runBlocking { composeString(words.ongoingText) } }.getOrElse { getString(R.string.notif_hunt_text) })
             .setOngoing(true)
             .setContentIntent(Notifications.openAppIntent(this, 0))
             .addAction(0, getString(R.string.notif_stop), stopIntent)
@@ -131,9 +162,20 @@ class HuntService : LifecycleService(), HuntEffects {
             stopFor(HuntState.StopReason.NO_PERMISSION)
             return START_NOT_STICKY
         }
+        if (walkKind == null) {
+            // No kind that is on has Hunt mode (the system restarted the service after the setting changed): nothing to run.
+            stopReason = null
+            stopSelf()
+            return START_NOT_STICKY
+        }
 
         stopReason = null
-        engine.start()
+        // A second start of a walk that is running keeps its engine; a start for another kind replaces it.
+        val live = engine?.takeIf { it.kind == walkKind } ?: run {
+            engine?.stopped(null)
+            newEngine(walkKind).also { engine = it }
+        }
+        live.start()
         // Started from a Hunt mode reminder's *Start Hunt mode* (slice 3c): that reminder has done its job.
         intent?.getStringExtra(Notifications.EXTRA_START_HUNT)?.let {
             NotificationManagerCompat.from(this).cancel(Notifications.huntTag(it), Notifications.HUNT_REMINDER_ID)
@@ -165,7 +207,8 @@ class HuntService : LifecycleService(), HuntEffects {
 
     override fun onDestroy() {
         fused.removeLocationUpdates(callback)
-        engine.stopped(stopReason)
+        engine?.stopped(stopReason)
+        engine = null
         super.onDestroy()
     }
 
@@ -180,50 +223,78 @@ class HuntService : LifecycleService(), HuntEffects {
         // The score under this phone's criteria (slice 2): one small read of the records before the alert is worded.
         lifecycleScope.launch {
             val scoring = repo.scoring()
-            Notifications.alert(
-                this@HuntService, house.id.hashCode(),
-                getString(R.string.notif_seen_house, house.label),
+            alert(
+                house.id.hashCode(),
+                composeString(words.seen, house.label),
                 getString(R.string.notif_distance, describe(house, scoring), distanceM),
                 Notifications.openAppIntent(this@HuntService, house.id.hashCode()) {
                     putExtra(Notifications.EXTRA_OPEN_HOUSE, house.id)
                 },
-                hideOnLockScreen = appLockOn(),
             )
         }
+    }
+
+    /**
+     * Posts a Hunt alert on the walk's kind's alerts channel (the house's is the one that has always been; any other kind's is
+     * created here in the kind's own words). The lock-screen public text stays "Doorprints alert", which names no kind.
+     */
+    private suspend fun alert(id: Int, title: String, text: String, tap: android.app.PendingIntent?) {
+        val words = words
+        val channel = Notifications.alertsChannel(
+            this, kind.orEmpty(), composeString(words.channelAlerts), composeString(words.channelAlertsDesc),
+        )
+        Notifications.alert(this, id, title, text, tap, hideOnLockScreen = appLockOn(), channel = channel)
     }
 
     /** Whether the app lock is on (S4b-BL-68): its alerts then name nothing on a locked screen. Unreadable: on. */
     private suspend fun appLockOn(): Boolean =
         runCatching { repo.settings.appLockSetting.first().on }.getOrDefault(true)
 
+    override fun alertRepeat(runM: Int) {
+        // The notification holds no place, distance or count (docs/11 5.27.5); [runM] is not used or logged.
+        lifecycleScope.launch {
+            Notifications.alertRepeatPath(this@HuntService, hideOnLockScreen = appLockOn())
+            // With the app in front the Map also says it in a snackbar (it collects this).
+            RepeatAlerts.signal()
+        }
+    }
+
     override fun alertStreet(street: String, houses: Int, visits: Int, firstVisit: Long?) {
         val key = StreetAlerts.key(street)
-        val text = firstVisit?.let {
-            getString(R.string.notif_street_text_since, houses, visits, Formats.date(it))
-        } ?: getString(R.string.notif_street_text, houses, visits)
         // The street's name is where the person is, as private as a house's (S4b-BL-68).
         lifecycleScope.launch {
-            Notifications.alert(
-                this@HuntService, key.hashCode(),
+            val text = firstVisit?.let { composeString(words.streetTextSince, houses, visits, Formats.date(it)) }
+                ?: composeString(words.streetText, houses, visits)
+            alert(
+                key.hashCode(),
                 getString(R.string.notif_street_title, street),
                 text,
                 Notifications.openAppIntent(this@HuntService, key.hashCode()),
-                hideOnLockScreen = appLockOn(),
             )
         }
     }
 
     override fun alertStay(visitId: String, lat: Double, lon: Double) {
-        Notifications.alert(
-            this, visitId.hashCode(),
-            getString(R.string.notif_stay_title),
-            getString(R.string.notif_stay_text),
-            Notifications.openAppIntent(this, visitId.hashCode()) {
-                putExtra(Notifications.EXTRA_NEW_LAT, lat)
-                putExtra(Notifications.EXTRA_NEW_LON, lon)
-                putExtra(Notifications.EXTRA_VISIT_ID, visitId)
-            },
-        )
+        val walkKind = kind
+        lifecycleScope.launch {
+            // Not the lock-screen-hiding flag of the other alerts: this one names no place (it never did).
+            val words = words
+            val channel = Notifications.alertsChannel(
+                this@HuntService, walkKind.orEmpty(), composeString(words.channelAlerts), composeString(words.channelAlertsDesc),
+            )
+            Notifications.alert(
+                this@HuntService, visitId.hashCode(),
+                composeString(words.stayTitle),
+                getString(R.string.notif_stay_text),
+                Notifications.openAppIntent(this@HuntService, visitId.hashCode()) {
+                    putExtra(Notifications.EXTRA_NEW_LAT, lat)
+                    putExtra(Notifications.EXTRA_NEW_LON, lon)
+                    putExtra(Notifications.EXTRA_VISIT_ID, visitId)
+                    walkKind?.let { putExtra(Notifications.EXTRA_NEW_KIND, it) }
+                },
+                channel = channel,
+            )
+        }
     }
 
     private fun describe(h: HouseEntity, scoring: Scoring): String {
@@ -238,6 +309,10 @@ class HuntService : LifecycleService(), HuntEffects {
     companion object {
         private const val ACTION_STOP = "stop"
 
+        /** The kind of the walk to start (a built-in kind id, docs/03 section 18.20). */
+        internal const val EXTRA_HUNT_KIND = "huntKind"
+        internal const val ACTION_FINISH_WALK = "finish-walk"
+
         fun hasLocationPermission(context: Context): Boolean =
             ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
                 PackageManager.PERMISSION_GRANTED ||
@@ -245,14 +320,15 @@ class HuntService : LifecycleService(), HuntEffects {
                 PackageManager.PERMISSION_GRANTED
 
         /**
-         * Starts Hunt mode. Returns false without starting when location permission is missing (a location
+         * Starts Hunt mode for the space of [kind]. Returns false without starting when the kind has no Hunt mode, location permission is missing (a location
          * foreground service cannot start without it on API 34+) or when the system refuses a foreground-service
          * start because the app is not in the foreground (API 31+).
          */
-        fun start(context: Context): Boolean {
+        fun start(context: Context, kind: String): Boolean {
+            if (!HuntSpace.has(kind)) return false
             if (!hasLocationPermission(context)) return false
             return try {
-                ContextCompat.startForegroundService(context, Intent(context, HuntService::class.java))
+                ContextCompat.startForegroundService(context, Intent(context, HuntService::class.java).putExtra(EXTRA_HUNT_KIND, kind))
                 true
             } catch (e: IllegalStateException) {
                 false
@@ -261,6 +337,12 @@ class HuntService : LifecycleService(), HuntEffects {
 
         /** The user turned Hunt mode off: onDestroy runs with no stop reason. */
         fun stop(context: Context) = context.stopService(Intent(context, HuntService::class.java))
+
+        /** *Finish walk*: asks the running service to end the walk (nothing while Hunt mode is off). */
+        fun finishWalk(context: Context) {
+            if (!HuntState.state.value.active) return
+            runCatching { context.startService(Intent(context, HuntService::class.java).setAction(ACTION_FINISH_WALK)) }
+        }
 
         /** Closes the "Hunt mode stopped because…" card on the Map. */
         fun clearStopReason() = HuntState.update { it.copy(stopReason = null) }

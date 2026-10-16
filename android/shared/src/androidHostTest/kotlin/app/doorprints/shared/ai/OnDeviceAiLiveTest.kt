@@ -37,7 +37,7 @@ import kotlin.test.assertTrue
  * `DOORPRINTS_LIVE_GEMINI_KEY`. Skipped without it, so the normal build never calls Google; the manual *AI evals*
  * workflow (job *On-device AI, real key*) sets it from the `AI_API_KEY` secret. Checks what a fake cannot: Google
  * accepts the request, the schemas and the key header, and the answers pass the server's checks. It also reads every
- * request body as sent and checks that no saved contact name or phone number left the device.
+ * request body as sent and checks that no saved contact name, phone number or email address left the device.
  */
 class OnDeviceAiLiveTest {
     private val key = System.getenv("DOORPRINTS_LIVE_GEMINI_KEY").orEmpty()
@@ -46,7 +46,7 @@ class OnDeviceAiLiveTest {
     private val houses = listOf(
         AiHouse(quiet, "Blue gate", locality = "Indiranagar", lat = 12.9719, lon = 77.6412, status = "SHORTLISTED",
             price = 25_000, priceType = "RENT", bedrooms = 2, contactName = "Ramesh Kumar", contactPhone = "98450 12345",
-            notes = "Very quiet lane, 24x7 water. Ramesh says call 98450 12345 after 6 pm."),
+            notes = "Very quiet lane, 24x7 water. Ramesh says call 98450 12345 after 6 pm or mail kumar.r83@example.com."),
         AiHouse(noisy, "Green view", locality = "Koramangala", lat = 12.9352, lon = 77.6245, status = "SHORTLISTED",
             price = 40_000, priceType = "RENT", bedrooms = 3, notes = "On the main road, traffic noise all day."),
     )
@@ -82,6 +82,7 @@ class OnDeviceAiLiveTest {
         assertEquals(3, sent.size, "one request per call")
         for (body in sent.drop(1)) {
             assertFalse("Ramesh" in body || "98450" in body, "a saved contact left the device")
+            assertFalse("@example.com" in body || "kumar.r83" in body, "an email address left the device")
         }
     }
 

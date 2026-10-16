@@ -1,0 +1,12 @@
+{
+  "spec": "ListingFixturesTest.kt",
+  "gradle": [":shared:testAndroidHostTest", "--tests", "app.doorprints.shared.listing.ListingFixturesTest"],
+  "mutations": [
+    {"file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/listing/ListingText.kt", "find": "(\\d{1,2})(?:\\.5)?\\s*-?", "replace": "(\\d{1,2})\\s*-?", "expect": "everyFixtureCaseReadsAsExpected"},
+    {"file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/listing/ListingText.kt", "find": "|(?<!\\d)\\(?0\\d{2,4}\\)?[\\s-]?\\d{3,4}[\\s-]?\\d{3,4}\\b\"\"\"", "replace": "\"\"\"", "expect": "everyFixtureCaseReadsAsExpected"},
+    {"file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/listing/ListingText.kt", "find": "(CITIES + CITIES.map { it.uppercase() }).joinToString(\"|\")", "replace": "CITIES.joinToString(\"|\")", "expect": "everyFixtureCaseReadsAsExpected"},
+    {"file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/listing/ListingText.kt", "find": "(?:in|at|near|IN|AT|NEAR)", "replace": "(?:in|at|near)", "expect": "everyFixtureCaseReadsAsExpected"},
+    {"file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/listing/ListingText.kt", "find": "\"Guwahati\", ", "replace": "", "expect": "everyFixtureCaseReadsAsExpected"},
+    {"file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/listing/ListingText.kt", "find": "\"Port Blair\", ", "replace": "", "expect": "everyFixtureCaseReadsAsExpected"}
+  ]
+}

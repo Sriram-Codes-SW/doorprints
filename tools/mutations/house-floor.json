@@ -1,0 +1,101 @@
+{
+ "spec": "web/src/app/pages/house-detail/house-rooms.spec.ts",
+ "mutations": [
+  {
+   "file": "web/src/app/pages/house-detail/house-floor.ts",
+   "find": "&& d.floor !== 0) return d.floor < 0;",
+   "replace": ") return d.floor < 0;",
+   "expect": "enters a basement with the Basement switch"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-floor.ts",
+   "find": "return d.floor < 0;",
+   "replace": "return d.floor > 0;",
+   "expect": "enters a basement with the Basement switch"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-floor.ts",
+   "find": "set !== null && set.id === d.id && set.on",
+   "replace": "set !== null && set.id === d.id",
+   "expect": "leaves a blank or zero level to the switch"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-floor.ts",
+   "find": "typeof d.floor === 'number' ? Math.abs(d.floor) : d.floor",
+   "replace": "typeof d.floor === 'number' ? d.floor : d.floor",
+   "expect": "enters a basement with the Basement switch"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-floor.ts",
+   "find": "(typed !== null && typed < 0) || this.basement(d)",
+   "replace": "(typed !== null && typed > 0) || this.basement(d)",
+   "expect": "shows the level without its sign"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-floor.ts",
+   "find": "(typed !== null && typed < 0) || this.basement(d)",
+   "replace": "(typed !== null && typed < 0) || false",
+   "expect": "enters a basement with the Basement switch"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-floor.ts",
+   "find": "this.basementSet.set({ id: d.id, on: below });",
+   "replace": "this.basementSet.set({ id: d.id, on: false });",
+   "expect": "enters a basement with the Basement switch"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-floor.ts",
+   "find": "below && typed !== 0 ? -Math.abs(typed) : typed",
+   "replace": "below ? -Math.abs(typed) : typed",
+   "expect": "leaves a blank or zero level to the switch"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-floor.ts",
+   "find": "this.deps.patch({ floor: value as number | null })",
+   "replace": "this.deps.patch({ floor: 0 })",
+   "expect": "leaves a blank or zero level to the switch"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-floor.ts",
+   "find": "const on = (event.target as HTMLInputElement).checked;",
+   "replace": "const on = !(event.target as HTMLInputElement).checked;",
+   "expect": "enters a basement with the Basement switch"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-floor.ts",
+   "find": "if (typeof d.floor === 'number' && d.floor !== 0) this.deps.patch",
+   "replace": "if (typeof d.floor === 'number') this.deps.patch",
+   "expect": "leaves a blank or zero level to the switch"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-floor.ts",
+   "find": "on ? -Math.abs(d.floor) : Math.abs(d.floor)",
+   "replace": "on ? Math.abs(d.floor) : -Math.abs(d.floor)",
+   "expect": "turns a floor above the ground into a basement and back"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-floor.ts",
+   "find": "if (d.floor == null || (d.floor as unknown) === '') return false;",
+   "replace": "if ((d.floor as unknown) === '') return false;",
+   "expect": "saves a typed floor"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-floor.ts",
+   "find": "(d.floor === 0 && this.basement(d)) ||",
+   "replace": "false ||",
+   "expect": "enters a basement with the Basement switch"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-floor.ts",
+   "find": "floorOf(d.floor) === null;",
+   "replace": "floorOf(d.floor) !== null;",
+   "expect": "saves a typed floor"
+  },
+  {
+   "file": "web/src/app/pages/house-detail/house-floor.ts",
+   "find": "parseFloor(String(value))",
+   "replace": "parseFloor(String(Math.trunc(value)))",
+   "expect": "calls a fractional floor not a floor"
+  }
+ ]
+}

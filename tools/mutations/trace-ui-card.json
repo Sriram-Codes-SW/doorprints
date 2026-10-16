@@ -1,0 +1,53 @@
+{
+  "spec": "web/src/app/pages/map/trace-card.spec.ts",
+  "mutations": [
+    {
+      "file": "web/src/app/pages/map/trace-card.ts",
+      "find": "export const BANNER_MS = 10_000;",
+      "replace": "export const BANNER_MS = 1_000;",
+      "expect": "goes after 10 seconds"
+    },
+    {
+      "file": "web/src/app/pages/map/trace-card.ts",
+      "find": "[disabled]=\"!view.traceOn()\"",
+      "replace": "[disabled]=\"false\"",
+      "expect": "disabled with its reason while the trace is off"
+    },
+    {
+      "file": "web/src/app/pages/map/trace-card.ts",
+      "find": "if (!on && this.recorder.state() !== 'idle') await this.view.finishWalk();",
+      "replace": "",
+      "expect": "ends the walk first"
+    },
+    {
+      "file": "web/src/app/pages/map/trace-card.ts",
+      "find": "let raised = this.recorder.alertRaised();",
+      "replace": "let raised = -1;",
+      "expect": "is not shown for the alerts that rang before the card was made"
+    },
+    {
+      "file": "web/src/app/pages/map/trace-card.ts",
+      "find": "if (ok) await this.view.clearTrace();",
+      "replace": "await this.view.clearTrace();",
+      "expect": "asks first, with the clear hint; clears only on a yes"
+    },
+    {
+      "file": "web/src/app/pages/map/trace-card.ts",
+      "find": "matchMedia(WIDE_QUERY).matches",
+      "replace": "true",
+      "expect": "open on a wide screen and one line on a phone"
+    },
+    {
+      "file": "web/src/app/pages/map/trace-card.ts",
+      "find": "    if (ok) await this.view.deleteAllSaved();",
+      "replace": "    await this.view.deleteAllSaved();",
+      "expect": "asks with the count; deletes only on a yes"
+    },
+    {
+      "file": "web/src/app/pages/map/trace-card.ts",
+      "find": "@if (recorder.wakeLockSupported) {",
+      "replace": "@if (true) {",
+      "expect": "only where the browser has a Wake Lock"
+    }
+  ]
+}

@@ -83,7 +83,7 @@ import org.jetbrains.compose.resources.stringResource
 
 
 /**
- * The outcome in the current language. After a server reset (S4b-BL-20, [SyncOutcome.serverReset]) the sentence that
+ * The outcome in the current language. After a server reset (S4b-BL-20, [SyncOutcome.remoteReset]) the sentence that
  * says so comes first ("Your server seems to have been reset…", the web's `data.serverReset`), then the counts.
  */
 @Composable
@@ -94,7 +94,7 @@ fun SyncOutcome.text(): String = when (kind) {
         } else {
             stringResource(Res.string.sync_ok, pushed, pulled)
         }
-        if (serverReset) stringResource(Res.string.sync_server_reset) + " " + counts else counts
+        if (remoteReset) stringResource(Res.string.sync_server_reset) + " " + counts else counts
     }
     SyncOutcome.Kind.NOT_CONFIGURED -> stringResource(Res.string.sync_not_configured)
     SyncOutcome.Kind.NETWORK -> stringResource(Res.string.sync_err_network)
@@ -105,18 +105,27 @@ fun SyncOutcome.text(): String = when (kind) {
     SyncOutcome.Kind.UNKNOWN -> stringResource(Res.string.sync_err_unknown)
 }
 
+/** A section heading on a settings-style screen, announced as a heading by screen readers. */
 @Composable
 fun SectionHeading(text: String, modifier: Modifier = Modifier) {
     Text(text, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleMedium,
         modifier = modifier.semantics { heading() })
 }
 
+/**
+ * The Settings tab: language, your data (the copy and backup screens, sharing updates, the weekly backup), Hunt mode,
+ * offline maps, Google Drive, the optional server (address, connect by code or key, sync), AI, brokers, criteria,
+ * questions, viewings, areas and places, length units, privacy, the app lock and About with the tour. Sections a
+ * platform does not have are left out, not disabled. Server results are live regions that announce each finished run.
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {},
     onOpenShare: () -> Unit = {}, onOpenBrokers: () -> Unit = {}, onOpenCriteria: () -> Unit = {},
     onOpenQuestions: () -> Unit = {}, onOpenViewings: () -> Unit = {},
     onOpenAreas: () -> Unit = {}, onOpenPlaces: () -> Unit = {},
+    /** *Take the tour* in About (S4b-FR-39): starts the guided tour again. */
+    onTakeTour: () -> Unit = {},
 ) {
     val services = LocalAppServices.current
     val repo = services.repository
@@ -169,7 +178,7 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {},
         Text(stringResource(Res.string.settings_title), style = MaterialTheme.typography.headlineSmall,
             modifier = Modifier.semantics { heading() })
 
-        SectionHeading(stringResource(Res.string.settings_language))
+        SectionHeading(stringResource(Res.string.settings_language), Modifier.tourTarget(TourTargets.SETTINGS_LANGUAGE))
         // Where a platform has no in-app choice (iOS: PlatformFeatures.inAppLanguage), the language follows the one
         // chosen for Doorprints in the phone's settings, and the button opens them. The flag is fixed per process, so
         // the calls below never change order between compositions.
@@ -230,12 +239,17 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {},
                 // Without the PDF where the platform makes none (the iPhone, PlatformFeatures.pdfCopies).
                 stringResource(if (platformFeatures.pdfCopies) Res.string.settings_export_hint else Res.string.settings_export_hint_no_pdf),
                 onOpenExport,
+                Modifier.tourTarget(TourTargets.SETTINGS_EXPORT),
             )
             NavRow(
                 stringResource(Res.string.settings_import), stringResource(Res.string.settings_import_hint), onOpenImport,
+                Modifier.tourTarget(TourTargets.SETTINGS_IMPORT),
             )
             // Sharing updates with someone (docs/11 5.28, S4b-FR-3): a file of what changed, through any app.
-            NavRow(stringResource(Res.string.settings_share), stringResource(Res.string.settings_share_hint), onOpenShare)
+            NavRow(
+                stringResource(Res.string.settings_share), stringResource(Res.string.settings_share_hint), onOpenShare,
+                Modifier.tourTarget(TourTargets.SETTINGS_SHARE),
+            )
         }
 
         if (platformFeatures.weeklyBackup) {
@@ -282,6 +296,7 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {},
                 hint = stringResource(Res.string.settings_auto_backup_hint),
                 checked = settings.autoBackup,
                 horizontalPadding = 0.dp,
+                modifier = Modifier.tourTarget(TourTargets.SETTINGS_BACKUP),
                 onChange = { wanted ->
                     if (wanted && settings.autoBackupFolder.isBlank()) {
                         enableAfterPick = true
@@ -337,6 +352,11 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {},
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
+                        Text(
+                            stringResource(Res.string.settings_auto_backup_lost_phone),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                         var keep by remember(settings.autoBackupKeep) {
                             mutableFloatStateOf(settings.autoBackupKeep.toFloat())
                         }
@@ -413,7 +433,7 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {},
             SectionHeading(stringResource(Res.string.settings_hunt))
             // Each slider is named by its sentence and says its value in metres or minutes (WCAG 4.1.2), as the
             // keep-backups slider does; the visible sentence is hidden from TalkBack so it is not read twice.
-            val radiusText = stringResource(Res.string.settings_alert_radius, radius.toInt())
+            val radiusText = stringResource(appText(Res.string.settings_alert_radius, Res.string.settings_alert_radius_any), radius.toInt())
             Text(radiusText, modifier = Modifier.clearAndSetSemantics { })
             Slider(radius, { radius = it }, valueRange = 15f..100f, steps = 16, colors = brandSliderColors(),
                 modifier = Modifier.semantics {
@@ -429,7 +449,7 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {},
                     stateDescription = stay.toInt().toString()
                 },
                 onValueChangeFinished = { scope.launch { repo.settings.saveTracking(radius.toInt(), stay.toInt()) } })
-            Text(stringResource(Res.string.settings_gps_note), style = MaterialTheme.typography.bodySmall)
+            Text(stringResource(appText(Res.string.settings_gps_note, Res.string.settings_gps_note_any)), style = MaterialTheme.typography.bodySmall)
             PathTraceSection(settings)
             // The Hunt mode reminder before a viewing (docs/11 5.16, slice 3c): the switch and the lead time.
             HuntRemindersSection()
@@ -441,8 +461,16 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {},
             OfflineMapsSection(services.offlineMaps)
         }
 
+        // Google Drive backup and sync (docs/15 §2): the platform's section, with its own divider; nothing where it has none.
+        if (platformFeatures.googleDrive) {
+            // A long section: the tour highlights its top part (TourLayout.SPOT_FRACTION).
+            Column(Modifier.tourTarget(TourTargets.SETTINGS_DRIVE), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                features.DriveSection()
+            }
+        }
+
         HorizontalDivider()
-        SectionHeading(stringResource(Res.string.settings_server))
+        SectionHeading(stringResource(Res.string.settings_server), Modifier.tourTarget(TourTargets.SETTINGS_SERVER))
         Text(stringResource(Res.string.settings_server_intro), style = MaterialTheme.typography.bodySmall)
         OutlinedTextField(
             url, {
@@ -645,7 +673,7 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {},
         }
         val lastTest = testResult
         val statusText = lastTest?.fold(
-            { stringResource(Res.string.settings_connected, it) },
+            { stringResource(appText(Res.string.settings_connected, Res.string.settings_connected_any), it) },
             { stringResource(Res.string.settings_connect_failed, SyncOutcome.fromError(it).text()) },
         ) ?: settings.lastSync?.text()
         val statusTone = serverStatusTone(lastTest?.isSuccess, settings.lastSync?.kind)
@@ -690,36 +718,29 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {},
         }
         SwitchRow(
             text = stringResource(Res.string.settings_photos_wifi),
-            hint = stringResource(Res.string.settings_photos_wifi_hint),
+            hint = stringResource(appText(Res.string.settings_photos_wifi_hint, Res.string.settings_photos_wifi_hint_any)),
             checked = settings.photosOnWifiOnly,
             // This column is already padded; the shared row adds no inset of its own here.
             horizontalPadding = 0.dp,
             onChange = { scope.launch { repo.settings.savePhotosOnWifiOnly(it) } },
         )
 
+        // What you track (kinds PR C): only in a build that ships more than houses, and then with its own divider.
+        KindsAndRecentlyDeleted(onSaveCopy = onOpenExport)
         HorizontalDivider()
         // AI features (docs/03 §12.1, §13.1): this phone's switch, and who answers: the server or the person's own key.
         AiSettingsSection(settings, aiOff)
 
-        // The brokers you have met (docs/11 5.25, slice 1b), on every platform: it opens the list and each broker's page.
-        HorizontalDivider()
-        NavRow(stringResource(Res.string.settings_brokers), stringResource(Res.string.settings_brokers_hint), onOpenBrokers)
-        // What counts in a house's score (docs/11 5.4, slice 2): weights, must-haves, your own criteria, the rating share.
-        HorizontalDivider()
-        NavRow(stringResource(Res.string.settings_criteria), stringResource(Res.string.settings_criteria_hint), onOpenCriteria)
-        // The questions you ask at a viewing (docs/11 5.5, slice 3a): the bank the house form's *Questions to ask* draws on.
-        HorizontalDivider()
-        NavRow(stringResource(Res.string.settings_questions), stringResource(Res.string.settings_questions_hint), onOpenQuestions)
-        // The viewings planned and done (docs/11 5.8, slice 3b-1): the history, its filters and search, the form.
-        HorizontalDivider()
-        NavRow(stringResource(Res.string.settings_viewings), stringResource(Res.string.settings_viewings_hint), onOpenViewings)
-        // Their reminders (slice 3b-2): the switch, and the on-time alarms note and button while they are not allowed.
-        ViewingRemindersSection()
+        // The brokers, criteria, questions and viewings with their reminders: the rows a kind has (KindSettingsRows).
+        KindSettingsRows(onOpenBrokers, onOpenCriteria, onOpenQuestions, onOpenViewings)
         // Hunting areas with their notes, and the places that matter (docs/11 slice 4a).
         HorizontalDivider()
-        NavRow(stringResource(Res.string.settings_areas), stringResource(Res.string.settings_areas_hint), onOpenAreas)
+        NavRow(
+            stringResource(Res.string.settings_areas), stringResource(Res.string.settings_areas_hint), onOpenAreas,
+            Modifier.tourTarget(TourTargets.SETTINGS_AREAS),
+        )
         HorizontalDivider()
-        NavRow(stringResource(Res.string.settings_places), stringResource(Res.string.settings_places_hint), onOpenPlaces)
+        NavRow(stringResource(Res.string.settings_places), stringResource(appText(Res.string.settings_places_hint, Res.string.settings_places_hint_any)), onOpenPlaces)
 
         // How room sizes are shown and typed (docs/11 5.6, slice 1c): this phone's own choice, not synced or backed up.
         HorizontalDivider()
@@ -729,14 +750,9 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {},
         SectionHeading(stringResource(Res.string.settings_privacy))
         // iOS has the map (CMP-8c) but no street-name lookup and no photos taken yet (they come in one later step), so
         // its note names the iPhone and the map tiles only.
-        Text(
-            stringResource(
-                if (platformFeatures.addPhotos) Res.string.settings_privacy_note else Res.string.settings_privacy_note_ios,
-            ),
-            style = MaterialTheme.typography.bodySmall,
-        )
+        Text(stringResource(privacyNote(platformFeatures.addPhotos)), style = MaterialTheme.typography.bodySmall)
         // The app lock (docs/11 5.19): the phone's own screen lock when Doorprints opens.
-        AppLockSection(settings)
+        AppLockSection(settings, modifier = Modifier.tourTarget(TourTargets.SETTINGS_LOCK))
 
         HorizontalDivider()
         SectionHeading(stringResource(Res.string.settings_about))
@@ -746,7 +762,11 @@ fun SettingsScreen(onOpenExport: () -> Unit = {}, onOpenImport: () -> Unit = {},
         val version = remember { features.appVersion() }
         if (version != null) Text(stringResource(Res.string.settings_version, version), style = MaterialTheme.typography.bodySmall)
         // The user guide in the app's language (S4b-BL-60).
-        HelpLink(openUrl = platform::openUrl)
+        // Help, with *Take the tour* beside it (S4b-FR-39): the guided tour again, any time.
+        Column(Modifier.tourTarget(TourTargets.SETTINGS_HELP), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            HelpLink(openUrl = platform::openUrl)
+            TourReplay(onTakeTour)
+        }
         LegalNoticeBlock(openUrl = platform::openUrl)
     }
 }
@@ -839,9 +859,9 @@ private fun AutoBackupStatus(settings: AppSettings, backingUp: Boolean, features
  * One 56 dp target with a button role, so TalkBack reads title and hint together as one item.
  */
 @Composable
-private fun NavRow(title: String, hint: String, onClick: () -> Unit) {
+internal fun NavRow(title: String, hint: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Row(
-        Modifier.fillMaxWidth().heightIn(min = 56.dp)
+        modifier.fillMaxWidth().heightIn(min = 56.dp)
             .clickable(role = Role.Button, onClick = onClick)
             .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,

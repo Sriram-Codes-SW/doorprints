@@ -1,0 +1,9 @@
+{
+  "spec": "web/src/app/data/maplibre-worker-check.spec.ts",
+  "mutations": [
+    { "file": "web/scripts/maplibre-worker-check.mjs", "find": "version !== expectedVersion", "replace": "false", "expect": "names both versions when the worker is not the installed maplibre-gl" },
+    { "file": "web/scripts/maplibre-worker-check.mjs", "find": "else if (worker.length === 0)", "replace": "else if (false)", "expect": "names an empty worker file" },
+    { "file": "web/scripts/maplibre-worker-check.mjs", "find": "if (sibling) {", "replace": "if (false) {", "expect": "names a worker that imports a sibling file" },
+    { "file": "web/scripts/maplibre-worker-check.mjs", "find": "if (!version) errors.push", "replace": "if (false) errors.push", "expect": "banner has no version" }
+  ]
+}

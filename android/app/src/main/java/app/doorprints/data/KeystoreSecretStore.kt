@@ -44,6 +44,9 @@ class KeystoreSecretStore(
 
     companion object {
         const val GEMINI_ENTRY = "geminiKeyEnc"
+
+        /** The person's own Sarvam key for speech to text (ADR-37, voice PR 7): a slot of its own, never in a backup or copy. */
+        const val SARVAM_ENTRY = "sarvamKeyEnc"
     }
 
     private val apiKeyEnc = stringPreferencesKey(entry)

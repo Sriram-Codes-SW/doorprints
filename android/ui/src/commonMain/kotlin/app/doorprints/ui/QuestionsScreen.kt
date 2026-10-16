@@ -125,6 +125,9 @@ fun QuestionsEditor() {
     val saveFailed = stringResource(Res.string.questions_save_failed)
     val maxText = stringResource(Res.string.questions_max, Question.MAX_QUESTIONS)
     val language = uiLanguage()
+    // The bank of the space on screen (kinds PR 29, docs/03 §18.23): the school's own questions are seeded the first time they are opened.
+    val bankKind = LocalSpace.current.built.id
+    LaunchedEffect(bankKind) { repo.seedKindQuestionsOnce(bankKind, language) }
 
     // Every change is saved at once; a failure says so under the list, a full bank says why.
     fun save(block: suspend () -> Unit) {
@@ -142,7 +145,8 @@ fun QuestionsEditor() {
         }
     }
 
-    val all = bank ?: return
+    val whole = bank ?: return
+    val all = whole.filter { it.kind == bankKind }
     val shown = all.filter { !it.archived }
     val archived = all.filter { it.archived }
     val groups = QuestionCategory.entries.associateWith { c -> shown.filter { it.questionCategory == c } }
@@ -153,12 +157,12 @@ fun QuestionsEditor() {
             .mapIndexed { i, q -> q.copy(sort = i) }
 
     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(stringResource(Res.string.questions_intro), style = MaterialTheme.typography.bodyMedium)
+        Text(stringResource(LocalSpace.current.pages.questionsIntro), style = MaterialTheme.typography.bodyMedium)
         if (shown.isEmpty()) Text(stringResource(Res.string.questions_empty), style = MaterialTheme.typography.bodyMedium)
 
         for ((category, list) in groups) {
             if (list.isEmpty()) continue
-            SectionHeading(stringResource(category.labelResource))
+            SectionHeading(category.label(bankKind))
             list.forEachIndexed { index, q ->
                 key(q.id) {
                     QuestionCard(
@@ -174,14 +178,15 @@ fun QuestionsEditor() {
                         },
                         onArchive = { save { repo.saveQuestion(q.copy(archived = true)) } },
                         onDelete = { save { repo.deleteQuestion(q.id) } },
+                        scopes = QuestionScope.of(bankKind),
                     )
                 }
             }
         }
 
         HorizontalDivider()
-        AddQuestion(full = all.size >= Question.MAX_QUESTIONS, maxText = maxText) { text ->
-            save { repo.addQuestion(text) }
+        AddQuestion(full = whole.size >= Question.MAX_QUESTIONS, maxText = maxText) { text ->
+            save { repo.addQuestion(text, kind = bankKind) }
         }
 
         LiveMessage {
@@ -219,7 +224,7 @@ fun QuestionsEditor() {
             confirmButton = {
                 TextButton(onClick = {
                     confirmReset = false
-                    save { repo.resetQuestions(language) }
+                    save { repo.resetQuestions(language, bankKind) }
                 }) { Text(stringResource(Res.string.questions_reset_confirm), color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = { TextButton(onClick = { confirmReset = false }) { Text(stringResource(Res.string.common_cancel)) } },
@@ -241,6 +246,8 @@ private fun QuestionCard(
     onMove: (Int) -> Unit,
     onArchive: () -> Unit,
     onDelete: () -> Unit,
+    /** The scopes this space's questions can have: a school's are all for both, so no scope control (kinds PR 29). */
+    scopes: List<QuestionScope> = QuestionScope.entries,
 ) {
     var text by remember(question.id) { mutableStateOf(question.text) }
     // Another device's edit (or Reset) replaces what is shown, unless it is what is being typed.
@@ -267,12 +274,12 @@ private fun QuestionCard(
                 label = stringResource(Res.string.questions_category),
                 options = QuestionCategory.entries,
                 chosen = question.questionCategory,
-                text = { stringResource(it.labelResource) },
+                text = { it.label(LocalSpace.current.built.id) },
             ) { onChange(question.copy(category = it.name)) }
             val appliesLabel = stringResource(Res.string.questions_applies)
-            Text(appliesLabel, style = MaterialTheme.typography.bodySmall)
-            FlowRow(Modifier.selectableGroup(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                QuestionScope.entries.forEach { s ->
+            if (scopes.size > 1) Text(appliesLabel, style = MaterialTheme.typography.bodySmall)
+            if (scopes.size > 1) FlowRow(Modifier.selectableGroup(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                scopes.forEach { s ->
                     val selected = question.scope == s
                     val label = stringResource(s.labelResource)
                     val desc = stringResource(Res.string.questions_applies_desc, appliesLabel, label)

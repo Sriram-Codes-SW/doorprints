@@ -14,13 +14,15 @@ browsers may delete a website's data when space runs low. To protect it:
 [saved for offline](settings-and-privacy.md#save-an-area-of-the-map-for-offline). Your houses are still in the list. On the
 website you can still add a house offline with **Add at my location** or **Type latitude and longitude**.
 
+**A page stays blank, or says "This page could not be loaded".** On a weak connection a page of the website can fail to download. Doorprints tries once more by itself. If the message stays, check your connection and choose **Try again**, or **Reload**. Your houses are kept in the browser, so nothing is lost.
+
 **I don't see Ask, Plan or Assistant.** They appear once AI is turned on: with
-[your own Gemini key](settings-and-privacy.md#ai-without-a-server), no server needed; or through
+[the AI provider you chose](settings-and-privacy.md#ai-without-a-server), no server needed; or through
 [your own server](set-up-a-server.md). With a server, if AI is on but they still don't appear, see its
 [troubleshooting table](set-up-a-server.md#if-something-goes-wrong).
 
 **Where do I get an API key?** An API key is a long password. You make the Doorprints API key yourself when you set
-up your server. The Gemini key for AI is free and comes from Google.
+up your server. You get the Gemini key for AI from Google. It has a free tier with a daily limit and weaker privacy terms (see [Is AI worth it for me?](settings-and-privacy.md#is-ai-worth-it)).
 [Two different keys](set-up-a-server.md#two-different-keys) explains which goes where.
 
 **Do I need both keys at once?** No. You need the Doorprints API key from the start: the server won't run without it.

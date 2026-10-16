@@ -1,0 +1,48 @@
+{
+  "spec": ["backend/src/test/java/app/doorprints/server/ai/eval/AgreementTest.java"],
+  "maven": ["-Dtest=AgreementTest"],
+  "mutations": [
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/Agreement.java",
+      "find": "return \"cited=\" + String.join(\",\", new TreeSet<>(cited));",
+      "replace": "return \"cited=\" + String.join(\",\", cited);",
+      "expect": "anAskAnswerIsTheSameWhenItCitesTheSameHousesInAnyOrderAndPassesOrFailsAlike"
+    },
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/Agreement.java",
+      "find": "return EvalScorer.ASK.equals(r.type) ? r.agreeKey + \"|passed=\" + r.passed() : r.agreeKey;",
+      "replace": "return r.agreeKey;",
+      "expect": "anAskAnswerIsTheSameWhenItCitesTheSameHousesInAnyOrderAndPassesOrFailsAlike"
+    },
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/Agreement.java",
+      "find": "return \"stops=\" + String.join(\",\", new TreeSet<>(stops)) + \"|fallback=\" + fallback;",
+      "replace": "return \"stops=\" + String.join(\",\", new TreeSet<>(stops));",
+      "expect": "aPlanIsTheSameWhenItVisitsTheSameSetOfHousesWithTheSameFallbackAndItsOrderIsReportedApart"
+    },
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/Agreement.java",
+      "find": "return trials.stream().filter(r -> !r.infra).toList();",
+      "replace": "return trials;",
+      "expect": "agreementIsTheShareOfCasesWhoseEveryScoredTrialAgreesAndAnInfraTrialIsLeftOut"
+    },
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/Agreement.java",
+      "find": "yield digits.isEmpty() ? null : digits.length() > 10 ? digits.substring(digits.length() - 10) : digits;",
+      "replace": "yield digits.isEmpty() ? null : digits;",
+      "expect": "twoDraftsAreTheSameWhenTheyDifferOnlyInWhatTheScorerIgnores"
+    },
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/Agreement.java",
+      "find": "if (row.differing() == 0) {",
+      "replace": "if (row.differing() >= 0) {",
+      "expect": "theRuleOfThreeIsStatedOnlyWhenNoPairDiffersAndNeverCallsAnythingDeterministic"
+    },
+    {
+      "file": "backend/src/test/java/app/doorprints/server/ai/eval/EvalScorer.java",
+      "find": "if (out.isEmpty()) out.add(PLAN);",
+      "replace": "",
+      "expect": "theRepeatedTypesAreThePlanCasesUnlessAskedOtherwiseAndTheDefaultIsUnchanged"
+    }
+  ]
+}

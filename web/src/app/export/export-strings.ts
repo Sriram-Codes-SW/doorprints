@@ -17,6 +17,7 @@
  */
 
 import type { Lang } from '../i18n/languages';
+import { kindExportWords } from './kind-export-words';
 
 /**
  * The words that appear **inside** an exported table, in the export language.
@@ -987,8 +988,14 @@ export class ExportStrings {
     this.values = values;
   }
 
-  static of(language: Lang): ExportStrings {
-    return new ExportStrings(language, EXPORT_DICTS[language] ?? EXPORT_EN);
+  /**
+   * The words of `language`; with `kind`, a copy that speaks in another kind (S4b-BL-266) has that kind's words for the keys
+   * it names (`kind-export-words.ts`), the rest the house's.
+   */
+  static of(language: Lang, kind?: string): ExportStrings {
+    const base = EXPORT_DICTS[language] ?? EXPORT_EN;
+    const own = kindExportWords(kind, language);
+    return new ExportStrings(language, own ? { ...base, ...own } : base);
   }
 
   get(key: ExportStringKey): string {

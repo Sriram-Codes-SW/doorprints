@@ -51,7 +51,8 @@ public record AiProperties(
         indexOnChange = indexOnChange == null || indexOnChange;
         maxInputChars = positiveOr(maxInputChars, 8000);
         maxQuestionChars = positiveOr(maxQuestionChars, 1000);
-        maxOutputTokens = positiveOr(maxOutputTokens, 2048);
+        // 8,192, not 2,048: on Gemini 3.x the output limit includes the hidden thinking tokens (S4b-BL-194).
+        maxOutputTokens = positiveOr(maxOutputTokens, 8192);
         rateLimit = rateLimit == null ? new RateLimit(null, null, null) : rateLimit;
         rag = rag == null ? new Rag(null, null) : rag;
         agent = agent == null ? new Agent(null, null, null) : agent;

@@ -29,13 +29,18 @@ copyright: "Doorprints. मुफ़्त और ओपन सोर्स (AGP
 nav:
   - "मुख्य पृष्ठ": index.md
   - "एक नज़र में स्क्रीन": screen-at-a-glance.md
+  - "फ़ोन या कंप्यूटर": phone-or-computer.md
   - "आपके मकान": houses.md
   - "तुलना और योजना": compare-and-plan.md
   - "आपका डेटा": your-data.md
+  - "गूगल ड्राइव बैकअप": google-drive.md
   - "सर्वर और साझा करना": server-and-sharing.md
   - "अपना सर्वर लगाएँ": set-up-a-server.md
   - "हंट मोड": hunt-mode.md
+  - "आपके रास्ते": your-paths.md
   - "भाषा, थीम, गोपनीयता, ऑफ़लाइन नक़्शे": settings-and-privacy.md
+  - "मकानों के अलावा भी (प्रायोगिक)": other-kinds.md
+  - "हम क्या जाँचते हैं": what-we-test.md
   - "समस्याएँ और आम सवाल": faq.md
 
 theme:

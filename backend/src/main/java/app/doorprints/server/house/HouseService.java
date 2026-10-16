@@ -22,17 +22,23 @@ import app.doorprints.server.common.NotFoundException;
 import app.doorprints.server.photo.PhotoRepository;
 import app.doorprints.server.sync.ClientClock;
 import app.doorprints.server.sync.SyncVersions;
+import app.doorprints.server.sync.Upsert;
 import app.doorprints.server.visit.VisitRepository;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+/**
+ * The house rules shared by the HTTP API and the AI tools: listing, the last-write-wins upsert, deletion that purges
+ * private content, and the nearby search.
+ */
 @Service
 public class HouseService {
 
@@ -53,6 +59,9 @@ public class HouseService {
         this.events = events;
     }
 
+    /**
+     * Live houses, newest edit first; with a sync version, every house changed after it, deletions included.
+     */
     @Transactional(readOnly = true)
     public List<HouseDto> list(Long since) {
         var houses = since == null
@@ -61,6 +70,10 @@ public class HouseService {
         return houses.stream().map(HouseDto::from).toList();
     }
 
+    /**
+     * One house.
+     * @throws NotFoundException if it does not exist
+     */
     @Transactional(readOnly = true)
     public HouseDto get(UUID id) {
         return HouseDto.from(find(id));
@@ -68,20 +81,26 @@ public class HouseService {
 
     /**
      * Create or update. Conflicts are resolved "last write wins" on the client's updatedAt (clamped by
-     * {@link ClientClock}): an older edit arriving late (e.g. from an offline phone) doesn't overwrite a newer one.
+     * {@link ClientClock}): an older edit arriving late (e.g. from an offline phone) doesn't overwrite a newer one,
+     * and the same stamp with the same content (a retried PUT) writes nothing and takes no sync version
+     * ({@link Upsert}, docs/03 section 10.1).
      * A body with {@code deleted: true} is a delete (the Android app deletes this way) and purges the content.
      */
     @Transactional
     public HouseDto upsert(UUID id, HouseDto dto) {
         versions.lock(); // before reading, so the last-write-wins check and the write are atomic
-        var incomingUpdatedAt = clock.accept(dto.updatedAt(), "updatedAt");
-        var house = repo.findById(id).orElse(null);
-        boolean created = house == null;
+        var incomingUpdatedAt = clock.accept(dto.updatedAt(), "updatedAt").truncatedTo(ChronoUnit.MICROS);
+        var stored = repo.findById(id).orElse(null);
+        var decision = Upsert.decide(stored == null ? null : stored.getUpdatedAt(), incomingUpdatedAt,
+                () -> sameContent(stored, dto));
+        if (decision == Upsert.Decision.KEEP_STORED || decision == Upsert.Decision.UNCHANGED) {
+            return HouseDto.from(stored);
+        }
+        boolean created = decision == Upsert.Decision.CREATE;
+        var house = stored;
         if (created) {
             house = new House(id);
-            house.setCreatedAt(clock.accept(dto.createdAt(), "createdAt"));
-        } else if (house.getUpdatedAt().isAfter(incomingUpdatedAt)) {
-            return HouseDto.from(house);
+            house.setCreatedAt(clock.accept(dto.createdAt(), "createdAt").truncatedTo(ChronoUnit.MICROS));
         }
         boolean wasDeleted = !created && house.isDeleted();
         dto.applyTo(house);
@@ -94,6 +113,27 @@ public class HouseService {
         return HouseDto.from(saved);
     }
 
+    /**
+     * True when applying {@code dto} to {@code stored} would change nothing a client can see (the tie rule,
+     * {@link Upsert}): the dto is applied to a scratch house that carries the stored row's server-managed fields, and
+     * the two are compared as the DTOs a client would get. Two tombstones are the same whatever the dto still carries,
+     * because a delete keeps no content.
+     */
+    private static boolean sameContent(House stored, HouseDto dto) {
+        if (dto.deleted() && stored.isDeleted()) return true;
+        var scratch = new House(stored.getId());
+        scratch.setCreatedAt(stored.getCreatedAt());
+        scratch.setUpdatedAt(stored.getUpdatedAt());
+        scratch.setSyncVersion(stored.getSyncVersion());
+        dto.applyTo(scratch);
+        return HouseDto.from(scratch).equals(HouseDto.from(stored));
+    }
+
+    /**
+     * Deletes a house: its content is blanked, its photos are tombstoned and its visits unlinked, and the search
+     * index is told. Deleting twice is fine.
+     * @throws NotFoundException if it never existed
+     */
     @Transactional
     public void delete(UUID id) {
         versions.lock();
@@ -115,6 +155,9 @@ public class HouseService {
         visits.unlinkHouse(house.getId(), now, version);
     }
 
+    /**
+     * Live houses within the radius in metres of a point, nearest first (at most 50), each with its distance.
+     */
     @Transactional(readOnly = true)
     public List<HouseDto> nearby(double lat, double lon, double radius) {
         var rows = repo.findNearby(lat, lon, radius);
@@ -126,11 +169,18 @@ public class HouseService {
                 .toList();
     }
 
+    /**
+     * Live houses on a street, matched ignoring case.
+     */
     @Transactional(readOnly = true)
     public List<HouseDto> onStreet(String street) {
         return repo.findLiveOnStreet(street.trim()).stream().map(HouseDto::from).toList();
     }
 
+    /**
+     * The house row, deleted or not.
+     * @throws NotFoundException if there is none
+     */
     House find(UUID id) {
         return repo.findById(id).orElseThrow(() -> new NotFoundException("House " + id + " not found"));
     }

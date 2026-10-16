@@ -41,7 +41,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  * ADR-26): contact removal, the listing checks, the Ask snippet and citation markers, the walking route, and the statuses in the running. The same
  * file is checked by the phones' Kotlin (`ParityVectorsTest` in `:shared`) and the website's TypeScript, so on-device
  * AI treats text exactly as the server does. The expected values are the server's own answers: run this test with
- * {@code -Dparity.write=true} to fill them in after changing the inputs, and review the diff.
+ * {@code -Dparity.write=true} to fill them in after changing the inputs, and review the diff. The regional vectors
+ * (S4b-BL-174: Indian phone formats, price styles, routes across India, rupee grouping) were written by hand or with an
+ * independent Python haversine, never filled in this way; do not run the write mode over them without reading the diff.
  */
 class ParityVectorsTest {
 
@@ -72,15 +74,27 @@ class ParityVectorsTest {
                 case "place" -> r.place(input);
                 case "freeText" -> r.freeText(input);
                 case "scrub" -> ContactRedactor.scrubStoredText(input, name, phone);
-                case "phones" -> ContactRedactor.redactPhones(input);
+                case "generic" -> ContactRedactor.redactGeneric(input);
                 default -> throw new IllegalArgumentException(o.get("method").asText());
             };
             o.put("expected", result);
         }
-        for (var c : (ArrayNode) out.get("sanitize")) {
+        for (var c : (ArrayNode) out.get("answerText")) {
             var o = (ObjectNode) c;
-            var raw = o.get("raw").isNull() ? null : JSON.treeToValue(o.get("raw"), RawListing.class);
-            o.set("expected", JSON.valueToTree(DraftSanitizer.sanitize(raw, o.get("source").asText())));
+            o.put("expected", AnswerText.clean(o.get("input").asText(), o.get("context").asText()));
+        }
+        // sanitizeNative (S4b-BL-174b): the numbers copied in the digits of Indian scripts, apart from `sanitize` so the house
+        // pins (HouseAiPinsTest, house-ai-pins.spec.ts), which hash every `sanitize` draft by position, stay as they were.
+        for (var key : new String[] {"sanitize", "sanitizeNative"}) {
+            for (var c : (ArrayNode) out.get(key)) {
+                var o = (ObjectNode) c;
+                var raw = o.get("raw").isNull() ? null : JSON.treeToValue(o.get("raw"), RawListing.class);
+                o.set("expected", JSON.valueToTree(app.doorprints.server.ai.extract.HouseRaw.sanitize(raw, o.get("source").asText())));
+            }
+        }
+        for (var c : (ArrayNode) out.get("listingLinks")) {
+            var o = (ObjectNode) c;
+            o.put("expected", DraftSanitizer.linkCount(o.get("text").asText()));
         }
         for (var c : (ArrayNode) out.get("snippet")) {
             var o = (ObjectNode) c;
@@ -100,13 +114,19 @@ class ParityVectorsTest {
             var o = (ObjectNode) c;
             o.put("expected", app.doorprints.server.house.HouseStatus.valueOf(o.get("status").asText()).inTheRunning());
         }
-        var route = (ObjectNode) out.get("route");
+        routeLegs((ObjectNode) out.get("route"));
+        // S4b-BL-174: routes across India (Mumbai, Chennai to Guwahati, the extremes from Kanyakumari, the hills).
+        for (var r : (ArrayNode) out.get("routes")) routeLegs((ObjectNode) r);
+        return out;
+    }
+
+    /** Fills {@code nearestNeighbour} and {@code inOrder} of one route entry ({@code start}, {@code points}). */
+    private static void routeLegs(ObjectNode route) {
         var start = route.get("start");
         var points = new ArrayList<RouteOptimizer.Point>();
         for (var p : route.get("points")) points.add(new RouteOptimizer.Point(p.get(0).asText(), p.get(1).asDouble(), p.get(2).asDouble()));
         route.set("nearestNeighbour", legs(RouteOptimizer.nearestNeighbour(start.get(0).asDouble(), start.get(1).asDouble(), points)));
         route.set("inOrder", legs(RouteOptimizer.legsInOrder(start.get(0).asDouble(), start.get(1).asDouble(), points)));
-        return out;
     }
 
     private static ArrayNode legs(List<RouteOptimizer.Leg> legs) {
