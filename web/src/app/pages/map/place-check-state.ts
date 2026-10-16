@@ -39,6 +39,7 @@ import { placeCheckSummary, placeCheckText, placeTextHelpers } from '../../share
 import type { PlaceKind, PlaceSummary, PlaceText } from '../../shared/trace-place-text';
 import { checkGeoJson } from '../../shared/trace-style';
 import { TraceView } from './trace-view';
+import { isBaselineKind } from '../../core/kind-capabilities';
 
 type Bounds = [[number, number], [number, number]];
 
@@ -114,7 +115,7 @@ export class PlaceCheckState {
     const result = placeCheck(place, walks, kind === 'here' ? fixAccuracyM : undefined);
     const summary = placeCheckSummary(result, { hasSaved: walks.some((w) => w.source === 'SAVED'), fixAccuracyM: kind === 'here' ? fixAccuracyM : null });
     const stretches = result.rows.filter((r) => r.walked).map((r) => matchedStretch(walks[r.walkIndex], r));
-    return { kind, ...(candidate && candidate !== 'house' ? { candidate } : {}), place: { lat: place.lat, lon: place.lon }, summary, stretches, bounds: boundsOf(place, stretches) };
+    return { kind, ...(candidate && !isBaselineKind(candidate) ? { candidate } : {}), place: { lat: place.lat, lon: place.lon }, summary, stretches, bounds: boundsOf(place, stretches) };
   }
 
   /** The Map's answer: compares, shows it (the panel, the halo, the ring) and says the headline once. */

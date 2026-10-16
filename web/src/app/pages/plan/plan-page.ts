@@ -59,6 +59,7 @@ import { round6 } from '../../shared/location-map';
 import { COUNTRY_VIEW, loadStartPoint, locationErrorKey, parseCoordinate } from '../../shared/map-center';
 import { locateOnce } from '../../shared/locate-once';
 import { NO_TYPED_START, type StartFieldId, type TypedStart, nextTypedStart, startFieldToFix } from './start-field';
+import { isBaselineKind } from '../../core/kind-capabilities';
 
 const ROUTE_SOURCE = 'plan-route';
 
@@ -327,7 +328,7 @@ export class PlanPage implements AfterViewInit, OnDestroy {
     // An earlier error stays in place while this run is busy (drawn as being updated); the run's end replaces it.
     this.busy.set(true);
     this.request = this.ai
-      .planVisits({ question: q, startLat: s.lat, startLon: s.lon, maxStops: clamp(Math.round(this.maxStops), 1, 8) }, ...(this.kind === 'house' ? [] : [this.kind]))
+      .planVisits({ question: q, startLat: s.lat, startLon: s.lon, maxStops: clamp(Math.round(this.maxStops), 1, 8) }, ...(isBaselineKind(this.kind) ? [] : [this.kind]))
       .subscribe({
         next: (p) => {
           this.request = null;

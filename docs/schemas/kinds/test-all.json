@@ -1,0 +1,623 @@
+{
+ "format": "doorprints-kind/1",
+ "id": "zz_all",
+ "version": 1,
+ "note": "The synthetic kind of the conformance suite (docs/03 §18.26, kinds PR 32): every capability on, two money cadences, three money extras, a checklist, a question bank, Compare criteria, filters, contacts, rooms, moving in and viewings. It exists only in tests: no build lists it (web `registerTestKind`, `DevKinds`, the server's `app.kinds.available` and `backend/src/main/resources/kinds` never name it), and a tripwire fails any non-test source that mentions `zz_all`. Its words are the house's and the school's existing keys, so every screen renders real text.",
+ "labels": {
+  "new": {
+   "web": "house.newTitle",
+   "android": "house_new_title"
+  },
+  "many": {
+   "web": "map.stats.houses",
+   "android": "houses_title"
+  },
+  "delete": {
+   "web": "house.delete",
+   "android": "house_delete"
+  }
+ },
+ "statuses": [
+  {
+   "id": "NEW",
+   "label": {
+    "web": "status.NEW",
+    "android": "status_NEW"
+   }
+  },
+  {
+   "id": "SHORTLISTED",
+   "label": {
+    "web": "status.SHORTLISTED",
+    "android": "status_SHORTLISTED"
+   }
+  },
+  {
+   "id": "REJECTED",
+   "label": {
+    "web": "status.REJECTED",
+    "android": "status_REJECTED"
+   }
+  },
+  {
+   "id": "TAKEN",
+   "label": {
+    "web": "status.TAKEN",
+    "android": "status_TAKEN"
+   }
+  },
+  {
+   "id": "NOT_CHOSEN",
+   "label": {
+    "web": "status.NOT_CHOSEN",
+    "android": "status_NOT_CHOSEN"
+   }
+  }
+ ],
+ "sections": [
+  {
+   "id": "details",
+   "label": {
+    "web": "house.details",
+    "android": null
+   }
+  },
+  {
+   "id": "cost",
+   "label": {
+    "web": "house.cost",
+    "android": "house_cost"
+   }
+  },
+  {
+   "id": "rooms",
+   "label": {
+    "web": "rooms.heading",
+    "android": "house_rooms"
+   }
+  },
+  {
+   "id": "questions",
+   "label": {
+    "web": "questions.title",
+    "android": "house_questions"
+   }
+  },
+  {
+   "id": "viewings",
+   "label": {
+    "web": "viewings.cardHeading",
+    "android": "viewings_cardHeading"
+   }
+  },
+  {
+   "id": "moveIn",
+   "label": {
+    "web": "movein.heading",
+    "android": "movein_title"
+   }
+  },
+  {
+   "id": "areaNotes",
+   "label": {
+    "web": "areaNotes.heading",
+    "android": "notes_heading"
+   }
+  },
+  {
+   "id": "distances",
+   "label": {
+    "web": "distances.heading",
+    "android": "house_distances"
+   }
+  },
+  {
+   "id": "location",
+   "label": {
+    "web": "house.location",
+    "android": "house_location_heading"
+   }
+  },
+  {
+   "id": "walks",
+   "label": {
+    "web": "trace.house.title",
+    "android": "trace_house_title"
+   }
+  },
+  {
+   "id": "checklist",
+   "label": {
+    "web": "house.checklist",
+    "android": "house_checklist"
+   }
+  },
+  {
+   "id": "visits",
+   "label": {
+    "web": "house.visits",
+    "android": "house_visits"
+   }
+  },
+  {
+   "id": "photos",
+   "label": {
+    "web": "house.photos",
+    "android": "house_photos"
+   }
+  }
+ ],
+ "core": [
+  {
+   "id": "label",
+   "section": "details",
+   "order": 10,
+   "label": {
+    "web": "house.name",
+    "android": "house_name"
+   }
+  },
+  {
+   "id": "status",
+   "section": "details",
+   "order": 20,
+   "label": {
+    "web": "house.status",
+    "android": "house_status"
+   }
+  },
+  {
+   "id": "rating",
+   "section": "details",
+   "order": 30,
+   "label": {
+    "web": "house.rating",
+    "android": "house_rating"
+   }
+  },
+  {
+   "id": "money",
+   "section": "details",
+   "order": 40,
+   "label": {
+    "web": "house.price",
+    "android": "house_price_sale",
+    "byCadence": {
+     "month": {
+      "android": "house_price_rent"
+     }
+    }
+   },
+   "cadences": [
+    {
+     "id": "month",
+     "label": {
+      "web": "price.rent",
+      "android": "house_rent"
+     }
+    },
+    {
+     "id": "once",
+     "label": {
+      "web": "price.sale",
+      "android": "house_buy"
+     }
+    }
+   ]
+  },
+  {
+   "id": "address",
+   "section": "details",
+   "order": 80,
+   "label": {
+    "web": "house.address",
+    "android": "house_address"
+   }
+  },
+  {
+   "id": "street",
+   "section": "details",
+   "order": 90,
+   "label": {
+    "web": "house.street",
+    "android": "house_street"
+   }
+  },
+  {
+   "id": "locality",
+   "section": "details",
+   "order": 100,
+   "label": {
+    "web": "house.locality",
+    "android": "house_locality"
+   }
+  },
+  {
+   "id": "contactName",
+   "section": "details",
+   "order": 110,
+   "label": {
+    "web": "house.contactName",
+    "android": "house_contact_name"
+   }
+  },
+  {
+   "id": "contactPhone",
+   "section": "details",
+   "order": 120,
+   "label": {
+    "web": "house.contactPhone",
+    "android": "house_phone"
+   }
+  },
+  {
+   "id": "brokerId",
+   "section": "details",
+   "order": 130,
+   "label": {
+    "web": "house.broker",
+    "android": "house_broker"
+   }
+  },
+  {
+   "id": "listingUrl",
+   "section": "details",
+   "order": 140,
+   "label": {
+    "web": "house.listingUrl",
+    "android": "house_listing"
+   }
+  },
+  {
+   "id": "notes",
+   "section": "details",
+   "order": 150,
+   "label": {
+    "web": "house.notes",
+    "android": "house_notes"
+   }
+  },
+  {
+   "id": "location",
+   "section": "location",
+   "order": 10,
+   "label": {
+    "web": "house.location",
+    "android": "house_location_heading"
+   }
+  },
+  {
+   "id": "locationSource",
+   "section": "location",
+   "order": 20,
+   "label": {
+    "web": "house.approx",
+    "android": "house_approx"
+   }
+  }
+ ],
+ "extras": [
+  {
+   "id": "bedrooms",
+   "type": "number",
+   "integer": true,
+   "min": 0,
+   "unit": "count",
+   "section": "details",
+   "order": 50,
+   "label": {
+    "web": "house.bhk",
+    "android": "house_bhk"
+   }
+  },
+  {
+   "id": "board",
+   "type": "enum",
+   "section": "details",
+   "order": 60,
+   "label": {
+    "web": "school.board",
+    "android": "school_board"
+   },
+   "options": [
+    {
+     "id": "CBSE",
+     "label": {
+      "web": "school.board.CBSE",
+      "android": "school_board_CBSE"
+     }
+    },
+    {
+     "id": "ICSE",
+     "label": {
+      "web": "school.board.ICSE",
+      "android": "school_board_ICSE"
+     }
+    },
+    {
+     "id": "STATE",
+     "label": {
+      "web": "school.board.STATE",
+      "android": "school_board_STATE"
+     }
+    },
+    {
+     "id": "IB",
+     "label": {
+      "web": "school.board.IB",
+      "android": "school_board_IB"
+     }
+    },
+    {
+     "id": "IGCSE",
+     "label": {
+      "web": "school.board.IGCSE",
+      "android": "school_board_IGCSE"
+     }
+    },
+    {
+     "id": "OTHER",
+     "label": {
+      "web": "school.option.OTHER",
+      "android": "school_option_OTHER"
+     }
+    }
+   ]
+  },
+  {
+   "id": "grades",
+   "type": "text",
+   "maxLength": 40,
+   "section": "details",
+   "order": 70,
+   "label": {
+    "web": "school.grades",
+    "android": "school_grades"
+   }
+  },
+  {
+   "id": "includesMeals",
+   "type": "bool",
+   "section": "cost",
+   "order": 75,
+   "label": {
+    "web": "school.busService",
+    "android": "school_bus"
+   }
+  },
+  {
+   "id": "deposit",
+   "type": "money",
+   "max": 1000000000000,
+   "cadences": [
+    "once"
+   ],
+   "section": "cost",
+   "order": 10,
+   "label": {
+    "web": "cost.deposit",
+    "android": "house_deposit"
+   },
+   "better": "lower"
+  },
+  {
+   "id": "maintenance",
+   "type": "money",
+   "max": 1000000000000,
+   "cadences": [
+    "month"
+   ],
+   "section": "cost",
+   "order": 20,
+   "label": {
+    "web": "cost.maintenance",
+    "android": "house_maintenance"
+   },
+   "better": "lower"
+  },
+  {
+   "id": "fees",
+   "type": "money",
+   "max": 1000000000000,
+   "cadences": [
+    "year"
+   ],
+   "better": "lower",
+   "section": "cost",
+   "order": 30,
+   "label": {
+    "web": "school.feesPerYear",
+    "android": "school_fees"
+   }
+  },
+  {
+   "id": "availableFrom",
+   "type": "date",
+   "section": "cost",
+   "order": 90,
+   "label": {
+    "web": "cost.availableFrom",
+    "android": "house_available_from"
+   }
+  }
+ ],
+ "checklist": [
+  {
+   "key": "water",
+   "label": {
+    "web": "check.water",
+    "android": "check_water"
+   }
+  },
+  {
+   "key": "power",
+   "label": {
+    "web": "check.power",
+    "android": "check_power"
+   }
+  },
+  {
+   "key": "parking",
+   "label": {
+    "web": "check.parking",
+    "android": "check_parking"
+   }
+  }
+ ],
+ "questions": {
+  "seed": "docs/schemas/default-questions.json",
+  "scopes": [
+   {
+    "id": "BOTH",
+    "cadences": [
+     "month",
+     "once"
+    ]
+   },
+   {
+    "id": "RENT",
+    "cadences": [
+     "month"
+    ]
+   },
+   {
+    "id": "SALE",
+    "cadences": [
+     "once"
+    ]
+   }
+  ]
+ },
+ "search": [
+  "label",
+  "address",
+  "street",
+  "locality",
+  "notes",
+  "contactName",
+  "brokerId",
+  "rooms",
+  "questions",
+  "areaNotes",
+  "moveIn",
+  "board",
+  "grades"
+ ],
+ "ai": {
+  "extract": [
+   "label",
+   "address",
+   "street",
+   "locality",
+   "contactName",
+   "contactPhone",
+   "listingUrl",
+   "notes",
+   "bedrooms",
+   "board",
+   "grades"
+  ],
+  "ask": [
+   "label",
+   "address",
+   "street",
+   "locality",
+   "bedrooms",
+   "board",
+   "grades",
+   "includesMeals",
+   "deposit",
+   "maintenance",
+   "fees",
+   "availableFrom",
+   "rooms",
+   "questions",
+   "viewings",
+   "areaNotes",
+   "distances",
+   "moveIn",
+   "status",
+   "rating",
+   "checklist",
+   "visits",
+   "notes"
+  ],
+  "plan": [
+   "label",
+   "status",
+   "rating",
+   "locality",
+   "street",
+   "bedrooms",
+   "board",
+   "deposit"
+  ],
+  "never": [
+   "contactName",
+   "contactPhone"
+  ],
+  "words": {
+   "noun": "Thing",
+   "records": "things",
+   "extras": {
+    "board": {
+     "words": "Board",
+     "options": {
+      "CBSE": "CBSE",
+      "ICSE": "ICSE",
+      "STATE": "State board",
+      "IB": "IB",
+      "IGCSE": "Cambridge (IGCSE)",
+      "OTHER": "Other"
+     }
+    },
+    "grades": {
+     "words": "Grades offered"
+    },
+    "includesMeals": {
+     "words": "Meals included"
+    },
+    "fees": {
+     "words": "Fees per year"
+    }
+   }
+  }
+ },
+ "capabilities": {
+  "map": true,
+  "hunt": {
+   "alertRadiusM": 60,
+   "stayCreates": true,
+   "streetMemory": true,
+   "areas": true
+  },
+  "rooms": true,
+  "moveIn": true,
+  "contacts": {
+   "role": "broker",
+   "autoCreateFromPhone": true
+  },
+  "viewings": {
+   "questionsSeed": "house"
+  },
+  "compare": {
+   "criteria": [
+    "water",
+    "power",
+    "parking",
+    "deposit",
+    "maintenance",
+    "fees"
+   ]
+  },
+  "paths": true,
+  "identity": {
+   "icon": "star",
+   "colour": "plum"
+  },
+  "filters": [
+   "board",
+   "includesMeals"
+  ]
+ }
+}

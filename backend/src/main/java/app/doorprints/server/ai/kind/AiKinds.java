@@ -124,9 +124,23 @@ public class AiKinds {
         return k != null ? k : HOUSE;
     }
 
-    /** Whether {@code kind} is in every {@code app.kinds.available}: the house (its documents carry no kind stamp, S4b-BL-308). */
+    /** Whether {@code kind} is in every {@code app.kinds.available}: the baseline kind, the house (its documents carry no kind stamp, S4b-BL-308). */
     public static boolean alwaysAvailable(String kind) {
         return House.HOUSE_KIND.equals(kind);
+    }
+
+    /**
+     * Whether {@code kind} is the baseline kind (its file's {@code capabilities.baseline}): the one whose AI calls name no kind and whose
+     * candidates carry no kind stamp. A kind this server has no file for is not (kinds PR 32).
+     */
+    public static boolean isBaseline(String kind) {
+        var file = kind == null ? null : KindFiles.builtIn().get(kind);
+        return file != null && file.capabilities().baseline();
+    }
+
+    /** The kind a candidate is of: its own, else the baseline kind's. */
+    public static String kindOf(String kind) {
+        return kind == null ? House.HOUSE_KIND : kind;
     }
 
     /** The kind file the server read for {@code kind} (its capabilities among the rest), or null when it has none. */

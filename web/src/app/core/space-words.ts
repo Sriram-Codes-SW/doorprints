@@ -19,6 +19,7 @@
 import type { TKey } from '../i18n/en';
 import { kindById } from './kind-setting';
 import { kindWordKey } from './kind-word-table';
+import { baselineKindId } from './candidate';
 
 /**
  * The words of a space's first screen and of its candidate page that name the kind (kinds PR 8, S4b-BL-212; S4b-BL-277,
@@ -54,7 +55,7 @@ const IDS = ['heading', 'regionLabel', 'regionHint', 'add', 'addHint', 'addHintS
 
 /** The space words of `kind`: the kind file's `words`, the house's for a kind with none (`kind-word-table.ts`). */
 export function spaceWords(kind: string | null | undefined): SpaceWords {
-  const k = kindById(kind ?? 'house');
+  const k = kindById(kind ?? baselineKindId());
   const w = (id: (typeof IDS)[number]): TKey => kindWordKey(k.id, id) as TKey;
   return {
     heading: w('heading'), regionLabel: w('regionLabel'), regionHint: w('regionHint'), add: w('add'), addHint: w('addHint'),

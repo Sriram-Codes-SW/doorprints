@@ -95,7 +95,7 @@ data class Question(
         val KINDS: List<String> = listOf("school")
 
         /** The kind a question id belongs to: a kind's own ids start `qd_<kind>_` or `q_<kind>_`, every other id is the house's. */
-        fun kindOf(id: String): String = KINDS.firstOrNull { id.startsWith("qd_${it}_") || id.startsWith("q_${it}_") } ?: KindSettingRules.HOUSE
+        fun kindOf(id: String): String = KINDS.firstOrNull { id.startsWith("qd_${it}_") || id.startsWith("q_${it}_") } ?: Candidates.BASELINE_KIND
 
         /** The bank's order: [sort], then the id. */
         val ORDER: Comparator<Question> = compareBy<Question> { it.sort }.thenBy { it.id }
@@ -106,9 +106,9 @@ data class Question(
          * A fresh custom id, `q_` + 8 random lowercase hex digits (`q_<kind>_` first for a kind's own bank), drawn again while
          * [taken] says it is used.
          */
-        fun newCustomId(taken: (String) -> Boolean, random: Random = Random.Default, kind: String = KindSettingRules.HOUSE): String {
+        fun newCustomId(taken: (String) -> Boolean, random: Random = Random.Default, kind: String = Candidates.BASELINE_KIND): String {
             while (true) {
-                val id = (if (kind == KindSettingRules.HOUSE) CUSTOM_PREFIX else "${CUSTOM_PREFIX}${kind}_") + (1..8).joinToString("") { random.nextInt(16).toString(16) }
+                val id = (if (KindCapabilities.of(kind).baseline) CUSTOM_PREFIX else "${CUSTOM_PREFIX}${kind}_") + (1..8).joinToString("") { random.nextInt(16).toString(16) }
                 if (!taken(id)) return id
             }
         }
@@ -341,11 +341,7 @@ object DefaultQuestions {
     private val byId: Map<String, Default> = (ALL + SCHOOL).associateBy { it.id }
 
     /** The seed of a kind's bank: the house's `default-questions.json`, the school's `school-questions.json`; none for another kind. */
-    fun of(kind: String): List<Default> = when (kind) {
-        KindSettingRules.HOUSE -> ALL
-        "school" -> SCHOOL
-        else -> emptyList()
-    }
+    fun of(kind: String): List<Default> = if (KindCapabilities.of(kind).baseline) ALL else if (kind == "school") SCHOOL else emptyList()
 
     /** The seeded question with this id (of any kind), or null for an id that is not one. */
     fun byId(id: String): Default? = byId[id]

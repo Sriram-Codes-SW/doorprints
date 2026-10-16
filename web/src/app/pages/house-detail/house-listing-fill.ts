@@ -41,6 +41,7 @@ import { builtInKind } from '../../core/dev-kinds';
 import { drawnKind, kindsOn } from '../../core/kind-setting';
 import { mergeKindExtras, shownExtra } from './kind-draft-merge';
 import type { FillField } from './house-draft-merge';
+import { isBaselineKind } from '../../core/kind-capabilities';
 
 /**
  * A field the last fill wrote, with the value it wrote: the "from the listing" mark stays while the field still holds it.
@@ -148,7 +149,7 @@ export class HouseListingFill {
     this.kept.set([]);
     // Kinds PR 7 (S4b-BL-211): a candidate of another kind the extract fills (the developer flag or Settings' switch on) names its kind.
     const kind = builtInKind(this.deps.draft()?.kind, kindsOn());
-    const read = kind.id !== 'house' && kind.extracts ? this.deps.ai.extractListing(text, kind.id) : this.deps.ai.extractListing(text);
+    const read = !isBaselineKind(kind.id) && kind.extracts ? this.deps.ai.extractListing(text, kind.id) : this.deps.ai.extractListing(text);
     this.request = read.subscribe({
       next: (draft) => {
         this.request = null;

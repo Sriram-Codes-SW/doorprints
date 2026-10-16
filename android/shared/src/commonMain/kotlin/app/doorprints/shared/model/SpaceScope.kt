@@ -31,7 +31,7 @@ data class SpaceView(val kind: String, val multi: Boolean, val default: String, 
 
     companion object {
         /** The house alone: the one space of the app as it always was, which holds every candidate. */
-        val ONE = SpaceView(KindSettingRules.HOUSE, multi = false, default = KindSettingRules.HOUSE, available = listOf(KindSettingRules.HOUSE))
+        val ONE = SpaceView(Candidates.BASELINE_KIND, multi = false, default = Candidates.BASELINE_KIND, available = listOf(Candidates.BASELINE_KIND))
     }
 }
 
@@ -83,7 +83,7 @@ object SpaceScope {
         if (!multi) {
             true
         } else {
-            val kind = candidateKind ?: KindSettingRules.HOUSE
+            val kind = Candidates.kindOf(candidateKind)
             (if (kind in available) kind else default) == space
         }
     }
@@ -116,7 +116,7 @@ object SpaceScope {
      */
     fun spaceFileName(name: String, space: String?, many: String): String {
         val slug = fileSlug(many)
-        if (space == null || space == KindSettingRules.HOUSE || slug.isEmpty()) return name
+        if (space == null || KindCapabilities.of(space).baseline || slug.isEmpty()) return name
         return DATE.find(name)?.let { name.replaceRange(it.range, "$slug-${it.value}") } ?: name
     }
 
@@ -129,7 +129,7 @@ object SpaceScope {
      * space).
      */
     fun aiShownIn(kind: String, available: List<String>, on: Boolean, ownKey: Boolean, serverKinds: List<String> = emptyList()): Boolean =
-        on && (kind == KindSettingRules.HOUSE || (kind in available && (ownKey || kind in serverKinds)))
+        on && (KindCapabilities.of(kind).baseline || (kind in available && (ownKey || kind in serverKinds)))
 
     /** The kind a shared listing lands in: the [chosen] one when it is [enabled], else the [default] kind. */
     fun shareKind(chosen: String?, enabled: List<String>, default: String): String =

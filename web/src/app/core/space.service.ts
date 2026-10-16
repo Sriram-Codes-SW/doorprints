@@ -16,6 +16,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+import { baselineKindId, kindOfCandidate } from './candidate';
 import { isBaselineKind } from './kind-capabilities';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { GuardsCheckEnd, Router, type Routes } from '@angular/router';
@@ -36,12 +37,12 @@ const HOUSE_PATH = /^\/(?:houses|compare|ask|plan)(?:\/|$)/;
 export function kindOfPath(path: string): string | null {
   const m = SPACE_PATH.exec(path);
   if (m) return m[1];
-  return HOUSE_PATH.test(path) ? 'house' : null;
+  return HOUSE_PATH.test(path) ? baselineKindId() : null;
 }
 
 /** The space a candidate belongs to: its own kind when that kind has a space here, else the default space. */
 export function spaceOf(h: Pick<HouseDto, 'kind'>, multi: boolean, dflt: string, available: readonly string[]): string {
-  const kind = h.kind ?? 'house';
+  const kind = kindOfCandidate(h);
   return multi && available.includes(kind) ? kind : dflt;
 }
 

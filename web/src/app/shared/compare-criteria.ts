@@ -25,6 +25,7 @@ import { criterionName } from './criterion-name';
 import { kindValues } from './kind-values';
 import { DEFAULT_WEIGHT, compareRanked, defaultCriterion, evaluateScore } from './scoring';
 import type { Criterion, Scoring } from './scoring';
+import { isBaselineKind } from '../core/kind-capabilities';
 
 /**
  * What Compare scores for a kind (kinds PR 27, docs/03 ADR-36 §18.21): the kind file's `capabilities.compare.criteria`,
@@ -84,7 +85,7 @@ export function resolveCompareCriteria(ids: readonly string[], kind: CompareKind
  * person's criteria are the house's and never apply to another kind's items.
  */
 export function scoringForKind(kind: CompareKind, base: Scoring): Scoring {
-  if (kind.id === 'house') return base;
+  if (isBaselineKind(kind.id)) return base;
   const counted = new Set(compareCriteria(kind).filter((c) => c.source === 'check').map((c) => c.id));
   const criteria = kind.labels.checklistKeys().map((key, index): Criterion => ({ ...defaultCriterion(key, index), weight: counted.has(key) ? DEFAULT_WEIGHT : 0 }));
   return { criteria, ratingShare: base.ratingShare };
@@ -95,7 +96,7 @@ export function scoringForKind(kind: CompareKind, base: Scoring): Scoring {
  * included, as before); for another kind the items its `compare` names (the others are asked on the page and not compared).
  */
 export function comparedRows(kind: CompareKind, scoring: Scoring): Criterion[] {
-  const isHouse = kind.id === 'house';
+  const isHouse = isBaselineKind(kind.id);
   return scoring.criteria.filter((c) => c.archived !== true && (isHouse || c.weight > 0));
 }
 

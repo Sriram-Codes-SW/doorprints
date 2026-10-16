@@ -35,7 +35,7 @@ data class KindTally(val kind: String, val count: Int, val updated: Long)
 
 /** How many candidates each space holds (a kind with none is absent): *What you track*'s *Saved: N*. */
 fun spaceCounts(rows: List<SpaceRow>, default: String, available: List<String>): Map<String, Int> =
-    rows.groupingBy { r -> (r.kind ?: KindSettingRules.HOUSE).let { if (it in available) it else default } }.eachCount()
+    rows.groupingBy { r -> (Candidates.kindOf(r.kind)).let { if (it in available) it else default } }.eachCount()
 
 /** [spaceCounts] from the store's tallies (S4b-BL-303): the same numbers without reading every candidate. */
 fun spaceCountsOf(tallies: List<KindTally>, default: String, available: List<String>): Map<String, Int> {
@@ -55,7 +55,7 @@ fun spaceCountsOf(tallies: List<KindTally>, default: String, available: List<Str
  */
 fun spaceCards(rows: List<SpaceRow>, enabled: List<String>, default: String, available: List<String>): SpaceCards =
     spaceCardsOf(
-        rows.groupBy { it.kind ?: KindSettingRules.HOUSE }.map { (kind, list) -> KindTally(kind, list.size, list.maxOf { it.updatedAt }) },
+        rows.groupBy { Candidates.kindOf(it.kind) }.map { (kind, list) -> KindTally(kind, list.size, list.maxOf { it.updatedAt }) },
         enabled, default, available,
     )
 

@@ -17,6 +17,9 @@
  */
 
 import type { Lang } from '../i18n/languages';
+import { isDevMode } from '@angular/core';
+import { baselineKindId } from '../core/candidate';
+import { isBaselineKind } from '../core/kind-capabilities';
 import { SCHOOL_QUESTIONS } from './school-questions';
 
 /**
@@ -273,27 +276,45 @@ export const DEFAULT_QUESTIONS: readonly DefaultQuestion[] = [
   },
 ];
 
-/** The kinds besides the house that have a question bank of their own (kinds PR 29, docs/03 §18.23); their ids carry the kind. */
-export const QUESTION_KINDS: readonly string[] = ['school'];
-
-/**
- * The scopes a kind's questions can have (its kind file's `questions.scopes`, docs/03 §18.23): the house asks for a rent, a sale or
- * both; a school has neither, so its questions are all `BOTH` and the scope control is not offered. A kind with no entry has them all.
- */
-const KIND_SCOPES: Readonly<Record<string, readonly QuestionScope[]>> = { school: ['BOTH'] };
-
-export function questionScopesOf(kind: string): readonly QuestionScope[] {
-  return Object.hasOwn(KIND_SCOPES, kind) ? KIND_SCOPES[kind] : QUESTION_SCOPES;
+/** A kind's own question bank: its seed and the scopes its questions can have (its kind file's `questions`, docs/03 §18.23). */
+interface OwnBank {
+  readonly questions: readonly DefaultQuestion[];
+  readonly scopes: readonly QuestionScope[];
 }
 
-/** The seed of a kind's bank: the house's `default-questions.json`, the school's `school-questions.json`; none for another kind. */
+/**
+ * The kinds besides the baseline kind that have a question bank of their own (kinds PR 29, docs/03 §18.23); their ids carry the kind. The school's
+ * has no rent or sale, so its questions are all `BOTH` and the scope control is not offered; a kind with no entry has them all.
+ */
+const OWN_BANKS = new Map<string, OwnBank>([['school', { questions: SCHOOL_QUESTIONS, scopes: ['BOTH'] }]]);
+
+/** The kinds that have a question bank of their own. */
+export function questionKinds(): readonly string[] {
+  return [...OWN_BANKS.keys()];
+}
+
+/**
+ * Gives a kind a question bank for a test (the conformance suite's synthetic kind, docs/03 §18.26). Only a development build may: in a production
+ * build it throws, so no build can ship a bank this file does not hold. Returns the call that takes it away again.
+ */
+export function registerQuestionBank(kind: string, questions: readonly DefaultQuestion[], scopes: readonly QuestionScope[]): () => void {
+  if (!isDevMode()) throw new Error('a question bank is registered only in a development build');
+  OWN_BANKS.set(kind, { questions, scopes });
+  return () => void OWN_BANKS.delete(kind);
+}
+
+export function questionScopesOf(kind: string): readonly QuestionScope[] {
+  return OWN_BANKS.get(kind)?.scopes ?? QUESTION_SCOPES;
+}
+
+/** The seed of a kind's bank: the baseline kind's `default-questions.json`, the school's `school-questions.json`; none for another kind. */
 export function defaultQuestionsOf(kind: string): readonly DefaultQuestion[] {
-  return kind === 'house' ? DEFAULT_QUESTIONS : kind === 'school' ? SCHOOL_QUESTIONS : [];
+  return isBaselineKind(kind) ? DEFAULT_QUESTIONS : (OWN_BANKS.get(kind)?.questions ?? []);
 }
 
 /** Whether the id is one of the seeded questions (of any kind). */
 export function isDefaultQuestionId(id: string): boolean {
-  return DEFAULT_QUESTIONS.some((d) => d.id === id) || SCHOOL_QUESTIONS.some((d) => d.id === id);
+  return DEFAULT_QUESTIONS.some((d) => d.id === id) || [...OWN_BANKS.values()].some((b) => b.questions.some((d) => d.id === id));
 }
 
 /**
@@ -301,8 +322,8 @@ export function isDefaultQuestionId(id: string): boolean {
  * school's, every other id is the house's, as every question was before kinds PR 29.
  */
 export function questionKindOf(id: string): string {
-  for (const kind of QUESTION_KINDS) if (id.startsWith(`qd_${kind}_`) || id.startsWith(`q_${kind}_`)) return kind;
-  return 'house';
+  for (const kind of OWN_BANKS.keys()) if (id.startsWith(`qd_${kind}_`) || id.startsWith(`q_${kind}_`)) return kind;
+  return baselineKindId();
 }
 
 /** The questions of one kind's bank, in the order given. */
@@ -380,8 +401,8 @@ export function sortQuestions<T extends { sort: number; id: string }>(list: read
 }
 
 /** `q_` and 8 random lowercase hex characters: a custom question's id; a kind's own is `q_<kind>_` and the 8 characters. */
-export function newQuestionId(kind = 'house'): string {
+export function newQuestionId(kind = baselineKindId()): string {
   const bytes = new Uint8Array(4);
   crypto.getRandomValues(bytes);
-  return (kind === 'house' ? 'q_' : `q_${kind}_`) + Array.from(bytes, (x) => x.toString(16).padStart(2, '0')).join('');
+  return (isBaselineKind(kind) ? 'q_' : `q_${kind}_`) + Array.from(bytes, (x) => x.toString(16).padStart(2, '0')).join('');
 }

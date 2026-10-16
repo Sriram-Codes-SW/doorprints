@@ -103,6 +103,7 @@ import { ListReturn } from '../map/list-return';
 import { GLYPHS } from '../../shared/glyphs';
 import { parseListingText } from '../../shared/listing-text';
 import { RunResult, runResult } from '../../shared/run-result';
+import { isBaselineKind } from '../../core/kind-capabilities';
 
 interface OpenPhoto {
   src: string;
@@ -186,6 +187,8 @@ export class HouseDetailPage implements OnInit, OnDestroy {
   protected readonly space = inject(SpaceService);
   /** The kind's words for the save button and the area-notes line (a school's, S4b-BL-212). */
   protected get W(): SpaceWords { return spaceWords(this.kind().id); }
+  /** The candidate's kind is the baseline kind (the house): its checklist links to the person's own criteria. */
+  protected isBaseline(): boolean { return isBaselineKind(this.kind().id); }
   /**
    * A house word of the page in the kind's own (S4b-BL-259): the house's key for a house, a school's for a school; with no
    * candidate loaded (the *not found* card) the kind of the space on screen.
@@ -402,7 +405,7 @@ export class HouseDetailPage implements OnInit, OnDestroy {
   ngOnInit(): void {
     const readQuestions = () => this.api.questions().subscribe({ next: (list) => this.allQuestions.set(list), error: () => this.allQuestions.set([]) });
     readQuestions();
-    if (this.space.kind() !== 'house') this.api.seedKindQuestions(this.space.kind(), this.i18n.lang()).subscribe({ next: readQuestions, error: () => undefined });
+    if (!isBaselineKind(this.space.kind())) this.api.seedKindQuestions(this.space.kind(), this.i18n.lang()).subscribe({ next: readQuestions, error: () => undefined });
     this.api.scoring().subscribe({
       next: (scoring) => this.personScoring.set(scoring),
       error: () => this.personScoring.set(DEFAULT_SCORING),

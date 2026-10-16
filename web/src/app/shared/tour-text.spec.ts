@@ -47,7 +47,7 @@ describe('the tour text of a step in a space (kinds PR 31)', () => {
   it('the school names its own Add button, search, details, Compare and viewings, and the generic sentence elsewhere', () => {
     expect(tourText(step('add'), 'school')).toMatchObject({ title: 'school.add', body: 'school.addHint', action: 'school.addHintShort' });
     expect(tourText(step('find'), 'school')).toMatchObject({ title: 'school.search', body: 'tour.kind.body', action: 'tour.kind.action' });
-    expect(tourText(step('house'), 'school')).toMatchObject({ title: 'school.titleDetails', body: 'tour.kind.body' });
+    expect(tourText(step('details'), 'school')).toMatchObject({ title: 'school.titleDetails', body: 'tour.kind.body' });
     expect(tourText(step('compare'), 'school')).toMatchObject({ title: 'school.compareTitle', body: 'tour.kind.body' });
     expect(tourText(step('viewings'), 'school')).toMatchObject({ title: 'school.viewings.heading' });
     expect(tourText(step('welcome'), 'school')).toMatchObject({ title: 'tour.welcome.title', body: 'tour.kind.welcome', many: 'school.many' });

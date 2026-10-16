@@ -45,7 +45,7 @@ class TourTest {
     fun androidShowsEveryFeatureInTheOrderOfAHouseHunt() {
         assertEquals(
             listOf(
-                "welcome", "add", "hunt", "check", "offline", "find", "house", "compare", "assistant", "language", "save", "import",
+                "welcome", "add", "hunt", "check", "offline", "find", "details", "compare", "assistant", "language", "save", "import",
                 "share", "backup", "trace", "drive", "server", "ai", "brokers", "criteria", "viewings", "areas", "lock", "help", "done",
             ),
             ids(android),
@@ -95,7 +95,7 @@ class TourTest {
         assertEquals(
             mapOf(
                 "welcome" to "map", "add" to "map", "hunt" to "map", "check" to "map", "offline" to "map", "find" to "houses",
-                "house" to "houses", "compare" to "compare", "assistant" to "map", "language" to "settings", "save" to "settings",
+                "details" to "houses", "compare" to "compare", "assistant" to "map", "language" to "settings", "save" to "settings",
                 "import" to "settings", "share" to "settings", "backup" to "settings", "trace" to "settings", "drive" to "settings",
                 "server" to "settings", "ai" to "settings", "brokers" to "settings", "criteria" to "settings", "viewings" to "settings",
                 "areas" to "settings", "lock" to "settings", "help" to "settings", "done" to "map",
@@ -110,7 +110,7 @@ class TourTest {
             mapOf(
                 "add" to listOf("map.save"), "hunt" to listOf("map.hunt"), "check" to listOf("map.check"),
                 "offline" to listOf("map.offline"), "find" to listOf("houses.search"),
-                "house" to listOf("houses.first", "houses.search"), "compare" to listOf("compare.picker", "compare.title"),
+                "details" to listOf("houses.first", "houses.search"), "compare" to listOf("compare.picker", "compare.title"),
                 "assistant" to listOf("nav.assistant"), "language" to listOf("settings.language"),
                 "save" to listOf("settings.export"), "import" to listOf("settings.import"), "share" to listOf("settings.share"),
                 "backup" to listOf("settings.backup"), "trace" to listOf("settings.trace"), "drive" to listOf("settings.drive"),
@@ -355,7 +355,7 @@ class TourTest {
         )
         assertEquals("school_search", text("find").title.res.key)
         assertEquals("tour_find_body", text("find").body.res.key) // a step that does not say "house" keeps its text
-        assertEquals("school_details_title", text("house").title.res.key)
+        assertEquals("school_details_title", text("details").title.res.key)
         assertEquals(listOf("tour_kind_compare_title", "tour_kind_body", "tour_kind_action"), text("compare").let { listOf(it.title.res.key, it.body.res.key, it.action.res.key) })
         assertEquals("school_viewings_plan", text("viewings").title.res.key)
         assertEquals("tour_kind_welcome", text("welcome").body.res.key)

@@ -36,6 +36,7 @@ import { TranslationService } from '../../i18n/translation.service';
 import type { MapOverlay } from '../../shared/location-map';
 import type { TraceWalk } from '../../shared/trace-geo';
 import { checkGeoJson, trackGeoJson, baseLines } from '../../shared/trace-style';
+import { baselineKindId } from '../../core/candidate';
 
 /** The halo that says *this is the walk you asked for* stays this long (docs/11 5.27.6). */
 export const HALO_MS = 3000;
@@ -132,7 +133,7 @@ export class HouseWalksCard {
   /** The house's id; a house not saved yet (`isNew`) has no walks and the card is not shown. */
   readonly houseId = input.required<string>();
   /** The candidate's kind: its words for the empty line (S4b-BL-259). */
-  readonly kind = input('house');
+  readonly kind = input(baselineKindId());
   protected readonly word = (key: TKey): TKey => toolWord(this.kind(), key);
   readonly isNew = input(false);
   /** What to draw on the page's own map: the walk and its halo, or null to clear. */

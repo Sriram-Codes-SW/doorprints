@@ -18,6 +18,8 @@
 
 package app.doorprints.ui
 
+import app.doorprints.shared.model.KindCapabilities
+import app.doorprints.shared.model.Candidates
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -58,7 +60,7 @@ internal val ListingField.nameRes: StringResource
     }
 
 /** The kind the paste dialog asks the extract for: a kind that fills (a school), not the house, whose call is the house's own. */
-internal fun pasteKind(kind: BuiltInKind): String? = kind.id.takeIf { it != KindSettingRules.HOUSE && kind.extracts }
+internal fun pasteKind(kind: BuiltInKind): String? = kind.id.takeIf { !KindCapabilities.of(it).baseline && kind.extracts }
 
 /**
  * "Filled in: price and contact name. Check them, then save." plus what was kept and what the AI flagged. A kind's typed
@@ -106,8 +108,8 @@ fun PasteListingDialog(onDismiss: () -> Unit, onDraft: (HouseDraftDto, List<Stri
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(stringResource(Res.string.house_paste_hint), style = MaterialTheme.typography.bodySmall)
                 PasteListingText(text, { text = it })
-                VoiceMicButton(text, { text = it }, kind ?: KindSettingRules.HOUSE)
-                AiDisclosure(style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, pages = PageWords.of(kind ?: "house"))
+                VoiceMicButton(text, { text = it }, Candidates.kindOf(kind))
+                AiDisclosure(style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, pages = PageWords.of(Candidates.kindOf(kind)))
                 LiveMessage(assertive = error != null && !busy) {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         if (busy) {

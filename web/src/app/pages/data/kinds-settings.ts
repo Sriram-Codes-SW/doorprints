@@ -30,6 +30,7 @@ import { LocalDataService } from '../../core/local-data.service';
 import { SpaceService, spaceOf } from '../../core/space.service';
 import { TPipe } from '../../i18n/t.pipe';
 import { TranslationService } from '../../i18n/translation.service';
+import { baselineKindId } from '../../core/candidate';
 
 /** A space with more rows than this wants a tick box before *Delete all in this space*. */
 export const TICK_OVER = 10;
@@ -141,7 +142,7 @@ export class KindsSettings {
         const m = new Map<string, string[]>();
         for (const h of list) {
           if (h.deleted) continue;
-          const id = spaceOf(h, true, 'house', this.available);
+          const id = spaceOf(h, true, baselineKindId(), this.available);
           m.set(id, [...(m.get(id) ?? []), h.id]);
         }
         this.ids.set(m);

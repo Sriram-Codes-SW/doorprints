@@ -73,6 +73,8 @@ import { DriveConnectComponent } from './drive-connect';
 import { provideDriveConnect } from '../../data/drive/connect/drive-connect.providers';
 import { OfflineMapsService } from '../../offline/offline-maps.service';
 import { guideUrl } from '../../shared/help-link';
+import { kindOfCandidate } from '../../core/candidate';
+import { isBaselineKind } from '../../core/kind-capabilities';
 
 interface FormatChoice {
   readonly id: ExportFormat;
@@ -123,6 +125,8 @@ export class DataPage implements OnInit, OnDestroy {
   private readonly exporter = inject(ExportService);
   /** With spaces, a copy (not the backup) is of the space on screen (kinds PR B, S4b-BL-279). */
   protected readonly space = inject(SpaceService);
+  /** The space on screen is the baseline kind's (the house): its checklist options are the person's own criteria. */
+  protected isBaseline(): boolean { return isBaselineKind(this.space.current().id); }
   private readonly store = inject(LocalStore);
   private readonly traces = inject(TraceStore);
   /** How many saved walks this browser holds (docs/11 5.27.6): shown with *Delete all saved walks*. */
@@ -443,7 +447,7 @@ export class DataPage implements OnInit, OnDestroy {
   /** "Houses: 12, Schools: 3": every kind this browser holds, none left out (Remove all data takes them all). */
   private describeDevice(live: readonly { kind?: string | null }[]): string {
     const per = new Map<string, number>();
-    for (const h of live) per.set(h.kind ?? 'house', (per.get(h.kind ?? 'house') ?? 0) + 1);
+    for (const h of live) per.set(kindOfCandidate(h), (per.get(kindOfCandidate(h)) ?? 0) + 1);
     const known = availableKinds();
     const ids = [...known.filter((k) => per.has(k)), ...[...per.keys()].filter((k) => !known.includes(k))];
     const parts = ids.map((k) => `${known.includes(k) ? this.i18n.t(kindById(k).keys.ref('kind.many')) : k}: ${this.i18n.number(per.get(k) ?? 0)}`);

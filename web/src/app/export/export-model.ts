@@ -32,6 +32,7 @@ import { ExportStrings } from './export-strings';
 import type { KindFields } from '../core/kind-fields';
 import { copyVoice, extraColumnsOf, extrasOf, type CopyKinds, type ExportExtra, type ExportExtraColumn } from './kind-copy';
 import type { SearchSpaces } from './backup-family';
+import { isBaselineKind } from '../core/kind-capabilities';
 
 /** The six deterministic formats of docs/11 §5.2. */
 export type ExportFormat = 'html' | 'pdf' | 'csv' | 'xlsx' | 'markdown' | 'backup';
@@ -293,7 +294,7 @@ export function collect(input: CollectInput): ExportBundle {
       })),
       distances: nearestFirst(distancesToPlaces(house, places.map((r) => r.place))),
       ...(extras.length ? { extras } : {}),
-      ...(own && own.kind !== 'house' ? { kind: own } : {}),
+      ...(own && !isBaselineKind(own.kind) ? { kind: own } : {}),
     };
   });
   const extraColumns = kinds ? extraColumnsOf(chosen, kinds) : [];
@@ -316,7 +317,7 @@ export function collect(input: CollectInput): ExportBundle {
     lengthUnit: input.lengthUnit ?? 'FT',
     ...(extraColumns.length ? { extraColumns } : {}),
     ...(voice ? { voice } : {}),
-    ...(input.spaces && !(input.spaces.kinds.length === 1 && input.spaces.kinds[0] === 'house') ? { spaces: input.spaces } : {}),
+    ...(input.spaces && !(input.spaces.kinds.length === 1 && isBaselineKind(input.spaces.kinds[0])) ? { spaces: input.spaces } : {}),
     counts: {
       houses: houses.length,
       visits: houses.reduce((n, h) => n + h.visits.length, 0),

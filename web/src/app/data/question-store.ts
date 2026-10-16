@@ -43,6 +43,8 @@ import {
   sortQuestions,
 } from '../shared/question';
 import type { Question, QuestionCategory, QuestionRow, QuestionScope } from '../shared/question';
+import { baselineKindId } from '../core/candidate';
+import { isBaselineKind } from '../core/kind-capabilities';
 
 export class QuestionStore {
   /** The language the bank is seeded in, once {@link seedOnce} has been called (also after *Remove all data*). */
@@ -104,7 +106,7 @@ export class QuestionStore {
    * {@link reset}. Returns how many were written (0 for the house, whose seed is {@link seedOnce}'s).
    */
   async seedKindOnce(kind: string, language: string, now: number = Date.now()): Promise<number> {
-    if (kind === 'house' || defaultQuestionsOf(kind).length === 0) return 0;
+    if (isBaselineKind(kind) || defaultQuestionsOf(kind).length === 0) return 0;
     const db = await this.database();
     const key = `${SETTING_KEYS.questionsSeeded}.${kind}`;
     if (await db.get<SettingRecord>('settings', key)) return 0;
@@ -124,11 +126,11 @@ export class QuestionStore {
    * {@link MAX_QUESTIONS} is not brought back. `kind` is the bank being reset (the house's unless a space says otherwise);
    * another kind's questions are left as they are.
    */
-  async reset(language: string, now: number = Date.now(), kind = 'house'): Promise<number> {
+  async reset(language: string, now: number = Date.now(), kind = baselineKindId()): Promise<number> {
     return this.writeDefaults(await this.database(), language, now, true, kind);
   }
 
-  private async writeDefaults(db: LocalDb, language: string, now: number, overwrite: boolean, kind = 'house'): Promise<number> {
+  private async writeDefaults(db: LocalDb, language: string, now: number, overwrite: boolean, kind = baselineKindId()): Promise<number> {
     const rows = await db.getAllByIndex<RecordRecord>('records', 'type', QUESTION_TYPE);
     const byId = new Map(rows.map((r) => [r.id, r]));
     let live = rows.filter((r) => !r.deleted).length;
@@ -191,7 +193,7 @@ export class QuestionStore {
     appliesTo: QuestionScope = 'BOTH',
     now: number = Date.now(),
     newId?: () => string,
-    kind = 'house',
+    kind = baselineKindId(),
   ): Promise<Question> {
     const asked = text.trim();
     if (asked === '' || asked.length > MAX_QUESTION_TEXT) throw new LocalDataError('error.badRecord');

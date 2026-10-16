@@ -18,6 +18,7 @@
 
 package app.doorprints
 
+import app.doorprints.shared.model.Candidates
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.AlarmManager
@@ -230,7 +231,7 @@ class ViewingReminderScheduler(
          * words, null for the house, whose texts are the app's strings (so a house reminder is what it always was).
          */
         internal fun viewingTexts(context: Context, kind: String?): Notifications.ViewingTexts? {
-            val id = (kind ?: KindSettingRules.HOUSE).takeIf { it != KindSettingRules.HOUSE && it in KindCapabilities.KINDS } ?: return null
+            val id = Candidates.kindOf(kind).takeIf { !KindCapabilities.of(it).baseline && it in KindCapabilities.KINDS } ?: return null
             val keys = KindWordKeys.of(id)
             fun word(name: String, vararg args: Any): String = runBlocking {
                 composeString(kindStringResource(checkNotNull(keys[name]) { "no Android word for $name" }), *args)

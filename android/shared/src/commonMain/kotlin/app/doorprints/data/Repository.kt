@@ -18,6 +18,7 @@
 
 package app.doorprints.data
 
+import app.doorprints.shared.model.Candidates
 import app.doorprints.shared.model.KindTally
 import app.doorprints.shared.ai.AiProviderConfig
 import app.doorprints.shared.ai.AiQuality
@@ -328,7 +329,7 @@ interface Repository {
      * *Reset to defaults*: every default is written again in [language] whatever its record says (a deleted or edited
      * default comes back); the person's own questions stay.
      */
-    suspend fun resetQuestions(language: String, kind: String = KindSettingRules.HOUSE)
+    suspend fun resetQuestions(language: String, kind: String = Candidates.BASELINE_KIND)
 
     /**
      * Seeds [kind]'s own bank once, in [language] (`questions.seeded.<kind>`; kinds PR 29, docs/03 section 18.23): the school's six
@@ -354,7 +355,7 @@ interface Repository {
         category: QuestionCategory = QuestionCategory.OTHER,
         appliesTo: QuestionScope = QuestionScope.BOTH,
         defaultOn: Boolean = false,
-        kind: String = KindSettingRules.HOUSE,
+        kind: String = Candidates.BASELINE_KIND,
     ): String
 
     /** Deletes a question, seeded or custom (a tombstone; a deleted default stays deleted until Reset). */

@@ -205,7 +205,7 @@ public class HouseSearchService {
 
     /** Whether {@code h} is of {@code kind}: every candidate when {@code kind} is null. */
     public static boolean inKind(HouseDto h, String kind) {
-        return kind == null || kind.equals(h.kind() == null ? House.HOUSE_KIND : h.kind());
+        return kind == null || kind.equals(AiKinds.kindOf(h.kind()));
     }
 
     public HouseDto details(UUID id) {

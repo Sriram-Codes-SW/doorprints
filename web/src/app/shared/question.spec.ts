@@ -21,7 +21,7 @@ import {
   MAX_QUESTION_TEXT,
   QUESTION_CATEGORIES,
   QUESTION_SCOPES,
-  QUESTION_KINDS,
+  questionKinds,
   defaultQuestion,
   defaultQuestionsOf,
   isCustomQuestionId,
@@ -187,7 +187,7 @@ describe('SCHOOL_QUESTIONS', () => {
     expect(questionKindOf('q_0123abcd')).toBe('house');
     expect(questionKindOf('q_school_0123abcd')).toBe('school');
     // The house’s own ids never start with a kind: nothing like qd_school is a house’s default.
-    expect(QUESTION_KINDS).toEqual(['school']);
+    expect(questionKinds()).toEqual(['school']);
   });
 
   it('is the seed of its kind, a default for the delete and reset rules, and a school’s own question is custom', () => {

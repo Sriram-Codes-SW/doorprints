@@ -18,6 +18,7 @@
 
 package app.doorprints
 
+import app.doorprints.shared.model.KindCapabilities
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -243,7 +244,7 @@ object Notifications {
      * Returns the channel id to post on.
      */
     fun alertsChannel(context: Context, kind: String, name: String, description: String): String {
-        if (kind == KindSettingRules.HOUSE) return CHANNEL_ALERTS
+        if (KindCapabilities.of(kind).baseline) return CHANNEL_ALERTS
         val id = "alerts_$kind"
         context.getSystemService(NotificationManager::class.java)?.createNotificationChannel(
             NotificationChannel(id, name, NotificationManager.IMPORTANCE_HIGH).apply {

@@ -81,7 +81,7 @@ public class ListingExtractionService {
      * {@link KindDraftSanitizer}).
      */
     public HouseDraft extract(String text, String kind) {
-        if (kind == null || House.HOUSE_KIND.equals(kind)) return extract(text);
+        if (kind == null || AiKinds.isBaseline(kind)) return extract(text);
         kinds.require(kind);
         var k = kinds.of(kind);
         if (k == null || k.extract().isEmpty() || k.extractFields().isEmpty()) {

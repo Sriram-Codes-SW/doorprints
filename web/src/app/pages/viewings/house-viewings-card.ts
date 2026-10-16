@@ -31,6 +31,7 @@ import { Msg, TranslationService } from '../../i18n/translation.service';
 import { markableViewing, nextViewingOf } from '../../shared/viewing';
 import type { Viewing } from '../../shared/viewing';
 import { SecondViewingPrompt } from './second-viewing-prompt';
+import { baselineKindId } from '../../core/candidate';
 
 /**
  * The *Viewings* card of the house page (slice 3b-1, docs/11 5.8): the next PLANNED viewing (date and kind) or "No
@@ -83,7 +84,7 @@ import { SecondViewingPrompt } from './second-viewing-prompt';
 })
 export class HouseViewingsCard {
   /** The kind's section heading (S4b-BL-255) and words (kinds PR 29, docs/03 §18.23): the candidate's kind, the house's unless it says. */
-  readonly kindId = input<string>('house');
+  readonly kindId = input<string>(baselineKindId());
   protected readonly L = computed(() => drawnKind(this.kindId()).keys);
   protected w(key: TKey): TKey {
     return toolWord(this.kindId(), key);

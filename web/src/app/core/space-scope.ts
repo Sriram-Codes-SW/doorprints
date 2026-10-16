@@ -18,6 +18,7 @@
 
 import { isBaselineKind } from './kind-capabilities';
 import type { HouseDto } from './models';
+import { kindOfCandidate } from './candidate';
 
 /**
  * The rules that scope the tools to one space (kinds PR B, S4b-BL-279; docs/03 §18.12): what a space contains, Compare's
@@ -37,7 +38,7 @@ export type Scoped = Pick<HouseDto, 'kind'> & Partial<Pick<HouseDto, 'id' | 'sta
 export function holdsFor(space: string, multi: boolean, dflt: string, available: readonly string[]): (h: Pick<HouseDto, 'kind'>) => boolean {
   return (h) => {
     if (!multi) return true;
-    const kind = h.kind ?? 'house';
+    const kind = kindOfCandidate(h);
     return (available.includes(kind) ? kind : dflt) === space;
   };
 }

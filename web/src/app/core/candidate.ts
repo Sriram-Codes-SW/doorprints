@@ -85,6 +85,14 @@ export interface CandidateDto {
 
 /** The only kind there is today (`docs/schemas/kinds/house.json`); one kind per data set (§18.1). */
 export const HOUSE_KIND = 'house';
+/** The kind id of a record that says none and the default of a screen that is given none: the baseline kind (`capabilities.baseline`; the one place that names it). */
+export function baselineKindId(): string {
+  return HOUSE_KIND;
+}
+/** The kind a candidate is of: its own, else the baseline kind's (a record from before kinds says none, door 3). */
+export function kindOfCandidate(h: { kind?: string | null }): string {
+  return h.kind ?? HOUSE_KIND;
+}
 /** A kind id (door 3). */
 export const KIND_PATTERN = /^[a-z][a-z0-9_]{1,31}$/;
 /** An extra id (the kind schema's `fieldId`, the server's `CandidateExtras.ID_PATTERN`). */

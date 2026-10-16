@@ -425,7 +425,7 @@
 
   <!-- Criteria, questions and viewings belong to the kinds that have them (S4b-BL-277): a school space is without them. The school's
        checklist (kinds PR 27, docs/03 §18.21) has fixed weights, so the Criteria page (the person's weights for houses) stays the house's. -->
-  @if (space.current().labels.isVisible('section.checklist') && space.current().id === 'house') {
+  @if (space.current().labels.isVisible('section.checklist') && isBaseline()) {
     <section class="card" aria-labelledby="criteria-heading">
       <h2 id="criteria-heading">{{ 'criteria.dataHeading' | t }}</h2>
       <p class="muted">{{ 'criteria.dataBody' | t }}</p>

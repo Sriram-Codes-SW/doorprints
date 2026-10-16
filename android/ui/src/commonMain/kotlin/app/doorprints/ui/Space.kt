@@ -18,6 +18,7 @@
 
 package app.doorprints.ui
 
+import app.doorprints.shared.model.Candidates
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.State
@@ -241,7 +242,7 @@ class SpaceUi(val setting: KindSetting, val kind: String) {
 
     companion object {
         /** The house alone: what the app is with one kind on, and the default of every screen shown outside the app (tests, previews). */
-        val HOUSE = SpaceUi(KindSetting(), KindSettingRules.HOUSE)
+        val HOUSE = SpaceUi(KindSetting(), Candidates.BASELINE_KIND)
 
         /** The space for [chosen] (the card the person tapped, if any): with one kind on it is the default; else the chosen kind when the build has it, else the default. */
         fun resolve(setting: KindSetting, chosen: String?): SpaceUi =

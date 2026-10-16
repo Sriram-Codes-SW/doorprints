@@ -367,7 +367,7 @@ class HuntEngine(
          * offered). The one place the house's own setting is named (docs/03 section 18.20).
          */
         fun radiusFor(kind: String, hunt: KindCapabilities.Hunt, settingsM: Int): Int =
-            if (kind == KindSettingRules.HOUSE) settingsM else hunt.alertRadiusM
+            if (KindCapabilities.of(kind).baseline) settingsM else hunt.alertRadiusM
 
         @OptIn(ExperimentalUuidApi::class)
         private fun randomId(): String = Uuid.random().toString()

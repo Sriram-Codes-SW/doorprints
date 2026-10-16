@@ -31,6 +31,7 @@ import { Msg, TranslationService } from '../../i18n/translation.service';
 import { MAX_QUESTIONS, MAX_QUESTION_TEXT, QUESTION_CATEGORIES, questionScopesOf, questionsOfKind, sortQuestions } from '../../shared/question';
 import type { Question, QuestionCategory, QuestionScope } from '../../shared/question';
 import { RunResult, nextRunResult } from '../../shared/run-result';
+import { isBaselineKind } from '../../core/kind-capabilities';
 
 /** One category of the bank, in the order the screen shows them. */
 interface Group {
@@ -93,7 +94,7 @@ export class QuestionsPage {
       this.reload();
     });
     // A kind's own bank is seeded the first time its Questions page opens (never for a house-only person).
-    if (this.space.kind() !== 'house') this.api.seedKindQuestions(this.space.kind(), this.i18n.lang()).subscribe({ next: () => this.reload(), error: () => undefined });
+    if (!isBaselineKind(this.space.kind())) this.api.seedKindQuestions(this.space.kind(), this.i18n.lang()).subscribe({ next: () => this.reload(), error: () => undefined });
   }
 
   /** Reads the question bank. `userAsked` marks a Retry, so a repeated failure is announced again. */

@@ -18,6 +18,8 @@
 
 package app.doorprints.shared.export
 
+import app.doorprints.shared.model.KindCapabilities
+import app.doorprints.shared.model.Candidates
 import app.doorprints.shared.model.Broker
 import app.doorprints.shared.model.Criterion
 import app.doorprints.shared.model.Ranking
@@ -462,8 +464,8 @@ data class ExportOptions(
      */
     val space: SpaceView? = null,
     /** The kinds the phone has on and its default: a backup's `search` object names them ([BackupWire.encodeData]). */
-    val enabledKinds: List<String> = listOf(KindSettingRules.HOUSE),
-    val defaultKind: String = KindSettingRules.HOUSE,
+    val enabledKinds: List<String> = listOf(Candidates.BASELINE_KIND),
+    val defaultKind: String = Candidates.BASELINE_KIND,
 ) {
     /** True for an update file (5.28), whose name is `Doorprints-updates-<date>` and whose manifest says who it is for. */
     val isUpdate: Boolean get() = since != null || sharedTo != null
@@ -540,7 +542,7 @@ data class ExportBundle(
 
     /** The kind a candidate is read in: its own when it is not the house, else the copy's [voice] (null: a house's copy). */
     private fun kindOf(house: ExportHouse?): KindFields? =
-        house?.let { KindCopy.fieldsOfKind(it.kind, options) }?.takeIf { it.kind != KindSettingRules.HOUSE } ?: voice
+        house?.let { KindCopy.fieldsOfKind(it.kind, options) }?.takeIf { !KindCapabilities.of(it.kind).baseline } ?: voice
 
     /**
      * Whether the copy writes the place [ref] (`field.money`, `section.checklist`, ...) of [house], or of the copy when [house]

@@ -23,7 +23,7 @@ package app.doorprints.shared.model
  * candidate's own kind (S4b-BL-306).
  */
 data class StatusHouse(val id: String, val status: HouseStatus, val kind: String? = null) {
-    internal val kindId: String get() = kind ?: Candidates.HOUSE_KIND
+    internal val kindId: String get() = Candidates.kindOf(kind)
 }
 
 /**

@@ -18,6 +18,8 @@
 
 package app.doorprints.data
 
+import app.doorprints.shared.model.KindCapabilities
+import app.doorprints.shared.model.Candidates
 import app.doorprints.shared.export.ExportQuestion
 import app.doorprints.shared.model.DefaultQuestions
 import app.doorprints.shared.model.KindSettingRules
@@ -54,7 +56,7 @@ internal class QuestionStore(
     suspend fun all(): List<Question> = sorted(db.records().listByType(QuestionType.name))
 
     /** Writes the defaults of [kind] that have no record yet and returns how many. A tombstone is a record: a deleted default stays deleted. */
-    suspend fun seed(language: String, kind: String = KindSettingRules.HOUSE): Int {
+    suspend fun seed(language: String, kind: String = Candidates.BASELINE_KIND): Int {
         var written = 0
         db.withImmediateTransaction {
             for (d in DefaultQuestions.of(kind)) {
@@ -85,7 +87,7 @@ internal class QuestionStore(
      * a person who only keeps houses, so the house's bank, its backups and its sync are what they were. The mark is not synced.
      */
     suspend fun seedKindOnce(kind: String, language: String) {
-        if (kind == KindSettingRules.HOUSE || DefaultQuestions.of(kind).isEmpty()) return
+        if (KindCapabilities.of(kind).baseline || DefaultQuestions.of(kind).isEmpty()) return
         seedGate.withLock {
             if (settings.questionsSeededFor(kind)) return
             seed(language, kind)
@@ -94,7 +96,7 @@ internal class QuestionStore(
     }
 
     /** *Reset to defaults* of [kind]'s bank (the house's unless a space says otherwise); another kind's questions are left alone. */
-    suspend fun reset(language: String, kind: String = KindSettingRules.HOUSE) {
+    suspend fun reset(language: String, kind: String = Candidates.BASELINE_KIND) {
         db.withImmediateTransaction {
             for (d in DefaultQuestions.of(kind)) {
                 // A deleted default that would be the 101st question stays deleted (the web skips it too).
@@ -128,7 +130,7 @@ internal class QuestionStore(
 
     /** A new custom question at the end of the bank; returns its id. */
     suspend fun add(
-        text: String, category: QuestionCategory, appliesTo: QuestionScope, defaultOn: Boolean, kind: String = KindSettingRules.HOUSE,
+        text: String, category: QuestionCategory, appliesTo: QuestionScope, defaultOn: Boolean, kind: String = Candidates.BASELINE_KIND,
     ): String {
         val words = text.trim()
         require(words.isNotEmpty() && words.length <= Question.MAX_TEXT) { "a question needs 1..${Question.MAX_TEXT} characters" }

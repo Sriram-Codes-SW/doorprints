@@ -215,7 +215,7 @@ private fun restoreDraft(v: List<*>): HouseEntity? = runCatching {
         // Absent before S4b-BL-87: no floor.
         floor = v.getOrNull(38) as Int?,
         // Absent before S4b-BL-209: a house, with no extras it does not know.
-        kind = v.getOrNull(39) as String? ?: Candidates.HOUSE_KIND,
+        kind = Candidates.kindOf(v.getOrNull(39) as String?),
         extrasOther = (v.getOrNull(40) as String?)?.let { Json.parseToJsonElement(it) as? JsonObject },
     )
 }.getOrNull()
