@@ -157,7 +157,7 @@ export class RecentlyDeleted {
       const result = await this.undo.restore(entry, Date.now(), this.drive);
       if (result) this.note.set(this.words(result, entry.name || this.i18n.t('delete.unnamed')));
       // A result of undefined means the entry is no longer a tombstone (restored elsewhere): offer nothing.
-      this.retry.set(result ? this.undo.photoRetry() : null);
+      this.retry.set(result?.retry ?? null);
     } catch (err: unknown) {
       failed = { key: 'delete.restoreFailed', params: { reason: errorMsg(err) } };
     }
@@ -179,10 +179,9 @@ export class RecentlyDeleted {
     try {
       const result = await this.undo.retryPhotos(retry, Date.now(), this.drive);
       this.note.set(this.words(result, retry.name));
-      const again = this.undo.photoRetry();
-      this.retry.set(again);
+      this.retry.set(result.retry);
       // Once the photos are back the Retry button is gone, and it held focus: land it on the heading.
-      if (!again) setTimeout(() => this.heading().nativeElement.focus());
+      if (!result.retry) setTimeout(() => this.heading().nativeElement.focus());
     } catch (err: unknown) {
       this.error.set({ key: 'delete.restoreFailed', params: { reason: errorMsg(err) } });
     }

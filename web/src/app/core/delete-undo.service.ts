@@ -71,6 +71,8 @@ export interface Restored {
   readonly photosFromDrive: number;
   /** Why the others did not come back, each reason once. */
   readonly reasons: readonly PhotoRestoreReason[];
+  /** What a second attempt needs while one can help, or null; held in memory by the card only (S4b-BL-293). */
+  readonly retry: PhotoRetry | null;
 }
 
 /**
@@ -84,21 +86,19 @@ export interface PhotoRetry {
   readonly houseDeletedAt: number;
   /** How many photos the candidate had when it was deleted here (0 when unknown). */
   readonly noted: number;
+  /** The photos with no bytes here that failed for a reason a second try can fix (Drive not connected, or offline). */
   readonly known: readonly GonePhoto[];
-}
-
-/**
- * The retry to offer, or null when there is nothing to try again. `stillGone` is what the next attempt should ask for:
- * the photos that still have no bytes here and failed for a reason a second try can fix (Drive not connected, or
- * offline). Narrowing to those is what stops a second retry from re-fetching a photo that already came back — which
- * would store a duplicate of it.
- */
-export function retryOffer(
-  name: string,
-  ctx: { houseId: string; houseDeletedAt: number; noted: number },
-  stillGone: readonly GonePhoto[],
-): PhotoRetry | null {
-  return stillGone.length > 0 ? { name, ...ctx, known: stillGone } : null;
+  /** The old photo ids already stored here or failed for good: a retry never takes them again, so none is stored twice. */
+  readonly settled: ReadonlySet<string>;
+  /** How many photos came back from Drive so far, so the words after a retry add up. */
+  readonly back: number;
+  /**
+   * How many photos the candidate's restore brought back from this device's own copies (bytes still stored here). The
+   * phone twin has no equivalent: its `restoreHouse` reports only whether it happened, so it counts Drive's copies alone.
+   */
+  readonly deviceBack: number;
+  /** Why the settled ones that did not come back did not. */
+  readonly settledReasons: readonly PhotoRestoreReason[];
 }
 
 /** The name a candidate goes by in the words around a delete: its label, else its address, else ''. */
@@ -125,12 +125,6 @@ export class DeleteUndoService {
 
   /** The delete that can be undone now, or null. */
   readonly offer = signal<UndoOffer | null>(null);
-  /**
-   * How to try the photos of the candidate just restored again, or null (S4b-BL-293). Set by {@link restore} and
-   * {@link retryPhotos}; the card offers *Retry photos* while it is not null. Kept here, beside {@link offer}, rather
-   * than in {@link Restored}: it is what the next attempt needs, not part of what the restore reports.
-   */
-  readonly photoRetry = signal<PhotoRetry | null>(null);
   private held: readonly PhotoRecord[] = [];
   private timer: ReturnType<typeof setTimeout> | undefined;
 
@@ -222,12 +216,8 @@ export class DeleteUndoService {
     if (!result) return undefined;
     await this.note(entry.id, 0);
     const noted = Math.max(entry.photos, result.photosBack + result.photosGone);
-    const ctx = { houseId: entry.id, houseDeletedAt: result.deletedAt, noted };
-    const { fromDrive, failed, connection, stillGone } = await this.bringPhotosBack({ ...ctx, known: result.gone }, now, restorer);
-    this.sync.syncSoon();
-    const summary = summarize(noted, result.photosBack + fromDrive, failed, connection);
-    this.photoRetry.set(retryOffer(entry.name, ctx, stillGone));
-    return { name: entry.name, photosTotal: summary.total, photosBack: summary.restored, photosFromDrive: fromDrive, reasons: summary.reasons };
+    const ctx: PhotoRetry = { name: entry.name, houseId: entry.id, houseDeletedAt: result.deletedAt, noted, known: result.gone, settled: new Set(), back: 0, deviceBack: result.photosBack, settledReasons: [] };
+    return this.photosBackFor(ctx, now, restorer);
   }
 
   /**
@@ -236,12 +226,30 @@ export class DeleteUndoService {
    * for the same files the restore did and puts back each that answers, exactly like {@link restore}. Nothing is deleted.
    */
   async retryPhotos(retry: PhotoRetry, now: number = Date.now(), restorer: PhotoRestorer | null = null): Promise<Restored> {
-    const { fromDrive, failed, connection, stillGone } = await this.bringPhotosBack(retry, now, restorer);
+    return this.photosBackFor(retry, now, restorer);
+  }
+
+  /**
+   * One attempt: asks Drive through {@link bringPhotosBack}, adds the words up across attempts, and decides whether another
+   * attempt can still help. Shared by {@link restore} and {@link retryPhotos} so the two cannot drift (S4b-BL-293).
+   */
+  private async photosBackFor(ctx: PhotoRetry, now: number, restorer: PhotoRestorer | null): Promise<Restored> {
+    const brought = await this.bringPhotosBack(ctx, now, restorer);
     this.sync.syncSoon();
-    const summary = summarize(retry.noted, fromDrive, failed, connection);
-    const ctx = { houseId: retry.houseId, houseDeletedAt: retry.houseDeletedAt, noted: retry.noted };
-    this.photoRetry.set(retryOffer(retry.name, ctx, stillGone));
-    return { name: retry.name, photosTotal: summary.total, photosBack: summary.restored, photosFromDrive: fromDrive, reasons: summary.reasons };
+    const back = ctx.back + brought.fromDrive;
+    // `photosBack` counts everything back, this device's own copies included; `photosFromDrive` only Drive's.
+    const summary = summarize(ctx.noted, ctx.deviceBack + back, [...ctx.settledReasons, ...brought.failed], brought.connection);
+    // A second try can help only for the reasons Drive being reached again fixes. The next attempt carries just the photos
+    // that still have no bytes and failed for one of those, and never the ones settled, so none is stored twice.
+    const canHelp = summary.reasons.some((r) => r === 'OFFLINE' || r === 'NOT_CONNECTED');
+    const next: PhotoRetry | null = canHelp
+      ? {
+          name: ctx.name, houseId: ctx.houseId, houseDeletedAt: ctx.houseDeletedAt, noted: ctx.noted,
+          known: brought.stillGone, settled: brought.settled, back, deviceBack: ctx.deviceBack,
+          settledReasons: [...ctx.settledReasons, ...brought.failed.filter((r) => r !== 'OFFLINE' && r !== 'NOT_CONNECTED')],
+        }
+      : null;
+    return { name: ctx.name, photosTotal: summary.total, photosBack: summary.restored, photosFromDrive: back, reasons: summary.reasons, retry: next };
   }
 
   /**
@@ -250,32 +258,41 @@ export class DeleteUndoService {
    * candidate deleted on another device leaves no note or tombstone here, only its sync file.
    */
   private async bringPhotosBack(
-    ctx: { houseId: string; houseDeletedAt: number; known: readonly GonePhoto[] },
+    ctx: PhotoRetry,
     now: number,
     restorer: PhotoRestorer | null,
-  ): Promise<{ fromDrive: number; failed: PhotoRestoreReason[]; connection: RestoreConnection; stillGone: GonePhoto[] }> {
-    if (!restorer) return { fromDrive: 0, failed: ctx.known.map(() => 'NOT_CONNECTED'), connection: 'NOT_CONNECTED', stillGone: [...ctx.known] };
+  ): Promise<{ fromDrive: number; failed: PhotoRestoreReason[]; connection: RestoreConnection; stillGone: GonePhoto[]; settled: ReadonlySet<string> }> {
+    if (!restorer) {
+      const failedNow = ctx.known.filter((p) => !ctx.settled.has(p.id));
+      return { fromDrive: 0, failed: failedNow.map(() => 'NOT_CONNECTED'), connection: 'NOT_CONNECTED', stillGone: [...failedNow], settled: new Set(ctx.settled) };
+    }
     let report: PhotoRestoreReport;
     try {
       report = await restorer.restorePhotos({ houseId: ctx.houseId, houseDeletedAt: ctx.houseDeletedAt, known: ctx.known });
     } catch {
       report = notConnectedReport(ctx.known);
     }
+    // A photo an earlier attempt settled is left out of the count and never stored again: the sync file lists every photo of
+    // the candidate on every read, so without this a retry would put a second copy of an already-restored photo back.
+    const failedNow = report.failed.filter((f) => !ctx.settled.has(f.photo.id));
+    const failed: PhotoRestoreReason[] = failedNow.map((f) => f.reason);
+    const settled = new Set(ctx.settled);
+    for (const f of failedNow) if (f.reason !== 'OFFLINE' && f.reason !== 'NOT_CONNECTED') settled.add(f.photo.id);
     let fromDrive = 0;
-    const failed: PhotoRestoreReason[] = report.failed.map((f) => f.reason);
-    // Only the photos a second try can still fetch are carried to the next attempt: a photo past its window or gone from
-    // Drive will not come back, and one that did come back is already stored.
-    const stillGone = report.failed.filter((f) => f.reason === 'OFFLINE' || f.reason === 'NOT_CONNECTED').map((f) => f.photo);
     const stamp = isoNow(now);
     for (const got of report.fetched) {
+      if (ctx.settled.has(got.photo.id)) continue;
       try {
         await this.store.photos.put(restoredPhoto(got.photo, ctx.houseId, got.bytes, stamp));
         fromDrive++;
+        settled.add(got.photo.id);
       } catch {
         failed.push('UNREADABLE');
+        settled.add(got.photo.id);
       }
     }
-    return { fromDrive, failed, connection: report.connection, stillGone };
+    const stillGone = failedNow.filter((f) => f.reason === 'OFFLINE' || f.reason === 'NOT_CONNECTED').map((f) => f.photo);
+    return { fromDrive, failed, connection: report.connection, stillGone, settled };
   }
 
   /** {@link note} for many at once: one read and one write of the notes. */
