@@ -90,8 +90,13 @@ export interface PhotoRetry {
   readonly known: readonly GonePhoto[];
   /** The old photo ids already stored here or failed for good: a retry never takes them again, so none is stored twice. */
   readonly settled: ReadonlySet<string>;
-  /** How many photos are back so far, so the words after a retry add up. */
+  /** How many photos came back from Drive so far, so the words after a retry add up. */
   readonly back: number;
+  /**
+   * How many photos the candidate's restore brought back from this device's own copies (bytes still stored here). The
+   * phone twin has no equivalent: its `restoreHouse` reports only whether it happened, so it counts Drive's copies alone.
+   */
+  readonly deviceBack: number;
   /** Why the settled ones that did not come back did not. */
   readonly settledReasons: readonly PhotoRestoreReason[];
 }
@@ -211,7 +216,7 @@ export class DeleteUndoService {
     if (!result) return undefined;
     await this.note(entry.id, 0);
     const noted = Math.max(entry.photos, result.photosBack + result.photosGone);
-    const ctx: PhotoRetry = { name: entry.name, houseId: entry.id, houseDeletedAt: result.deletedAt, noted, known: result.gone, settled: new Set(), back: 0, settledReasons: [] };
+    const ctx: PhotoRetry = { name: entry.name, houseId: entry.id, houseDeletedAt: result.deletedAt, noted, known: result.gone, settled: new Set(), back: 0, deviceBack: result.photosBack, settledReasons: [] };
     return this.photosBackFor(ctx, now, restorer);
   }
 
@@ -232,14 +237,15 @@ export class DeleteUndoService {
     const brought = await this.bringPhotosBack(ctx, now, restorer);
     this.sync.syncSoon();
     const back = ctx.back + brought.fromDrive;
-    const summary = summarize(ctx.noted, back, [...ctx.settledReasons, ...brought.failed], brought.connection);
+    // `photosBack` counts everything back, this device's own copies included; `photosFromDrive` only Drive's.
+    const summary = summarize(ctx.noted, ctx.deviceBack + back, [...ctx.settledReasons, ...brought.failed], brought.connection);
     // A second try can help only for the reasons Drive being reached again fixes. The next attempt carries just the photos
     // that still have no bytes and failed for one of those, and never the ones settled, so none is stored twice.
     const canHelp = summary.reasons.some((r) => r === 'OFFLINE' || r === 'NOT_CONNECTED');
     const next: PhotoRetry | null = canHelp
       ? {
           name: ctx.name, houseId: ctx.houseId, houseDeletedAt: ctx.houseDeletedAt, noted: ctx.noted,
-          known: brought.stillGone, settled: brought.settled, back,
+          known: brought.stillGone, settled: brought.settled, back, deviceBack: ctx.deviceBack,
           settledReasons: [...ctx.settledReasons, ...brought.failed.filter((r) => r !== 'OFFLINE' && r !== 'NOT_CONNECTED')],
         }
       : null;
