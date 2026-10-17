@@ -369,4 +369,108 @@ describe('DeleteUndoService', () => {
       expect(await store.getHouse('h1')).toMatchObject({ deleted: false });
     });
   });
+
+  describe('the retry carries what earlier attempts settled (S4b-BL-293)', () => {
+    const seed = async (ids: string[]) => {
+      await store.saveHouse(house('h1'), T0 - 9 * DAY);
+      for (const id of ids) {
+        await store.photos.add('h1', jpeg(), id, T0 - 9 * DAY);
+        await store.photos.put({ ...(await store.photos.get(id))!, uploaded: true });
+      }
+      vi.setSystemTime(T0 - 2 * DAY);
+      await service.remove('h1', 'House h1');
+      service.dismiss();
+      vi.setSystemTime(T0);
+      return (await service.bin())[0];
+    };
+    const restorerOf = (answer: (req: PhotoRestoreRequest) => PhotoRestoreReport) => {
+      const calls: PhotoRestoreRequest[] = [];
+      const restorer: PhotoRestorer = { restorePhotos: async (req) => { calls.push(req); return answer(req); } };
+      return { restorer, calls };
+    };
+    const only = (req: PhotoRestoreRequest, ids: string[]) => req.known.filter((p) => ids.includes(p.id));
+    const bytes = new Uint8Array([9, 8]);
+
+    it('never stores a photo twice, though the sync file lists every photo of the candidate on each read', async () => {
+      const entry = await seed(['p1', 'p2']);
+      const all: PhotoRestoreRequest['known'][number][] = [];
+      const { restorer, calls } = restorerOf((req) => {
+        if (!all.length) all.push(...req.known);
+        // the device's own sync file names every photo again each time, whatever was asked
+        return { connection: 'OK', fetched: [{ photo: all[0], bytes }, ...(calls.length > 1 ? [{ photo: all[1], bytes }] : [])], failed: calls.length > 1 ? [] : [{ photo: all[1], reason: 'OFFLINE' as const }] };
+      });
+      const put = vi.spyOn(store.photos, 'put');
+      const first = await service.restore(entry, T0, restorer);
+      expect(first).toMatchObject({ photosBack: 1, reasons: ['OFFLINE'] });
+      const second = await service.retryPhotos(first!.retry!, T0, restorer);
+      expect(second).toMatchObject({ photosTotal: 2, photosBack: 2, photosFromDrive: 2, reasons: [] });
+      expect(put).toHaveBeenCalledTimes(2);
+      expect(await store.photos.ofHouse('h1')).toHaveLength(2);
+      expect(second!.retry).toBeNull();
+    });
+
+    it('adds the words up across attempts: what came back and why the others did not, each reason once', async () => {
+      const entry = await seed(['p1', 'p2', 'p3']);
+      let n = 0;
+      const { restorer } = restorerOf((req) => (n++ === 0
+        ? { connection: 'OK', fetched: only(req, ['p1']).map((photo) => ({ photo, bytes })), failed: [{ photo: only(req, ['p2'])[0], reason: 'OFFLINE' }, { photo: only(req, ['p3'])[0], reason: 'PAST_WINDOW' }] }
+        : { connection: 'OK', fetched: only(req, ['p2']).map((photo) => ({ photo, bytes })), failed: [] }));
+      const first = (await service.restore(entry, T0, restorer))!;
+      expect(first).toMatchObject({ photosTotal: 3, photosBack: 1, photosFromDrive: 1 });
+      expect([...first.reasons].sort()).toEqual(['OFFLINE', 'PAST_WINDOW']);
+      expect(first.retry).toMatchObject({ back: 1, settledReasons: ['PAST_WINDOW'] });
+      const second = (await service.retryPhotos(first.retry!, T0, restorer))!;
+      expect(second).toMatchObject({ photosTotal: 3, photosBack: 2, photosFromDrive: 2, reasons: ['PAST_WINDOW'] });
+    });
+
+    it('a failure a retry cannot fix (past the window, missing) is settled and never fetched again', async () => {
+      const entry = await seed(['p1', 'p2', 'p3']);
+      const { restorer, calls } = restorerOf((req) => ({
+        connection: 'OK',
+        fetched: [],
+        failed: req.known.map((photo) => ({ photo, reason: photo.id === 'p1' ? ('OFFLINE' as const) : photo.id === 'p2' ? ('PAST_WINDOW' as const) : ('MISSING' as const) })),
+      }));
+      const first = (await service.restore(entry, T0, restorer))!;
+      expect([...first.retry!.settled].sort()).toEqual(['p2', 'p3']);
+      expect(first.retry!.known.map((p) => p.id)).toEqual(['p1']);
+      const second = (await service.retryPhotos(first.retry!, T0, restorer))!;
+      expect(calls[1].known.map((p) => p.id)).toEqual(['p1']);
+      expect(second.retry!.known.map((p) => p.id)).toEqual(['p1']);
+      expect([...second.retry!.settled].sort()).toEqual(['p2', 'p3']);
+      expect([...second.retry!.settledReasons].sort()).toEqual(['MISSING', 'PAST_WINDOW']);
+    });
+
+    it('restore and retryPhotos both go through the one photosBackFor and give the same result for the same input', async () => {
+      const entry = await seed(['p1', 'p2']);
+      const { restorer } = restorerOf((req) => ({ connection: 'OK', fetched: only(req, ['p1']).map((photo) => ({ photo, bytes })), failed: only(req, ['p2']).map((photo) => ({ photo, reason: 'OFFLINE' as const })) }));
+      const through = vi.spyOn(service as unknown as { photosBackFor: (...a: unknown[]) => unknown }, 'photosBackFor');
+      const viaRestore = (await service.restore(entry, T0, restorer))!;
+      // the very input the restore built, handed to a retry
+      const start = through.mock.calls[0][0] as Parameters<DeleteUndoService['retryPhotos']>[0];
+      const viaRetry = await service.retryPhotos(start, T0, restorer);
+      expect(through).toHaveBeenCalledTimes(2);
+      expect(viaRetry).toEqual(viaRestore);
+    });
+
+    it('a retry with nothing left to retry disappears', async () => {
+      const entry = await seed(['p1', 'p2']);
+      const { restorer } = restorerOf((req) => ({ connection: 'OK', fetched: only(req, ['p1']).map((photo) => ({ photo, bytes })), failed: only(req, ['p2']).map((photo) => ({ photo, reason: 'OFFLINE' as const })) }));
+      const first = (await service.restore(entry, T0, restorer))!;
+      expect(first.retry).not.toBeNull();
+      const { restorer: again } = restorerOf((req) => ({ connection: 'OK', fetched: only(req, ['p2']).map((photo) => ({ photo, bytes })), failed: [] }));
+      expect((await service.retryPhotos(first.retry!, T0, again))!.retry).toBeNull();
+      // and a failure no second try can fix offers none either
+      const { restorer: gone } = restorerOf((req) => ({ connection: 'OK', fetched: [], failed: req.known.map((photo) => ({ photo, reason: 'PAST_WINDOW' as const })) }));
+      expect((await service.retryPhotos(first.retry!, T0, gone))!.retry).toBeNull();
+    });
+
+    it('offers the retry again while Drive is still not connected, over the same photos', async () => {
+      const entry = await seed(['p1', 'p2']);
+      const first = (await service.restore(entry, T0, null))!;
+      expect(first).toMatchObject({ photosBack: 0, reasons: ['NOT_CONNECTED'] });
+      expect(first.retry!.known.map((p) => p.id).sort()).toEqual(['p1', 'p2']);
+      const second = (await service.retryPhotos(first.retry!, T0, null))!;
+      expect(second.retry!.known.map((p) => p.id).sort()).toEqual(['p1', 'p2']);
+    });
+  });
 });
