@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | The manual part of the release security gate: the one-hour list per release, and the scope of the deep self-run pentest |
-| Version | 0.23 |
+| Version | 0.24 |
 | Date | 2026-10-15 |
 | Author | Claude (Code), lead |
 | Status | Draft. Written (story S4b-SEC-3); **not yet run on a release candidate**, which is the story's last acceptance item |
@@ -35,6 +35,7 @@
 | 0.21 | 2026-10-16 | Claude (Code), engineer | **G1 and I7 reconciled with restoring photos from Drive** (S4b-BL-293): a photo deleted in the app leaves the device at once but its encrypted copy stays in the person's own Drive for at least 30 days so *Restore* can bring it back; *Delete everything* still deletes it for good; new **I18**. |
 | 0.22 | 2026-10-19 | Claude (Code), engineer | **The photo wording made exactly true** (S4b-BL-293, owner decision 2026-10-19, `docs/thirty-days-wording`): G1 and I7. The words say *30 days, and for longer only while a backup you kept still holds it*, which is what the clean-up of [15](15-google-drive-backup-and-sharing.md) §5.1 does (`photo-sweep-rules.ts`, `PhotoSweepRules.kt`: the file moves to Drive's bin once its tombstone is older than 30 days and no kept backup could hold it); "at least 30 days" was written before the clean-up existed. |
 | 0.23 | 2026-10-19 | Claude (Code), engineer | **A7 new** (the `.gitleaksignore` entries as reviewed items, with the four kinds of reason, re-read at each release) and **C1a new** (the Android exported components named from the manifest, with the reason of each). **B4 and I9** name the bombs of TC-S-17 (a lying header, claims that add up past 1 GiB, 5 001 entries) ([06](06-test-plan.md) TC-S-17, [02](02-threat-model.md) T-T8). |
+| 0.24 | 2026-10-19 | Claude (Code), engineer | **A5 and A6 name the owner's settings** (found in the release run, [ops/release-run-2026-10-19.md](ops/release-run-2026-10-19.md)): Dependabot alerts must be enabled in the repository settings (free), and reading code-scanning or Dependabot alerts from a terminal needs a token that can read them. The first release is **v0.1.1**, not v0.1.0 ([14](14-lead-backlog-and-handoff.md)). |
 
 ## 1. What this is, and when it runs
 
@@ -85,8 +86,8 @@ example part E with no public server) is marked *n/a* with the reason.
 | A2 | ZAP's Medium and Low alerts (TC-S-04) | `backend-zap-api-scan` → `zap.html` | Each one is a known, recorded item or is new and triaged now (fix, or a backlog item) |
 | A3 | MobSF's accepted Highs still hold (TC-S-06) | `android/ci/mobsf-accepted.json` against `android-mobsf-report` | Every accepted item's reason is still true for this release |
 | A4 | Licence warnings | The Security run's *Licence check* step | Each warning has an owner decision, or is in `.github/licence-exceptions.json` with a reason |
-| A5 | Code scanning | GitHub → Security → Code scanning, filtered to the release branch | No open alert of severity *error* or *high*; each warning seen |
-| A6 | Dependabot | GitHub → Security → Dependabot | No open High or Critical alert |
+| A5 | Code scanning | GitHub → Security → Code scanning, filtered to the release branch. Reading the alerts from a terminal or a Claude session needs a token that can read code-scanning alerts (a fine-grained token with *Code scanning alerts: read*, or `security_events`); the session's own token may not. **Owner action** | No open alert of severity *error* or *high*; each warning seen |
+| A6 | Dependabot | GitHub → Security → Dependabot. **Dependabot alerts must be enabled** first in the repository's settings (Settings → Code security → *Dependabot alerts*; free); with them off the page is empty and the row proves nothing. Reading them from a terminal needs a token that can read Dependabot alerts. **Owner action** | Dependabot alerts are on, and no open High or Critical alert |
 | A7 | The reviewed secret-scan exceptions | Read `.gitleaksignore` (113 fingerprints, each `commit:path:rule:line`, under a dated *Reviewed* comment) against the Security run's *gitleaks* step, which scans the whole history | Every entry is still one of the reviewed kinds and no entry is new since the last release without a comment: (1) a throwaway or made-up key in a test (the initial commit's backend test keys, 2026-09-22; `KeychainSettingsTest`, 2026-09-29; `AIzaTestKey1234`, `AIzaOwnKeyForTests1234`, the `sk-test-…` and voice-test strings, 2026-10-07 to 2026-10-15); (2) the type or variable name after `key:` or `privateKey:` in Drive code (`P256PrivateKey`, `override val key`, 2026-10-02 to 2026-10-06); (3) published known-answer vectors (RFC 9180 HPKE hex, the DPX regression base64, in `docs/schemas` and the `androidTest` copies, 2026-10-02 to 2026-10-10); (4) made-up recovery keys and hostile exception messages in tests (2026-10-06, 2026-10-07). None is a live credential; the commits are named, so a real key on another line or in a later commit still fails the scan. The file is **re-read at each release**: a fingerprint whose commit is gone from every branch can be deleted, and a new one needs a dated reason first (recorded in [07](07-secure-build-and-deploy.md)) |
 
 ### B. Web app, WSTG-lite (15 minutes)
