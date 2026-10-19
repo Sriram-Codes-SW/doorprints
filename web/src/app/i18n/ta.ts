@@ -21,8 +21,9 @@ import type { Dict } from './en';
 /** Tamil (தமிழ்). Keep "BHK", "API", URLs and brand names as they are. */
 export const ta: Dict = {
   'app.name': 'Doorprints',
-  'app.tagline': 'நீங்கள் பார்த்த ஒவ்வொரு வீட்டையும் நினைவில் வையுங்கள்.',
-  'app.description': 'Doorprints: நீங்கள் பார்த்த ஒவ்வொரு வீட்டையும் நினைவில் வையுங்கள். நீங்கள் பார்வையிடும் வீடுகளைச் சேமித்து, மதிப்பிட்டு, ஒப்பிடுங்கள்.',
+  // ADR-13b (2026-10-19): the kind-neutral tagline, description and landing title. Under review (owner rule: hi/ta/te ship marked under review).
+  'app.tagline': 'நீங்கள் பார்த்த ஒவ்வொரு இடத்தையும் நினைவில் வையுங்கள்.',
+  'app.description': 'Doorprints: நீங்கள் பார்த்த ஒவ்வொரு இடத்தையும் நினைவில் வையுங்கள். நீங்கள் பார்வையிடும் வீடுகளையும் பள்ளிகளையும் சேமித்து, மதிப்பிட்டு, ஒப்பிடுங்கள்.',
   'app.skip': 'முதன்மை உள்ளடக்கத்திற்குச் செல்லவும்',
   'app.homeLink': 'Doorprints முகப்பு',
   'nav.label': 'முதன்மை',
@@ -33,7 +34,7 @@ export const ta: Dict = {
   'lang.changed': 'மொழி தமிழுக்கு மாற்றப்பட்டது',
 
   'title.app': 'Doorprints',
-  'title.map': 'Doorprints: பார்த்த ஒவ்வொரு வீட்டையும் நினைவில் வையுங்கள்',
+  'title.map': 'Doorprints: பார்த்த ஒவ்வொரு இடத்தையும் நினைவில் வையுங்கள்',
   'title.newHouse': 'புதிய வீடு · Doorprints',
   'title.house': 'வீட்டு விவரங்கள் · Doorprints',
   'title.compare': 'ஒப்பீடு · Doorprints',
@@ -1758,7 +1759,7 @@ export const ta: Dict = {
   'kinds.body': 'Doorprints எதைக் கண்காணிக்க வேண்டும் என்பதைத் தேர்ந்தெடுக்கவும். ஒன்றுக்கு மேல் இயக்கத்தில் இருந்தால், நீங்கள் எதைத் தேடுகிறீர்கள் என்று Doorprints முதலில் கேட்கும்.',
   'kinds.switch': 'சோதனை: வீடுகளைத் தவிர மற்றவை',
   // 2026-10-15 (ship school, compiled in and off): the preview marks on the switch hint and the school listing hint. Under review (owner rule: hi/ta/te ship marked under review).
-  'kinds.switchHint': 'இயல்பாக முடக்கம். பள்ளிகள் போன்ற, இன்னும் சோதிக்கப்படுபவற்றைக் காட்டும். இது மாறக்கூடும். இது ஒரு முன்னோட்டம்.',
+  'kinds.switchHint': 'இயல்பாக முடக்கம். இன்னும் சோதிக்கப்படுபவற்றைக் காட்டும். இது மாறக்கூடும்.',
   'kinds.show': '{kind} காட்டு',
   'kinds.default': 'இயல்புநிலை',
   'kinds.defaultAria': '{kind} இயல்புநிலையாக்கு',
@@ -1890,7 +1891,7 @@ export const ta: Dict = {
   'school.mapLabel': 'பள்ளியின் இருப்பிட வரைபடம்',
   'school.saveFirstVisits': 'வருகைகளைப் பதிவுசெய்ய முதலில் பள்ளியைச் சேமிக்கவும்.',
   'school.saveFirstPhotos': 'படங்களைச் சேர்க்க முதலில் பள்ளியைச் சேமிக்கவும்.',
-  'school.listingHint': 'முன்னோட்டம்: விவரங்களை AI பரிந்துரைக்கிறது; சரிபார்த்து, வரைபடத்தில் இடத்தை அமைத்து, பிறகு பள்ளியை உருவாக்கவும்.',
+  'school.listingHint': 'விவரங்களை AI பரிந்துரைக்கிறது; சரிபார்த்து, வரைபடத்தில் இடத்தை அமைத்து, பிறகு பள்ளியை உருவாக்கவும்.',
   'school.aiDisclosure': 'இந்த உரை, பொருந்தும் பள்ளிக் குறிப்புகளுடன், உங்கள் சர்வரில் அமைத்த AI சேவைக்கு அனுப்பப்படும்.',
   'school.aiDisclosureOwnKeyHost': 'இந்த உரை, பொருந்தும் பள்ளிக் குறிப்புகளுடன், உங்கள் சொந்த சாவியுடன் இந்த உலாவியிலிருந்து நேரடியாக {host}-க்கு அனுப்பப்படும்.',
   'school.fitTitle': 'பட்டியலில் உள்ள எல்லாப் பள்ளிகளும் தெரியும்படி வரைபடத்தைப் பெரிதாக்கு',

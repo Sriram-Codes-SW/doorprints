@@ -29,10 +29,12 @@ import { STORAGE_PREFIX } from './storage-keys';
  *
  * - **Available** kinds are the kinds this build lists ({@link availableKinds}): a development build lists every built-in
  *   kind; a build made with a `DOORPRINTS_KINDS` define lists those, and since 2026-10-15 the production configuration in
- *   `angular.json` defines `'house,school'` (the school compiled in, off); a build with no define lists the house alone.
- *   Listing a kind does not release it: the owner decides the release gate ({@link RELEASED_KINDS}).
- * - **Released** kinds ({@link RELEASED_KINDS}) need no switch. Every other available kind is offered only while the
- *   person turns on *Experimental: more than houses*, which is shown only in a build that ships such a kind.
+ *   `angular.json` defines `'house,school'`; a build with no define lists the house alone.
+ *   Listing a kind does not release it: the owner decides the release gate ({@link RELEASED_KINDS}); the school was
+ *   released on the web by the owner's decision of 2026-10-19 (docs/03 ADR-13b), the phones still keep it off.
+ * - **Released** kinds ({@link RELEASED_KINDS}) need no switch: the house and, since the school's release, the school. Every
+ *   other available kind is offered only while the person turns on *Experimental: more than houses*, which is shown only
+ *   in a build that ships such a kind (none today, so the switch is hidden; the mechanism stays for the next kind).
  * - **Enabled** kinds are the offered ones the person turned on in Settings > Kinds (the house alone by default), and
  *   the **default** kind is the one the app opens with when only one is enabled, and the one deep links, `/houses/new`,
  *   the share target and notifications assume.
@@ -44,7 +46,7 @@ export const ENABLED_KINDS_KEY = `${STORAGE_PREFIX}kinds.enabled`;
 export const DEFAULT_KIND_KEY = `${STORAGE_PREFIX}kinds.default`;
 
 /** The kinds that need no experimental switch: the owner opens a kind's release gate by adding it here. */
-export const RELEASED_KINDS: readonly string[] = ['house'];
+export const RELEASED_KINDS: readonly string[] = ['house', 'school'];
 /** Every built-in kind, the house first (and, in a test, the kinds it registered). */
 const builtIn = (): readonly string[] => creatableKinds(true).map((k) => k.id);
 const HOUSE_ONLY: readonly string[] = ['house'];

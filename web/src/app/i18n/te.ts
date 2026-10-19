@@ -21,8 +21,9 @@ import type { Dict } from './en';
 /** Telugu (తెలుగు). Keep "BHK", "API", URLs and brand names as they are. */
 export const te: Dict = {
   'app.name': 'Doorprints',
-  'app.tagline': 'మీరు చూసిన ప్రతి ఇంటినీ గుర్తుంచుకోండి.',
-  'app.description': 'Doorprints: మీరు చూసిన ప్రతి ఇంటినీ గుర్తుంచుకోండి. మీరు చూసే ఇళ్లను సేవ్ చేసి, రేటింగ్ ఇచ్చి, పోల్చండి.',
+  // ADR-13b (2026-10-19): the kind-neutral tagline, description and landing title. Under review (owner rule: hi/ta/te ship marked under review).
+  'app.tagline': 'మీరు చూసిన ప్రతి ప్రదేశాన్నీ గుర్తుంచుకోండి.',
+  'app.description': 'Doorprints: మీరు చూసిన ప్రతి ప్రదేశాన్నీ గుర్తుంచుకోండి. మీరు చూసే ఇళ్లను, పాఠశాలలను సేవ్ చేసి, రేటింగ్ ఇచ్చి, పోల్చండి.',
   'app.skip': 'ప్రధాన కంటెంట్‌కు వెళ్లండి',
   'app.homeLink': 'Doorprints హోమ్',
   'nav.label': 'ప్రధాన',
@@ -33,7 +34,7 @@ export const te: Dict = {
   'lang.changed': 'భాష తెలుగుకు మార్చబడింది',
 
   'title.app': 'Doorprints',
-  'title.map': 'Doorprints: మీరు చూసిన ప్రతి ఇంటినీ గుర్తుంచుకోండి',
+  'title.map': 'Doorprints: మీరు చూసిన ప్రతి ప్రదేశాన్నీ గుర్తుంచుకోండి',
   'title.newHouse': 'కొత్త ఇల్లు · Doorprints',
   'title.house': 'ఇంటి వివరాలు · Doorprints',
   'title.compare': 'పోలిక · Doorprints',
@@ -1758,7 +1759,7 @@ export const te: Dict = {
   'kinds.body': 'Doorprints దేనిని ట్రాక్ చేయాలో ఎంచుకోండి. ఒకటి కంటే ఎక్కువ ఆన్‌లో ఉంటే, మీరు ఏమి వెతుకుతున్నారో Doorprints మొదట అడుగుతుంది.',
   'kinds.switch': 'ప్రయోగాత్మకం: ఇళ్లు కాకుండా ఇంకా',
   // 2026-10-15 (ship school, compiled in and off): the preview marks on the switch hint and the school listing hint. Under review (owner rule: hi/ta/te ship marked under review).
-  'kinds.switchHint': 'మొదట ఆఫ్‌లో ఉంటుంది. పాఠశాలల వంటి, ఇంకా పరీక్షిస్తున్నవాటిని చూపిస్తుంది. ఇది మారవచ్చు. ఇది ఒక ప్రివ్యూ.',
+  'kinds.switchHint': 'మొదట ఆఫ్‌లో ఉంటుంది. ఇంకా పరీక్షిస్తున్నవాటిని చూపిస్తుంది. ఇది మారవచ్చు.',
   'kinds.show': '{kind} చూపించు',
   'kinds.default': 'డిఫాల్ట్',
   'kinds.defaultAria': '{kind}‌ను డిఫాల్ట్ చేయండి',
@@ -1890,7 +1891,7 @@ export const te: Dict = {
   'school.mapLabel': 'పాఠశాల స్థానం మ్యాప్',
   'school.saveFirstVisits': 'సందర్శనలు నమోదు చేయడానికి ముందుగా పాఠశాలను సేవ్ చేయండి.',
   'school.saveFirstPhotos': 'ఫోటోలు చేర్చడానికి ముందుగా పాఠశాలను సేవ్ చేయండి.',
-  'school.listingHint': 'ప్రివ్యూ: వివరాలను AI సూచిస్తుంది; వాటిని తనిఖీ చేసి, మ్యాప్‌లో స్థానం సెట్ చేసి, ఆ తర్వాత పాఠశాలను సృష్టించండి.',
+  'school.listingHint': 'వివరాలను AI సూచిస్తుంది; వాటిని తనిఖీ చేసి, మ్యాప్‌లో స్థానం సెట్ చేసి, ఆ తర్వాత పాఠశాలను సృష్టించండి.',
   'school.aiDisclosure': 'ఈ టెక్స్ట్, సరిపోలే పాఠశాల గమనికలతో కలిసి, మీ సర్వర్‌లో సెట్ చేసిన AI సేవకు పంపబడుతుంది.',
   'school.aiDisclosureOwnKeyHost': 'ఈ టెక్స్ట్, సరిపోలే పాఠశాల గమనికలతో కలిసి, మీ సొంత కీతో ఈ బ్రౌజర్ నుండి నేరుగా {host} కి పంపబడుతుంది.',
   'school.fitTitle': 'జాబితాలోని అన్ని పాఠశాలలు కనిపించేలా మ్యాప్‌ను జూమ్ చేయండి',

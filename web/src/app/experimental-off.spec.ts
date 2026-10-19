@@ -16,9 +16,11 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-// Experimental off (owner decision 2026-10-15, docs/13 part J1): the production build lists the school (compiled in), and
-// the person has not turned on Experimental: more than houses. Everything the person can reach is then the house's alone:
-// no chooser, no spaces routes, no kind rows in Settings, and search and the AI read exactly what the house build reads.
+// The school released but not enabled (owner decisions 2026-10-15 and 2026-10-19, docs/03 ADR-13b, docs/13 part J1): the
+// production build lists the school, the school is released, and the person has not shown it in Settings > What you track. The
+// app is then the house app: no chooser, no spaces routes, search and the AI read a house exactly as the house build did; the
+// only difference is a *Schools* row in Settings, off. (Before the release the same held with the school behind Experimental:
+// more than houses; that switch now hides itself while no unreleased kind is listed.)
 // The unit tests run in Angular's development mode, where every built-in kind is available: the same availability the
 // production build's DOORPRINTS_KINDS = house,school gives, so these cases hold for it (release-kinds.spec.ts pins the define).
 import { TestBed } from '@angular/core/testing';
@@ -43,19 +45,19 @@ import { searchText } from './pages/map/map-list';
 
 const school = { id: 's1', kind: 'school', label: 'Pine Hill School', lat: 26, lon: 91, status: 'NEW', deleted: false, updatedAt: '2026-10-01T00:00:00.000Z' } as unknown as HouseDto;
 
-describe('experimental off: a build that lists the school is the house app until the switch is turned on', () => {
+describe('school released but not enabled: the house app until the person shows the school', () => {
   beforeEach(() => localStorage.clear());
   afterEach(() => {
     localStorage.clear();
     TestBed.resetTestingModule();
   });
 
-  it('lists the school, offers the house alone, and has no spaces', () => {
+  it('lists and offers the school, enables the house alone, and has no spaces', () => {
     expect(availableKinds()).toEqual(['house', 'school']);
-    expect(unreleasedKinds()).toEqual(['school']);
+    expect(unreleasedKinds()).toEqual([]);
     expect(experimentalKindsOn()).toBe(false);
-    expect([offeredKinds(), enabledKinds()]).toEqual([['house'], ['house']]);
-    expect([defaultKind(), spacesOn(), kindsOn()]).toEqual(['house', false, false]);
+    expect([offeredKinds(), enabledKinds()]).toEqual([['house', 'school'], ['house']]);
+    expect([defaultKind(), spacesOn(), kindsOn()]).toEqual(['house', false, true]);
   });
 
   it('has no chooser and no spaces routes: the routes are the house app’s own', () => {
@@ -66,7 +68,7 @@ describe('experimental off: a build that lists the school is the house app until
     expect(got.some((r) => r.title === 'title.chooser')).toBe(false);
   });
 
-  it('shows Settings > What you track with the switch off and no kind rows', async () => {
+  it('shows Settings > What you track with no switch and a Schools row, off', async () => {
     TestBed.configureTestingModule({
       imports: [KindsSettings],
       providers: [provideRouter(routes), { provide: LocalDataService, useValue: { houses: () => of([school]) } }],
@@ -77,18 +79,22 @@ describe('experimental off: a build that lists the school is the house app until
     await fixture.whenStable();
     fixture.detectChanges();
     const host = fixture.nativeElement as HTMLElement;
-    expect(host.querySelector<HTMLInputElement>('#kinds-experimental')?.checked).toBe(false);
-    expect(host.querySelector('#kind-rows')).toBeNull();
-    expect(host.querySelector('[id^="kind-on-"]')).toBeNull();
+    expect(host.querySelector('#kinds-experimental')).toBeNull();
+    expect(host.querySelector('#kind-rows')).not.toBeNull();
+    expect(host.querySelector<HTMLInputElement>('#kind-on-house')?.checked).toBe(true);
+    expect(host.querySelector<HTMLInputElement>('#kind-on-school')?.checked).toBe(false);
   });
 
-  it('searches a house as the house build does (no word of a kind, whatever the switch)', () => {
+  it('searches a house as the house build does (no word of a kind, whatever the school is set to)', () => {
     for (const h of FIXTURE_HOUSES) expect(searchText(h)).toBe(searchText(h, '', [], undefined, undefined, HOUSE_FIELDS));
     expect(searchText({ ...school, extrasOther: { board: 'CBSE' } } as HouseDto).includes('cbse')).toBe(false);
   });
 
-  it('shows the AI of the house alone, and reads every house exactly as the house build did (the golden pins)', () => {
-    expect(aiKindOf('school', kindsOn())).toBeNull();
+  it('reads a house exactly as the house build did although kindsOn() is now true (the golden pins; the school is read as a school only for a school)', () => {
+    expect(kindsOn()).toBe(true);
+    expect(aiKindOf('house', kindsOn())).toBeNull();
+    expect(aiKindOf('school', kindsOn())?.id).toBe('school');
+    expect(aiKindOf('school', false)).toBeNull();
     for (const on of [false, true]) {
       for (const own of [false, true]) {
         expect(aiShownIn(defaultKind(), availableKinds(), on, own, ['school'])).toBe(aiShownIn('house', ['house'], on, own, []));

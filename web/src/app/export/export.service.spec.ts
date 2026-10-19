@@ -37,6 +37,7 @@ import schoolVectors from '../../../../docs/schemas/kinds/school-vectors.json';
 import { houseOf, type CandidateDto } from '../core/candidate';
 import { DEV_KINDS_KEY } from '../core/dev-kinds';
 import { DEFAULT_KIND_KEY, ENABLED_KINDS_KEY, EXPERIMENTAL_KINDS_KEY } from '../core/kind-setting';
+import { pinReleased, unpinReleased } from '../shared/testing/released-kinds';
 import { SCHOOL_FIELDS } from '../core/school-kind';
 
 /**
@@ -337,8 +338,17 @@ describe('the copies read each candidate as its page draws it (kinds PR 6, S4b-B
     const service = TestBed.inject(ExportService);
     localStorage.setItem(ENABLED_KINDS_KEY, '["house","school"]');
     localStorage.setItem(DEFAULT_KIND_KEY, 'school');
-    expect((await service.bundle(OPTIONS)).spaces).toBeUndefined();
-    localStorage.setItem(EXPERIMENTAL_KINDS_KEY, '1');
+    // A kind that is listed but not released (the school before ADR-13b, and the next kind) is offered by the switch only.
+    pinReleased();
+    try {
+      expect((await service.bundle(OPTIONS)).spaces).toBeUndefined();
+      localStorage.setItem(EXPERIMENTAL_KINDS_KEY, '1');
+      expect((await service.bundle(OPTIONS)).spaces).toEqual({ kinds: ['house', 'school'], defaultKind: 'school' });
+    } finally {
+      unpinReleased();
+    }
+    // The released school needs no switch.
+    localStorage.removeItem(EXPERIMENTAL_KINDS_KEY);
     expect((await service.bundle(OPTIONS)).spaces).toEqual({ kinds: ['house', 'school'], defaultKind: 'school' });
     for (const k of [EXPERIMENTAL_KINDS_KEY, ENABLED_KINDS_KEY, DEFAULT_KIND_KEY]) localStorage.removeItem(k);
   });

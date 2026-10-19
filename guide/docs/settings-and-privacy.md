@@ -220,8 +220,9 @@ Instead of your AI service, **Sarvam** (an Indian speech-to-text service, Sarvam
 - **Sarvam as a chat service.** Sarvam is also in the **AI service** list for the AI itself (Ask, Plan, Fill in); that is a separate choice with its own key and has nothing to do with speech.
 - **Everything else is as above:** off until you turn on **Voice input**, the words land in the box for you to check, nothing is sent until the box's own button, the microphone is asked for only when you tap it.
 
-## More than houses (experimental) {#other-kinds}
+## Schools as well as houses {#other-kinds}
 
-**Your data** on the website has one more section, **What you track**, with the switch
-**Experimental: more than houses**. It is off by default, and while it is off
-nothing in this guide changes. On, Doorprints can keep track of schools too: see [More than houses (experimental)](other-kinds.md).
+**Your data** on the website has one more section, **What you track**, with a row for **Houses** and one for **Schools**.
+Schools are off by default, and while they are off nothing in this guide changes. Show them and Doorprints keeps track of
+schools too: see [Schools as well as houses](other-kinds.md). On the phones schools are still a preview, behind the switch
+**Experimental: more than houses**.
