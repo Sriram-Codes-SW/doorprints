@@ -127,7 +127,7 @@ class VoiceTierGateTest {
         assertFalse(gate.canConfirmPaid(subject(), VoiceVerdict.REFUSE_FREE))
         assertEquals(1, calls.size, "kept: no second call")
         val (name, value) = entries().entries.first { "tier-ack" !in it.key }
-        assertEquals("voice.tier.${VoiceTier.fingerprint(placeholder("1111"))}", name)
+        assertEquals("voice.tier.${VoiceTier.keyHash(placeholder("1111"))}", name)
         assertTrue(value.startsWith("REFUSE_FREE|$clock|gemini:probe"))
         // Older than a day it is asked again.
         clock += VoiceTier.REFUSE_FREE_TTL_MS + 1
@@ -173,7 +173,7 @@ class VoiceTierGateTest {
         gate.acknowledge(subject(), true)
         assertEquals(VoiceVerdict.ALLOW, gate.verdict(subject()))
         assertTrue(gate.isAcknowledged(subject()))
-        val oldFp = VoiceTier.fingerprint(placeholder("1111"))
+        val oldFp = VoiceTier.keyHash(placeholder("1111"))
         assertNotNull(settings.voiceTier.ack(oldFp))
         own(AiProviderConfig.GEMINI, placeholder("2222"))
         reply = { 403 to "{}" }
@@ -316,9 +316,9 @@ class VoiceTierGateTest {
         assertEquals(3, entry.size, "verdict, time, evidence")
         // TC-U-170 pattern: not in the settings as printed, not in a backup file.
         val printed = settings.current().toString() + settings.voiceChoice.first().toString()
-        assertFalse("voice.tier" in printed || VoiceTier.fingerprint(placeholder("1111")) in printed)
+        assertFalse("voice.tier" in printed || VoiceTier.keyHash(placeholder("1111")) in printed)
         val backup = BackupFormat.json.encodeToString(BackupData.serializer(), BackupData.of(ExportFixture.bundle())).lowercase()
-        for (word in listOf("voice.tier", "voicetier", "refuse_free", VoiceTier.fingerprint(placeholder("1111")))) {
+        for (word in listOf("voice.tier", "voicetier", "refuse_free", VoiceTier.keyHash(placeholder("1111")))) {
             assertFalse(word in backup, "the backup JSON mentions '$word'")
         }
     }

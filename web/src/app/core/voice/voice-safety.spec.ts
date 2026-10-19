@@ -28,7 +28,7 @@ import { GEMINI_KEY_KEY, VOICE_INPUT_KEY } from '../storage-keys';
 import { AudioRecorder } from './audio-recorder';
 import { FAKE_AUDIO, FAKE_AUDIO_B64, FakeRecorder, allowVoicePlan, fakeMic } from './testing/voice-fakes';
 import { RECORDER_ENV, VOICE_TIER_FETCH, VoiceInputService, VoiceTierRefusedError } from './voice-input.service';
-import { keyFingerprint } from './voice-tier';
+import { keyHash } from './voice-tier';
 import { writeTier } from './voice-tier-store';
 
 /**
@@ -435,7 +435,7 @@ describe('voice free-plan rule safety proof (TC-S-51, TC-S-52, TC-S-53; ADR-37, 
       for (let i = 0; i < store.length; i++) all.push(store.key(i)!, store.getItem(store.key(i)!)!);
     }
     const kept = [...Array(localStorage.length).keys()].map((i) => localStorage.key(i)!).filter((k) => k.startsWith(TIER_STORE_PREFIX));
-    expect(kept).toEqual([`${TIER_STORE_PREFIX}.${keyFingerprint(KEY)}`]);
+    expect(kept).toEqual([`${TIER_STORE_PREFIX}.${keyHash(KEY)}`]);
     const entry = JSON.parse(localStorage.getItem(kept[0])!) as Record<string, unknown>;
     expect(Object.keys(entry).sort()).toEqual(['checkedAt', 'source', 'verdict']);
     expect(entry['verdict']).toBe('REFUSE_FREE');
@@ -447,8 +447,8 @@ describe('voice free-plan rule safety proof (TC-S-51, TC-S-52, TC-S-53; ADR-37, 
   it('TC-S-52: the kept entries share the key\'s store: a key held for this tab only keeps its verdict in session storage', () => {
     sessionStorage.setItem(GEMINI_KEY_KEY, KEY);
     writeTier('gemini', KEY, 'ALLOW', 'test', Date.now());
-    expect(sessionStorage.getItem(`${TIER_STORE_PREFIX}.${keyFingerprint(KEY)}`)).not.toBeNull();
-    expect(localStorage.getItem(`${TIER_STORE_PREFIX}.${keyFingerprint(KEY)}`)).toBeNull();
+    expect(sessionStorage.getItem(`${TIER_STORE_PREFIX}.${keyHash(KEY)}`)).not.toBeNull();
+    expect(localStorage.getItem(`${TIER_STORE_PREFIX}.${keyHash(KEY)}`)).toBeNull();
   });
 
   it('TC-S-52: only the plan rule\'s store writes the kept entries, and it writes the entry fields and nothing from a reply', () => {
@@ -467,7 +467,7 @@ describe('voice free-plan rule safety proof (TC-S-51, TC-S-52, TC-S-53; ADR-37, 
     }
     // No backup, export, sync or share module reads the plan rule.
     for (const [file, text] of all) {
-      if (/^(export|data|share)\//.test(file) || /sync|backup/i.test(file)) expect(text, file).not.toMatch(/voice-tier|keyFingerprint/);
+      if (/^(export|data|share)\//.test(file) || /sync|backup/i.test(file)) expect(text, file).not.toMatch(/voice-tier|keyHash/);
     }
   });
 

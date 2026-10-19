@@ -20,7 +20,7 @@ import { describe, expect, it } from 'vitest';
 import vectorsJson from '../../../../../docs/schemas/voice-tier-vectors.json';
 import {
   ALLOW_TTL_MS, GEMINI_PROBE_MODEL, GEMINI_PROBE_PROMPT, REFUSE_FREE_TTL_MS, type CachedTier, type TierProbe, type VoiceVerdict,
-  canAcknowledge, decideVoiceTier, geminiProbeBody, geminiProbeResult, geminiProbeUrl, keyFingerprint, openRouterKeyResult,
+  canAcknowledge, decideVoiceTier, geminiProbeBody, geminiProbeResult, geminiProbeUrl, keyHash, openRouterKeyResult,
 } from './voice-tier';
 
 /**
@@ -73,13 +73,13 @@ describe('voice free-plan rule (shared vectors)', () => {
   });
 
   it.each(vectors.fingerprint.map((c) => [JSON.stringify(c.input).slice(0, 30), c] as const))('fingerprint of %s is the first 16 hex of its SHA-256', (_n, c) => {
-    expect(keyFingerprint(c.input)).toBe(c.expect);
-    expect(keyFingerprint(c.input)).toHaveLength(16);
+    expect(keyHash(c.input)).toBe(c.expect);
+    expect(keyHash(c.input)).toHaveLength(16);
   });
 
   it('the fingerprint is a hash: a key that differs by one character shares nothing, and the key is not in it', () => {
-    const a = keyFingerprint('placeholder-key-aaaa');
-    const b = keyFingerprint('placeholder-key-aaab');
+    const a = keyHash('placeholder-key-aaaa');
+    const b = keyHash('placeholder-key-aaab');
     expect(a).not.toBe(b);
     expect(a).toMatch(/^[0-9a-f]{16}$/);
     expect('placeholder-key-aaaa').not.toContain(a);

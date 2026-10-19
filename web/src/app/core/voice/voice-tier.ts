@@ -206,6 +206,6 @@ function sha256Hex(text: string): string {
  * What names a key's kept verdict and acknowledgement: the first 16 hex characters of its SHA-256 (64 of 256 bits). The key
  * cannot be recovered from it, and the key itself is never kept here (the `fingerprint` vectors).
  */
-export function keyFingerprint(key: string): string {
+export function keyHash(key: string): string {
   return sha256Hex(key).slice(0, FINGERPRINT_HEX);
 }

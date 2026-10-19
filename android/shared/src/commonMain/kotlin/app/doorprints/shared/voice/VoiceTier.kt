@@ -171,7 +171,7 @@ object VoiceTier {
      * What names a key's kept verdict and acknowledgement: the first 16 hex characters of its SHA-256 (64 of 256 bits). The key
      * cannot be recovered from it, and the key itself is never kept (the `fingerprint` vectors).
      */
-    fun fingerprint(key: String): String = Sha256.hex(key.encodeToByteArray()).take(FINGERPRINT_HEX)
+    fun keyHash(key: String): String = Sha256.hex(key.encodeToByteArray()).take(FINGERPRINT_HEX)
 }
 
 /** SHA-256 in plain Kotlin, because common code has no digest of its own; pinned by the vectors and the standard test strings. */

@@ -81,7 +81,7 @@ class VoiceTierGate(
      * request calls this with true.
      */
     suspend fun verdict(subject: TierSubject, probe: Boolean = true): VoiceVerdict = lock.withLock {
-        val fp = VoiceTier.fingerprint(subject.key())
+        val fp = VoiceTier.keyHash(subject.key())
         forgetReplaced(subject.provider, fp)
         var v = decideNow(subject, fp)
         val known = probes[fp]
@@ -98,17 +98,17 @@ class VoiceTierGate(
 
     /** Whether the person confirmed, for this key and provider, that the plan is paid. */
     suspend fun isAcknowledged(subject: TierSubject): Boolean =
-        settings.voiceTier.ack(VoiceTier.fingerprint(subject.key())) == subject.provider
+        settings.voiceTier.ack(VoiceTier.keyHash(subject.key())) == subject.provider
 
     /** Records or withdraws "my plan is paid" for this key (asked again for a new key: the name is the key's hash). */
     suspend fun acknowledge(subject: TierSubject, on: Boolean) {
-        settings.voiceTier.saveAck(VoiceTier.fingerprint(subject.key()), if (on) subject.provider else null)
+        settings.voiceTier.saveAck(VoiceTier.keyHash(subject.key()), if (on) subject.provider else null)
     }
 
     /** The confirmation is offered: the rule cannot read this provider's plan (or its probe could not tell) and it is not a free plan. */
     suspend fun canConfirmPaid(subject: TierSubject, verdict: VoiceVerdict): Boolean {
         if (!VoiceTier.canAcknowledge(subject.provider) || verdict == VoiceVerdict.REFUSE_FREE || verdict == VoiceVerdict.CHECKING) return false
-        return !VoiceTier.needsProbe(subject.provider) || probes[VoiceTier.fingerprint(subject.key())]?.first == TierProbe.UNKNOWN
+        return !VoiceTier.needsProbe(subject.provider) || probes[VoiceTier.keyHash(subject.key())]?.first == TierProbe.UNKNOWN
     }
 
     /**
@@ -175,7 +175,7 @@ class VoiceTierGate(
         /** The ordinary-request hook without a gate (the AI store has the settings but no HTTP client for a probe). */
         suspend fun noteGeminiAnswer(settings: SettingsStore, key: String, status: Int, body: String, at: Long = IsoTime.nowMillis()) {
             if (key.isBlank() || status != 429 || VoiceTier.geminiProbeResult(status, body) != TierProbe.FREE) return
-            settings.voiceTier.saveEntry(VoiceTier.fingerprint(key), "${VoiceVerdict.REFUSE_FREE.name}|$at|gemini:ordinary-429")
+            settings.voiceTier.saveEntry(VoiceTier.keyHash(key), "${VoiceVerdict.REFUSE_FREE.name}|$at|gemini:ordinary-429")
         }
     }
 

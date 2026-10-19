@@ -104,12 +104,12 @@ class VoiceTierVectorsTest {
     }
 
     @Test
-    fun theFingerprintIsTheFirstSixteenHexOfTheSha256() {
+    fun theKeyHashIsTheFirstSixteenHexOfTheSha256() {
         for (c in cases("fingerprint")) {
-            assertEquals(c.text("expect"), VoiceTier.fingerprint(c.text("input")), c.text("input"))
+            assertEquals(c.text("expect"), VoiceTier.keyHash(c.text("input")), c.text("input"))
         }
-        val a = VoiceTier.fingerprint("placeholder-key-aaaa")
-        assertNotEquals(a, VoiceTier.fingerprint("placeholder-key-aaab"))
+        val a = VoiceTier.keyHash("placeholder-key-aaaa")
+        assertNotEquals(a, VoiceTier.keyHash("placeholder-key-aaab"))
         assertEquals(16, a.length)
         assertFalse("placeholder" in a)
     }

@@ -28,7 +28,7 @@
       "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/VoiceTier.kt",
       "find": "Sha256.hex(key.encodeToByteArray()).take(FINGERPRINT_HEX)",
       "replace": "key.take(FINGERPRINT_HEX)",
-      "expect": "theFingerprintIsTheFirstSixteenHexOfTheSha256"
+      "expect": "theKeyHashIsTheFirstSixteenHexOfTheSha256"
     },
     {
       "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/VoiceTier.kt",

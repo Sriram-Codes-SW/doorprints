@@ -190,6 +190,9 @@ class VoiceInputUiTest {
         gate.acknowledge(subject, true)
     }
 
+    /** Whether the key saved now is confirmed paid; null while the settings are being rewritten (no key for a moment). */
+    private fun acknowledgedNow(): Boolean? = runBlocking { gate.subjectFor(VoiceChoice(true, store.current().aiProviderConfig))?.let { gate.isAcknowledged(it) } }
+
     private val free429 = """{"error":{"code":429,"details":[{"violations":[{"quotaId":"GenerateRequestsPerDayPerProjectPerModel-FreeTier"}]}]}}"""
     private val freeSentence = "Voice input is not available on a free Gemini plan: a free plan may let Gemini use what you say to improve its products. Use a paid key, or type instead."
 
@@ -530,7 +533,7 @@ class VoiceInputUiTest {
         setUp(AiProviderConfig(AiKind.OPENAI_COMPATIBLE, AiPreset.GROQ.baseUrl, "m"))
         confirmPaid()
         runBlocking {
-            store.voiceTier.saveEntry(VoiceTier.fingerprint(fakeKey), "REFUSE_FREE|${System.currentTimeMillis()}|groq:ordinary-429")
+            store.voiceTier.saveEntry(VoiceTier.keyHash(fakeKey), "REFUSE_FREE|${System.currentTimeMillis()}|groq:ordinary-429")
         }
         box()
         waitFor("Voice input is not available on a free Groq plan")
@@ -554,9 +557,9 @@ class VoiceInputUiTest {
         waitFor("Audio goes from this phone straight to api.groq.com")
         waitFor("free plans are refused")
         compose.onNodeWithTag(VOICE_TIER_ACK_TAG).performScrollTo().performClick()
-        compose.waitUntil(5_000) { runBlocking { gate.isAcknowledged(gate.subjectFor(VoiceChoice(true, store.current().aiProviderConfig))!!) } }
+        compose.waitUntil(5_000) { acknowledgedNow() == true }
         runBlocking { store.saveAiProviderConfig(AiProviderConfig(AiKind.OPENAI_COMPATIBLE, AiPreset.GROQ.baseUrl, "m"), fakeKey + "2") }
-        compose.waitUntil(5_000) { runBlocking { !gate.isAcknowledged(gate.subjectFor(VoiceChoice(true, store.current().aiProviderConfig))!!) } }
+        compose.waitUntil(5_000) { acknowledgedNow() == false }
     }
 
     @Test fun aFreePlanInTheSettingShowsTheSentenceAndNoConfirmation() {

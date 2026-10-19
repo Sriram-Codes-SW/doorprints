@@ -29,7 +29,7 @@ import {
 } from '../ai/transcriber';
 import { SARVAM_KEY_KEY, VOICE_INPUT_KEY, VOICE_PROVIDER_KEY } from '../storage-keys';
 import { AudioRecorder, type RecordedClip, type RecorderEnv, browserRecorderEnv, canRecord } from './audio-recorder';
-import { ALLOW_TTL_MS, REFUSE_FREE_TTL_MS, type TierProbe, type VoiceVerdict, canAcknowledge, decideVoiceTier, keyFingerprint, needsProbe } from './voice-tier';
+import { ALLOW_TTL_MS, REFUSE_FREE_TTL_MS, type TierProbe, type VoiceVerdict, canAcknowledge, decideVoiceTier, keyHash, needsProbe } from './voice-tier';
 import { forgetTier, readAck, readTier, tierVersion, writeAck, writeTier } from './voice-tier-store';
 import { probeTier } from './voice-tier-probe';
 
@@ -130,7 +130,7 @@ export class VoiceInputService {
       const provider = this.tierProvider();
       const key = this.tierKey();
       untracked(() => {
-        const fp = key === '' ? '' : keyFingerprint(key);
+        const fp = key === '' ? '' : keyHash(key);
         const before = this.lastFp[provider];
         if (before !== undefined && before !== fp && before !== '') forgetTier(before);
         this.lastFp[provider] = fp;
@@ -174,7 +174,7 @@ export class VoiceInputService {
   readonly acknowledged = computed(() => {
     tierVersion();
     const key = this.tierKey();
-    return key !== '' && readAck(keyFingerprint(key), this.tierProvider(), key);
+    return key !== '' && readAck(keyHash(key), this.tierProvider(), key);
   });
 
   /** The confirmation is offered: the rule cannot read this provider's plan (or its probe could not tell) and it is not a free plan. */
@@ -210,7 +210,7 @@ export class VoiceInputService {
 
   private probeFor(key: string): TierProbe {
     const state = this.probeState();
-    if (state === null || key === '' || state.fp !== keyFingerprint(key)) return 'none';
+    if (state === null || key === '' || state.fp !== keyHash(key)) return 'none';
     // A definite answer is also kept in storage with its lifetime; here it holds only for that long (storage may be blocked).
     const ttl = state.probe === 'free' ? REFUSE_FREE_TTL_MS : state.probe === 'paid' ? ALLOW_TTL_MS : Infinity;
     return Date.now() - state.at < ttl ? state.probe : 'none';
@@ -220,7 +220,7 @@ export class VoiceInputService {
   private currentVerdict(): VoiceVerdict {
     const provider = this.tierProvider();
     const key = this.tierKey();
-    const fp = keyFingerprint(key);
+    const fp = keyHash(key);
     return decideVoiceTier({
       provider,
       model: this.tierModel(),
@@ -238,7 +238,7 @@ export class VoiceInputService {
     const provider = this.tierProvider();
     const key = this.tierKey();
     if (key === '' || !needsProbe(provider) || !this.usable()) return Promise.resolve();
-    const fp = keyFingerprint(key);
+    const fp = keyHash(key);
     const state = this.probeState();
     const retry = state?.fp === fp && state.probe === 'unknown' && Date.now() - state.at > REPROBE_AFTER_MS;
     if (this.inflight.has(fp)) return this.inflight.get(fp)!;

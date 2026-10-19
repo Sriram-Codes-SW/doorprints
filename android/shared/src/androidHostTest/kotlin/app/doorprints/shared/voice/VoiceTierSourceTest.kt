@@ -71,7 +71,7 @@ class VoiceTierSourceTest {
         val writes = Regex("voiceTier\\.saveEntry\\(([^\n]*)").findAll(gate).map { it.groupValues[1] }.toList()
         assertEquals(3, writes.size, "the probe's two answers and the ordinary-request note")
         for (w in writes) {
-            assertTrue(w.startsWith("fp, entry(") || w.startsWith("VoiceTier.fingerprint(key), \"\${VoiceVerdict.REFUSE_FREE.name}|\$at|gemini:ordinary-429\""), w)
+            assertTrue(w.startsWith("fp, entry(") || w.startsWith("VoiceTier.keyHash(key), \"\${VoiceVerdict.REFUSE_FREE.name}|\$at|gemini:ordinary-429\""), w)
             assertFalse(Regex("\\bbody\\b|\\bkey\\(\\)|subject\\.key").containsMatchIn(w.substringAfter(",")), "nothing from a reply or the key: $w")
         }
         assertFalse(Regex("println|Log\\.|logger|\\.toString\\(\\)\\s*\\)").containsMatchIn(gate), "nothing is logged")

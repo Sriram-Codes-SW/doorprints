@@ -18,7 +18,7 @@
 
 import { signal } from '@angular/core';
 import { GEMINI_KEY_KEY, SARVAM_KEY_KEY, STORAGE_PREFIX } from '../storage-keys';
-import { type CachedTier, keyFingerprint, geminiProbeResult } from './voice-tier';
+import { type CachedTier, keyHash, geminiProbeResult } from './voice-tier';
 
 /**
  * Where the voice free-plan rule keeps what it learned (docs/03 ADR-37, docs/02 RR-33, TC-U-170 pattern): a verdict and an
@@ -74,7 +74,7 @@ export function readTier(fp: string, provider: string, key: string, now: number)
 export function writeTier(provider: string, key: string, verdict: StoredTier['verdict'], evidence: string, now: number): void {
   try {
     const entry: StoredTier = { verdict, checkedAt: now, source: `${provider}:${evidence}` };
-    storeHolding(keySlot(provider), key)?.setItem(TIER_PREFIX + keyFingerprint(key), JSON.stringify(entry));
+    storeHolding(keySlot(provider), key)?.setItem(TIER_PREFIX + keyHash(key), JSON.stringify(entry));
   } catch {
     // Storage unavailable: the verdict holds for this page only (the probe runs again next time).
   }
@@ -95,7 +95,7 @@ export function readAck(fp: string, provider: string, key: string): boolean {
 export function writeAck(provider: string, key: string, on: boolean): void {
   try {
     const store = storeHolding(keySlot(provider), key);
-    const name = ACK_PREFIX + keyFingerprint(key);
+    const name = ACK_PREFIX + keyHash(key);
     if (on) store?.setItem(name, JSON.stringify({ provider }));
     else store?.removeItem(name);
   } catch {

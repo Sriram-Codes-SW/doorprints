@@ -27,7 +27,7 @@ import { GeminiChatModel } from '../ai/on-device-ai.service';
 import { GEMINI_KEY_KEY } from '../storage-keys';
 import { FAKE_AUDIO, FakeRecorder, fakeMic } from './testing/voice-fakes';
 import { RECORDER_ENV, VOICE_TIER_FETCH, VoiceInputService, VoiceTierRefusedError } from './voice-input.service';
-import { ALLOW_TTL_MS, keyFingerprint } from './voice-tier';
+import { ALLOW_TTL_MS, keyHash } from './voice-tier';
 import { readTier, writeTier } from './voice-tier-store';
 
 /**
@@ -110,7 +110,7 @@ describe('VoiceInputService and the free-plan rule', () => {
     service.setAcknowledged(true);
     expect(service.verdict()).toBe('REFUSE_FREE');
     expect(service.canConfirmPaid()).toBe(false);
-    const kept = readTier(keyFingerprint(placeholder('1111')), 'gemini', placeholder('1111'), Date.now());
+    const kept = readTier(keyHash(placeholder('1111')), 'gemini', placeholder('1111'), Date.now());
     expect(kept?.verdict).toBe('REFUSE_FREE');
   });
 
@@ -122,7 +122,7 @@ describe('VoiceInputService and the free-plan rule', () => {
       await settle();
       expect(service.verdict()).toBe('ALLOW');
       expect(service.micEnabled()).toBe(true);
-      expect(readTier(keyFingerprint(placeholder('1111')), 'gemini', placeholder('1111'), Date.now())?.verdict).toBe('ALLOW');
+      expect(readTier(keyHash(placeholder('1111')), 'gemini', placeholder('1111'), Date.now())?.verdict).toBe('ALLOW');
     }
   });
 
@@ -142,7 +142,7 @@ describe('VoiceInputService and the free-plan rule', () => {
     expect(service.acknowledged()).toBe(false);
     expect(service.verdict()).not.toBe('ALLOW');
     expect(calls.length).toBeGreaterThan(before);
-    expect(localStorage.getItem(`doorprints.voice.tier-ack.${keyFingerprint(placeholder('1111'))}`)).toBeNull();
+    expect(localStorage.getItem(`doorprints.voice.tier-ack.${keyHash(placeholder('1111'))}`)).toBeNull();
   });
 
   it('a verdict older than its lifetime is asked again; a fresh one is not', async () => {
@@ -250,12 +250,12 @@ describe('VoiceInputService and the free-plan rule', () => {
     const key = placeholder('1111');
     localStorage.setItem(GEMINI_KEY_KEY, key);
     writeTier('gemini', key, 'ALLOW', 'probe', Date.now());
-    expect(readTier(keyFingerprint(key), 'gemini', key, Date.now())?.verdict).toBe('ALLOW');
+    expect(readTier(keyHash(key), 'gemini', key, Date.now())?.verdict).toBe('ALLOW');
     const model = new GeminiChatModel(TestBed.inject(HttpClient), key);
     const pending = model.generateJson('s', 'u', {}, 0).catch(() => 'failed');
     TestBed.inject(HttpTestingController).expectOne((r) => r.url.includes('generateContent')).flush(JSON.parse(FREE_429), { status: 429, statusText: 'Too Many Requests' });
     await pending;
-    expect(readTier(keyFingerprint(key), 'gemini', key, Date.now())).toMatchObject({ verdict: 'REFUSE_FREE' });
+    expect(readTier(keyHash(key), 'gemini', key, Date.now())).toMatchObject({ verdict: 'REFUSE_FREE' });
   });
 
   it('an ordinary 429 without a free-tier quota id changes nothing', async () => {
@@ -267,6 +267,6 @@ describe('VoiceInputService and the free-plan rule', () => {
     const pending = model.generateJson('s', 'u', {}, 0).catch(() => 'failed');
     TestBed.inject(HttpTestingController).expectOne((r) => r.url.includes('generateContent')).flush(JSON.parse(PAID_429), { status: 429, statusText: 'Too Many Requests' });
     await pending;
-    expect(readTier(keyFingerprint(key), 'gemini', key, Date.now())?.verdict).toBe('ALLOW');
+    expect(readTier(keyHash(key), 'gemini', key, Date.now())?.verdict).toBe('ALLOW');
   });
 });

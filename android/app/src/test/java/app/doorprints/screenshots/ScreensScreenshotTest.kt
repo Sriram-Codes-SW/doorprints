@@ -164,6 +164,8 @@ import app.doorprints.ui.res.school_trace_pick_title
 import app.doorprints.ui.res.voice_mic
 import app.doorprints.ui.res.voice_mic_desc
 import app.doorprints.ui.res.voice_status_recording
+import app.doorprints.ui.res.voice_tier_checking
+import io.ktor.client.engine.mock.respond
 import kotlinx.coroutines.test.StandardTestDispatcher
 import org.junit.After
 import org.junit.Before
@@ -1038,10 +1040,17 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
             app.doorprints.data.KeystoreSecretStore(seal, open = open),
             geminiSecrets = app.doorprints.data.KeystoreSecretStore(seal, app.doorprints.data.KeystoreSecretStore.GEMINI_ENTRY, open),
         )
-        runBlocking { store.saveVoiceInput(true) }
+        // A paid Gemini key (the plan rule's one probe is answered 200), so the microphone is usable as it was before the rule (ADR-37).
+        runBlocking {
+            store.saveVoiceInput(true)
+            store.saveAiProviderConfig(app.doorprints.shared.ai.AiProviderConfig.GEMINI, listOf("voice", "shot", "key").joinToString("-"))
+            store.saveAiProvider(app.doorprints.data.AiProviderChoice.DEVICE)
+        }
         val real = ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository
         val fake = FakeVoiceRepository(real, store)
-        val voice = FakeVoiceServices(granted = true)
+        val voice = FakeVoiceServices(granted = true).also {
+            it.tierGate = app.doorprints.shared.voice.VoiceTierGate(store, io.ktor.client.HttpClient(io.ktor.client.engine.mock.MockEngine { respond("{}", io.ktor.http.HttpStatusCode.OK) }))
+        }
         try {
             show(readyText = text(Res.string.voice_mic)) {
                 val services = LocalAppServices.current
@@ -1051,6 +1060,7 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
                 }
                 CompositionLocalProvider(LocalAppServices provides wrapped) { AssistantScreen(onOpenHouse = {}) }
             }
+            compose.waitUntil(5_000) { compose.onAllNodesWithText(text(Res.string.voice_tier_checking)).fetchSemanticsNodes().isEmpty() }
             compose.onNodeWithContentDescription(text(Res.string.voice_mic_desc)).performClick()
             settle()
             awaitStableFrame()
@@ -1083,7 +1093,7 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
             store.saveAiFeatures(true)
             store.saveAiProviderConfig(app.doorprints.shared.ai.AiProviderConfig.GEMINI, placeholderKey)
             store.saveAiProvider(app.doorprints.data.AiProviderChoice.DEVICE)
-            store.voiceTier.saveEntry(app.doorprints.shared.voice.VoiceTier.fingerprint(placeholderKey), "REFUSE_FREE|${System.currentTimeMillis()}|gemini:probe")
+            store.voiceTier.saveEntry(app.doorprints.shared.voice.VoiceTier.keyHash(placeholderKey), "REFUSE_FREE|${System.currentTimeMillis()}|gemini:probe")
         }
         val real = ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository
         val fake = FakeVoiceRepository(real, store)
