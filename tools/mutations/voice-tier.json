@@ -1,0 +1,88 @@
+{
+  "spec": [
+    "web/src/app/core/voice/voice-tier.spec.ts",
+    "web/src/app/core/voice/voice-tier.service.spec.ts",
+    "web/src/app/core/voice/voice-safety.spec.ts",
+    "web/src/app/shared/voice-button.spec.ts"
+  ],
+  "mutations": [
+    {
+      "file": "web/src/app/core/voice/voice-tier.ts",
+      "find": "  if (i.probe === 'free' || fresh?.verdict === 'REFUSE_FREE') return 'REFUSE_FREE';",
+      "replace": "  if (fresh?.verdict === 'REFUSE_FREE') return 'REFUSE_FREE';",
+      "expect": "a free signal is never ALLOW"
+    },
+    {
+      "file": "web/src/app/core/voice/voice-tier.ts",
+      "find": "  if (isFreeModel(i.model)) return 'REFUSE_FREE';",
+      "replace": "  if (isFreeModel(i.model) && !i.acknowledged) return 'REFUSE_FREE';",
+      "expect": "a free signal is never ALLOW"
+    },
+    {
+      "file": "web/src/app/core/voice/voice-tier.ts",
+      "find": "  return i.acknowledged ? 'ALLOW' : 'REFUSE_UNKNOWN';",
+      "replace": "  return 'ALLOW';",
+      "expect": "refused until acknowledged"
+    },
+    {
+      "file": "web/src/app/core/voice/voice-tier.ts",
+      "find": "i.cached.verdict === 'ALLOW' ? ALLOW_TTL_MS : REFUSE_FREE_TTL_MS",
+      "replace": "i.cached.verdict === 'ALLOW' ? ALLOW_TTL_MS : ALLOW_TTL_MS",
+      "expect": "older than 24 h is asked again"
+    },
+    {
+      "file": "web/src/app/core/voice/voice-tier.ts",
+      "find": "  return sha256Hex(key).slice(0, FINGERPRINT_HEX);",
+      "replace": "  return key.slice(0, FINGERPRINT_HEX);",
+      "expect": "fingerprint of"
+    },
+    {
+      "file": "web/src/app/core/voice/voice-tier.ts",
+      "find": "ids.some((id) => id.includes('FreeTier'))",
+      "replace": "ids.some((id) => id.includes('Free_Tier'))",
+      "expect": "Gemini probe: 429 with a per-day free-tier quota id"
+    },
+    {
+      "file": "web/src/app/core/voice/voice-tier.ts",
+      "find": "  return flag === true ? 'free' : flag === false ? 'paid' : 'unknown';",
+      "replace": "  return flag === false ? 'paid' : 'unknown';",
+      "expect": "OpenRouter key info: is_free_tier true: free"
+    },
+    {
+      "file": "web/src/app/core/voice/voice-input.service.ts",
+      "find": "    return this.confirmAllowed().then(() => t.transcribe(clip.bytes, clip.mime, this.langHint(), clip.durationMs));",
+      "replace": "    return t.transcribe(clip.bytes, clip.mime, this.langHint(), clip.durationMs);",
+      "expect": "the second check before the request refuses"
+    },
+    {
+      "file": "web/src/app/core/voice/voice-input.service.ts",
+      "find": "  readonly micEnabled = computed(() => this.available() && this.verdict() === 'ALLOW');",
+      "replace": "  readonly micEnabled = computed(() => this.available());",
+      "expect": "a free key records nothing"
+    },
+    {
+      "file": "web/src/app/core/voice/voice-input.service.ts",
+      "find": "      if (!this.enabledState() || !this.usable()) return;",
+      "replace": "      if (!this.usable()) return;",
+      "expect": "asks nothing while Voice input is off"
+    },
+    {
+      "file": "web/src/app/core/voice/voice-input.service.ts",
+      "find": "        if (before !== undefined && before !== fp && before !== '') forgetTier(before);",
+      "replace": "",
+      "expect": "refused as unknown until the person confirms"
+    },
+    {
+      "file": "web/src/app/core/voice/voice-tier-store.ts",
+      "find": "source: `${provider}:${evidence}` };",
+      "replace": "source: `${provider}:${evidence}:${key}` };",
+      "expect": "what is kept is the verdict"
+    },
+    {
+      "file": "web/src/app/core/ai/on-device-ai.service.ts",
+      "find": "        noteGeminiAnswer(this.key, e.status, text);\n",
+      "replace": "",
+      "expect": "downgrades the kept verdict at once"
+    }
+  ]
+}

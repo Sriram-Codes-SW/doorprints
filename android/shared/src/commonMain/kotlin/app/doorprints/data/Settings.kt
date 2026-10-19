@@ -676,6 +676,7 @@ class SettingsStore(
         }
     }
 
+    val voiceTier = VoiceTierStore(dataStore) // voice input's kept plan verdicts (ADR-37), device-only
     /** Chooses which service writes out the words. */
     suspend fun saveVoiceProvider(provider: VoiceProvider) =
         dataStore.edit { if (provider == VoiceProvider.SARVAM) it[Keys.voiceProvider] = provider.wire else it.remove(Keys.voiceProvider) }

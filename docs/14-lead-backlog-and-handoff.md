@@ -2,8 +2,8 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.201 |
-| Date | 2026-10-16 |
+| Version | 0.202 |
+| Date | 2026-10-19 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..183); this file lists the lead-level items and points to the rest. |
 
@@ -209,6 +209,7 @@
 | 0.199 | 2026-10-15 | Claude (Code), docs | §1 and §2 rewritten to today's state after the merges of #354..#368 (voice on Android and the iPhone with Sarvam, the school compiled in but off on every stack, ENDED_EARLY, the Hunt walk, phone words, the AI card sentence): what is shipped, the owner-only list (device checks, native-speaker review, outline geometry, RR-33, `SARVAM_EVAL_API_KEY`, the [13](13-release-security-checklist.md) gate, the public words), the old per-pull-request bullets dropped (git history keeps them). N-ids kept for links. |
 | 0.200 | 2026-10-16 | Claude (Code), docs | §1 and §2 brought to `main` after #373 (merge 8bfc936): the kinds refactor is built (capabilities, Hunt, Compare, viewings and questions, contacts, rooms and moving in, copies and filters, words from files, the server's reader of every kind file, the conformance suite `zz_all` and the tripwires); what is not built; the owner-only list with MT-104..MT-121 and TC-M-81..84 and 89, and the draft school checklist, criteria, question bank and viewings words for review. No table id changed. |
 | 0.201 | 2026-10-16 | Claude (Code), docs | §2 item 6 (owner request of 2026-10-16: voice input must refuse free-tier provider keys for privacy, later with more analysis; RR-33's acceptance waits on it); S4b-BL-293 (restore photos from Drive) is built on `feat/restore-photos-from-drive`, no longer waiting for the owner's revisit (§1, §2 item 4). |
+| 0.202 | 2026-10-19 | Claude (Code), docs | §2 item 6 (the voice free-tier bullet) is **built, In review** on `feat/voice-refuse-free-tier` (owner decision 2026-10-19: voice refuses a free-plan key; [03](03-design.md) ADR-37 §19, [02](02-threat-model.md) T-I54; no new backlog row); RR-33 is re-rated to mitigated with residual (Medium-Low) and stays *Proposed* until the owner records his acceptance. |
 
 ## 1. Where things stand (2026-10-16, everything built is merged to `main`)
 
@@ -257,7 +258,7 @@ today's state. No pull request is open apart from a docs one.
   - Native-speaker review of Hindi, Tamil and Telugu, the school's words and the Sarvam words included; they ship *under review*.
     **The owner's review of the drafts:** the school's checklist and Compare criteria, its question bank and headings, and its
     viewings words (visits and open days).
-  - The review of the India outline geometry (S4b-BL-174c); RR-33's acceptance is still *Proposed*.
+  - The review of the India outline geometry (S4b-BL-174c); RR-33's acceptance is still *Proposed* (re-rated to mitigated with residual by the voice free-plan refusal, §2 item 6).
   - Optional: the repository secret `SARVAM_EVAL_API_KEY`, to run the voice eval suite (`voice`, manual) against Sarvam.
   - [13](13-release-security-checklist.md) before the `v0.1.0` draft is published.
   - The public words (tagline, `index.html`, manifest, README, guide home) stay the house's until a second kind is released
@@ -280,7 +281,7 @@ today's state. No pull request is open apart from a docs one.
    any time: `SARVAM_EVAL_API_KEY` for the voice eval suite.
 5. **Planned, when the owner asks** (not built): user-authored kinds by JSON import ([03](03-design.md) ADR-36b), a `zz_all`
    space on the phones, filters on number and amount extras, reordering the copy blocks from the kind file.
-6. **Owner request (2026-10-16), later with more analysis:** voice input must refuse free-tier provider keys for privacy (free tiers may use inputs to improve products) and only let paid-tier requests through, with a message saying it is not allowed on a free tier; needs: how to tell a free key from a paid one per provider, what to do when unknown; RR-33 acceptance waits on this.
+6. **Voice input refuses a free-plan provider key: built, In review** (owner request 2026-10-16, decision 2026-10-19; branch `feat/voice-refuse-free-tier`; no new backlog row). A rule `ALLOW | REFUSE_FREE | REFUSE_UNKNOWN | CHECKING` on a shared vector file, on the website and both phones: a free Gemini key (a `FreeTier` quota id), an OpenRouter free key or a `:free` model is refused with no way round; Groq, Sarvam and a probe that said nothing are refused until the person confirms "my plan is paid" for that key (the fail-closed design with an acknowledgement; **the owner can choose *never allow unknown* by deleting that switch**); the microphone is disabled before any audio and the check is made again before the request ([03](03-design.md) ADR-37 §19, [ai/voice-input](ai/voice-input.md) §8). RR-33 is re-rated to mitigated with residual (Medium-Low); its acceptance is still the owner's to record. The per-release re-check of the provider facts is [13](13-release-security-checklist.md) F11. Owner-only left: the real-key rows TC-M-92..TC-M-94 (MT-124..MT-126), not run.
 
 The numbered items below keep their ids because other documents link them; their text is history unless it says *open*. N13's
 *Order from here* is superseded by the list above, and N21 (kinds) and its voice rows are Done as the sprint log records, the kinds refactor included (#373, `8bfc936`).

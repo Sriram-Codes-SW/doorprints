@@ -72,6 +72,9 @@ object VoiceInput {
      */
     private val PRICE_INR_PER_MINUTE: Map<String, String> = mapOf("gemini" to "0.17", "openai" to "0.26", "openrouter" to "0.26", "groq" to "0.06")
 
+    /** The transcription model of a speech-capable preset (not Gemini, whose model is the chat adapter's), or null. */
+    fun modelOf(preset: String): String? = MODELS[preset]
+
     /** The list price of a minute for [config], or null where none is known. */
     fun priceInr(config: AiProviderConfig): String? = PRICE_INR_PER_MINUTE[TranscribeCapability.presetOf(config)]
 

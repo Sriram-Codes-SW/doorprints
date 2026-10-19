@@ -1953,7 +1953,7 @@ export const en = {
   // S4b-BL-221 (2026-10-15): voice input, the microphone in Ask, Plan and Fill in from listing text.
   'voice.switch': 'Voice input (a microphone button for the AI boxes)',
   'voice.switchHint': 'Off until you turn it on. Tap the microphone, speak, and the words are written into the box for you to check and change. Nothing is sent until you press the box\'s own button. Works with your own AI key only.',
-  'voice.disclosure': 'Audio goes from this browser straight to {host}, about INR {price} a minute at their list price. Anything you say, including numbers and names, is sent as audio, and a phone number said aloud cannot be left out the way a typed one is. The recording is not saved on this device.',
+  'voice.disclosure': 'Audio goes from this browser straight to {host}, about INR {price} a minute at their list price. Anything you say, including numbers and names, is sent as audio, and a phone number said aloud cannot be left out the way a typed one is. The recording is not saved on this device. Voice input works only with a paid plan: free plans are refused.',
   'voice.needsOwnKey': 'Voice input needs your own AI key for a service that takes audio: Gemini, OpenAI, Groq or OpenRouter. It is not available with your server\'s AI, Anthropic or a local server.',
   'voice.noRecorder': 'This browser cannot record audio, so the microphone button is not shown.',
   'voice.mic': 'Speak',
@@ -1987,10 +1987,16 @@ export const en = {
   'voice.sarvamSave': 'Save Sarvam key',
   'voice.sarvamRemove': 'Remove Sarvam key',
   'voice.switchHintSarvam': 'Off until you turn it on. Tap the microphone, speak for up to 30 seconds, and the words are written into the box for you to check and change. Nothing is sent until you press the box\'s own button.',
-  'voice.disclosureSarvam': 'Audio goes from this browser straight to {host} (Sarvam AI, India) with your own Sarvam key, about INR {price} a minute at their list price, up to 30 seconds at a time. Anything you say, including numbers and names, is sent as audio, and a phone number said aloud cannot be left out the way a typed one is. The recording is not saved on this device.',
+  'voice.disclosureSarvam': 'Audio goes from this browser straight to {host} (Sarvam AI, India) with your own Sarvam key, about INR {price} a minute at their list price, up to 30 seconds at a time. Anything you say, including numbers and names, is sent as audio, and a phone number said aloud cannot be left out the way a typed one is. The recording is not saved on this device. Voice input works only with a paid plan: free plans are refused.',
   'voice.needsSarvamKey': 'Save your own Sarvam key above to use Sarvam for voice input.',
   'voice.hintShort': 'A short recording, up to 30 seconds, goes from this browser to {host} to be written out. It is not saved. Numbers and names you say are sent as audio too. Your browser asks to use the microphone the first time. Check the words before you send anything.',
   'voice.statusDoneLimitShort': 'Done. The recording stopped at its 30-second limit. The words are in the box. Check them before you send.',
+  'voice.tierChecking': 'Checking that your plan is a paid one…',
+  'voice.tierFree': 'Voice input is not available on a free {provider} plan: a free plan may let {provider} use what you say to improve its products. Use a paid key, or type instead.',
+  'voice.tierUnknown': 'Doorprints cannot tell whether your {provider} plan is paid, and a free plan may let {provider} use what you say. Confirm in Settings that your plan is paid, or type instead.',
+  'voice.tierAck': 'My {provider} plan is paid; I understand a free plan may let {provider} use my voice',
+  'voice.tierAckHint': 'Doorprints cannot check this for {provider}. Your confirmation is remembered for this key only; a new key asks again.',
+  'voice.tierHint': 'Works only with a paid plan',
 };
 
 /** Every translation must have exactly these keys (checked by the compiler). */

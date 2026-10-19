@@ -1,0 +1,64 @@
+{
+  "spec": "android/shared/src/androidHostTest/kotlin/app/doorprints/shared/voice/VoiceTierVectorsTest.kt (with VoiceTierGateTest and VoiceTierSourceTest)",
+  "gradle": [
+    ":shared:testAndroidHostTest",
+    "--tests",
+    "app.doorprints.shared.voice.VoiceTier*"
+  ],
+  "mutations": [
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/VoiceTier.kt",
+      "find": "        if (i.probe == TierProbe.FREE || fresh?.verdict == VoiceVerdict.REFUSE_FREE) return VoiceVerdict.REFUSE_FREE",
+      "replace": "        if (fresh?.verdict == VoiceVerdict.REFUSE_FREE) return VoiceVerdict.REFUSE_FREE",
+      "expect": "aFreeSignalIsNeverAllowForAnyProviderAcknowledgementOrCache"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/VoiceTier.kt",
+      "find": "        if (isFreeModel(i.model)) return VoiceVerdict.REFUSE_FREE",
+      "replace": "        if (isFreeModel(i.model) && !i.acknowledged) return VoiceVerdict.REFUSE_FREE",
+      "expect": "aFreeSignalIsNeverAllowForAnyProviderAcknowledgementOrCache"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/VoiceTier.kt",
+      "find": "        return if (i.acknowledged) VoiceVerdict.ALLOW else VoiceVerdict.REFUSE_UNKNOWN",
+      "replace": "        return VoiceVerdict.ALLOW",
+      "expect": "theRuleAgreesWithEveryVector"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/VoiceTier.kt",
+      "find": "Sha256.hex(key.encodeToByteArray()).take(FINGERPRINT_HEX)",
+      "replace": "key.take(FINGERPRINT_HEX)",
+      "expect": "theFingerprintIsTheFirstSixteenHexOfTheSha256"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/VoiceTier.kt",
+      "find": "ids.any { \"FreeTier\" in it }",
+      "replace": "ids.any { \"Free_Tier\" in it }",
+      "expect": "theGeminiProbeIsReadByItsQuotaIds"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/OwnKeyTranscription.kt",
+      "find": "        confirmAllowed(choice)\n        return transcriber.transcribe(",
+      "replace": "        return transcriber.transcribe(",
+      "expect": "theSecondCheckInTheTranscriptionRefusesAFreeKeyBeforeAnyRequestIsBuilt"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/voice/VoiceTierGate.kt",
+      "find": "entry(VoiceVerdict.REFUSE_FREE, subject.provider, \"probe\")",
+      "replace": "entry(VoiceVerdict.REFUSE_FREE, subject.provider, \"probe\" + subject.key())",
+      "expect": "whatIsKeptHoldsNoKeyNoReplyAndNoSpeechAndIsInNoBackupOrPrintedSettings"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/data/AiStore.kt",
+      "find": "            client.onFailedAnswer = { status, body -> VoiceTierGate.noteGeminiAnswer(settings, key, status, body) }\n",
+      "replace": "",
+      "expect": "theAiStoreWiresTheOrdinaryRequestHookToTheRule"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/ai/GeminiClient.kt",
+      "find": "            onFailedAnswer?.invoke(status, text)\n",
+      "replace": "",
+      "expect": "theGeminiClientTellsTheRuleOfAFreeTier429OnAnOrdinaryRequest"
+    }
+  ]
+}

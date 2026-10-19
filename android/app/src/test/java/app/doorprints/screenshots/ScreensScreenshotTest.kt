@@ -1061,6 +1061,54 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
             file.delete()
         }
     }
+    /**
+     * Voice input on a free plan (owner decision 2026-10-19, ADR-37): Ask with the microphone **disabled** and the free-plan
+     * sentence under it, English and Hindi, light. A Gemini key whose kept verdict is a free plan; a fake microphone that must
+     * never be touched. The existing voice shot is untouched.
+     */
+    @Test fun assistantVoiceFreePlan() {
+        assumeTrue(!dark && (lang == "en" || lang == "hi"))
+        val job = kotlinx.coroutines.SupervisorJob()
+        val file = java.io.File.createTempFile("voice-free-shot", ".preferences_pb").also { it.delete() }
+        val seal: (String) -> String = { "v1:" + it.reversed() }
+        val open: (String?) -> String? = { v -> v?.takeIf { it.startsWith("v1:") }?.removePrefix("v1:")?.reversed() }
+        val store = app.doorprints.data.SettingsStore(
+            androidx.datastore.preferences.core.PreferenceDataStoreFactory.create(scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO + job)) { file },
+            app.doorprints.data.KeystoreSecretStore(seal, open = open),
+            geminiSecrets = app.doorprints.data.KeystoreSecretStore(seal, app.doorprints.data.KeystoreSecretStore.GEMINI_ENTRY, open),
+        )
+        val placeholderKey = listOf("free", "plan", "shot", "key").joinToString("-")
+        runBlocking {
+            store.saveVoiceInput(true)
+            store.saveAiFeatures(true)
+            store.saveAiProviderConfig(app.doorprints.shared.ai.AiProviderConfig.GEMINI, placeholderKey)
+            store.saveAiProvider(app.doorprints.data.AiProviderChoice.DEVICE)
+            store.voiceTier.saveEntry(app.doorprints.shared.voice.VoiceTier.fingerprint(placeholderKey), "REFUSE_FREE|${System.currentTimeMillis()}|gemini:probe")
+        }
+        val real = ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository
+        val fake = FakeVoiceRepository(real, store)
+        val voice = FakeVoiceServices(granted = true).also {
+            it.tierGate = app.doorprints.shared.voice.VoiceTierGate(store, io.ktor.client.HttpClient(io.ktor.client.engine.mock.MockEngine { error("the plan was kept; nothing is asked") }))
+        }
+        try {
+            show(readyText = text(Res.string.voice_mic)) {
+                val services = LocalAppServices.current
+                val wrapped = object : app.doorprints.ui.AppServices by services {
+                    override val repository: app.doorprints.data.Repository = fake
+                    override val voice = voice
+                }
+                CompositionLocalProvider(LocalAppServices provides wrapped) { AssistantScreen(onOpenHouse = {}) }
+            }
+            compose.waitUntil(5_000) { compose.onAllNodesWithText("Gemini", substring = true).fetchSemanticsNodes().isNotEmpty() }
+            settle()
+            awaitStableFrame()
+            compose.onRoot().captureRoboImage(file("assistant_voice_free_plan"))
+            org.junit.Assert.assertTrue("the microphone was never touched", voice.recorders.isEmpty() && voice.requests == 0)
+        } finally {
+            runBlocking { job.cancelAndJoin() }
+            file.delete()
+        }
+    }
     @Test fun export() = shoot("export", readyText = countHouses(2)) { ExportScreen(onBack = {}) }
     @Test fun import() = shoot("import", STATIC) { ImportScreen(onBack = {}) }
 
