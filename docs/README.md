@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | SSDLC document index |
-| Version | 0.130 |
+| Version | 0.131 |
 | Date | 2026-10-19 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -29,7 +29,8 @@
 | 0.127 | 2026-10-15 | Claude (Code), docs | Voice stated as built on all three platforms: 16 v0.3, 03 v0.150, 14 v0.198. |
 | 0.128 | 2026-10-15 | Claude (Code), docs | Docs 03 v0.160, 06 v0.280, 16 v0.4, ops checklist v0.23 and schemas v1.63: the school's "compiled in, off" wording (`docs/school-compiled-in-wording`). |
 | 0.129 | 2026-10-19 | Claude (Code), engineer | Repository review fixes (`docs/repo-review-fixes`): TC-S-17 made executable (the ZIP-bomb limits per stack, the new tests and mutation lists) and the docs side of the review: 02 v0.96 (T-T8 limits, RR-30 re-rated, T-T5, A8 and RR-22), 03 v0.173 (superseded notes on ADR-13, ADR-20, ADR-28 and ADR-29; §18.27), 06 v0.294, 07 v0.79 (Actions pinning exception), 13 v0.22 (A7 the `.gitleaksignore` entries, C1a the exported components), schemas v1.75 (`limits` in the import vectors). |
-| 0.130 | 2026-10-19 | Claude (Code), engineer | The first release is v0.1.1 (docs 14 v0.202, 13 v0.24: A5 and A6 name the owner's settings); the web README storage audit table matches the code (7 stores, `doorprints-drive`, `doorprints-offline-maps-v1`). |
+| 0.130 | 2026-10-19 | Claude (Code), engineer | The release security checklist run on the v0.1.0 candidate (`11072090`): new session record [ops/release-run-2026-10-19.md](ops/release-run-2026-10-19.md) with every row of 13 section 3 (counts, the one FAIL, the owner's list). No other document changed. |
+| 0.131 | 2026-10-19 | Claude (Code), engineer | The first release is v0.1.1 (docs 14 v0.202, 13 v0.24: A5 and A6 name the owner's settings); the web README storage audit table matches the code (7 stores, `doorprints-drive`, `doorprints-offline-maps-v1`). |
 | 0.112 | 2026-10-06 | Claude | The review backlog: docs/01 v0.41, 06 v0.131 (section 10.1), 07 v0.60, 14 v0.89. |
 | 0.111 | 2026-10-06 | Claude | Full-system review fixes and the manual test checklist (`docs/ops/manual-test-checklist.md`): docs/07 v0.59, docs/14 v0.88. |
 | 0.110 | 2026-10-06 | Claude | Review fixes on PR #139: docs/10 v0.149, 06 v0.130, 15 v0.27. |
@@ -180,6 +181,7 @@ Everything must run on free tiers. These documents follow a Secure Software Deve
 | – | [ops/path-trace-spec-review.md](ops/path-trace-spec-review.md) | Session record: the senior review of the path trace v2 design (2026-10-06); the decisions are in [11](11-feature-parity-and-export-spec.md) 5.27 |
 | – | [ops/path-trace-check-review.md](ops/path-trace-check-review.md) | Session record: the senior review of the place check, *Have I been here?*, and the website integration plan (2026-10-06); the decisions are in [11](11-feature-parity-and-export-spec.md) 5.27.13 and [03](03-design.md) §6.2b |
 | – | [ops/path-trace-web-notes.md](ops/path-trace-web-notes.md) | Session record: the website's trace and place check logic, hand-over notes for the UI change (S4b-FR-17, S4b-FR-24); the UI is built since (PR #146) |
+| – | [ops/release-run-2026-10-19.md](ops/release-run-2026-10-19.md) | Session record: the release security checklist ([13](13-release-security-checklist.md)) run on the v0.1.0 candidate `11072090` and the live site, row by row: status, evidence, findings and the owner's list before the draft is published |
 | – | [Shared schemas](schemas/) | `doorprints-backup/1`: the one backup format the server, Android and web all implement, plus the canonical `backup-sample.json` and the kind files of `kinds/` (ADR-36): the server and Android tests read it, and the web writer's golden copy is checked against it by the backend's `BackupParityTest` (S4-00, [03](03-design.md) ADR-20, [06](06-test-plan.md) TC-I-34). Section 0, "What an import is" (the approved definition, Sprint 4b S4b-00), is maintained by the Docs team | Backend (section 0: Docs team) |
 | – | [CHANGELOG](../CHANGELOG.md) (repo root) | Release notes in Keep a Changelog format: Unreleased + released versions | Docs team |
 | – | [SECURITY.md](../SECURITY.md) (repo root) | How to report a vulnerability privately | Owner |
