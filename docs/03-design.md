@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.172 |
+| Version | 0.173 |
 | Date | 2026-10-16 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -183,6 +183,7 @@
 | 0.170 | 2026-10-16 | Claude (Code), engineer | **§18.23: the school's question headers are its own** (`fix/kinds-question-categories-and-handoff`): `school-questions.json` gains `categoryLabels` (the bank's six category ids kept, so a stored question keeps its category, each worded for a school in en, hi, ta and te: Fees and money, Water and toilets, Teaching, Safety and facilities, Admission, Daily routine and other; hi, ta and te under review); the admission question moves from `MONEY` to `LEGAL` (labelled *Admission*). A category the kind has no label for, and every category of the house, reads the house's `questions.category.*` word, so the house is word for word what it was. |
 | 0.171 | 2026-10-16 | Claude (Code), engineer | **§20: restoring photos from the person's own Google Drive** (S4b-BL-293, owner decision 2026-10-16; `feat/restore-photos-from-drive`): *Restore* in *Recently deleted* brings the candidate back first and then reads each photo it lost from Drive (still there for at least 30 days after the delete, [15](15-google-drive-backup-and-sharing.md) §1.4 item 11), decrypts it like a sync download and stores it under a new id; the result says how many of how many came back and why the others did not (five reasons); the shared rules and vectors `docs/schemas/photo-restore-vectors.json`; no new scope, flow or store. |
 | 0.172 | 2026-10-16 | Claude (Code), engineer | **§20: Retry photos and the 30-day clean-up on the phones** (S4b-BL-293, `feat/photo-sweep-android-finish`): `BinRestore.retry`, `Repository.retryBinPhotos`, the result and the *Retry photos* button in *Recently deleted* (live region, focus, in memory only); `PhotoSweepRules`, the tidy's sweep and `PhotoTombstoneSource`. |
+| 0.173 | 2026-10-19 | Claude (Code), engineer | **The photo wording made exactly true** (S4b-BL-293, owner decision 2026-10-19, `docs/thirty-days-wording`): §20 and the change-log wording. The words say *30 days, and for longer only while a backup you kept still holds it*, which is what the clean-up of [15](15-google-drive-backup-and-sharing.md) §5.1 does (`photo-sweep-rules.ts`, `PhotoSweepRules.kt`: the file moves to Drive's bin once its tombstone is older than 30 days and no kept backup could hold it); "at least 30 days" was written before the clean-up existed. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -3627,7 +3628,7 @@ A short summary of a design that is already written in several places; the ticke
   back from the person's own Google Drive when it is connected on this device and online, and the encrypted copy is still
   there ([04](04-data-flow-diagrams.md) §5.2 item 3; S4b-BL-293, below).
 - **Photos from Google Drive (S4b-BL-293, owner decision 2026-10-16).** A delete leaves the photo's encrypted `photo/1` file in
-  the person's own Drive for at least 30 days ([15](15-google-drive-backup-and-sharing.md) §1.4 item 11), so *Restore* can
+  the person's own Drive for 30 days, and longer only while a kept backup still holds it ([15](15-google-drive-backup-and-sharing.md) §1.4 item 11), so *Restore* can
   fetch it. The order is fixed: the candidate is restored first and nothing that happens to its photos can undo that. The
   photos asked for are the candidate's photo tombstones deleted with it (stamped at most a minute before it or later, so a photo
   the person deleted on purpose earlier stays deleted), found in the tombstones still stored on the device and in this
