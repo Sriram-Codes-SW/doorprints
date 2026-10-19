@@ -9,7 +9,7 @@ Versions: Android `versionName` (`android/app/build.gradle.kts`), backend `pom.x
 together. Until a release is tagged, everything on `main` after 0.1.0 is listed under **Unreleased**.
 
 The version headings are not links yet: they will link to GitHub compare/tag URLs (link reference definitions at
-the end of this file) once `v0.1.0` is tagged (C-02 in the [sprint log](docs/10-sprint-log.md)).
+the end of this file) once `v0.1.1` is tagged (C-02 in the [sprint log](docs/10-sprint-log.md)).
 
 ## [Unreleased]
 
