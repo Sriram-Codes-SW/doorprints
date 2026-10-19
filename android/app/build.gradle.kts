@@ -53,7 +53,7 @@ android {
         minSdk = 26
         targetSdk = 36
         versionCode = 1
-        versionName = "0.1.0"
+        versionName = "0.1.1"
         // Instrumented smoke tests on an emulator (android-emulator.yml) and in Firebase Test Lab. The test storage
         // service keeps their screenshots; AGP pulls them into build/outputs/connected_android_test_additional_output.
         // The Android OAuth client id of the system-browser sign-in (docs/15 §2.4, a fallback for phones without Google Play
