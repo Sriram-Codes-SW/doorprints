@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | The manual part of the release security gate: the one-hour list per release, and the scope of the deep self-run pentest |
-| Version | 0.23 |
-| Date | 2026-10-15 |
+| Version | 0.24 |
+| Date | 2026-10-19 |
 | Author | Claude (Code), lead |
 | Status | Draft. Written (story S4b-SEC-3); **not yet run on a release candidate**, which is the story's last acceptance item |
 
@@ -35,6 +35,7 @@
 | 0.21 | 2026-10-16 | Claude (Code), engineer | **G1 and I7 reconciled with restoring photos from Drive** (S4b-BL-293): a photo deleted in the app leaves the device at once but its encrypted copy stays in the person's own Drive for at least 30 days so *Restore* can bring it back; *Delete everything* still deletes it for good; new **I18**. |
 | 0.22 | 2026-10-19 | Claude (Code), engineer | **The photo wording made exactly true** (S4b-BL-293, owner decision 2026-10-19, `docs/thirty-days-wording`): G1 and I7. The words say *30 days, and for longer only while a backup you kept still holds it*, which is what the clean-up of [15](15-google-drive-backup-and-sharing.md) §5.1 does (`photo-sweep-rules.ts`, `PhotoSweepRules.kt`: the file moves to Drive's bin once its tombstone is older than 30 days and no kept backup could hold it); "at least 30 days" was written before the clean-up existed. |
 | 0.23 | 2026-10-19 | Claude (Code), engineer | **A7 new** (the `.gitleaksignore` entries as reviewed items, with the four kinds of reason, re-read at each release) and **C1a new** (the Android exported components named from the manifest, with the reason of each). **B4 and I9** name the bombs of TC-S-17 (a lying header, claims that add up past 1 GiB, 5 001 entries) ([06](06-test-plan.md) TC-S-17, [02](02-threat-model.md) T-T8). |
+| 0.24 | 2026-10-19 | Claude (Code), docs | **G5 new** (`docs/privacy-children-data`): the privacy page states how children's data is handled, in four languages, and the contact redactor's limit is documented (O-1 of the release run of 2026-10-19 is covered by the same page update: the voice-audio sentence). [02](02-threat-model.md) v0.98 T-I54, RR-35. |
 
 ## 1. What this is, and when it runs
 
@@ -168,6 +169,7 @@ Run **AI evals** (`ai-evals.yml`, manual) on the release commit first. The golde
 | G2 | Play's data-safety form (Play release only) | Its answers match G1: location and contacts stay on the device or go to the user's own server; map tiles see the IP address; AI text goes to the chosen provider only when AI is on |
 | G3 | The DPDP Act, 2023 | Personal use is outside the Act ([01](01-requirements.md) §9, section 3(c)(i)). There is no hosted server (D-28): the owner never receives anyone's data, so Doorprints holds nothing to notify about or erase on request. **The person's right to erasure is exercised directly in the app**: *Delete this backup*, *Delete all backups* and *Delete everything Doorprints keeps in my Google Drive* work on every platform and really delete (I7), *Remove all data* clears a device, and the privacy page ([15](15-google-drive-backup-and-sharing.md) S4b-BL-121) says in plain words what each does, what stays (other devices, shared copies others imported, Google's own retention) and how to remove Doorprints' access at Google. Recheck if a hosted service is ever added |
 | G4 | Voice input in the privacy note in the apps and in Play's data-safety form (Play release only; written in S4b-BL-222, **a note until a Play release exists**) | The in-app privacy note is the *Voice input* setting's disclosure, the button's hint and the permission rationale: audio goes from the phone to the AI provider the person configured (host and list price named), only when *Voice input* is on, anything said is sent as audio and a spoken number is not redacted first, and Doorprints does not store or share it. The form's answer: audio and voice data, collected, sent to a third party the person chose, optional, off by default, not stored or shared by Doorprints; the microphone permission rationale matches [04](04-data-flow-diagrams.md) DF-49 and [11](11-feature-parity-and-export-spec.md) 5.18a. No form is submitted (no Play release, owner decision 2026-09-23) |
+| G5 | Children's data (needed before the school kind is released; [02](02-threat-model.md) T-I54, RR-35) | `web/public/privacy.html` states, in English, Hindi, Tamil and Telugu (hi, ta and te marked under review): Doorprints is a personal tool for adults; a school entry may hold details about a child (school, fees, commute); it stays on the device unless the person backs up, syncs (their own Drive or server) or turns on AI with their own key; **the contact redactor removes saved contact names and numbers but does not remove a child's name written in a note, so the person should not write a child's name or other identifying details in notes**; no accounts, no tracking; and the voice-audio sentence (audio stays in memory and goes only to the provider the person chose, with their own key). Pass only if all four sections say it and [04](04-data-flow-diagrams.md) §6 and T-I54 give the same limit. Automated: `seo.spec.ts` *states children's-data handling in every language*. RR-35 is not accepted until the owner records it |
 
 ### I. Google sign-in and Drive (10 minutes; only once Drive is built, [15](15-google-drive-backup-and-sharing.md))
 
