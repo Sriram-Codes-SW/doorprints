@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.202 |
+| Version | 0.203 |
 | Date | 2026-10-19 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..183); this file lists the lead-level items and points to the rest. |
@@ -209,7 +209,8 @@
 | 0.199 | 2026-10-15 | Claude (Code), docs | §1 and §2 rewritten to today's state after the merges of #354..#368 (voice on Android and the iPhone with Sarvam, the school compiled in but off on every stack, ENDED_EARLY, the Hunt walk, phone words, the AI card sentence): what is shipped, the owner-only list (device checks, native-speaker review, outline geometry, RR-33, `SARVAM_EVAL_API_KEY`, the [13](13-release-security-checklist.md) gate, the public words), the old per-pull-request bullets dropped (git history keeps them). N-ids kept for links. |
 | 0.200 | 2026-10-16 | Claude (Code), docs | §1 and §2 brought to `main` after #373 (merge 8bfc936): the kinds refactor is built (capabilities, Hunt, Compare, viewings and questions, contacts, rooms and moving in, copies and filters, words from files, the server's reader of every kind file, the conformance suite `zz_all` and the tripwires); what is not built; the owner-only list with MT-104..MT-121 and TC-M-81..84 and 89, and the draft school checklist, criteria, question bank and viewings words for review. No table id changed. |
 | 0.201 | 2026-10-16 | Claude (Code), docs | §2 item 6 (owner request of 2026-10-16: voice input must refuse free-tier provider keys for privacy, later with more analysis; RR-33's acceptance waits on it); S4b-BL-293 (restore photos from Drive) is built on `feat/restore-photos-from-drive`, no longer waiting for the owner's revisit (§1, §2 item 4). |
-| 0.202 | 2026-10-19 | Claude (Code), docs | §2 item 6 (the voice free-tier bullet) is **built, In review** on `feat/voice-refuse-free-tier` (owner decision 2026-10-19: voice refuses a free-plan key; [03](03-design.md) ADR-37 §19, [02](02-threat-model.md) T-I54; no new backlog row); RR-33 is re-rated to mitigated with residual (Medium-Low) and stays *Proposed* until the owner records his acceptance. |
+| 0.202 | 2026-10-19 | Claude (Code), engineer | **The first release is v0.1.1** (owner decision): §1, §2 and the open items say `v0.1.1`; `versionName` and the iOS `MARKETING_VERSION` are `0.1.1` (the tag must equal `versionName`); the owner deletes the old `v0.1.0` draft release and tag once `v0.1.1` is cut. |
+| 0.203 | 2026-10-19 | Claude (Code), docs | §2 item 6 (the voice free-tier bullet) is **built, In review** on `feat/voice-refuse-free-tier` (owner decision 2026-10-19: voice refuses a free-plan key; [03](03-design.md) ADR-37 §19, [02](02-threat-model.md) T-I54; no new backlog row); RR-33 is re-rated to mitigated with residual (Medium-Low) and stays *Proposed* until the owner records his acceptance. |
 
 ## 1. Where things stand (2026-10-16, everything built is merged to `main`)
 
@@ -248,7 +249,7 @@ today's state. No pull request is open apart from a docs one.
     **reordering the copy blocks from the kind file**.
   - **Docs and CI.** Architecture overview (#357), the README around the kinds model (#358), the gitleaks fingerprint for the
     made-up key of the Voice 7 test (#365), the Compose tests' main-thread flake fixed at its root (#368). The release
-    workflow `release.yml` and the `release` environment are verified (a `v0.1.0` **draft** release exists; it is not published).
+    workflow `release.yml` and the `release` environment are verified (a `v0.1.0` **draft** release exists, built from an old commit, `7095fc7b`; it is not published). **The first release is v0.1.1, not v0.1.0** (owner, 2026-10-19): `release.yml` requires the tag to equal `versionName`, so `android/app/build.gradle.kts` (and `ios/project.yml`) say `0.1.1` and the tag is `v0.1.1`. The owner deletes the draft release and tag `v0.1.0` once `v0.1.1` is cut (a session cannot delete releases or tags and must not).
 - **Release posture.** No Play Store release and no public server until [13](13-release-security-checklist.md) passes on a
   release candidate; it has not yet. The Survey of India boundary data is adopted (N16, ADR-22).
 - **Open and the owner's alone (nothing for a session to build).**
@@ -260,7 +261,7 @@ today's state. No pull request is open apart from a docs one.
     viewings words (visits and open days).
   - The review of the India outline geometry (S4b-BL-174c); RR-33's acceptance is still *Proposed* (re-rated to mitigated with residual by the voice free-plan refusal, §2 item 6).
   - Optional: the repository secret `SARVAM_EVAL_API_KEY`, to run the voice eval suite (`voice`, manual) against Sarvam.
-  - [13](13-release-security-checklist.md) before the `v0.1.0` draft is published.
+  - [13](13-release-security-checklist.md) before the `v0.1.1` draft is published; then delete the stale `v0.1.0` draft release and tag.
   - The public words (tagline, `index.html`, manifest, README, guide home) stay the house's until a second kind is released
     (S4b-BL-282; the ADR-13b follow-up goes with that decision). S4b-BL-293 (restore photos from Drive after a deletion) is
     built on `feat/restore-photos-from-drive` (owner decision 2026-10-16); only its real Drive round trip (TC-M-90, MT-122) is
@@ -276,7 +277,7 @@ today's state. No pull request is open apart from a docs one.
 2. **Native-speaker review** of Hindi, Tamil and Telugu (the school's and Sarvam's words included), **and the owner's review of
    the draft school checklist and criteria, the school question bank and the school viewings words**, and the India outline
    geometry; then RR-33 can leave *Proposed*.
-3. **The release gate:** [13](13-release-security-checklist.md) on a release candidate, then publish the `v0.1.0` draft.
+3. **The release gate:** [13](13-release-security-checklist.md) on a release candidate, then cut `v0.1.1` and publish its draft (the owner then deletes the old `v0.1.0` draft and tag).
 4. **Only when a second kind is released:** the tagline and the public words (S4b-BL-282), the ADR-13b follow-up. Optional at
    any time: `SARVAM_EVAL_API_KEY` for the voice eval suite.
 5. **Planned, when the owner asks** (not built): user-authored kinds by JSON import ([03](03-design.md) ADR-36b), a `zz_all`

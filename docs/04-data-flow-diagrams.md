@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Data flow diagrams (DFD) and data dictionary |
-| Version | 0.28 |
+| Version | 0.29 |
 | Date | 2026-10-15 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -40,6 +40,7 @@
 | 0.26 | 2026-10-15 | Claude (Code), engineer | **DF-49 on the iPhone** (S4b-BL-223, voice PR 6): the same flow; the iPhone's capture is an `AVAudioEngine` tap into memory (`IosPcmSource`), sent as the same 16 kHz mono `audio/wav` clip as Android's, never a file; the section 6 note and the data-dictionary row say so. |
 | 0.27 | 2026-10-15 | Claude (Code), engineer | **DF-49 and Sarvam (S4b-BL-224, voice PR 7):** the destination `api.sarvam.ai` joins E6 for speech to text, with its own key slot (T-I52) and a 30 s cut; no new flow and no new trust boundary. |
 | 0.28 | 2026-10-16 | Claude (Code), engineer | **§5.2 items 3, 4 and 6: photos from the person's own Google Drive on *Restore*** (S4b-BL-293, owner decision 2026-10-16): a delete drops the photo from the device at once, the encrypted copy stays in the person's own Drive for at least 30 days so *Restore* can read it back and store it under a new id; the read is the existing sync channel (DF-25's Drive folder, the same `drive.file` scope, `dpx/1` files, nothing uploaded or deleted by the restore); no new data flow, store or trust boundary. |
+| 0.29 | 2026-10-19 | Claude (Code), engineer | **The photo wording made exactly true** (S4b-BL-293, owner decision 2026-10-19, `docs/thirty-days-wording`): §5.2 item 1. The words say *30 days, and for longer only while a backup you kept still holds it*, which is what the clean-up of [15](15-google-drive-backup-and-sharing.md) §5.1 does (`photo-sweep-rules.ts`, `PhotoSweepRules.kt`: the file moves to Drive's bin once its tombstone is older than 30 days and no kept backup could hold it); "at least 30 days" was written before the clean-up existed. |
 
 Related: [Threat model](02-threat-model.md) (uses these element IDs) · [Design](03-design.md) · [Requirements](01-requirements.md) · [AI docs](ai/)
 
@@ -288,7 +289,7 @@ flowchart LR
 
 No new data flow, store or boundary: everything below is P3 reading and writing the `houses`, `photos` and `saved_walks` stores of D3 and the existing change feed (DF-12).
 
-1. **Delete** writes the candidate's row as a tombstone (`deleted: true`, `dirty: true`, `updatedAt` now), drops the bytes of its photos from the device **at once** (a photo the server has keeps a tombstone) and deletes its saved walks, which have no tombstone. Before this the page keeps copies of the photos in memory. **The encrypted copy of each photo stays in the person's own Google Drive for at least 30 days** (its file in `Photos/` is not removed by a delete; [15](15-google-drive-backup-and-sharing.md) §1.4 item 11), so a restore can recover it; *Delete everything* in Drive removes it at once.
+1. **Delete** writes the candidate's row as a tombstone (`deleted: true`, `dirty: true`, `updatedAt` now), drops the bytes of its photos from the device **at once** (a photo the server has keeps a tombstone) and deletes its saved walks, which have no tombstone. Before this the page keeps copies of the photos in memory. **The encrypted copy of each photo stays in the person's own Google Drive for 30 days, and longer only while a kept backup still holds it** (its file in `Photos/` is not removed by a delete; [15](15-google-drive-backup-and-sharing.md) §1.4 item 11), so a restore can recover it; *Delete everything* in Drive removes it at once.
 2. **Undo** (10 s, same page session) writes the row again (`deleted: false`, `dirty: true`, `updatedAt` = the later of now and the tombstone's stamp + 1 ms) and puts the photos back from the copies under new ids, marked not uploaded.
 3. **Restore** (*Recently deleted*: this space's tombstones with `updatedAt` within 30 days) does the same flip for the row first. The photos whose bytes are still stored come back as in step 2. For the others (S4b-BL-293, item 6) the page asks the person's own Google Drive when it is connected on this device and online, and tells the person how many of how many came back and why the others did not.
 4. The next sync pushes the newer row; last write wins on the server and in Drive, so the restore reaches every device. Saved walks never come back. A per-candidate photo count is kept in the browser's settings store (never exported or synced) so the list shows how many photos it had and the result after *Restore* can say how many came back.
