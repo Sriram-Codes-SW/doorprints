@@ -35,7 +35,7 @@ material-icons-core = "1.7.8"
 # foundation 1.12.1 on Android, material3 1.9.0 on androidx material3 1.4.0 and icons 1.7.3 on androidx 1.7.3. Gradle
 # takes the higher version, so CMP's androidx mapping must not be newer than the BOM's (2026.09.00: ui 1.12.1,
 # material3 1.4.0; icons stay at :app's 1.7.8). Check both again on every CMP or BOM bump.
-cmp = "1.12.1"
+cmp = "1.12.2"
 cmp-material3 = "1.9.0"
 cmp-material-icons = "1.7.3"
 # JetBrains navigation and lifecycle for :ui commonMain (CMP-5): navigation-compose 2.9.2 (the newest stable; 2.10 is
@@ -71,7 +71,7 @@ play-services-auth = "22.0.0"
 # needs no CAMERA permission; the scanner module is fetched through Play services on first use.
 play-services-code-scanner = "16.1.0"
 coil = "3.6.3"
-maplibre = "13.6.1"
+maplibre = "13.7.1"
 junit = "4.13.2"
 # Android test harness (screenshot tests on the JVM, emulator smoke tests). Robolectric renders the app's real screens
 # on the JVM; Roborazzi records and compares their screenshots. androidx.test for the instrumented (emulator) tests.
