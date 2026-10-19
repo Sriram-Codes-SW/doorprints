@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | `doorprints-backup/1` — the one backup format for server, Android and web |
-| Version | 1.74 |
-| Date | 2026-10-16 |
+| Version | 1.75 |
+| Date | 2026-10-19 |
 | Date | 2026-10-06 |
 | Author | Claude (Cowork) – Backend team |
 | Status | Pinned by story S4-00 (Sprint 4a). Changing anything here changes all three implementations at once. |
@@ -88,6 +88,7 @@
 | 1.72 | 2026-10-16 | Claude (Code), engineer | `kinds/school-questions.json` gains `categoryLabels` (the school's own headers for the bank's six category ids, en, hi, ta and te; [03](../03-design.md) §18.23); the admission question's category is `LEGAL`. The house's headers are unchanged. |
 | 1.73 | 2026-10-16 | Claude (Code), engineer | **`photo-restore-vectors.json`** (format `doorprints-photo-restore-vectors/1`, status *proposed*, S4b-BL-293, restoring photos from Drive): eight `plan` cases (which photos belong to a restored candidate: deleted a minute before it or later; the exact 30-day edge; a Drive file named by the sync file's row or by the device's own bookkeeping) and eight `summary` cases (the reasons in a fixed order, photos nobody recorded); read by the website's `data/drive/photo-restore-rules.spec.ts` and the phones' `PhotoRestoreVectorsTest`. Not part of any backup or sync format. |
 | 1.74 | 2026-10-16 | Claude (Code), engineer | **`photo-sweep-vectors.json`** (format `doorprints-photo-sweep-vectors/1`, status *proposed*, S4b-BL-293, the 30-day clean-up): thirteen cases of which deleted photos' Drive files the backup tidy may take (older than the window and strictly older than the oldest backup that stays; each boundary; no backup staying; a photo with no Drive file; one file named twice); read by the website's `data/drive/photo-sweep-rules.spec.ts` and the phones' `PhotoSweepRulesTest`. Not part of any backup or sync format. |
+| 1.75 | 2026-10-19 | Claude (Code), engineer | **`import-vectors.json` gains `limits`** (§6.1): the four ZIP-bomb numbers of an import (`maxEntries` 5 000, `maxUncompressedBytes` 1 GiB, `maxCompressionRatio` 100, `maxDataJsonBytes` 16 MiB) as one cross-stack constant. `ImportVectorsTest.theLimitsAreTheVectorsLimits` (Kotlin, which Android and the iPhone share), `backup-limits.spec.ts` (the website) and `BackupParityTest.theSharedImportLimitsAgreeWithTheServer` (the data.json cap, the server's only twin) hold every stack to them. No format change. |
 
 Related: [11 Feature parity and export spec](../11-feature-parity-and-export-spec.md) section 5.2 ·
 [03 Design](../03-design.md) ADR-20 and the API table (`GET /api/export`, `POST /api/import`) ·
@@ -586,7 +587,9 @@ reader and `ImportPlan`, `android/app`'s `BackupReaderParityTest` through Androi
 `backup-import.spec.ts` through its reader and `import-plan.ts`. A check with `candidatesWrittenBack` (S4b-BL-248) is
 also read into each stack's own rows and written again, and its `candidates` must be those, byte for byte: on the
 website (`backup-import.spec.ts`), the phone (`ImportVectorsTest`, through its database rows) and the server
-(`BackupWireTest`). A new rule is a new case here first. The stamps are in the
+(`BackupWireTest`). Its `limits` object (`maxEntries`, `maxUncompressedBytes`, `maxCompressionRatio`, `maxDataJsonBytes`) is the one cross-stack copy of the
+ZIP-bomb numbers of an import ([06](../06-test-plan.md) TC-S-17): each stack's constant must equal it (`theLimitsAreTheVectorsLimits`,
+`backup-limits.spec.ts`, `BackupParityTest`). A new rule is a new case here first. The stamps are in the
 past (2026-05-28); the photo is 300 bytes whose byte *i* is *i* × 31 mod 256.
 
 ### 6.2 The shared Drive vectors

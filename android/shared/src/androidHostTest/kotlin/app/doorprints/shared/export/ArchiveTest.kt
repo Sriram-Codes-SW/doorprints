@@ -275,6 +275,43 @@ class ArchiveTest {
         assertNull(liar.readAtMost(claimed, 64 * 1024, tools))
     }
 
+    /** [zip] with the central directory's claim for [name] changed: the sizes of a ZIP bomb that lies. */
+    private fun claiming(zip: ByteArray, name: String, size: Long? = null, packed: Long? = null): ByteArray {
+        val out = zip.copyOf()
+        val nameBytes = name.encodeToByteArray()
+        val at = (out.size - 22 downTo 0).first { i ->
+            out[i] == 0x50.toByte() && out[i + 1] == 0x4b.toByte() && out[i + 2] == 1.toByte() && out[i + 3] == 2.toByte() &&
+                out.copyOfRange(i + 46, i + 46 + nameBytes.size).contentEquals(nameBytes)
+        }
+        fun put(offset: Int, value: Long) = repeat(4) { out[at + offset + it] = (value ushr (8 * it)).toByte() }
+        if (packed != null) put(20, packed)
+        if (size != null) put(24, size)
+        return out
+    }
+
+    private val mib = 1024 * 1024
+
+    /** TC-S-17, the bomb half: refused as TOO_LARGE by the declared sizes, or by the counted output when the header lies. */
+    @Test
+    fun aBombIsRefusedByWhatItClaimsAndByWhatItInflatesTo() {
+        val good = entries(write(ExportFormat.BACKUP))
+        // Honest: data.json of 17 MiB of zeros (about 17 KB deflated) declares more than the 16 MiB limit.
+        val bomb = deflated(good + (BackupFormat.DATA_ENTRY to ByteArray(17 * mib)))
+        assertTrue(bomb.size < 100 * 1024)
+        assertEquals(BackupProblem.TOO_LARGE, problemOf(bomb))
+        // Lying: the central directory says data.json is 100 bytes (ratio and size filters pass); the counted output stops it.
+        assertEquals(BackupProblem.TOO_LARGE, problemOf(claiming(bomb, BackupFormat.DATA_ENTRY, size = 100)))
+        // The same for the manifest (8 MiB limit).
+        val manifestBomb = deflated(good + (BackupFormat.MANIFEST_ENTRY to ByteArray(9 * mib)))
+        assertEquals(BackupProblem.TOO_LARGE, problemOf(claiming(manifestBomb, BackupFormat.MANIFEST_ENTRY, size = 100)))
+        // Ratio: 1 MiB from about 1 KB is more than 100 to 1.
+        assertEquals(BackupProblem.TOO_LARGE, problemOf(deflated(good + ("photos/z.bin" to ByteArray(mib)))))
+        // Total: three entries claiming 600 MiB each at a ratio under 100 add up to more than 1 GiB; nothing is inflated.
+        val three = deflated(good + mapOf("a" to ByteArray(10), "b" to ByteArray(10), "c" to ByteArray(10)))
+        val claims = listOf("a", "b", "c").fold(three) { zip, n -> claiming(zip, n, size = 600L * mib, packed = 7L * mib) }
+        assertEquals(BackupProblem.TOO_LARGE, problemOf(claims))
+    }
+
     @Test
     fun utf8OutNeverSplitsASurrogatePair() {
         val chunks = mutableListOf<ByteArray>()
