@@ -91,6 +91,19 @@ class BackupParityTest {
     }
 
     /**
+     * The shared ZIP-bomb limits of {@code docs/schemas/import-vectors.json} ({@code limits}, TC-S-17) that the server
+     * has a twin of: the {@code data.json} cap. The server reads no ZIP (its import is the JSON body, capped at the same
+     * number), so the entry count, the total and the ratio have no server twin; Android's {@code ImportVectorsTest} and
+     * the web's {@code backup-limits.spec.ts} pin those.
+     */
+    @Test
+    void theSharedImportLimitsAgreeWithTheServer() {
+        var vectors = repoFile("docs/schemas/import-vectors.json");
+        assertThat(number(vectors, "\"maxDataJsonBytes\":\\s*(\\d+)", "import-vectors.json"))
+                .isEqualTo(BackupFormat.MAX_DATA_JSON_BYTES);
+    }
+
+    /**
      * The three readers accept the same numbers (docs/schemas/README.md section 1.1; S4b-BL-82 made it three): the
      * server's {@link BackupFormat#MAX_VERSION}, Kotlin's {@code MAX_VERSION} and the web's {@code BACKUP_FORMATS_READ},
      * read as source text.

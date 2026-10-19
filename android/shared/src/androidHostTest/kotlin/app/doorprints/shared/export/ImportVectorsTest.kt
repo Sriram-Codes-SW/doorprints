@@ -71,6 +71,16 @@ class ImportVectorsTest {
         return BackupValidation.checkData(decoded)
     }
 
+    /** The import's ZIP-bomb limits are the same numbers on every stack (TC-S-17): the website's `BACKUP_LIMITS` reads this too. */
+    @Test
+    fun theLimitsAreTheVectorsLimits() {
+        val limits = root.getValue("limits").jsonObject.mapValues { it.value.jsonPrimitive.long }
+        assertEquals(BackupFormat.MAX_ENTRIES.toLong(), limits.getValue("maxEntries"))
+        assertEquals(BackupFormat.MAX_UNCOMPRESSED_BYTES, limits.getValue("maxUncompressedBytes"))
+        assertEquals(BackupFormat.MAX_COMPRESSION_RATIO, limits.getValue("maxCompressionRatio"))
+        assertEquals(BackupFormat.MAX_DATA_JSON_BYTES, limits.getValue("maxDataJsonBytes"))
+    }
+
     @Test
     fun everyDataCheckGivesTheSameAnswer() {
         val all = cases("checks")

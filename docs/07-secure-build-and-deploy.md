@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Secure build, CI/CD and deployment guide |
-| Version | 0.78 |
+| Version | 0.79 |
 | Date | 2026-10-15 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -90,6 +90,7 @@
 | 0.76 | 2026-10-14 | Claude (Code), engineer | **`release.yml` verified end to end; the `release` environment is in place** (C-02, S4b-BL-8; [10](10-sprint-log.md)): the tag run of `v0.1.0` (run 38567647446) built the signed APK and created the draft release with the APK and its `.sha256`; manual dry runs pass. The owner created the `release` environment (deployment rules: branch `main`, tag pattern `v*.*.*`), put the four `HH_*` secrets in it and deleted the four repository secrets; a dry run after that (run 38574720381) passed. §1 *Environments*, §4, §5 and the variables of §7 are updated. The release stays a draft until [13](13-release-security-checklist.md) passes. |
 | 0.77 | 2026-10-14 | Claude (Code), engineer | **Dependabot group `npm-dev-major`: vitest 5 and jsdom 30 evaluated and taken** ([10](10-sprint-log.md) S4b-BL-311, v0.323): `@angular/build` 22.2.2 allows `vitest ^4.0.8 \|\| ^5.0.0`; Vitest 5 needs Node `^22.12 \|\| ^24 \|\| >=26` and jsdom 30 Node `^24.15` (CI and sessions use Node 24). `web.yml` is unchanged (`npm run test:ci`). |
 | 0.78 | 2026-10-15 | Claude (Code), engineer | **Headers:** the website's `Permissions-Policy` is `microphone=(self)` (voice input, S4b-BL-221, [03](03-design.md) ADR-37); `check-firebase-json.sh` refuses a `*` or a value other than `()` or `(self)` for the microphone, camera and location, and `check-live-headers.sh` requires `microphone=(self)` live (TC-S-23). |
+| 0.79 | 2026-10-19 | Claude (Code), engineer | §2 Pinning: the rule now says what the workflows do and why. Third-party actions are pinned by SHA (all of them, `check-action-pins.py`); GitHub-owned `actions/*` and `github/codeql-action/*` stay on a major tag, an exception recorded with its reasons ([02](02-threat-model.md) T-T5). No SHA was changed. |
 
 Related: [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Runbook](08-operations-runbook.md) · [AI docs](ai/)
 
@@ -243,7 +244,7 @@ OWASP Dependency-Check is not used: its NVD download is slow and needs an API ke
 
 | Rule | Why |
 |---|---|
-| Pin third-party Actions to full commit SHAs. Let Dependabot bump them. | Tag hijack (T-T5) |
+| Pin **third-party** Actions to full commit SHAs with a `# vX.Y.Z` comment; let Dependabot bump them (the `github-actions` entry, weekly, keeps SHA pins current). `.github/scripts/check-action-pins.py` fails the Security workflow on a third-party action without a SHA. **Exception, recorded and accepted (2026-10-19):** GitHub-owned actions (`actions/checkout`, `setup-java`, `setup-node`, `setup-python`, `cache`, `upload-artifact`, `download-artifact`, `upload-pages-artifact`, `deploy-pages` and `github/codeql-action/*`) stay on a major version tag. Why it is accepted: they share GitHub's own trust root with the runner, so a SHA would not remove that dependence; Dependabot moves their tags weekly in a reviewed pull request; the repository is public and a pull request from a fork gets no secret (cloud access uses short-lived Workload Identity tokens, the Firebase deploy runs from `main`, and the signing key sits in the protected `release` environment; jobs check out with `persist-credentials: false`); and every workflow declares least-privilege `permissions` at the top. The tag is mutable, so the residual is a retag of a GitHub-owned action; pin them by SHA (Dependabot can keep a SHA with a version comment fresh) if that risk is ever judged higher than the churn. | Tag hijack (T-T5) |
 | Commit lock files: `web/package-lock.json` (committed, `0e4e22a`; `web.yml` runs `npm ci` only since 2026-09-29), Gradle wrapper + optional dependency verification (`gradle/verification-metadata.xml`), Maven versions pinned by the Spring Boot BOM | Reproducible builds |
 | `gradle/actions/setup-gradle` validates `gradle-wrapper.jar` | Wrapper tampering |
 | Keep dependencies minimal (ADR-06, ADR-12) | Smaller attack surface |
