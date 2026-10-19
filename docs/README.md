@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | SSDLC document index |
-| Version | 0.128 |
-| Date | 2026-10-15 |
+| Version | 0.129 |
+| Date | 2026-10-19 |
 | Author | Claude (Cowork) |
 | Status | Draft |
 
@@ -28,6 +28,7 @@
 | 0.126 | 2026-10-15 | Claude (Code), docs | Root README rewritten around the kinds model; 12 v0.9 (section H: where the kinds model may be named), 14 v0.197. |
 | 0.127 | 2026-10-15 | Claude (Code), docs | Voice stated as built on all three platforms: 16 v0.3, 03 v0.150, 14 v0.198. |
 | 0.128 | 2026-10-15 | Claude (Code), docs | Docs 03 v0.160, 06 v0.280, 16 v0.4, ops checklist v0.23 and schemas v1.63: the school's "compiled in, off" wording (`docs/school-compiled-in-wording`). |
+| 0.129 | 2026-10-19 | Claude (Code), engineer | Repository review fixes (`docs/repo-review-fixes`): TC-S-17 made executable (the ZIP-bomb limits per stack, the new tests and mutation lists) and the docs side of the review: 02 v0.96 (T-T8 limits, RR-30 re-rated, T-T5, A8 and RR-22), 03 v0.173 (superseded notes on ADR-13, ADR-20, ADR-28 and ADR-29; §18.27), 06 v0.294, 07 v0.79 (Actions pinning exception), 13 v0.22 (A7 the `.gitleaksignore` entries, C1a the exported components), schemas v1.75 (`limits` in the import vectors). |
 | 0.112 | 2026-10-06 | Claude | The review backlog: docs/01 v0.41, 06 v0.131 (section 10.1), 07 v0.60, 14 v0.89. |
 | 0.111 | 2026-10-06 | Claude | Full-system review fixes and the manual test checklist (`docs/ops/manual-test-checklist.md`): docs/07 v0.59, docs/14 v0.88. |
 | 0.110 | 2026-10-06 | Claude | Review fixes on PR #139: docs/10 v0.149, 06 v0.130, 15 v0.27. |
