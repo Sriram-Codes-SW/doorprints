@@ -211,15 +211,18 @@ class SpacesRootTest {
     }
 
     /**
-     * The school compiled in and off (owner, 2026-10-15; TC-U-264): with the switch off the shipped app shows what a build that lists
-     * the house alone shows, and Settings adds the one section that holds the switch. The house build's record is the expected one.
+     * The school released and not shown (owner, 2026-10-15 and 2026-10-20; TC-U-264, ADR-13b): the shipped app shows what a build that
+     * lists the house alone shows, and Settings adds the one section with a Houses row and a Schools row, off, and no switch (it hides
+     * itself while no listed kind is unreleased). The house build's record is the expected one.
      */
     @Test
-    fun withTheSwitchOffTheShippedAppShowsWhatAHouseOnlyBuildShowsAndTheSwitch() {
+    fun withTheSchoolNotShownTheShippedAppShowsWhatAHouseOnlyBuildShowsAndASchoolsRow() {
         startWith(kinds)
-        assertEquals(houseOnlyLook, look())
-        compose.onAllNodesWithText("Experimental: more than houses").assertCountEquals(1)
-        hasNo("Show Schools")
+        // The house build's record, plus only the section's own rows: Show and Default for each kind, and their counts.
+        val kindRows = listOf("Make Houses the default", "Show Houses", "Show Schools", "Saved: ")
+        assertEquals(houseOnlyLook + ("rows" to (houseOnlyLook.getValue("rows") as List<*> + kindRows)), look())
+        compose.onAllNodesWithText("Experimental: more than houses").assertCountEquals(0)
+        compose.onAllNodesWithText("Show Schools").assertCountEquals(1)
     }
 
     @Test
@@ -241,16 +244,17 @@ class SpacesRootTest {
     )
 
     @Test
-    fun aBuildThatShipsTheSchoolWithTheSwitchOffOpensOnTheMapAndOffersTheSwitch() {
+    fun aBuildThatReleasesTheSchoolOpensOnTheMapAndOffersTheSchoolsRowAndNoSwitch() {
         startTwoKinds()
         waitFor("Hunt mode")
         hasNo("What are you looking for?")
         hasNo("change what you are looking for")
         tab("Settings").performClick()
         settle()
-        compose.onNodeWithText("Experimental: more than houses").assertExists()
-        // Only the switch: one kind is on, so there is no list of kinds to choose from.
-        hasNo("Make Houses the default")
+        hasNo("Experimental: more than houses")
+        // The rows: the house is on and the school is off, so there is no chooser until the school is shown.
+        compose.onNodeWithText("Show Schools").assertExists()
+        compose.onAllNodesWithContentDescription("Make Houses the default").assertCountEquals(1)
     }
 
     @Test

@@ -578,7 +578,7 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
         }
     }
 
-    /** Settings > What you track (kinds PR C): the section only, cropped to its own node, in a build that ships the school with the switch on. */
+    /** Settings > What you track (kinds PR C): the section only, cropped to its own node, in a build that releases the school, with the school shown (no switch: it hides itself). */
     @Test fun settingsKinds() {
         assumeTrue((lang == "en" && !dark) || (lang == "ta" && dark))
         RuntimeEnvironment.setQualifiers("+h1200dp")
@@ -596,9 +596,9 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
     }
 
     /**
-     * Settings > What you track as the shipped app has it, the school compiled in and off (owner, 2026-10-15): the heading, the line
-     * under it and the switch, off, with its preview hint and no kind rows. English light only; the section drawn with the switch on is
-     * `settings_kinds`. This is the one new section of the Settings screen in a release.
+     * Settings > What you track as the shipped app has it, the school released and not shown (owner, 2026-10-15 and 2026-10-20): the
+     * heading, the line under it and a Houses row on and a Schools row off, with no switch and no preview hint. English light only; the
+     * section drawn with the school shown is `settings_kinds`. This is the one new section of the Settings screen in a release.
      */
     @Test fun settingsKindsOff() {
         englishLightOnly()

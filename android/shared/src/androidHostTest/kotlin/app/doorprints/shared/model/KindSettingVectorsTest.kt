@@ -62,7 +62,8 @@ class KindSettingVectorsTest {
     @Test
     fun whatTheResolverAnswersForTheBuildsKindsAndTheStoredValues() {
         for (c in cases("setting")) {
-            val s = KindSetting(c.strings("available"), c.text("experimental"), c.text("enabled"), c.text("default"))
+            // The vectors describe a build with the school unreleased (the website's specs pin its released set the same way).
+            val s = KindSetting(c.strings("available"), c.text("experimental"), c.text("enabled"), c.text("default"), released = listOf("house"))
             val name = c.text("name")
             assertEquals("$name: offered", c.strings("offered"), s.offered)
             assertEquals("$name: enabled", c.strings("enabledKinds"), s.enabled)
@@ -102,7 +103,7 @@ class KindSettingVectorsTest {
 
     @Test
     fun theSettersFollowTheWebsitesRules() {
-        val both = KindSetting(listOf("house", "school"))
+        val both = KindSetting(listOf("house", "school"), released = listOf("house"))
         assertEquals("a production build keeps the house whatever is stored", listOf("house"), KindSetting(listOf("house"), "1", "[\"house\",\"school\"]", "school").enabled)
         val on = both.withExperimental(true)
         assertEquals("1", on.experimental)

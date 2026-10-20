@@ -33,9 +33,10 @@ import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 
 /**
- * Where the school compiled in and off is read as a school (owner, 2026-10-15; TC-U-264): a candidate of a kind other than the house
- * is read as that kind by the on-device AI, a readable copy and the list's search only while the developer flag or the person's
- * switch allows it (`SettingsStore.kindsOn`). With the switch off it is read as a house, so the shipped app is the house build.
+ * Where a school is read as a school (owner, 2026-10-15 and 2026-10-20; TC-U-264, ADR-13b): a candidate of a kind other than the house
+ * is read as that kind by the on-device AI, a readable copy and the list's search while the developer flag is on or a second kind is
+ * offered (`SettingsStore.kindsOn`); the school is released, so it is, as on the website. A build that lists the house alone reads
+ * every candidate as a house.
  */
 @RunWith(AndroidJUnit4::class)
 @Config(sdk = [35], application = ScreenshotTestApp::class)
@@ -46,28 +47,28 @@ class KindsReadGateTest {
     @After fun close() = kinds.close()
 
     @Test
-    fun theSwitchIsTheOnlyWayInAReleaseAndTheDeveloperFlagIsTheOther() = runBlocking {
-        assertFalse("off by default", kinds.store.kindsOn())
+    fun aSecondOfferedKindOrTheDeveloperFlagTurnsTheReadingOn() = runBlocking {
+        assertTrue("the school is released, so a second kind is offered", kinds.store.kindsOn())
         assertTrue("the developer flag", kinds.store.kindsOn(devKinds = true))
         kinds.enableSchool()
-        assertTrue("the switch on, a second kind offered", kinds.store.kindsOn())
-        kinds.store.editKindSetting { it.withExperimental(false) }
-        assertFalse("off again", kinds.store.kindsOn())
-        // A build that lists the house alone has nothing to switch.
+        assertTrue("shown too", kinds.store.kindsOn())
+        // A build that lists the house alone has nothing to read as another kind.
         TwoKinds(app, listOf("house")).use { houseOnly ->
             runBlocking { houseOnly.store.editKindSetting { it.withExperimental(true) } }
             assertFalse(runBlocking { houseOnly.store.kindsOn() })
+            assertTrue(runBlocking { houseOnly.store.kindsOn(devKinds = true) })
         }
     }
 
     @Test
-    fun aSchoolIsCopiedAsAHouseUntilTheSwitchIsOn() = runBlocking {
+    fun aSchoolIsCopiedAsASchoolSinceItsReleaseAndAsAHouseInAHouseOnlyBuild() = runBlocking {
         app.container.repository.saveHouse(SchoolSample.entity())
         val options = ExportOptions(exportedAtMillis = 1_790_569_800_000)
-        val off = ExportBuilder.bundle(kinds.repository, options)
-        assertEquals("no school column in a copy while the switch is off", emptyList<Any>(), off.extraColumns)
-        kinds.enableSchool()
-        val on = ExportBuilder.bundle(kinds.repository, options)
-        assertTrue("with the switch on the school's own fields are copied", on.extraColumns.isNotEmpty())
+        TwoKinds(app, listOf("house")).use { houseOnly ->
+            val off = ExportBuilder.bundle(houseOnly.repository, options)
+            assertEquals("no school column in a copy of a house-only build", emptyList<Any>(), off.extraColumns)
+        }
+        val released = ExportBuilder.bundle(kinds.repository, options)
+        assertTrue("the school is released, so its own fields are copied", released.extraColumns.isNotEmpty())
     }
 }

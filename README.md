@@ -1,7 +1,7 @@
 # Doorprints
 
 **Remember every place you've seen.** A local-first notebook of the houses and schools you visit, built for India; the
-website keeps both (schools are off until you show them), the phones keep schools as a preview, and the model underneath
+website and the phones keep both (schools are off until you show them), and the model underneath
 takes other kinds from a data file.
 
 [![Backend](https://github.com/Sriram-Codes-SW/doorprints/actions/workflows/backend.yml/badge.svg?branch=main)](https://github.com/Sriram-Codes-SW/doorprints/actions/workflows/backend.yml) [![Web](https://github.com/Sriram-Codes-SW/doorprints/actions/workflows/web.yml/badge.svg?branch=main)](https://github.com/Sriram-Codes-SW/doorprints/actions/workflows/web.yml) [![Android](https://github.com/Sriram-Codes-SW/doorprints/actions/workflows/android.yml/badge.svg?branch=main)](https://github.com/Sriram-Codes-SW/doorprints/actions/workflows/android.yml) [![Security](https://github.com/Sriram-Codes-SW/doorprints/actions/workflows/security.yml/badge.svg?branch=main)](https://github.com/Sriram-Codes-SW/doorprints/actions/workflows/security.yml) [![Shared iOS](https://github.com/Sriram-Codes-SW/doorprints/actions/workflows/shared-ios.yml/badge.svg?branch=main)](https://github.com/Sriram-Codes-SW/doorprints/actions/workflows/shared-ios.yml)

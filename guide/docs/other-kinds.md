@@ -1,16 +1,13 @@
 # Schools as well as houses {#more-than-houses-experimental}
 
-Doorprints began as a notebook for house hunting, and on the website the same app now keeps track of **schools** too.
-Schools are **off** until you show them, so the website opens on your houses as it always did. On the phones, schools are
-still a **preview**: they are off unless you turn on **Experimental: more than houses**, and the preview may change.
-
-A school you make on the website shows as a house on a phone until **Experimental: more than houses** is on there. The
-phone keeps it, and draws it as a school once the switch is on.
+Doorprints began as a notebook for house hunting, and the same app now keeps track of **schools** too, on the website and on
+the phones. Schools are **off** until you show them, so Doorprints opens on your houses as it always did. We have not yet
+checked schools by hand on real phones, so tell us if something looks wrong there.
 
 ## Turn it on
 
 - **Website:** open **Your data** and find **What you track**. A row for **Houses** and one for **Schools** are there. Turn on **Show Schools**. There is no preview switch on the website.
-- **Android and iPhone (preview):** open **Settings** and find **What you track**; **Experimental: more than houses** is there, off, and the app is the house app until you turn it on. Then a row for **Houses** and one for **Schools** appear, and you turn on **Show Schools**.
+- **Android and iPhone:** open **Settings** and find **What you track**. A row for **Houses** and one for **Schools** are there. Turn on **Show Schools**. There is no preview switch on the phones either.
 
 **Default** marks the one Doorprints assumes when it cannot ask: a listing you share into Doorprints, or a link that
 adds a new entry. Houses are the default until you choose another.
@@ -56,7 +53,7 @@ On the website, the list of schools has a row of buttons for each of **Board**, 
 
 ## Turn it off again
 
-Turn off **Show Schools** (on a phone, you can also turn off **Experimental: more than houses**). Doorprints opens on your houses again. Nothing is
+Turn off **Show Schools**. Doorprints opens on your houses again. Nothing is
 deleted: the schools you saved stay, a backup keeps them, and they come back when you show them again.
 
 You can turn off **Show Houses** instead and keep only Schools. Your houses are not hidden or deleted: with one list shown

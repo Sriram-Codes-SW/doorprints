@@ -27,10 +27,10 @@ import org.junit.Test
 import java.io.File
 
 /**
- * A release build lists the school, compiled in but off, and releases the house alone (S4b-BL-309; owner, 2026-10-15; docs/02
- * T-E13, docs/13 part J1). The gate is the build and the person's switch, so this reads `android/app/build.gradle.kts`, which the
+ * A release build lists the school and, since 2026-10-20, releases it with the house (S4b-BL-309; owner, 2026-10-15; docs/03 ADR-13b;
+ * docs/02 T-E13, docs/13 part J8). The gate is the build and the person's switch, so this reads `android/app/build.gradle.kts`, which the
  * release variant is made from: `defaultConfig` fixes `AVAILABLE_KINDS` to `"house,school"` and `DEV_KINDS` to `false`, and the
- * `release` build type does not change either; the released list ([KindSettingRules.RELEASED]) is the house alone. Only the
+ * `release` build type does not change either; the released list ([KindSettingRules.RELEASED]) is the house and the school. Only the
  * debug build type reads `-Pdoorprints.kinds` or `-Pdoorprints.devKinds`. The iPhone lists the same (`IOS_AVAILABLE_KINDS`). No
  * new tool and no release compile: a text check on the config.
  */
@@ -86,13 +86,16 @@ class ReleaseKindsTest {
         Regex("buildConfigField\\(\"String\", \"AVAILABLE_KINDS\", \"\\\\\"([a-z,]+)\\\\\"\"\\)").find(block("defaultConfig"))!!.groupValues[1]
 
     @Test
-    fun theReleaseReleasesTheHouseAloneAndListsTheSchoolBehindTheSwitch() {
+    fun theReleaseReleasesTheHouseAndTheSchoolAndShowsOnlyTheHouseUntilTheSchoolIsShown() {
         assertEquals(listOf("house", "school"), KindSettingRules.availableOf(releaseKinds()))
-        assertEquals(listOf("house"), KindSettingRules.RELEASED)
-        // Off by default: with nothing stored, the release's setting is the house app.
+        assertEquals(listOf("house", "school"), KindSettingRules.RELEASED)
+        // The school is offered with no switch but shown only when the person shows it: with nothing stored, the release's setting is the house app.
         val s = KindSetting(KindSettingRules.availableOf(releaseKinds()))
-        assertEquals(listOf("house"), s.offered)
+        assertEquals(listOf("house", "school"), s.offered)
+        assertEquals(listOf("house"), s.enabled)
         assertFalse(s.spaces)
+        // Every listed kind is released, so Settings hides Experimental: more than houses (the mechanism stays for the next kind).
+        assertFalse(s.hasUnreleased)
     }
 
     @Test

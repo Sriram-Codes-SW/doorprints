@@ -27,10 +27,10 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
- * The iPhone lists the school, compiled in and off (owner, 2026-10-15; docs/03 §18.12, §18.14, TC-U-264), and no Mac is here to
+ * The iPhone lists the school, released since 2026-10-20 (owner, 2026-10-15 and 2026-10-20; docs/03 §18.12, §18.14, ADR-13b, TC-U-264), and no Mac is here to
  * look at it, so this reads the source, as [IosVoiceSafetyTest] does for the microphone: the iPhone's store lists the same kinds
  * as the Android release from one constant; nothing else on the iPhone names a kind or decides what is offered; the chooser is
- * reachable only through the two-kinds-enabled test, which the switch alone can make true; and the Info.plist, which is the
+ * reachable only through the two-kinds-enabled test, which only showing the school can make true; and the Info.plist, which is the
  * iPhone's declaration of what it does, does not mention the list. The behaviour of the switch is `KindSettingOffTest` and
  * `SpacesRootTest` (the same common code); the macOS-runner screenshots and VoiceOver (S4b-BL-276) are the manual checks.
  */
@@ -92,14 +92,14 @@ class IosKindsGateTest {
         val chip = text.lines().indexOfFirst { it.contains("nav.navigate(\"chooser\")") }
         assertTrue(text.lines().subList(maxOf(0, chip - 4), chip).any { it.contains("if (space.multi && tabs.any") }, "the chip is drawn only with spaces")
         assertEquals(1, Regex("""ChooserScreen\(""").findAll(text).count(), "one place draws the chooser")
-        // And the two tests are the settings', which the build's list and the switch alone decide.
+        // And the two tests are the settings', which the build's list, the released list and the switch decide.
         val kindSetting = code(file("android/shared/src/commonMain/kotlin/app/doorprints/shared/model/KindSetting.kt"))
         assertTrue(kindSetting.contains("val spaces: Boolean get() = enabled.size > 1"))
-        assertTrue(kindSetting.contains("val offered: List<String> get() = available.filter { it in KindSettingRules.RELEASED || experimentalOn }"))
+        assertTrue(kindSetting.contains("val offered: List<String> get() = available.filter { it in released || experimentalOn }"))
     }
 
     @Test
-    fun withTheSwitchOffTheIphoneOpensOnItsTabsInTheHouseSpace() {
+    fun withTheSchoolNotShownTheIphoneOpensOnItsTabsInTheHouseSpace() {
         val iphone = KindSetting(KindSettingRules.availableOf(androidReleaseKinds()))
         for (chosen in listOf(null, "house", "school")) {
             val space = SpaceUi.resolve(iphone, chosen)
