@@ -27,13 +27,13 @@
     {
       "file": "web/src/app/core/kind-setting.ts",
       "find": "  if (!flag) return HOUSE_ONLY;",
-      "replace": "  if (!flag) return BUILT_IN;",
+      "replace": "  if (!flag) return builtIn();",
       "expect": "a production build lists only the house"
     },
     {
       "file": "web/src/app/core/kind-setting.ts",
-      "find": "  return BUILT_IN.filter((id) => id === 'house' || listed.has(id));",
-      "replace": "  return BUILT_IN.filter((id) => listed.has(id));",
+      "find": "  return builtIn().filter((id) => id === 'house' || listed.has(id));",
+      "replace": "  return builtIn().filter((id) => listed.has(id));",
       "expect": "a production build lists only the house"
     },
     {
@@ -92,8 +92,8 @@
     },
     {
       "file": "web/src/app/core/kind-setting.ts",
-      "find": "  if (!spaces || read(storage, ENABLED_KINDS_KEY) !== null || read(storage, DEFAULT_KIND_KEY) !== null) return false;",
-      "replace": "  if (!spaces) return false;",
+      "find": "  if (!known || read(storage, ENABLED_KINDS_KEY) !== null || read(storage, DEFAULT_KIND_KEY) !== null) return false;",
+      "replace": "  if (!known) return false;",
       "expect": "a browser that never chose takes it, one that chose keeps its own"
     },
     {
@@ -128,19 +128,19 @@
     },
     {
       "file": "web/src/app/core/space.service.ts",
-      "find": "    !this.multi() || spaceOf(h, true, this.dflt(), this.available) === this.kind();",
-      "replace": "    true;",
+      "find": "  readonly holds = (h: Pick<HouseDto, 'kind'>): boolean => holdsFor(this.kind(), this.multi(), this.dflt(), this.available)(h);",
+      "replace": "  readonly holds = (h: Pick<HouseDto, 'kind'>): boolean => !!h;",
       "expect": "the school space: only the school"
     },
     {
       "file": "web/src/app/core/space.service.ts",
-      "find": "    return this.multi() && kind !== 'house' ? ['/k', kind, id] : ['/houses', id];",
+      "find": "    return this.multi() && !isBaselineKind(kind) ? ['/k', kind, id] : ['/houses', id];",
       "replace": "    return ['/houses', id];",
       "expect": "the school space: only the school"
     },
     {
       "file": "web/src/app/core/space.service.ts",
-      "find": "    return m ? m[1] : this.dflt();",
+      "find": "    return m ? this.createIn(m[1]) : this.dflt();",
       "replace": "    return this.dflt();",
       "expect": "the space from the address, its links and its candidates"
     },
@@ -164,7 +164,7 @@
     },
     {
       "file": "web/src/app/app.routes.ts",
-      "find": "    return kind && kind !== 'house' && availableKinds().includes(kind) ? router.createUrlTree(['/k', kind, id]) : true;",
+      "find": "    return kind && !isBaselineKind(kind) && availableKinds().includes(kind) ? router.createUrlTree(['/k', kind, id]) : true;",
       "replace": "    return kind ? true : router.createUrlTree(['/k', 'house', id]);",
       "expect": "of a school opens it in the school space"
     },
