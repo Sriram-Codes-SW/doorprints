@@ -1,0 +1,57 @@
+{
+  "spec": [
+    "web/src/app/core/user-kinds/user-kind-file.spec.ts",
+    "web/src/app/user-kind-conformance.spec.ts",
+    "web/src/app/pages/data/kinds-user-kinds.spec.ts"
+  ],
+  "mutations": [
+    {
+      "file": "web/src/app/core/user-kinds/user-kind-file.ts",
+      "find": "      if (FORBIDDEN_MAP_KEYS.includes(key)) fail('mapKey', `${path}.${key}`);\n",
+      "replace": "",
+      "expect": "refuses every invalid case"
+    },
+    {
+      "file": "web/src/app/core/user-kinds/user-kind-file.ts",
+      "find": "      if (PROTOTYPE_KEYS.includes(key)) fail('prototypeKey', `${path}.${key}`);\n",
+      "replace": "",
+      "expect": "refuses every invalid case"
+    },
+    {
+      "file": "web/src/app/core/user-kinds/user-kind-file.ts",
+      "find": "    if (utf8Bytes(text) > USER_KIND_LIMITS.maxBytes) fail('tooBig', '$');\n",
+      "replace": "",
+      "expect": "refuses every invalid case"
+    },
+    {
+      "file": "web/src/app/core/user-kinds/user-kind-file.ts",
+      "find": "    if ((ai[slot] as unknown[]).length) fail('notAllowed', `$.ai.${slot}`);\n",
+      "replace": "",
+      "expect": "refuses every invalid case"
+    },
+    {
+      "file": "web/src/app/core/kind-setting.ts",
+      "find": "  return available.filter((id) => (isUserKindId(id) ? custom : RELEASED_KINDS.includes(id) || on));",
+      "replace": "  return available.filter((id) => RELEASED_KINDS.includes(id) || on || isUserKindId(id));",
+      "expect": "has the three layers"
+    },
+    {
+      "file": "web/src/app/core/space-scope.ts",
+      "find": "  if (!on || isUserKindId(kind)) return false;",
+      "replace": "  if (!on) return false;",
+      "expect": "is read by no AI"
+    },
+    {
+      "file": "web/src/app/core/user-kinds/user-kinds.ts",
+      "find": "  return [...file.search, ...file.extras.map((e) => e.id).filter((x) => !file.search.includes(x))];",
+      "replace": "  return [...file.search];",
+      "expect": "is found by every field the person defined"
+    },
+    {
+      "file": "web/src/app/pages/data/kinds-settings.ts",
+      "find": "    if (answer !== 'confirm') return;\n    if (row.on) setKindEnabled(row.id, false, availableKinds());",
+      "replace": "    if (row.on) setKindEnabled(row.id, false, availableKinds());",
+      "expect": "removes a kind only after a danger question"
+    }
+  ]
+}
