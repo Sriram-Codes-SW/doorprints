@@ -21,8 +21,9 @@ import type { Dict } from './en';
 /** Hindi (हिन्दी). Keep "BHK", "API", URLs and brand names as they are. */
 export const hi: Dict = {
   'app.name': 'Doorprints',
-  'app.tagline': 'देखा हुआ हर मकान याद रखें।',
-  'app.description': 'Doorprints: देखा हुआ हर मकान याद रखें। जिन मकानों को आप देखने जाते हैं, उन्हें सहेजें, रेटिंग दें और उनकी तुलना करें।',
+  // ADR-13b (2026-10-19): the kind-neutral tagline, description and landing title. Under review (owner rule: hi/ta/te ship marked under review).
+  'app.tagline': 'देखी हुई हर जगह याद रखें।',
+  'app.description': 'Doorprints: देखी हुई हर जगह याद रखें। जिन मकानों और स्कूलों को आप देखने जाते हैं, उन्हें सहेजें, रेटिंग दें और उनकी तुलना करें।',
   'app.skip': 'मुख्य सामग्री पर जाएँ',
   'app.homeLink': 'Doorprints मुखपृष्ठ',
   'nav.label': 'मुख्य',
@@ -33,7 +34,7 @@ export const hi: Dict = {
   'lang.changed': 'भाषा बदलकर हिन्दी कर दी गई',
 
   'title.app': 'Doorprints',
-  'title.map': 'Doorprints: देखा हुआ हर मकान याद रखें',
+  'title.map': 'Doorprints: देखी हुई हर जगह याद रखें',
   'title.newHouse': 'नया मकान · Doorprints',
   'title.house': 'मकान का विवरण · Doorprints',
   'title.compare': 'तुलना · Doorprints',
@@ -1758,7 +1759,7 @@ export const hi: Dict = {
   'kinds.body': 'चुनें कि Doorprints किसका हिसाब रखे। एक से ज़्यादा चालू होने पर Doorprints पहले पूछता है कि आप क्या ढूँढ रहे हैं।',
   'kinds.switch': 'प्रायोगिक: मकानों के अलावा भी',
   // 2026-10-15 (ship school, compiled in and off): the preview marks on the switch hint and the school listing hint. Under review (owner rule: hi/ta/te ship marked under review).
-  'kinds.switchHint': 'शुरू में बंद। वह दिखाता है जिसे अभी आज़माया जा रहा है, जैसे स्कूल। यह बदल सकता है। यह एक पूर्वावलोकन है।',
+  'kinds.switchHint': 'शुरू में बंद। वह दिखाता है जिसे अभी आज़माया जा रहा है। यह बदल सकता है।',
   'kinds.show': '{kind} दिखाएँ',
   'kinds.default': 'डिफ़ॉल्ट',
   'kinds.defaultAria': '{kind} को डिफ़ॉल्ट बनाएँ',
@@ -1890,7 +1891,7 @@ export const hi: Dict = {
   'school.mapLabel': 'स्कूल की जगह का नक्शा',
   'school.saveFirstVisits': 'दौरे दर्ज करने के लिए पहले स्कूल सहेजें।',
   'school.saveFirstPhotos': 'तस्वीरें जोड़ने के लिए पहले स्कूल सहेजें।',
-  'school.listingHint': 'पूर्वावलोकन: विवरण AI सुझाता है; उन्हें जाँचें, नक्शे पर जगह चुनें, फिर स्कूल बनाएँ।',
+  'school.listingHint': 'विवरण AI सुझाता है; उन्हें जाँचें, नक्शे पर जगह चुनें, फिर स्कूल बनाएँ।',
   'school.aiDisclosure': 'यह टेक्स्ट, मिलते-जुलते स्कूलों के नोट के साथ, आपके सर्वर पर सेट AI सेवा को भेजा जाता है।',
   'school.aiDisclosureOwnKeyHost': 'यह टेक्स्ट, मिलते-जुलते स्कूलों के नोट के साथ, आपकी अपनी कुंजी से इस ब्राउज़र से सीधे {host} को भेजा जाता है।',
   'school.fitTitle': 'सूची के सभी स्कूल दिखाने के लिए नक्शे को ज़ूम करें',

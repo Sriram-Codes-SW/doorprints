@@ -30,6 +30,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AiService, type HouseDraft } from '../../core/ai.service';
 import { DEV_KINDS_KEY } from '../../core/dev-kinds';
 import { DEFAULT_KIND_KEY, ENABLED_KINDS_KEY, EXPERIMENTAL_KINDS_KEY } from '../../core/kind-setting';
+import { pinReleased, unpinReleased } from '../../shared/testing/released-kinds';
 
 /** Settings > Kinds with the school alone shown, so it is the default kind (S4b-BL-212). */
 function schoolDefault(experimental = true): void {
@@ -337,14 +338,25 @@ describe('Fill in from listing text for a school (kinds PR 7, S4b-BL-211)', () =
   });
 });
 
-describe('with the developer flag and the switch off, a house hunter’s page is as it was (S4b-BL-209, S4b-BL-212)', () => {
+describe('with a kind listed but not released and the switch off, a house hunter’s page is as it was (S4b-BL-209, S4b-BL-212)', () => {
+  // The school is released on the website (ADR-13b), so the not-offered case pins the released set to the house.
+  afterEach(() => unpinReleased());
+
   it('a new candidate is a house, with no kind picker, even with School stored as the default kind', async () => {
+    pinReleased();
     schoolDefault(false);
     const { host, fixture } = await open(null, 'en', false);
     expect(host.querySelector('[name="dev-kind"]')).toBeNull();
     expect(text(host.querySelector('#house-title'))).toBe('New house');
     expect(host.querySelector('#house-price')).not.toBeNull();
     expect(draft(fixture).kind ?? null).toBeNull();
+  });
+
+  it('the released school stored as the only shown kind makes a new candidate a school with no switch (ADR-13b)', async () => {
+    schoolDefault(false);
+    const { host, fixture } = await open(null, 'en', false);
+    expect(text(host.querySelector('#house-title'))).toBe('New school');
+    expect(draft(fixture).kind).toBe('school');
   });
 
   it('a stored school row (synced from a device with the switch on) is still drawn as a school, and its extras are kept through a save', async () => {

@@ -360,13 +360,15 @@ function withKinds(render: Case['render'], dflt = 'house'): Case['render'] {
   };
 }
 
-/** The build lists the school and the person has not turned the switch on: Your data must show the switch, off, and no kind rows. */
-function experimentalOff(render: Case['render']): Case['render'] {
+/** The school is released and the person has not shown it (ADR-13b): Your data must show a Schools row, off, and no Experimental switch. */
+function schoolReleased(render: Case['render']): Case['render'] {
   return async (lang) => {
     const rendered = await render(lang);
     const host = rendered.fixture.nativeElement as HTMLElement;
-    const sw = host.querySelector<HTMLInputElement>('#kinds-experimental');
-    if (!sw || sw.checked || host.querySelector('#kind-rows')) throw new Error('Your data does not show Experimental: more than houses, off, with no kind rows');
+    const school = host.querySelector<HTMLInputElement>('#kind-on-school');
+    if (host.querySelector('#kinds-experimental') || !school || school.checked) {
+      throw new Error('Your data does not show a Schools row, off, with no Experimental: more than houses switch');
+    }
     return rendered;
   };
 }
@@ -401,7 +403,7 @@ const CASES: Case[] = [
   { name: 'Criteria (error)', render: page(CriteriaPage, { api: BROKEN }) },
   { name: 'Questions (error)', render: page(QuestionsPage, { api: BROKEN }) },
   { name: 'App shell', render: plain(App, false) },
-  { name: 'Your data', render: experimentalOff(plain(DataPage)) },
+  { name: 'Your data', render: schoolReleased(plain(DataPage)) },
   { name: 'Drive card (disconnected, light)', render: driveCard('Disconnected', 'light') },
   { name: 'Drive card (disconnected, dark)', render: driveCard('Disconnected', 'dark') },
   { name: 'Drive card (recovery key, light)', render: driveCard('FirstConnectShowRecoveryKey', 'light', (c) => c['recoveryKey'].set('AAAA-BBBB-CCCC-DDDD-EEEE-FFFF')) },

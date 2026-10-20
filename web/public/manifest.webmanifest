@@ -1,7 +1,7 @@
 {
   "name": "Doorprints",
   "short_name": "Doorprints",
-  "description": "Remember every house you've seen. Save, rate and compare the houses you visit — on your own device, with no account.",
+  "description": "Remember every place you've seen. Save, rate and compare the houses and schools you visit — on your own device, with no account.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

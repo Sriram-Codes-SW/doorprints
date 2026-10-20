@@ -102,7 +102,7 @@ describe('I18nTitleStrategy', () => {
   it('sets the meta description from app.description, matching index.html in English', () => {
     expect(description()).toBe(en['app.description']);
     expect(en['app.description']).toBe(
-      "Doorprints: Remember every house you've seen. Save, rate and compare the houses you visit.",
+      "Doorprints: Remember every place you've seen. Save, rate and compare the houses and schools you visit.",
     );
   });
 

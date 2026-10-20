@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Requirements Specification |
-| Version | 0.52 |
+| Version | 0.53 |
 | Date | 2026-10-14 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -64,6 +64,7 @@
 | 0.50 | 2026-10-10 | Claude (Code), docs pass | **Section 11.3 (out of scope):** the entry *bring-your-own AI key ... (rejected 2026-09-22; ...)* is replaced by a dated note that it is no longer out of scope; AI-018 and ADR-26 / ADR-35 built it on the device (S4b-BL-214, [10](10-sprint-log.md) v0.235). No requirement changed. |
 | 0.51 | 2026-10-14 | Claude (Code), engineer | SEC-018 status: `release.yml` exists (C-02, PR #331, a draft release with the APK and its `.sha256`); second dry run pending (the first found two bugs, fixed in #332). |
 | 0.52 | 2026-10-14 | Claude (Code), engineer | SEC-018 status: `release.yml` is done (C-02): the tag run of `v0.1.0` (run 38567647446) made a draft release with the signed APK and its `.sha256`, not published until the release gate (docs/13) passes; the `release` environment (S4b-BL-8) is in place. R8 stays off, so the row stays Part. |
+| 0.53 | 2026-10-20 | Claude (Code), engineer | §1: the tagline is "Remember every place you've seen." and the website keeps schools as well as houses ([03](03-design.md) ADR-13b; `feat/school-release-web`, #389); the requirements below are written for houses and apply to a school as its kind file says. |
 
 Related: [README](README.md) · [Threat model](02-threat-model.md) · [Design](03-design.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Test plan](06-test-plan.md) · [AI docs](ai/)
 
@@ -75,7 +76,7 @@ This SRS defines what Doorprints (called House Hunt until 2026-09-22, see [03](0
 
 ## 2. Scope
 
-Doorprints ("Remember every house you've seen.") helps one person keep track of the houses they see while looking for a house to rent or buy in India. It is a personal record of the user's own visits, not a property-listings site. While walking or driving around a locality, the app:
+Doorprints ("Remember every place you've seen.") helps one person keep track of the places they see in India: first the houses they see while looking for a house to rent or buy, and, on the website, the schools they visit. It is a personal record of the user's own visits, not a property-listings site. While walking or driving around a locality, the app:
 
 - remembers every house viewed: location, notes, star rating, a 10-item checklist, photos, price, contact and status,
 - warns when you pass a house you have already seen, or enter a street you have been on before,
