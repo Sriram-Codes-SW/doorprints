@@ -331,6 +331,19 @@ describe('privacy.html', () => {
     expect(text(doc.body)).not.toMatch(/\brestore\b/i);
     expect(text(doc.body)).toContain('Import a backup');
   });
+
+  it('the short-version bullets name schools as well as houses in every language, as the English does', () => {
+    const phrases: Record<string, string> = {
+      en: 'We never receive your houses, schools, notes',
+      hi: 'आपके मकान, स्कूल, नोट्स',
+      ta: 'உங்கள் வீடுகள், பள்ளிகள், குறிப்புகள்',
+      te: 'మీ ఇళ్లు, పాఠశాలలు, నోట్స్',
+    };
+    for (const [lang, phrase] of Object.entries(phrases)) {
+      const first = doc.body.querySelector(`section[lang="${lang}"] ul li`);
+      expect(text(first), lang).toContain(phrase);
+    }
+  });
 });
 
 describe('sitemap.xml', () => {
