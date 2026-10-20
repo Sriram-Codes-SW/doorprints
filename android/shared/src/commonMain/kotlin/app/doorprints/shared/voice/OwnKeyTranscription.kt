@@ -33,7 +33,12 @@ import kotlinx.coroutines.flow.first
  * nothing is sent. The settings are read at the call, so a switch turned off a moment ago is honoured. The clip and the
  * transcript are returned to the caller and kept nowhere here, logged nowhere, put in no error (T-I48).
  */
-class OwnKeyTranscription(private val settings: SettingsStore, private val http: HttpClient) {
+class OwnKeyTranscription(
+    private val settings: SettingsStore,
+    private val http: HttpClient,
+    /** The free-plan rule (owner decision 2026-10-19, ADR-37): asked again here, before any request. */
+    private val gate: VoiceTierGate = VoiceTierGate(settings, http),
+) {
     /** The words in [clip]; [kind] is the space on screen (key terms for the model), [appLanguage] the app's language. */
     suspend fun transcribe(clip: RecordedClip, kind: String, appLanguage: String?): Transcript {
         val choice = settings.voiceChoice.first()
@@ -41,6 +46,7 @@ class OwnKeyTranscription(private val settings: SettingsStore, private val http:
             // The person's own Sarvam key, in its own slot, straight to api.sarvam.ai: no AI key, no server, no proxy (ADR-37).
             val key = settings.sarvamKey()
             if (!choice.enabled || key.isBlank() || !settings.current().aiFeatures) throw ApiException(ApiException.Kind.AI_OFF)
+            confirmAllowed(choice)
             return SarvamTranscriber(http, key).transcribe(clip.bytes, clip.mime, VoiceInput.langHint(appLanguage), clip.durationMs)
         }
         val s = settings.current()
@@ -50,6 +56,16 @@ class OwnKeyTranscription(private val settings: SettingsStore, private val http:
         } else {
             null
         } ?: throw ApiException(ApiException.Kind.AI_OFF)
+        // The second check, before the request (ADR-37): the rule is asked again here, from what is kept now, so a button that
+        // was drawn or a caller that skipped the first check cannot send audio for a plan the rule refuses.
+        confirmAllowed(choice)
         return transcriber.transcribe(clip.bytes, clip.mime, VoiceInput.langHint(appLanguage), clip.durationMs)
+    }
+
+    /** Returns when the rule says ALLOW (reading the plan first if it is still unknown); else throws and nothing is sent. */
+    private suspend fun confirmAllowed(choice: VoiceChoice) {
+        val subject = gate.subjectFor(choice) ?: throw ApiException(ApiException.Kind.AI_OFF)
+        val verdict = gate.verdict(subject)
+        if (verdict != VoiceVerdict.ALLOW) throw VoiceTierRefused(verdict, subject.provider)
     }
 }

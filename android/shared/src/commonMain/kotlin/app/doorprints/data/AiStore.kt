@@ -37,6 +37,7 @@ import app.doorprints.shared.api.PlanRequest
 import app.doorprints.shared.api.PlanResponseDto
 import app.doorprints.shared.model.KindSettingRules
 import app.doorprints.shared.model.SpaceView
+import app.doorprints.shared.voice.VoiceTierGate
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -128,7 +129,10 @@ internal class AiStore(
 
     /** The model for the saved choice, or null when nothing here can build it. */
     private fun chatModel(config: AiProviderConfig, key: String, quality: AiQuality): JsonChatModel? = when (config.kind) {
-        AiKind.GEMINI -> geminiFor?.invoke(key, quality)
+        AiKind.GEMINI -> geminiFor?.invoke(key, quality)?.also { client ->
+            // A free-tier 429 on an ordinary request downgrades what voice input kept for this key at once (ADR-37).
+            client.onFailedAnswer = { status, body -> VoiceTierGate.noteGeminiAnswer(settings, key, status, body) }
+        }
         AiKind.OPENAI_COMPATIBLE -> openAiFor?.invoke(config.baseUrl, config.model, key)
         AiKind.ANTHROPIC -> anthropicFor?.invoke(config.baseUrl, config.model, key)
     }

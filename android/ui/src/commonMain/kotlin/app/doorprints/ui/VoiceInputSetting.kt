@@ -41,6 +41,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.doorprints.shared.voice.VoiceChoice
 import app.doorprints.shared.voice.VoiceInput
 import app.doorprints.shared.voice.VoiceProvider
+import app.doorprints.shared.voice.VoiceVerdict
 import app.doorprints.ui.res.*
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
@@ -52,6 +53,11 @@ const val VOICE_SETTING_TAG = "voice-setting"
 const val VOICE_SARVAM_KEY_TAG = "voice-sarvam-key"
 const val VOICE_SARVAM_SAVE_TAG = "voice-sarvam-save"
 const val VOICE_SARVAM_REMOVE_TAG = "voice-sarvam-remove"
+
+/** Tags of the plan rule's lines in the setting, for tests. */
+const val VOICE_TIER_HINT_TAG = "voice-tier-hint"
+const val VOICE_TIER_STATUS_TAG = "voice-tier-status"
+const val VOICE_TIER_ACK_TAG = "voice-tier-ack"
 
 /**
  * The *Voice input* setting under the AI service (voice input, docs/03 ADR-37, S4b-BL-222, S4b-BL-224): off until the
@@ -136,6 +142,38 @@ internal fun VoiceInputSetting(serverChosen: Boolean) {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            Text(
+                stringResource(Res.string.voice_tier_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.testTag(VOICE_TIER_HINT_TAG),
+            )
+            // The free-plan rule (ADR-37): the plan is read once Voice is on; a free plan has no switch to flip.
+            val tier = rememberVoiceTier(choice, ownActive)
+            if (choice.enabled) {
+                LiveMessage {
+                    when (tier.verdict) {
+                        VoiceVerdict.CHECKING -> Text(
+                            stringResource(Res.string.voice_tier_checking), style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.testTag(VOICE_TIER_STATUS_TAG),
+                        )
+                        VoiceVerdict.REFUSE_FREE -> ResultCard(ResultTone.ERROR, stringResource(Res.string.voice_tier_free, tier.providerName))
+                        else -> {}
+                    }
+                }
+            }
+            val subject = tier.subject
+            val gate = voice.tierGate
+            if (tier.canConfirm && subject != null && gate != null) {
+                SwitchRow(
+                    text = stringResource(Res.string.voice_tier_ack, tier.providerName),
+                    hint = stringResource(Res.string.voice_tier_ack_hint, tier.providerName),
+                    checked = tier.acknowledged,
+                    horizontalPadding = 0.dp,
+                    onChange = { on -> scope.launch { gate.acknowledge(subject, on) } },
+                    modifier = Modifier.testTag(VOICE_TIER_ACK_TAG),
+                )
+            }
             if (choice.enabled && !voice.recordable) {
                 Text(stringResource(Res.string.voice_no_recorder), style = MaterialTheme.typography.bodySmall)
             }

@@ -31,6 +31,7 @@ import app.doorprints.screenshots.ScreenshotTestApp
 import app.doorprints.shared.ai.AiKind
 import app.doorprints.shared.ai.AiPreset
 import app.doorprints.shared.ai.AiProviderConfig
+import app.doorprints.shared.ai.TranscribeCapability
 import app.doorprints.shared.api.ApiException
 import app.doorprints.shared.voice.OwnKeyTranscription
 import app.doorprints.shared.voice.PcmSource
@@ -41,6 +42,9 @@ import app.doorprints.shared.voice.VoiceRecorderException
 import app.doorprints.shared.voice.VoicePhase
 import app.doorprints.shared.voice.VoiceProvider
 import app.doorprints.shared.voice.VoiceSession
+import app.doorprints.shared.voice.VoiceTier
+import app.doorprints.shared.voice.VoiceTierRefused
+import app.doorprints.shared.voice.VoiceVerdict
 import app.doorprints.shared.voice.VoiceStatus
 import app.doorprints.voice.AndroidVoiceServices
 import app.doorprints.voice.AudioRecordPcmSource
@@ -154,13 +158,22 @@ class VoiceSafetyTest {
         })
     }
 
-    private fun configure(config: AiProviderConfig = AiProviderConfig(AiKind.OPENAI_COMPATIBLE, AiPreset.OPENAI.baseUrl, "chat-model"), voice: Boolean = true, features: Boolean = true, provider: AiProviderChoice = AiProviderChoice.DEVICE, apiKey: String = key) =
+    private fun configure(config: AiProviderConfig = AiProviderConfig(AiKind.OPENAI_COMPATIBLE, AiPreset.OPENAI.baseUrl, "chat-model"), voice: Boolean = true, features: Boolean = true, provider: AiProviderChoice = AiProviderChoice.DEVICE, apiKey: String = key, confirmPaid: Boolean = true) =
         runBlocking {
             store.saveAiProviderConfig(config, apiKey)
             store.saveAiFeatures(features)
             store.saveAiProvider(provider)
             store.saveVoiceInput(voice)
+            if (confirmPaid) confirmPaidPlan(TranscribeCapability.presetOf(config), apiKey)
         }
+
+    /**
+     * The person's "my plan is paid" for a service whose plan no call can tell (Groq; OpenRouter after a probe that says nothing),
+     * so these tests, which are about where the audio goes, reach the request (the plan rule has its own proofs below, ADR-37).
+     */
+    private suspend fun confirmPaidPlan(preset: String, apiKey: String) {
+        if (apiKey.isNotBlank() && preset != "gemini" && preset != "openai") store.voiceTier.saveAck(VoiceTier.keyHash(apiKey), preset)
+    }
 
     // --- the whole turn ----------------------------------------------------------------------------------------------------
 
@@ -298,8 +311,11 @@ class VoiceSafetyTest {
             val clip = RecordedClip(ByteArray(2_000) { 1 }, "audio/wav", 1_000)
             // The stub answers in OpenAI's shape, so Gemini's adapter calls it an unusable answer: only the request matters here.
             runCatching { runBlocking { OwnKeyTranscription(store, provider.client).transcribe(clip, "house", "en") } }
-            val request = provider.requests.single()
+            // The audio request is the last one; before it, the plan rule's one probe (Gemini, OpenRouter) carried no audio (ADR-37).
+            val request = provider.requests.last()
             assertEquals(host, request.url.host)
+            assertTrue("at most the one probe before the audio", provider.requests.size <= 2)
+            if (provider.requests.size == 2) assertFalse("the probe holds no audio", String(provider.bodies.first()).contains("inlineData"))
             val sent = request.headers[HttpHeaders.Authorization] ?: request.headers["x-goog-api-key"]
             assertTrue(sent!!.endsWith(key))
         }
@@ -387,6 +403,7 @@ class VoiceSafetyTest {
         store.saveVoiceInput(voice)
         if (provider) store.saveVoiceProvider(VoiceProvider.SARVAM)
         store.saveSarvamKey(key)
+        confirmPaidPlan("sarvam", key)
     }
 
     @Test fun sarvamIsCalledAtItsOwnHostWithItsOwnKeyInItsOwnHeaderAndTheAiKeyStaysHome() {
@@ -409,6 +426,45 @@ class VoiceSafetyTest {
         val file = settingsFile.readBytes()
         assertFalse(contains(file, sarvamKey.encodeToByteArray()))
         assertTrue(contains(file, "sarvamKeyEnc".encodeToByteArray()))
+    }
+
+    // --- the plan rule (owner decision 2026-10-19, ADR-37, TC-S-52 extended) -----------------------------------------------------
+
+    @Test fun aFreeGeminiKeyIsRefusedBeforeAnyAudioLeavesAndOnlyTheProbeIsSent() {
+        configure(AiProviderConfig.GEMINI)
+        val probe = Provider()
+        val free = """{"error":{"code":429,"details":[{"violations":[{"quotaId":"GenerateRequestsPerDayPerProjectPerModel-FreeTier"}]}]}}"""
+        val freeClient = HttpClient(MockEngine { request ->
+            probe.requests += request
+            probe.bodies += request.body.toByteArray()
+            respond(free, HttpStatusCode.TooManyRequests, Headers.build { append(HttpHeaders.ContentType, "application/json") })
+        })
+        val clip = RecordedClip(ByteArray(2_000) { 1 }, "audio/wav", 1_000)
+        val refused = runCatching { runBlocking { OwnKeyTranscription(store, freeClient).transcribe(clip, "house", "en") } }.exceptionOrNull()
+        assertTrue(refused is VoiceTierRefused && refused.verdict == VoiceVerdict.REFUSE_FREE)
+        assertEquals("only the probe went out", 1, probe.requests.size)
+        assertFalse("the probe holds no audio and no inlineData", String(probe.bodies.single()).contains("inlineData"))
+        assertEquals("gemini-3.1-pro-preview:generateContent", probe.requests.single().url.encodedPath.substringAfterLast('/'))
+    }
+
+    @Test fun aServiceWhosePlanCannotBeReadIsRefusedWithNoRequestAtAllUntilConfirmed() {
+        configure(AiProviderConfig(AiKind.OPENAI_COMPATIBLE, AiPreset.GROQ.baseUrl, "m"), confirmPaid = false)
+        val provider = Provider()
+        val clip = RecordedClip(ByteArray(2_000) { 1 }, "audio/wav", 1_000)
+        val refused = runCatching { runBlocking { OwnKeyTranscription(store, provider.client).transcribe(clip, "house", "en") } }.exceptionOrNull()
+        assertTrue(refused is VoiceTierRefused && refused.verdict == VoiceVerdict.REFUSE_UNKNOWN)
+        assertTrue("no probe can tell a Groq plan, and no audio leaves", provider.requests.isEmpty())
+    }
+
+    @Test fun theKeptVerdictIsInTheSettingsFileOnlyAsAHashedNameWithNoKeyAndNoReply() {
+        configure(AiProviderConfig.GEMINI)
+        val provider = Provider()
+        // The stub answers in OpenAI's shape, so Gemini's adapter calls the answer unusable: only what is kept matters here.
+        runCatching { runBlocking { OwnKeyTranscription(store, provider.client).transcribe(RecordedClip(ByteArray(2_000) { 1 }, "audio/wav", 1_000), "house", "en") } }
+        val file = settingsFile.readBytes()
+        assertTrue(contains(file, "voice.tier.${VoiceTier.keyHash(key)}".encodeToByteArray()))
+        assertFalse("the key is not kept beside its verdict", contains(file, key.encodeToByteArray()))
+        assertFalse("no reply text is kept", contains(file, "WORDS-SAFETY-MARKER".encodeToByteArray()))
     }
 
     @Test fun sarvamIsRefusedWithoutTheSwitchTheAiFeaturesOrItsKey() {

@@ -22,7 +22,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AiService } from '../core/ai.service';
 import type { AiProviderConfig } from '../core/ai/ai-provider-config';
 import { MAX_AUDIO_MS } from '../core/ai/transcriber';
-import { FakeRecorder, fakeMic } from '../core/voice/testing/voice-fakes';
+import { writeTier } from '../core/voice/voice-tier-store';
+import { FakeRecorder, allowVoicePlan, fakeMic } from '../core/voice/testing/voice-fakes';
 import { RECORDER_ENV, VoiceInputService } from '../core/voice/voice-input.service';
 import { TranslationService } from '../i18n/translation.service';
 import { VoiceButton } from './voice-button';
@@ -70,6 +71,7 @@ function setup(opts: { on?: boolean; fetchImpl?: (() => Promise<Response>) | 'ho
   vi.stubGlobal('fetch', fetchSpy);
   TestBed.resetTestingModule();
   TestBed.configureTestingModule({ providers: [{ provide: AiService, useValue: ai }, { provide: RECORDER_ENV, useValue: mic.env }] });
+  allowVoicePlan('gemini', 'k-not-real');
   TestBed.inject(VoiceInputService).setEnabled(opts.on ?? true);
   const fixture = TestBed.createComponent(Host);
   fixture.detectChanges();
@@ -365,5 +367,55 @@ describe('VoiceButton', () => {
     await settle(fixture);
     expect(mic(el)!.getAttribute('aria-label')).toBe('टाइप करने की जगह बोलें');
     expect(mic(el)!.textContent).toContain('बोलें');
+  });
+
+  describe('the free-plan rule (ADR-37, owner decision 2026-10-19)', () => {
+    it('a free Gemini key: the microphone is disabled, names its reason as its accessible description, and records nothing', async () => {
+      const { fixture, el, mic: fake, fetchSpy } = setup();
+      writeTier('gemini', 'k-not-real', 'REFUSE_FREE', 'probe', Date.now());
+      await settle(fixture);
+      const b = mic(el)!;
+      expect(b.getAttribute('aria-disabled')).toBe('true');
+      const reason = el.querySelector('#' + b.getAttribute('aria-describedby'))!.textContent!.replace(/\s+/g, ' ').trim();
+      expect(reason).toBe(
+        'Voice input is not available on a free Gemini plan: a free plan may let Gemini use what you say to improve its products. Use a paid key, or type instead.',
+      );
+      b.click();
+      await settle(fixture);
+      expect(fake.asked()).toBe(0);
+      expect(FakeRecorder.instances).toHaveLength(0);
+      expect(fetchSpy).not.toHaveBeenCalled();
+      expect(status(el)).toBe('');
+    });
+
+    it('while the plan is being checked the button says so and waits; a plan that cannot be read points to Settings', async () => {
+      const { fixture, el } = setup();
+      localStorage.clear();
+      writeTier('gemini', 'other-key-not-real', 'ALLOW', 'probe', Date.now());
+      await settle(fixture);
+      const b = mic(el)!;
+      expect(b.getAttribute('aria-disabled')).toBe('true');
+      expect(el.querySelector('#' + b.getAttribute('aria-describedby'))!.textContent).toMatch(/Checking|cannot tell/);
+    });
+
+    it('the reason is in Hindi when the app is', async () => {
+      const { fixture, el } = setup();
+      writeTier('gemini', 'k-not-real', 'REFUSE_FREE', 'probe', Date.now());
+      await TestBed.inject(TranslationService).setLang('hi');
+      await settle(fixture);
+      const b = mic(el)!;
+      expect(el.querySelector('#' + b.getAttribute('aria-describedby'))!.textContent).toContain('मुफ़्त Gemini योजना');
+    });
+
+    it('a recording in progress ends, with nothing sent, when a free-tier answer arrives', async () => {
+      const { fixture, el, fetchSpy } = setup();
+      mic(el)!.click();
+      await settle(fixture);
+      expect(FakeRecorder.instances).toHaveLength(1);
+      writeTier('gemini', 'k-not-real', 'REFUSE_FREE', 'ordinary-429', Date.now());
+      await settle(fixture);
+      expect(FakeRecorder.instances[0].state).toBe('inactive');
+      expect(fetchSpy).not.toHaveBeenCalled();
+    });
   });
 });

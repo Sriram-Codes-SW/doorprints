@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | SSDLC document index |
-| Version | 0.132 |
-| Date | 2026-10-19 |
+| Version | 0.133 |
+| Date | 2026-10-20 |
 | Author | Claude (Cowork) |
 | Status | Draft |
 
@@ -31,7 +31,7 @@
 | 0.129 | 2026-10-19 | Claude (Code), engineer | Repository review fixes (`docs/repo-review-fixes`): TC-S-17 made executable (the ZIP-bomb limits per stack, the new tests and mutation lists) and the docs side of the review: 02 v0.96 (T-T8 limits, RR-30 re-rated, T-T5, A8 and RR-22), 03 v0.173 (superseded notes on ADR-13, ADR-20, ADR-28 and ADR-29; §18.27), 06 v0.294, 07 v0.79 (Actions pinning exception), 13 v0.22 (A7 the `.gitleaksignore` entries, C1a the exported components), schemas v1.75 (`limits` in the import vectors). |
 | 0.130 | 2026-10-19 | Claude (Code), engineer | The release security checklist run on the v0.1.0 candidate (`11072090`): new session record [ops/release-run-2026-10-19.md](ops/release-run-2026-10-19.md) with every row of 13 section 3 (counts, the one FAIL, the owner's list). No other document changed. |
 | 0.131 | 2026-10-19 | Claude (Code), engineer | The first release is v0.1.1 (docs 14 v0.202, 13 v0.24: A5 and A6 name the owner's settings); the web README storage audit table matches the code (7 stores, `doorprints-drive`, `doorprints-offline-maps-v1`). |
-| 0.132 | 2026-10-20 | Claude (Code), engineer | Introduction: the tagline is "Remember every place you've seen." and the website keeps schools as well as houses ([03](03-design.md) ADR-13b; `feat/school-release-web`, #389); versions: 01 v0.53, 03 v0.175, 05 v0.35, 10 v0.359, 12 v0.12, 13 v0.25, 14 v0.203. |
+| 0.133 | 2026-10-20 | Claude (Code), engineer | Introduction: the tagline is "Remember every place you've seen." and the website keeps schools as well as houses ([03](03-design.md) ADR-13b; `feat/school-release-web`, #389); versions: 01 v0.53, 03 v0.176, 05 v0.35, 10 v0.359, 12 v0.12, 13 v0.27, 14 v0.204. |
 | 0.112 | 2026-10-06 | Claude | The review backlog: docs/01 v0.41, 06 v0.131 (section 10.1), 07 v0.60, 14 v0.89. |
 | 0.111 | 2026-10-06 | Claude | Full-system review fixes and the manual test checklist (`docs/ops/manual-test-checklist.md`): docs/07 v0.59, docs/14 v0.88. |
 | 0.110 | 2026-10-06 | Claude | Review fixes on PR #139: docs/10 v0.149, 06 v0.130, 15 v0.27. |

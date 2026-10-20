@@ -23,6 +23,7 @@ import { AiService } from '../../core/ai.service';
 import type { AiProviderConfig } from '../../core/ai/ai-provider-config';
 import { VOICE_INPUT_KEY } from '../../core/storage-keys';
 import { fakeMic } from '../../core/voice/testing/voice-fakes';
+import { writeTier } from '../../core/voice/voice-tier-store';
 import { RECORDER_ENV, VoiceInputService } from '../../core/voice/voice-input.service';
 import { TranslationService } from '../../i18n/translation.service';
 import { VoiceSetting } from './voice-setting';
@@ -139,5 +140,33 @@ describe('VoiceSetting', () => {
     await fixture.whenStable();
     expect(host.querySelector<HTMLInputElement>('#voice-provider-own')!.checked).toBe(true);
     expect(TestBed.inject(VoiceInputService).hasSarvamKey()).toBe(false);
+  });
+
+  it('says "Works only with a paid plan" beside the switch, and the disclosure says free plans are refused', async () => {
+    const { host } = await open({ config: { kind: 'openai-compatible', baseUrl: 'https://api.openai.com/v1', model: 'm' } });
+    expect(text(host, '#voice-tier-hint')).toBe('Works only with a paid plan');
+    expect(text(host, '#voice-disclosure')).toContain('free plans are refused');
+    expect(host.querySelector('#voice-tier-ack')).toBeNull();
+  });
+
+  it('Groq: one switch, "My Groq plan is paid; I understand a free plan may let Groq use my voice", kept for the key', async () => {
+    const { host, fixture } = await open({ config: { kind: 'openai-compatible', baseUrl: 'https://api.groq.com/openai/v1', model: 'm' } });
+    const box = host.querySelector<HTMLInputElement>('#voice-tier-ack')!;
+    expect(box.checked).toBe(false);
+    expect(text(host, 'label[for="voice-tier-ack"]')).toBe('My Groq plan is paid; I understand a free plan may let Groq use my voice');
+    expect(host.querySelector('#' + box.getAttribute('aria-describedby'))!.textContent).toContain('remembered for this key only');
+    box.click();
+    fixture.detectChanges();
+    expect(TestBed.inject(VoiceInputService).verdict()).toBe('ALLOW');
+    expect(Object.keys(localStorage).some((k) => k.startsWith('doorprints.voice.tier-ack.'))).toBe(true);
+  });
+
+  it('a free plan has no switch to flip: the sentence is shown as an alert', async () => {
+    const { host, fixture } = await open();
+    writeTier('gemini', 'k', 'REFUSE_FREE', 'probe', Date.now());
+    TestBed.inject(VoiceInputService).setEnabled(true);
+    fixture.detectChanges();
+    expect(host.querySelector('#voice-tier-ack')).toBeNull();
+    expect(host.querySelector('#voice-tier-status[role="alert"]')!.textContent).toContain('not available on a free Gemini plan');
   });
 });
