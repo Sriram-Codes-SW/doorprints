@@ -68,7 +68,7 @@ export function spacesOf(search: unknown): SearchSpaces | null {
 
 /**
  * The `search` object for `spaces`: the house's when there are none or they are not well formed. With `userKinds` (the kind
- * files this browser added, docs/03 ADR-38) it also carries them as `userKinds`, last: an optional field of the data set's
+ * files this browser added, docs/03 ADR-39) it also carries them as `userKinds`, last: an optional field of the data set's
  * object within `/1` (docs/schemas/README.md §1.1), which every older reader ignores (they read only `kinds` and
  * `defaultKind`, the server none of it), so a file without them is byte for byte what it was.
  */

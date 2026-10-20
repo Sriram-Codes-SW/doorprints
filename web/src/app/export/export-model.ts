@@ -172,7 +172,7 @@ export interface ExportBundle {
   voice?: KindFields;
   /** The kinds enabled and the default (Settings > Kinds, S4b-BL-212), for the backup's `search`; none for the house alone. */
   spaces?: SearchSpaces;
-  /** The kind files this browser added (docs/03 ADR-38), for the backup's `search.userKinds`; none when there are none. */
+  /** The kind files this browser added (docs/03 ADR-39), for the backup's `search.userKinds`; none when there are none. */
   userKinds?: readonly object[];
 }
 
@@ -206,7 +206,7 @@ export interface CollectInput {
   spaces?: SearchSpaces;
   /** Whether a candidate is in the space of `options.space` (left out: every candidate is). */
   inSpace?: (h: HouseRecord) => boolean;
-  /** The kind files this browser added (docs/03 ADR-38), for the backup's `search.userKinds`; left out for none. */
+  /** The kind files this browser added (docs/03 ADR-39), for the backup's `search.userKinds`; left out for none. */
   userKinds?: readonly object[];
   exportedAt: string;
   options: ExportOptions;

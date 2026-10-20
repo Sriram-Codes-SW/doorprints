@@ -18,6 +18,8 @@
 
 package app.doorprints.shared.export
 
+import app.doorprints.shared.country.Country
+
 /** One file inside the `.xlsx` package. The ZIP container itself is written by the platform. */
 data class XlsxPart(val path: String, val xml: String)
 
@@ -116,8 +118,8 @@ object XlsxWriter {
         append(HEAD)
         append("<styleSheet xmlns=\"$MAIN_NS\">")
         append("<numFmts count=\"2\">")
-        // #,##,##0 is the Indian grouping pattern (last three digits, then pairs).
-        append("<numFmt numFmtId=\"164\" formatCode=\"&quot;₹&quot;\\ #,##,##0\"/>")
+        // The pack's currency format (India's `#,##,##0` is the Indian grouping pattern: last three digits, then pairs).
+        append("<numFmt numFmtId=\"164\" formatCode=\"${Country.pack.money.xlsxFormat.replace("\"", "&quot;")}\"/>")
         append("<numFmt numFmtId=\"165\" formatCode=\"yyyy\\-mm\\-dd\\ hh:mm\"/>")
         append("</numFmts>")
         append("<fonts count=\"2\">")

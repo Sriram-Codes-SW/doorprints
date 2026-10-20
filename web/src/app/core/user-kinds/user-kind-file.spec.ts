@@ -16,8 +16,8 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-// The reader of a kind file a person imports against the shared vectors, the schema and hostile input (docs/03 ADR-38; docs/02 T-T25;
-// docs/06 TC-U-289). The phones and the server read the same vectors.
+// The reader of a kind file a person imports against the shared vectors, the schema and hostile input (docs/03 ADR-39; docs/02 T-T25;
+// docs/06 TC-U-292). The phones and the server read the same vectors.
 import Ajv2020 from 'ajv/dist/2020';
 import { describe, expect, it } from 'vitest';
 import kindSchema from '../../../../../docs/schemas/kinds/kind.schema.json';
@@ -48,7 +48,7 @@ function rng(seed: number): () => number {
   };
 }
 
-describe('a kind file a person adds (user-kind-vectors.json, ADR-38)', () => {
+describe('a kind file a person adds (user-kind-vectors.json, ADR-39)', () => {
   it('keeps the limits the vectors and the schema name', () => {
     const { idPattern, ...limits } = USER_KIND_VECTORS.limits;
     expect({ ...USER_KIND_LIMITS }).toEqual(limits);

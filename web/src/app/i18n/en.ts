@@ -1997,7 +1997,7 @@ export const en = {
   'voice.tierAck': 'My {provider} plan is paid; I understand a free plan may let {provider} use my voice',
   'voice.tierAckHint': 'Doorprints cannot check this for {provider}. Your confirmation is remembered for this key only; a new key asks again.',
   'voice.tierHint': 'Works only with a paid plan',
-  // ADR-38 (2026-10-20): kinds a person adds from a kind file, Settings words, the reader's refusals in plain words and the neutral words of
+  // ADR-39 (2026-10-20): kinds a person adds from a kind file, Settings words, the reader's refusals in plain words and the neutral words of
   // their spaces (`ukind.*`, which name no house or school).
   'userKinds.heading': 'Kinds you add',
   'userKinds.switch': 'Kinds you add (experimental)',

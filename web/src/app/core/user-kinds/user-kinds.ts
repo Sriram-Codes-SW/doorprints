@@ -27,7 +27,7 @@ import { USER_KIND_LIMITS, readUserKind, type UserKindFile, type UserKindRead } 
 import { replaceUserKindFacts, setUserKindLoader, type UserKindFacts } from './user-kind-ids';
 
 /**
- * The kinds a person added by importing a kind file (docs/03 ADR-38): stored in this browser, checked again every time they
+ * The kinds a person added by importing a kind file (docs/03 ADR-39): stored in this browser, checked again every time they
  * are read, and drawn as any other kind (the conformance suite runs its flows for one, `kind-conformance.spec.ts`).
  *
  * - **Stored** in localStorage under {@link USER_KINDS_KEY}, as the list of checked files, because the kinds must be known

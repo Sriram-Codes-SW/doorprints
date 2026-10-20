@@ -226,7 +226,7 @@ export function registerTestCapabilities(kindId: string, capabilities: KindCapab
 
 /**
  * The capabilities of a kind by its id: the built-in set, a kind this browser added from a kind file (its own block, read
- * by {@link parseCapabilities} and the user profile; docs/03 ADR-38), or {@link DEFAULT_CAPABILITIES} for a kind this build
+ * by {@link parseCapabilities} and the user profile; docs/03 ADR-39), or {@link DEFAULT_CAPABILITIES} for a kind this build
  * does not know.
  */
 export function capabilitiesOf(kindId: string | null | undefined): KindCapabilities {

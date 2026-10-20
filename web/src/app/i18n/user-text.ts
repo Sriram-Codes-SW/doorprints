@@ -17,7 +17,7 @@
  */
 
 /**
- * The words of the kinds a person added (docs/03 ADR-38): their own text, shown as written in every language. Each one is
+ * The words of the kinds a person added (docs/03 ADR-39): their own text, shown as written in every language. Each one is
  * given a key of its own under {@link USER_TEXT_PREFIX} (`uk.u_gym.kind.many`) and put into every dictionary that is
  * loaded, so every screen and every copy that reads a kind's label key (a template's `t`, a copy's `dict[key]`) shows it
  * with no code of its own. The texts are checked before they get here (`user-kind-file.ts`: no `<`, `>`, `{`, `}`, no

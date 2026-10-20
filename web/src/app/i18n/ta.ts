@@ -1998,7 +1998,7 @@ export const ta: Dict = {
   'voice.tierAck': 'என் {provider} திட்டம் கட்டணமானது; இலவசத் திட்டத்தில் {provider} என் குரலைப் பயன்படுத்தலாம் என்பதை நான் அறிவேன்',
   'voice.tierAckHint': '{provider}-க்கு Doorprints இதைச் சரிபார்க்க முடியாது. உங்கள் உறுதிப்படுத்தல் இந்தச் சாவிக்கு மட்டுமே நினைவில் இருக்கும்; புதிய சாவிக்கு மீண்டும் கேட்கப்படும்.',
   'voice.tierHint': 'கட்டணத் திட்டத்தில் மட்டுமே செயல்படும்',
-  // ADR-38 (2026-10-20): kinds a person adds from a kind file, Settings words, the reader's refusals in plain words and the neutral words of
+  // ADR-39 (2026-10-20): kinds a person adds from a kind file, Settings words, the reader's refusals in plain words and the neutral words of
   // their spaces (`ukind.*`, which name no house or school). Under review (owner rule: hi/ta/te ship marked under review).
   'userKinds.heading': 'நீங்கள் சேர்க்கும் வகைகள்',
   'userKinds.switch': 'நீங்கள் சேர்க்கும் வகைகள் (சோதனை)',

@@ -1998,7 +1998,7 @@ export const hi: Dict = {
   'voice.tierAck': 'मेरी {provider} योजना सशुल्क है; मुझे पता है कि मुफ़्त योजना में {provider} मेरी आवाज़ इस्तेमाल कर सकता है',
   'voice.tierAckHint': 'Doorprints {provider} के लिए इसे जाँच नहीं सकता। आपकी पुष्टि सिर्फ़ इसी कुंजी के लिए याद रहती है; नई कुंजी पर फिर पूछा जाएगा।',
   'voice.tierHint': 'सिर्फ़ सशुल्क योजना के साथ काम करता है',
-  // ADR-38 (2026-10-20): kinds a person adds from a kind file, Settings words, the reader's refusals in plain words and the neutral words of
+  // ADR-39 (2026-10-20): kinds a person adds from a kind file, Settings words, the reader's refusals in plain words and the neutral words of
   // their spaces (`ukind.*`, which name no house or school). Under review (owner rule: hi/ta/te ship marked under review).
   'userKinds.heading': 'आपकी जोड़ी श्रेणियाँ',
   'userKinds.switch': 'आपकी जोड़ी श्रेणियाँ (प्रायोगिक)',

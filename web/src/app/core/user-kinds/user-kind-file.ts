@@ -21,7 +21,7 @@ import { scanJson, type ScanCode } from './json-scan';
 import { USER_KIND_ID } from './user-kind-ids';
 
 /**
- * The reader of a kind file a person imports (docs/03 ADR-38; docs/02 T-T25): the twin of the server's `KindFiles.parse`
+ * The reader of a kind file a person imports (docs/03 ADR-39; docs/02 T-T25): the twin of the server's `KindFiles.parse`
  * (every rule of `kind.schema.json` it checks) with the user profile of `user-kind.schema.json` on top, and the same answers
  * as the phones' reader for every case of `docs/schemas/kinds/user-kind-vectors.json` (the fault's code and path). A kind
  * file is data only: nothing in it is run, fetched, parsed as markup or given to the map. It is refused, with the first fault

@@ -35,7 +35,7 @@ function column(kind: string | null | undefined): number {
 
 /**
  * The website's key of word `id` in `kind` (`null`: the website has no such word). Throws for an id the kind files do not have.
- * A kind a person added (docs/03 ADR-38) reads its own labels where it has them (the heading, the add button) and the neutral
+ * A kind a person added (docs/03 ADR-39) reads its own labels where it has them (the heading, the add button) and the neutral
  * word `ukind.<id>` everywhere else, so no word of a gym says *house*.
  */
 export function kindWordKey(kind: string | null | undefined, id: string): TKey | null {

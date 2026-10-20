@@ -42,7 +42,7 @@ export interface BackupArchive {
   photoBytes(entry: string): Promise<Uint8Array | null>;
   /** The kinds and the default the file's `search` names (a hint, S4b-BL-212); null when it names none. */
   readonly spaces?: SearchSpaces | null;
-  /** The kind files the file's `search` carries (`userKinds`, docs/03 ADR-38), unchecked: the import checks each one. */
+  /** The kind files the file's `search` carries (`userKinds`, docs/03 ADR-39), unchecked: the import checks each one. */
   readonly userKinds?: readonly unknown[];
 }
 

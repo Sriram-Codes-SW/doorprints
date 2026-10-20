@@ -108,7 +108,7 @@ export class ExportService {
       kinds: { fieldsOf: (kind) => drawnKind(kind).fields, dict: await loadDictionary(options.lang) },
       // The backup's `search` says the kinds enabled and the default (Settings > Kinds, S4b-BL-212); the house alone as before.
       spaces: { kinds: enabledKinds(), defaultKind: defaultKind() },
-      // The kind files this browser added go with a backup as `search.userKinds` (docs/03 ADR-38), whether shown or not.
+      // The kind files this browser added go with a backup as `search.userKinds` (docs/03 ADR-39), whether shown or not.
       userKinds: userKindFiles(),
       // A copy of one space holds that space's candidates only (S4b-BL-279); with one space enabled there is only one.
       ...(options.space && spacesOn() ? { inSpace: holdsFor(options.space, true, defaultKind(), availableKinds()) } : {}),

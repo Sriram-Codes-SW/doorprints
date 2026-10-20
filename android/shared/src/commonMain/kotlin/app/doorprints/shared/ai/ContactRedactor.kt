@@ -18,6 +18,8 @@
 
 package app.doorprints.shared.ai
 
+import app.doorprints.shared.country.Country
+
 /**
  * Keeps a house's contact person out of text bound for Gemini on the device (threat model F-30, requirement AI-010):
  * the server's `ContactRedactor` (backend `app.doorprints.server.ai`), ported rule for rule for on-device AI (docs/03
@@ -41,23 +43,20 @@ object ContactRedactor {
         Regex("^[ \\t]*Contact[ \\t]*:.*(?:\\r\\n|\\n|\\r|$)", setOf(RegexOption.IGNORE_CASE, RegexOption.MULTILINE))
 
     private const val WORD = "[\\p{L}\\p{M}\\p{N}]"
-    private val PHONE_LIKE = Regex(
-        "(?<![\\p{L}\\p{M}\\p{N}+])(?:" +
-            "\\+\\d(?:[ .()\\-]{0,2}\\d){6,14}" + // +<cc> ... (7-15 digits)
-            "|(?:(?:\\+?91|0)[ \\-]?)?[6-9](?:[ .\\-]?\\d){9}" + // Indian mobile
-            "|\\(?0\\d{2,4}\\)?[ \\-]?\\d{3,4}[ \\-]?\\d{3,4}" + // STD code (also "(022)") + landline
-            "|\\d{10,15}" + // long digit run
-            ")(?!$WORD)",
-    )
 
-    /** The zero of each script whose ten digits follow it: Arabic-Indic, Urdu, Devanagari, Bengali, Gurmukhi, Gujarati, Odia, Tamil, Telugu, Kannada, Malayalam. */
-    private val DIGIT_ZEROS = intArrayOf(0x0660, 0x06F0, 0x0966, 0x09E6, 0x0A66, 0x0AE6, 0x0B66, 0x0BE6, 0x0C66, 0x0CE6, 0x0D66)
+    // The phone-like pattern (the `+cc` shape, the country's own shapes, a long digit run) is built from the country pack:
+    // `Country.derived.redactPhone` (ADR-38). The digit scripts are the pack's too (`digitZeros`).
 
-    /** [s] with those scripts' digits written as 0-9, one character for one character (every digit is in the BMP). */
+    /**
+     * [s] with the pack's non-Latin digit scripts (India's: Arabic-Indic, Urdu, Devanagari, Bengali, Gurmukhi, Gujarati, Odia,
+     * Tamil, Telugu, Kannada, Malayalam) written as 0-9, one character for one character (every digit is in the BMP).
+     */
     internal fun asciiDigits(s: String): String {
+        val zeros = Country.pack.digitZeros
+        val lowest = zeros.minOrNull() ?: return s
         val out = StringBuilder(s.length)
         for (c in s) {
-            val zero = if (c.code >= 0x0660) DIGIT_ZEROS.firstOrNull { c.code in it..it + 9 } else null
+            val zero = if (c.code >= lowest) zeros.firstOrNull { c.code in it..it + 9 } else null
             out.append(if (zero == null) c else '0' + (c.code - zero))
         }
         return out.toString()
@@ -102,7 +101,7 @@ object ContactRedactor {
 
     /** Only the generic rules (phone-like numbers, then email addresses), for text with no known contact. */
     fun redactGeneric(text: String?): String? =
-        if (text.isNullOrEmpty()) text else EMAIL_LIKE.replace(replaceInDigits(PHONE_LIKE, text), EMAIL)
+        if (text.isNullOrEmpty()) text else EMAIL_LIKE.replace(replaceInDigits(Country.derived.redactPhone, text), EMAIL)
 
     /** Redacts one house's contact name and phone from text; made with [forContact]. */
     class Redactor internal constructor(contactName: String?, contactPhone: String?) {
@@ -154,7 +153,7 @@ object ContactRedactor {
         /** The rules that need no name: the saved phone, phone-like numbers, then email addresses (before the name parts). */
         private fun generic(s: String): String {
             val out = savedPhone?.let { replaceInDigits(it, s) } ?: s
-            return EMAIL_LIKE.replace(replaceInDigits(PHONE_LIKE, out), EMAIL)
+            return EMAIL_LIKE.replace(replaceInDigits(Country.derived.redactPhone, out), EMAIL)
         }
 
         private companion object {
@@ -190,10 +189,13 @@ object ContactRedactor {
                 val digits = phone.filter { it in '0'..'9' }
                 if (digits.length < MIN_SAVED_PHONE_DIGITS) return null
                 val variants = linkedSetOf(digits)
-                if (digits.length > 10) variants += digits.takeLast(10)
-                if (digits.startsWith("0") && digits.length > MIN_SAVED_PHONE_DIGITS) variants += digits.substring(1)
+                val rules = Country.pack.phone
+                if (digits.length > rules.keptDigits) variants += digits.takeLast(rules.keptDigits)
+                if (digits.startsWith(rules.trunkPrefix) && digits.length > MIN_SAVED_PHONE_DIGITS) variants += digits.substring(rules.trunkPrefix.length)
                 // A metro landline (0 + 2-digit STD code + 8 digits) is often written in a note without its STD code (S4b-BL-174a).
-                if (digits.length == 11 && digits.startsWith("0")) variants += digits.substring(3)
+                if (digits.length == rules.keptDigits + rules.trunkPrefix.length && digits.startsWith(rules.trunkPrefix)) {
+                    variants += digits.substring(rules.landlineAreaCodeSkip)
+                }
                 val alternatives = variants.map { v -> v.toList().joinToString("[ .()\\-]{0,2}") }
                 return Regex("(?<!\\d)\\+?(?:${alternatives.joinToString("|")})(?!\\d)")
             }

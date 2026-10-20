@@ -16,7 +16,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-// The shared vectors of the kinds a person adds (docs/schemas/kinds/user-kind-vectors.json, docs/03 ADR-38) and the text of each case, as the
+// The shared vectors of the kinds a person adds (docs/schemas/kinds/user-kind-vectors.json, docs/03 ADR-39) and the text of each case, as the
 // file's note defines its `json`, `generate` and `patch` forms; the phones and the server build the same texts.
 import vectorsJson from '../../../../../docs/schemas/kinds/user-kind-vectors.json';
 

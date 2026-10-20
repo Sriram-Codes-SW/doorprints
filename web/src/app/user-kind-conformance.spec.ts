@@ -16,7 +16,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-// The conformance flows for a kind a person adds (docs/03 ADR-38, docs/06 TC-U-290): the gym of user-kind-vectors.json, stored as a person's import
+// The conformance flows for a kind a person adds (docs/03 ADR-39, docs/06 TC-U-293): the gym of user-kind-vectors.json, stored as a person's import
 // stores it (no development-only seam), runs through the registry, the three layers, the words, the routes, search and filters, saving, deleting and
 // restoring, the copies, the backup and its import, the AI (which never reads it) and India's boundaries, as the built-in kinds do in
 // kind-conformance.spec.ts.

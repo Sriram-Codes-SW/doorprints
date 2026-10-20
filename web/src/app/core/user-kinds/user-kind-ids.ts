@@ -19,7 +19,7 @@
 import type { KindCapabilities } from '../kind-capabilities';
 
 /**
- * The facts of the kinds a person added (docs/03 ADR-38) that the low-level registries read: their ids, capabilities,
+ * The facts of the kinds a person added (docs/03 ADR-39) that the low-level registries read: their ids, capabilities,
  * question scopes and the keys of their words. A leaf with no imports of its own (a type only), so the capabilities, the
  * question banks and the word table can ask it without an import cycle; `user-kinds.ts` fills it, the first time anything
  * asks (its loader reads this browser's stored kind files and checks each one again).

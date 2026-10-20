@@ -103,7 +103,7 @@ export function spaceFileName(name: string, space: string | undefined, many: str
  * its.
  */
 export function aiShownIn(kind: string, available: readonly string[], on: boolean, ownKey: boolean, serverKinds: readonly string[] = []): boolean {
-  // No AI reads a kind a person added (its `ai` slots are empty by the profile, docs/03 ADR-38): its space has no assistant.
+  // No AI reads a kind a person added (its `ai` slots are empty by the profile, docs/03 ADR-39): its space has no assistant.
   if (!on || isUserKindId(kind)) return false;
   return isBaselineKind(kind) || (available.includes(kind) && (ownKey || serverKinds.includes(kind)));
 }

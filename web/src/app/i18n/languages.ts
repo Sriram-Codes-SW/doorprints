@@ -43,7 +43,7 @@ export const LANGUAGES: readonly LanguageInfo[] = [
  * language's strings instead of all four (about 220 KB less for English). The service worker precaches the chunks,
  * so switching language works offline too. Tests that need every language import `all-dictionaries.ts`.
  */
-// Every dictionary also holds the words of the kinds a person added (`user-text.ts`, docs/03 ADR-38), as it is loaded.
+// Every dictionary also holds the words of the kinds a person added (`user-text.ts`, docs/03 ADR-39), as it is loaded.
 const loaded: Partial<Record<Lang, Dict>> = { en: withUserTexts(en) };
 const loaders: Record<Exclude<Lang, 'en'>, () => Promise<Dict>> = {
   hi: () => import('./hi').then((m) => m.hi),

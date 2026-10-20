@@ -77,7 +77,7 @@ export function registerTestKind(kind: BuiltInKind): () => void {
 
 /**
  * The kinds: the house, and while `on` (the developer flag or Settings' switch) the school, any a test registered, then the
- * kinds this browser added from a kind file (`user-kinds/user-kinds.ts`, docs/03 ADR-38). The built-in ones come first, so a
+ * kinds this browser added from a kind file (`user-kinds/user-kinds.ts`, docs/03 ADR-39). The built-in ones come first, so a
  * kind a person adds can never stand in for one (its id starts `u_` anyway).
  */
 export function creatableKinds(on: boolean): readonly BuiltInKind[] {

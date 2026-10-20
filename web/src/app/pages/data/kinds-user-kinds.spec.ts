@@ -37,7 +37,7 @@ import { KindsSettings } from './kinds-settings';
 const row = (id: string, kind?: string) => ({ id, kind, label: id, lat: 26, lon: 91, status: 'NEW', deleted: false, updatedAt: '2026-10-01T00:00:00.000Z' }) as unknown as HouseDto;
 
 /**
- * Settings > What you track > *Kinds you add* (docs/03 ADR-38; docs/06 TC-U-291): the switch, *Import a kind file* with its preview
+ * Settings > What you track > *Kinds you add* (docs/03 ADR-39; docs/06 TC-U-294): the switch, *Import a kind file* with its preview
  * and its refusals in plain words, and *Remove kind*, which never deletes an entry.
  */
 describe('Your data: kinds you add', () => {

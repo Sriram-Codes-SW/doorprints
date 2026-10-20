@@ -253,7 +253,7 @@ export class OnDeviceAiService {
     const places = await this.store.places.all();
     const noteRows = await this.store.areaNotes.rows();
     const holds = kind ? holdsFor(kind, spacesOn(), defaultKind(), availableKinds()) : () => true;
-    // No AI reads an entry of a kind a person added (docs/03 ADR-38), whichever space holds it.
+    // No AI reads an entry of a kind a person added (docs/03 ADR-39), whichever space holds it.
     const live = (await this.store.allHouses()).filter((h) => !h.deleted && holds(h) && !isUserKindId(h.kind));
     live.sort((a, b) => Date.parse(b.updatedAt ?? '') - Date.parse(a.updatedAt ?? '') || 0);
     return live.map((h) => ({

@@ -36,7 +36,7 @@ import { isUserKindId, userKindIds } from './user-kinds/user-kind-ids';
  * - **Released** kinds ({@link RELEASED_KINDS}) need no switch: the house and, since the school's release, the school. Every
  *   other available kind is offered only while the person turns on *Experimental: more than houses*, which is shown only
  *   in a build that ships such a kind (none today, so the switch is hidden; the mechanism stays for the next kind).
- * - **Kinds a person adds** from a kind file (docs/03 ADR-38, `user-kinds/user-kinds.ts`) are available once imported, offered
+ * - **Kinds a person adds** from a kind file (docs/03 ADR-39, `user-kinds/user-kinds.ts`) are available once imported, offered
  *   only while *Kinds you add (experimental)* ({@link CUSTOM_KINDS_KEY}) is on, whatever *Experimental* says, and never released.
  * - **Enabled** kinds are the offered ones the person turned on in Settings > Kinds (the house alone by default), and
  *   the **default** kind is the one the app opens with when only one is enabled, and the one deep links, `/houses/new`,
@@ -49,7 +49,7 @@ export const ENABLED_KINDS_KEY = `${STORAGE_PREFIX}kinds.enabled`;
 export const DEFAULT_KIND_KEY = `${STORAGE_PREFIX}kinds.default`;
 
 /**
- * The switch *Kinds you add (experimental)* ('1' on; docs/03 ADR-38): the third layer for the kinds a person adds from a kind
+ * The switch *Kinds you add (experimental)* ('1' on; docs/03 ADR-39): the third layer for the kinds a person adds from a kind
  * file. Imported, a kind is available; it is offered (listed in Settings and the chooser) only while this switch is on, and
  * shown only once the person turns it on there. Off, nothing of theirs is deleted: the kinds and their entries stay.
  */
@@ -73,7 +73,7 @@ function buildFlag(): string | null {
 
 /**
  * The kinds this build may offer: the house always, then the built-in kinds the build lists, in their own order, then the
- * kinds this browser added from a kind file (docs/03 ADR-38; whatever the build lists, since they are the person's data).
+ * kinds this browser added from a kind file (docs/03 ADR-39; whatever the build lists, since they are the person's data).
  */
 export function availableKinds(devMode: boolean = isDevMode(), flag: string | null = buildFlag()): readonly string[] {
   return [...builtInAvailable(devMode, flag), ...userKindIds()];

@@ -1998,7 +1998,7 @@ export const te: Dict = {
   'voice.tierAck': 'నా {provider} ప్లాన్ చెల్లింపుది; ఉచిత ప్లాన్‌లో {provider} నా స్వరాన్ని వాడవచ్చని నాకు తెలుసు',
   'voice.tierAckHint': '{provider} కోసం Doorprints దీన్ని తనిఖీ చేయలేదు. మీ నిర్ధారణ ఈ కీకి మాత్రమే గుర్తుంటుంది; కొత్త కీకి మళ్లీ అడుగుతుంది.',
   'voice.tierHint': 'చెల్లింపు ప్లాన్‌తో మాత్రమే పనిచేస్తుంది',
-  // ADR-38 (2026-10-20): kinds a person adds from a kind file, Settings words, the reader's refusals in plain words and the neutral words of
+  // ADR-39 (2026-10-20): kinds a person adds from a kind file, Settings words, the reader's refusals in plain words and the neutral words of
   // their spaces (`ukind.*`, which name no house or school). Under review (owner rule: hi/ta/te ship marked under review).
   'userKinds.heading': 'మీరు జోడించే రకాలు',
   'userKinds.switch': 'మీరు జోడించే రకాలు (ప్రయోగాత్మకం)',

@@ -48,11 +48,11 @@ interface KindRow {
   on: boolean;
   isDefault: boolean;
   count: number;
-  /** A kind the person added from a kind file (docs/03 ADR-38): it can be removed here. */
+  /** A kind the person added from a kind file (docs/03 ADR-39): it can be removed here. */
   yours: boolean;
 }
 
-/** A checked kind file waiting for *Add this kind* (docs/03 ADR-38): its words and whether it replaces one already added. */
+/** A checked kind file waiting for *Add this kind* (docs/03 ADR-39): its words and whether it replaces one already added. */
 interface KindPreview {
   file: UserKindFile;
   fields: string[];
@@ -277,7 +277,7 @@ export class KindsSettings {
   }
 
   /**
-   * *Import a kind file* (docs/03 ADR-38): a file over 64 KB is refused before it is read; the text is checked by the same
+   * *Import a kind file* (docs/03 ADR-39): a file over 64 KB is refused before it is read; the text is checked by the same
    * reader as the phones' and the server's (`user-kind-file.ts`), and nothing is stored until the person confirms the preview.
    */
   protected async pick(event: Event): Promise<void> {
