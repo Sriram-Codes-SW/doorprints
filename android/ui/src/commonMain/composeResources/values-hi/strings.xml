@@ -1323,6 +1323,8 @@
     <string name="drive_sync_not_now">अभी नहीं</string>
     <string name="drive_sync_upload_now">मोबाइल डेटा पर अब फ़ोटो अपलोड करें (%1$s)</string>
     <string name="drive_sync_photo_error">फ़ोटो सेटिंग अपडेट नहीं कर सके</string>
+    <!-- S4b-BL-293 (2026-10-20): how long a deleted photo stays in Drive, the website's driveSync.photoRetention: under review. -->
+    <string name="drive_sync_photo_retention">आपके हटाए गए फ़ोटो 30 दिन बाद आपकी Google Drive से हट जाते हैं, और उसके बाद वे तभी रहते हैं जब आपका रखा कोई बैकअप अब भी उन्हें रखता हो।</string>
     <string name="drive_delete_heading">गूगल ड्राइव में डेटा हटाएँ</string>
     <string name="drive_delete_older_backups">पुराने बैकअप हटाएँ</string>
     <string name="drive_delete_all_backups">सभी बैकअप हटाएँ</string>

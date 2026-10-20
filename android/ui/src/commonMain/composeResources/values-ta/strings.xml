@@ -1323,6 +1323,8 @@
     <string name="drive_sync_not_now">இப்போது இல்லை</string>
     <string name="drive_sync_upload_now">மொபைல் தரவில் இப்போது புகைப்படங்களை அப்லோட் செய்யவும் (%1$s)</string>
     <string name="drive_sync_photo_error">புகைப்படம் அமைப்புகளைப் புதுப்பிக்க முடியவில்லை</string>
+    <!-- S4b-BL-293 (2026-10-20): how long a deleted photo stays in Drive, the website's driveSync.photoRetention: under review. -->
+    <string name="drive_sync_photo_retention">நீங்கள் நீக்கும் புகைப்படங்கள் 30 நாட்களுக்குப் பிறகு உங்கள் Google Drive-இலிருந்து நீங்கிவிடும்; அதன் பிறகு, நீங்கள் வைத்திருக்கும் ஒரு காப்புப்பிரதி அவற்றை இன்னும் கொண்டிருந்தால் மட்டுமே அவை இருக்கும்.</string>
     <string name="drive_delete_heading">Google Drive இல் தரவை நீக்கவும்</string>
     <string name="drive_delete_older_backups">பழைய பேக்கப்களை நீக்கவும்</string>
     <string name="drive_delete_all_backups">அனைத்து பேக்கப்களை நீக்கவும்</string>

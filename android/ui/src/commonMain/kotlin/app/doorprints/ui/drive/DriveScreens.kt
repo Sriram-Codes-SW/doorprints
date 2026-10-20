@@ -609,7 +609,7 @@ private fun BackupRow(backup: BackupSummary, enabled: Boolean, onImport: () -> U
 
 /**
  * Sync: the status line, *Sync now*, the shrink question for sync, and the photo upload switch (Wi-Fi only by default)
- * with its status and the one-off mobile-data upload.
+ * with its status and the one-off mobile-data upload, then how long a deleted photo stays in Drive (docs/15 5.1).
  */
 @Composable
 private fun SyncCard(ui: DriveUiState, holder: DriveHolder) {
@@ -639,6 +639,7 @@ private fun SyncCard(ui: DriveUiState, holder: DriveHolder) {
     if (uploadNowOffered(s.wifiOnly, s.pendingBytes)) {
         DriveButton(t("driveSync.uploadNow", sizeText(s.pendingBytes ?: 0L)), holder::uploadPhotosNow, enabled = !s.busy)
     }
+    Text(t("driveSync.photoRetention"), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     LiveMessage(assertive = true) { if (s.photoError) Text(t("driveSync.photoError"), color = MaterialTheme.colorScheme.error) }
 }
 
