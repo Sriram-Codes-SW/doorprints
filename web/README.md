@@ -499,8 +499,10 @@ Anything that is not in this table is a finding.
 
 | Where (DevTools → Application) | Name | What it holds | When it is there |
 |---|---|---|---|
-| IndexedDB | database `doorprints`, stores `houses`, `visits`, `photos`, `settings` | Houses, visits, photos (each photo record holds the image as a Blob), and app settings: `storage.persist-asked`, `sync.server` (the server address, never the key), `cursor.house`, `cursor.visit`, `cursor.photo`, `migration.state`, `export.options` | The database is created on the first start, with 4 empty stores. The settings appear as they are used |
-| Cache Storage | **one** cache, `doorprints-shell-<16 hex characters>/` | Only this build's own files, from `https://doorprints.web.app/` | A few seconds after the first start: the worker registers 3 s after start and then downloads the whole build |
+| IndexedDB | database `doorprints` (**version 4**, `DB_VERSION` in `src/app/data/local-db.ts`), **7 stores**: `houses`, `visits`, `photos`, `settings`, `records`, `trace_points`, `saved_walks` | Houses, visits, photos (each photo record holds the image as a Blob), the other kinds' rows (`records`), the path traces and saved walks, and app settings: `storage.persist-asked`, `sync.server` (the server address, never the key), `cursor.house`, `cursor.visit`, `cursor.photo`, `migration.state`, `export.options` | The database is created on the first start, with 7 empty stores. The settings appear as they are used |
+| IndexedDB | database `doorprints-drive` (version 1; stores `state`, `keys-watermark`, `deletion-pending`, `photo-state`, `device-key`) | Google Drive backup state, never the houses themselves: the sync state, pending deletions, photo state and this device's key | **Only after Drive backup is connected or opened** (`data/drive/connect/stores/drive-db.ts`). Absent in a fresh audit |
+| Cache Storage | cache `doorprints-shell-<16 hex characters>/` (always exactly one) | Only this build's own files, from `https://doorprints.web.app/` | A few seconds after the first start: the worker registers 3 s after start and then downloads the whole build |
+| | cache `doorprints-offline-maps-v1` (`OFFLINE_CACHE` in `src/app/offline/offline-protocol.ts`) | The map files (tiles, style, sprite, glyphs from `https://tiles.openfreemap.org`) of the areas saved for offline use, never houses or photos | **Only after an area was saved** for offline use. Absent in a fresh audit, which saves no area; do not save one before the audit |
 | Local storage (`https://doorprints.web.app`) | `doorprints.lang` | The chosen language (`en`, `hi`, `ta` or `te`) | After the language was changed in the header |
 | | `doorprints.mapView` | The last map position, `{"lat":…,"lon":…,"zoom":…}` | From the first time the map page shows: MapLibre reports its first fit to the page as a move, so the starting view is saved at once. Missing only when the map cannot be drawn (no WebGL 2) or when the browser blocks storage for the site. While it still holds that starting view, the app does not read it as a place the user chose: Plan's start and a new house's pin skip it |
 | | `doorprints.installDismissedAt`, `doorprints.storageRiskDismissedAt` | The date of a "Not now" on the install offer or the storage advice | Only after that "Not now" |
@@ -509,7 +511,7 @@ Anything that is not in this table is a finding.
 | | `doorprints.houseDraft:<house id>` or `doorprints.houseDraft:new:…` | The unsaved house form, contact included | Only while a house form has unsaved edits. It goes when the house is saved or the page is left |
 | | `doorprints.shareText` | Listing text shared to the app | Only while the Share page holds it |
 | Cookies | none | | Never |
-| Service workers | `https://doorprints.web.app/`, source `sw.js` | The app's worker. It holds no data itself, and its only store is the cache above | From about 3 s after the first start |
+| Service workers | `https://doorprints.web.app/`, source `sw.js` | The app's worker. It holds no data itself; the only cache it owns is the `doorprints-shell-` one above (the offline-maps cache is written by the page) | From about 3 s after the first start |
 
 DevTools does not refresh these views by itself. Before reading a view, refresh it: right-click **IndexedDB** and
 choose **Refresh IndexedDB** (or use the refresh button above a store's entries), right-click **Cache storage** and
@@ -533,7 +535,7 @@ step 1.
      `styles-….css`, `chunk-….js`, `maplibre-gl-worker.mjs`,
      `manifest.webmanifest`, `favicon.svg` and `icons/….png`, plus `media/…` if the build has any. There is no other
      host (no map tiles, fonts, Nominatim or server), no `/api/` and no `screenshots/`.
-   - **IndexedDB:** one database, `doorprints`, with the stores `houses`, `visits`, `photos` and `settings`, all empty.
+   - **IndexedDB:** one database, `doorprints`, with the 7 stores `houses`, `visits`, `photos`, `settings`, `records`, `trace_points` and `saved_walks`, all empty. (`doorprints-drive` and `doorprints-offline-maps-v1` are not there yet.)
    - **Local storage:** only `doorprints.mapView`, the starting view over India, about
      `{"lat":20.5937,"lon":78.9629,"zoom":4}`. The map page writes it as soon as it shows (see the table). Nothing
      else.
@@ -576,7 +578,7 @@ step 1.
    lost. Remove all data from this browser anyway?". Choose **Remove all data** (not *Sync first*). Wait for "All
    data was removed from this browser". Then, **still on Your data**, refresh each view.
    **Expected:**
-   - **IndexedDB:** the `doorprints` database is still listed, and its 4 stores are **empty** (0 entries each). The
+   - **IndexedDB:** the `doorprints` database is still listed, and its 7 stores are **empty** (0 entries each). The
      database itself stays, and holds nothing.
    - **Cache storage:** **no** `doorprints-shell-…` cache. The list is empty.
    - **Local storage:** only `doorprints.lang`. It is kept on purpose, and Your data says "Your language choice
@@ -606,7 +608,7 @@ Open a Chrome Incognito window (Ctrl+Shift+N, or Cmd+Shift+N on a Mac). It start
 3. **Remove all data**, and check as in pass 1 step 4. **Expected:** the same result, except that local storage is
    now empty (no language was chosen in this window).
 4. Close **every** Incognito window. Open a new Incognito window, open the site, and check before you do anything
-   else. **Expected:** the pass 1 step 1 result: a new `doorprints` database with 4 empty stores, local storage
+   else. **Expected:** the pass 1 step 1 result: a new `doorprints` database with 7 empty stores, local storage
    holding only `doorprints.mapView` (the starting view over India), empty session storage, and after a few seconds one new
    `doorprints-shell-…` cache. Nothing from the earlier Incognito
    session is left.
