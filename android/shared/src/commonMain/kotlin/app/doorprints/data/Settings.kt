@@ -233,6 +233,8 @@ class SettingsStore(
      */
     private val sarvamSecrets: SecretStore? = null,
     private val now: () -> Long = { IsoTime.nowMillis() },
+    /** The released kinds ([KindSetting.released]); only a test of the mechanism of an *unreleased* kind passes another list. */
+    private val releasedKinds: List<String> = KindSettingRules.RELEASED,
 ) {
     companion object {
         /** The DataStore's name: Android's file is `datastore/settings.preferences_pb`. Do not change it. */
@@ -470,8 +472,8 @@ class SettingsStore(
      * switch, list and default. Reads no secret; a file that cannot be read counts as the house alone, as every doubt does.
      */
     fun kindSetting(): Flow<KindSetting> = dataStore.data
-        .map { p -> KindSetting(availableKinds, p[Keys.kindsExperimental], p[Keys.kindsEnabled], p[Keys.kindsDefault]) }
-        .catch { emit(KindSetting(availableKinds)) }
+        .map { p -> KindSetting(availableKinds, p[Keys.kindsExperimental], p[Keys.kindsEnabled], p[Keys.kindsDefault], releasedKinds) }
+        .catch { emit(KindSetting(availableKinds, released = releasedKinds)) }
         .distinctUntilChanged()
 
     /**
@@ -484,7 +486,7 @@ class SettingsStore(
 
     /** Applies [change] to what is stored and stores the result (a null value removing its key): one atomic edit, so two taps never undo each other. */
     suspend fun editKindSetting(change: (KindSetting) -> KindSetting) = dataStore.edit {
-        val next = change(KindSetting(availableKinds, it[Keys.kindsExperimental], it[Keys.kindsEnabled], it[Keys.kindsDefault]))
+        val next = change(KindSetting(availableKinds, it[Keys.kindsExperimental], it[Keys.kindsEnabled], it[Keys.kindsDefault], releasedKinds))
         fun put(key: Preferences.Key<String>, value: String?) {
             if (value == null) it.remove(key) else it[key] = value
         }

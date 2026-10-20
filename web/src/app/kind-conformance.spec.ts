@@ -47,7 +47,7 @@ import { EMPTY_LOCAL, plan } from './export/import-plan';
 import { buildMarkdown } from './export/markdown-export';
 import { DICTIONARIES } from './i18n/all-dictionaries';
 import type { Lang } from './i18n/languages';
-import { extraFilterMatches, filterableExtras } from './shared/extra-filter';
+import { extraFilterMatches, filterableExtras, isRangeExtra } from './shared/extra-filter';
 import { searchText } from './pages/map/map-list';
 import { FLOW_KINDS, forKind, type FlowKindId } from './shared/testing/kind-flows';
 
@@ -142,9 +142,11 @@ describe.each(FLOW_KINDS)('conformance of the kind %s: data flows', (id: FlowKin
       if (typeof v === 'string' && e.type === 'text') expect(text, `${id} ${e.id}`).toContain(v.toLowerCase());
     }
     const rows = filterableExtras(fields);
-    expect(rows.map((r) => r.id)).toEqual(k.caps.filters.filter((f) => fields.others().some((o) => o.id === f && (o.type === 'enum' || o.type === 'bool'))));
+    expect(rows.map((r) => r.id)).toEqual(k.caps.filters.filter((f) => fields.others().some((o) => o.id === f && ['enum', 'bool', 'number', 'money'].includes(o.type))));
     for (const row of rows) {
-      const choice = row.type === 'bool' ? 'yes' : row.options![0].id;
+      // A number or an amount filters by a range (docs/03 §18.27): from the first candidate's value towards the side the second one is not on.
+      const [v0, v1] = [h0, h1].map((h) => (h.extrasOther as Record<string, unknown>)[row.id]).map((v) => (typeof v === 'object' ? (v as { amount: number }).amount : v)) as number[];
+      const choice = isRangeExtra(row) ? (v0 < v1 ? `:${v0}` : `${v0}:`) : row.type === 'bool' ? 'yes' : row.options![0].id;
       const filter = { [row.id]: choice };
       expect(extraFilterMatches(filter, fields, h0), `${id} ${row.id} matches the first`).toBe(true);
       expect(extraFilterMatches(filter, fields, h1), `${id} ${row.id} drops the second`).toBe(false);

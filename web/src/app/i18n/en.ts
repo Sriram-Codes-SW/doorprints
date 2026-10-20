@@ -1126,6 +1126,8 @@ export const en = {
   'map.costMax': '{what} up to (₹)',
   'map.costClear': 'Clear cost filters',
   'map.extraAny': 'Any',
+  'map.extraMin': '{name}: at least',
+  'map.extraMax': '{name}: at most',
   // S4b-BL-75, S4b-BL-83 (2026-10-01): Import a backup on the website, and the locality lookup.
   'imp.heading': 'Import a backup',
   'imp.intro': 'Bring houses, visits and photos from a Doorprints Full backup, or an update someone shared with you, into this browser. Only a Doorprints backup can be read back: the ZIP that Doorprints makes, or the .json backup file from the Doorprints server (it has no photos). Nothing is written until you choose Import.',

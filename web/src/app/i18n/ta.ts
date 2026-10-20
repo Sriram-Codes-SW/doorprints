@@ -1111,6 +1111,9 @@ export const ta: Dict = {
   'map.costClear': 'செலவு வடிகட்டிகளை அழி',
   // S4b-BL-265 (2026-10-15): the filter chips of a kind's extras. Under review (owner rule: hi/ta/te ship marked under review).
   'map.extraAny': 'ஏதேனும்',
+  // docs/03 §18.27 (2026-10-20): a range for a number or an amount. Under review (owner rule: hi/ta/te ship marked under review).
+  'map.extraMin': '{name}: குறைந்தபட்சம்',
+  'map.extraMax': '{name}: அதிகபட்சம்',
   // S4b-BL-75, S4b-BL-83 (2026-10-01): Import a backup on the website, and the locality lookup. Under review (owner rule: hi/ta/te ship marked under review).
   'imp.heading': 'காப்புப்பிரதியை இறக்குமதி செய்',
   'imp.intro': 'Doorprints முழு காப்புப்பிரதியிலிருந்தோ, ஒருவர் பகிர்ந்த புதுப்பிப்பிலிருந்தோ வீடுகள், வருகைகள், படங்களை இந்த உலாவிக்குக் கொண்டுவாருங்கள். Doorprints காப்புப்பிரதியை மட்டுமே திரும்பப் படிக்க முடியும்: Doorprints உருவாக்கும் ZIP, அல்லது Doorprints சேவையகத்தின் .json காப்புப்பிரதிக் கோப்பு (அதில் படங்கள் இல்லை). இறக்குமதி என்பதைத் தேர்வுசெய்யும் வரை எதுவும் எழுதப்படாது.',

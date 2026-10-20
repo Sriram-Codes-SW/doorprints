@@ -61,8 +61,20 @@ export interface KindCapabilities {
    * kinds PR 30, docs/03 §18.24): its pages keep their own addresses, its AI calls name no kind, its copies are not renamed.
    */
   readonly baseline: boolean;
-  /** The extras the list and the map can be filtered by, in the order the rows are shown (ids of enum or switch extras of the kind). */
+  /** The extras the list and the map can be filtered by, in the order the rows are shown (ids of enum, switch, number or amount extras of the kind). */
   readonly filters: readonly string[];
+  /** The blocks of a copy (Markdown and HTML) that come first after the details, in this order; the rest follow in {@link COPY_BLOCKS}'s order (docs/03 §18.27). None: the fixed order. */
+  readonly copyOrder: readonly CopyBlock[];
+}
+
+/** The blocks of a house's copy after its details, in the copies' fixed order (`kind.schema.json`, `capabilities.copyOrder`). */
+export const COPY_BLOCKS = ['cost', 'rooms', 'questions', 'viewings', 'areaNotes', 'distances', 'moveIn', 'checklist', 'visits', 'notes', 'photos'] as const;
+export type CopyBlock = (typeof COPY_BLOCKS)[number];
+
+/** The order a kind's copy writes its blocks in: the kind's `copyOrder` first, then the rest in the fixed order. */
+export function copyBlockOrder(kindId: string | null | undefined): readonly CopyBlock[] {
+  const first = capabilitiesOf(kindId).copyOrder;
+  return first.length ? [...first, ...COPY_BLOCKS.filter((b) => !first.includes(b))] : COPY_BLOCKS;
 }
 
 /** The bundled icons a kind may name (`kind.schema.json`, `capabilities.identity.icon`). */
@@ -79,10 +91,10 @@ export const MAX_COMPARE_CRITERIA = 10;
 
 /** Everything off except the map and the paths: what a kind with no `capabilities`, or no kind file, has. */
 export const DEFAULT_CAPABILITIES: KindCapabilities = Object.freeze({
-  map: true, hunt: null, rooms: false, moveIn: false, contacts: null, viewings: null, compare: null, paths: true, identity: null, baseline: false, filters: [],
+  map: true, hunt: null, rooms: false, moveIn: false, contacts: null, viewings: null, compare: null, paths: true, identity: null, baseline: false, filters: [], copyOrder: [],
 });
 
-const KEYS = ['map', 'hunt', 'rooms', 'moveIn', 'contacts', 'viewings', 'compare', 'paths', 'identity', 'baseline', 'filters'];
+const KEYS = ['map', 'hunt', 'rooms', 'moveIn', 'contacts', 'viewings', 'compare', 'paths', 'identity', 'baseline', 'filters', 'copyOrder'];
 const MAX_FILTERS = 6;
 const FILTER_ID = /^[a-z][A-Za-z0-9_]{0,39}$/;
 const CRITERION = /^[a-z][A-Za-z0-9_]{0,39}$/;
@@ -119,6 +131,12 @@ export function parseCapabilities(raw: unknown): KindCapabilities | null {
     const list = raw['filters'];
     if (!Array.isArray(list) || list.length > MAX_FILTERS || list.some((x) => typeof x !== 'string' || !FILTER_ID.test(x)) || new Set(list).size !== list.length) return null;
     filters = Object.freeze([...list] as string[]);
+  }
+  let copyOrder: readonly CopyBlock[] = [];
+  if (has('copyOrder')) {
+    const list = raw['copyOrder'];
+    if (!Array.isArray(list) || list.length > COPY_BLOCKS.length || list.some((x) => !COPY_BLOCKS.includes(x as CopyBlock)) || new Set(list).size !== list.length) return null;
+    copyOrder = Object.freeze([...list] as CopyBlock[]);
   }
 
   let hunt: KindCapabilities['hunt'] = null;
@@ -167,7 +185,7 @@ export function parseCapabilities(raw: unknown): KindCapabilities | null {
     if (typeof colour !== 'string' || !CAPABILITY_COLOURS.includes(colour)) return null;
     identity = Object.freeze({ icon, colour });
   }
-  return Object.freeze({ map, hunt, rooms, moveIn, contacts, viewings, compare, paths, identity, baseline, filters });
+  return Object.freeze({ map, hunt, rooms, moveIn, contacts, viewings, compare, paths, identity, baseline, filters, copyOrder });
 }
 
 /**
@@ -190,6 +208,7 @@ const BUILT_IN: Readonly<Record<string, KindCapabilities>> = Object.freeze({
     identity: null,
     baseline: true,
     filters: [],
+    copyOrder: [],
   }),
   // The school has a contact (the admissions office) that never makes a broker, Hunt at 100 m (a school is passed on foot or
   // by car, not walked up to), no rooms or moving in, and viewings (visits, open days) seeded by the school's own questions (kinds PR 29, §18.23); its walks stay. Compare scores its eight checklist items and
@@ -201,7 +220,7 @@ const BUILT_IN: Readonly<Record<string, KindCapabilities>> = Object.freeze({
     compare: Object.freeze({
       criteria: Object.freeze(['dropoff', 'grounds', 'sanitation', 'teachers', 'classsize', 'homework', 'activities', 'safety', 'fees', 'commuteMinutes']),
     }),
-    paths: true, identity: null, baseline: false, filters: Object.freeze(['board', 'medium', 'busService']),
+    paths: true, identity: null, baseline: false, filters: Object.freeze(['board', 'medium', 'busService']), copyOrder: [],
   }),
 });
 

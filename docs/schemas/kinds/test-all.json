@@ -624,7 +624,14 @@
   },
   "filters": [
    "board",
-   "includesMeals"
+   "includesMeals",
+   "seats",
+   "fees"
+  ],
+  "copyOrder": [
+   "visits",
+   "notes",
+   "cost"
   ]
  }
 }

@@ -28,6 +28,7 @@ import {
 import { checklistEntries, checklistLabel, costFacts, costHeading, detailFacts, labelOf, rankingShows, sectionShown, statusText, voiced } from './copy-facts';
 import type { ExportBroker, ExportBundle, ExportHouse } from './export-model';
 import { movingInView, photoNote, answerCells, answerDisplayColumns, areaNoteCells, areaNoteDisplayColumns, distanceCells, distanceDisplayColumns, criteriaTable, customLabels, display, ratingShareLine, roomCells, roomDisplayColumns, stringsOf, viewingCells, viewingDisplayColumns } from './export-rows';
+import { copyBlockOrder, type CopyBlock } from '../core/kind-capabilities';
 import { optionSummaryKeys } from './option-summary';
 import { photoFileName } from './photo-names';
 
@@ -277,23 +278,21 @@ function houseSection(
         })
         .filter((tag) => tag !== '');
 
-  return [
-    '<section class="house">',
-    `<h2>${escapeHtml(`${position}. ${label}`)}</h2>`,
-    `<table class="fields">${rows.join('')}</table>`,
-    costRows.length
+  // The blocks after the details, each as its own string; the kind's `copyOrder` says which comes first (docs/03 §18.27), the house's fixed order is the default.
+  const blocks: Record<CopyBlock, string> = {
+    cost: costRows.length
       ? `<h3>${escapeHtml(costHeading(entry, bundle, dict))}</h3><table class="fields">${costRows.join('')}</table>`
       : '',
-    roomsHtml,
-    questionsHtml,
-    viewingsHtml,
-    areaNotesHtml,
-    distancesHtml,
-    movingInHtml,
-    checklistRows.length
+    rooms: roomsHtml,
+    questions: questionsHtml,
+    viewings: viewingsHtml,
+    areaNotes: areaNotesHtml,
+    distances: distancesHtml,
+    moveIn: movingInHtml,
+    checklist: checklistRows.length
       ? `<h3>${escapeHtml(tr(dict, 'house.checklist'))}</h3><table class="fields">${checklistRows.join('')}</table>`
       : '',
-    visitRows.length
+    visits: visitRows.length
       ? [
           `<h3>${escapeHtml(tr(dict, 'house.visits'))}</h3>`,
           '<table>',
@@ -304,16 +303,23 @@ function houseSection(
           '</table>',
         ].join('')
       : '',
-    house.notes
+    notes: house.notes
       ? `<h3>${escapeHtml(tr(dict, 'house.notes'))}</h3><p class="notes">${escapeHtml(house.notes).replace(/\r?\n/g, '<br>')}</p>`
       : '',
-    photoTags.length
+    photos: photoTags.length
       ? options.photosAsFileNames
         ? `<h3>${escapeHtml(tr(dict, 'house.photos'))}</h3><ul class="photo-files">${photoTags.join(
             '',
           )}</ul><p class="meta">${escapeHtml(tr(dict, 'exp.photosInBackup'))}</p>`
         : `<h3>${escapeHtml(tr(dict, 'house.photos'))}</h3><div class="photos">${photoTags.join('')}</div>`
       : '',
+  };
+
+  return [
+    '<section class="house">',
+    `<h2>${escapeHtml(`${position}. ${label}`)}</h2>`,
+    `<table class="fields">${rows.join('')}</table>`,
+    ...copyBlockOrder((entry.kind ?? bundle.voice)?.kind).map((block) => blocks[block]),
     '</section>',
   ]
     .filter((part) => part !== '')

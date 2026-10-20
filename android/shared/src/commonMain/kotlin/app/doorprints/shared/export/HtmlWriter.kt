@@ -138,147 +138,176 @@ object HtmlWriter {
         for ((term, value) in ExportRows.detailLines(h, bundle)) row(out, term, value)
         out.append("</dl>\n")
 
-        val cost = ExportRows.costBlock(h, bundle)
-        if (cost.isNotEmpty()) {
-            out.append("<h3>").append(esc(s["section.cost"])).append("</h3>\n<dl>\n")
-            for ((term, value) in cost) row(out, term, value)
-            out.append("</dl>\n")
-        }
-
-        // The rooms (slice 1c), after the cost and before the checklist; the total of their areas as a last row.
-        val rooms = ExportRows.roomRows(h, bundle)
-        if (rooms.isNotEmpty()) {
-            out.append("<h3>").append(esc(s["table.rooms"])).append("</h3>\n")
-            out.append("<table>\n<thead><tr>")
-            for (c in ExportRows.roomColumns(bundle)) out.append("<th scope=\"col\">").append(esc(c)).append("</th>")
-            out.append("</tr></thead>\n<tbody>\n")
-            for (r in rooms) {
-                out.append("<tr><th scope=\"row\">").append(esc(r[0])).append("</th>")
-                for (cell in r.drop(1)) out.append("<td>").append(esc(cell)).append("</td>")
-                out.append("</tr>\n")
-            }
-            out.append("</tbody>\n</table>\n")
-        }
-
-        // The questions asked (slice 3a), after the rooms and before the checklist: open ones first.
-        val answers = ExportRows.answerRows(h, bundle)
-        if (answers.isNotEmpty()) {
-            out.append("<h3>").append(esc(s["section.questions"])).append("</h3>\n")
-            out.append("<table>\n<thead><tr>")
-            for (c in ExportRows.answerColumns(bundle)) out.append("<th scope=\"col\">").append(esc(c)).append("</th>")
-            out.append("</tr></thead>\n<tbody>\n")
-            for (r in answers) {
-                out.append("<tr><th scope=\"row\">").append(esc(r[0])).append("</th>")
-                for (cell in r.drop(1)) out.append("<td>").append(esc(cell)).append("</td>")
-                out.append("</tr>\n")
-            }
-            out.append("</tbody>\n</table>\n")
-        }
-
-        // The viewings (slice 3b-1), after the questions and before the checklist: upcoming ones first.
-        val viewings = ExportRows.viewingRows(h, bundle)
-        if (viewings.isNotEmpty()) {
-            out.append("<h3>").append(esc(s["section.viewings"])).append("</h3>\n")
-            out.append("<table>\n<thead><tr>")
-            for (c in ExportRows.viewingColumns(bundle)) out.append("<th scope=\"col\">").append(esc(c)).append("</th>")
-            out.append("</tr></thead>\n<tbody>\n")
-            for (r in viewings) {
-                out.append("<tr><th scope=\"row\">").append(esc(r[0])).append("</th>")
-                for (cell in r.drop(1)) out.append("<td>").append(esc(cell)).append("</td>")
-                out.append("</tr>\n")
-            }
-            out.append("</tbody>\n</table>\n")
-        }
-
-        // The area notes that reach the house and its distances to my places (slice 4a), after the viewings.
-        table(out, s["section.areaNotes"], ExportRows.areaNoteColumns(bundle), ExportRows.areaNoteRows(h, bundle))
-        table(out, s["section.distances"], ExportRows.distanceColumns(bundle), ExportRows.distanceRows(h, bundle))
-
-        // Moving in (slice 5), after the distances and before the checklist: the date, the notes, the ticked list.
-        if (h.moveIn != null && bundle.shows(h, "section.moveIn")) {
-            out.append("<h3>").append(esc(s["section.movingIn"])).append("</h3>\n")
-            val lines = ExportRows.moveInLines(h, bundle)
-            if (lines.isNotEmpty()) {
-                out.append("<dl>\n")
-                for ((term, value) in lines) row(out, term, value)
+        // The blocks after the details, written in the order the kind's `copyOrder` gives (docs/03 section 18.27), the house's fixed order by default; each writes into [out] when it runs, so the photos still stream.
+        val costBlock = block {
+            val cost = ExportRows.costBlock(h, bundle)
+            if (cost.isNotEmpty()) {
+                out.append("<h3>").append(esc(s["section.cost"])).append("</h3>\n<dl>\n")
+                for ((term, value) in cost) row(out, term, value)
                 out.append("</dl>\n")
             }
-            val items = ExportRows.moveInItems(h)
-            if (items.isNotEmpty()) {
-                out.append("<ul class=\"move-in\">\n")
-                for (item in items) out.append("<li>").append(esc(item)).append("</li>\n")
-                out.append("</ul>\n")
+        }
+
+        val roomsBlock = block {
+            // The rooms (slice 1c), after the cost and before the checklist; the total of their areas as a last row.
+            val rooms = ExportRows.roomRows(h, bundle)
+            if (rooms.isNotEmpty()) {
+                out.append("<h3>").append(esc(s["table.rooms"])).append("</h3>\n")
+                out.append("<table>\n<thead><tr>")
+                for (c in ExportRows.roomColumns(bundle)) out.append("<th scope=\"col\">").append(esc(c)).append("</th>")
+                out.append("</tr></thead>\n<tbody>\n")
+                for (r in rooms) {
+                    out.append("<tr><th scope=\"row\">").append(esc(r[0])).append("</th>")
+                    for (cell in r.drop(1)) out.append("<td>").append(esc(cell)).append("</td>")
+                    out.append("</tr>\n")
+                }
+                out.append("</tbody>\n</table>\n")
             }
         }
 
-        val keys = ExportRows.checklistKeys(h, bundle)
-        if (keys.isNotEmpty()) {
-            out.append("<h3>").append(esc(s["section.checklist"])).append("</h3>\n")
-            out.append("<table>\n<thead><tr><th scope=\"col\">").append(esc(s["col.itemLabel"]))
-                .append("</th><th scope=\"col\">").append(esc(s["col.score"])).append("</th></tr></thead>\n<tbody>\n")
-            for (key in keys) {
-                out.append("<tr><th scope=\"row\">").append(esc(bundle.criterionLabel(key))).append("</th><td>")
-                    .append(h.checklist.getValue(key).toString()).append("/5</td></tr>\n")
+        val questionsBlock = block {
+            // The questions asked (slice 3a), after the rooms and before the checklist: open ones first.
+            val answers = ExportRows.answerRows(h, bundle)
+            if (answers.isNotEmpty()) {
+                out.append("<h3>").append(esc(s["section.questions"])).append("</h3>\n")
+                out.append("<table>\n<thead><tr>")
+                for (c in ExportRows.answerColumns(bundle)) out.append("<th scope=\"col\">").append(esc(c)).append("</th>")
+                out.append("</tr></thead>\n<tbody>\n")
+                for (r in answers) {
+                    out.append("<tr><th scope=\"row\">").append(esc(r[0])).append("</th>")
+                    for (cell in r.drop(1)) out.append("<td>").append(esc(cell)).append("</td>")
+                    out.append("</tr>\n")
+                }
+                out.append("</tbody>\n</table>\n")
             }
-            out.append("</tbody>\n</table>\n")
         }
 
-        val visits = bundle.visitsOf(h)
-        if (visits.isNotEmpty()) {
-            out.append("<h3>").append(esc(s["section.visits"])).append("</h3>\n")
-            out.append("<table>\n<thead><tr>")
-            for (c in listOf(s["col.arrivedAt"], s["col.leftAt"], s["col.minutes"], s["col.source"])) {
-                out.append("<th scope=\"col\">").append(esc(c)).append("</th>")
+        val viewingsBlock = block {
+            // The viewings (slice 3b-1), after the questions and before the checklist: upcoming ones first.
+            val viewings = ExportRows.viewingRows(h, bundle)
+            if (viewings.isNotEmpty()) {
+                out.append("<h3>").append(esc(s["section.viewings"])).append("</h3>\n")
+                out.append("<table>\n<thead><tr>")
+                for (c in ExportRows.viewingColumns(bundle)) out.append("<th scope=\"col\">").append(esc(c)).append("</th>")
+                out.append("</tr></thead>\n<tbody>\n")
+                for (r in viewings) {
+                    out.append("<tr><th scope=\"row\">").append(esc(r[0])).append("</th>")
+                    for (cell in r.drop(1)) out.append("<td>").append(esc(cell)).append("</td>")
+                    out.append("</tr>\n")
+                }
+                out.append("</tbody>\n</table>\n")
             }
-            out.append("</tr></thead>\n<tbody>\n")
-            for (v in visits) {
-                out.append("<tr><td>").append(esc(ExportTime.dateTime(v.arrivedAt, o.utcOffsetMinutes)))
-                    .append("</td><td>")
-                    .append(esc(v.leftAt?.let { ExportTime.dateTime(it, o.utcOffsetMinutes) } ?: s["none"]))
-                    .append("</td><td>").append(esc(v.minutes?.toString() ?: s["none"]))
-                    .append("</td><td>").append(esc(s.source(v.source))).append("</td></tr>\n")
-            }
-            out.append("</tbody>\n</table>\n")
         }
 
-        val broker = bundle.brokerOf(h)
-        if (o.includeContacts &&
-            (!h.contactName.isNullOrEmpty() || !h.contactPhone.isNullOrEmpty() || broker != null)
-        ) {
-            out.append("<h3>").append(esc(s["section.contact"])).append("</h3>\n<dl>\n")
-            if (!h.contactName.isNullOrEmpty()) row(out, s["col.contactName"], h.contactName)
-            if (!h.contactPhone.isNullOrEmpty()) row(out, s["col.contactPhone"], h.contactPhone)
-            if (broker != null) row(out, s["col.broker"], broker.label)
-            out.append("</dl>\n")
-        }
+        // The area notes that reach the house and its distances to my places (slice 4a).
+        val areaNotesBlock = block { table(out, s["section.areaNotes"], ExportRows.areaNoteColumns(bundle), ExportRows.areaNoteRows(h, bundle)) }
+        val distancesBlock = block { table(out, s["section.distances"], ExportRows.distanceColumns(bundle), ExportRows.distanceRows(h, bundle)) }
 
-        if (!h.notes.isNullOrEmpty()) {
-            out.append("<h3>").append(esc(s["section.notes"])).append("</h3>\n")
-            out.append("<p class=\"notes\">").append(esc(h.notes)).append("</p>\n")
-        }
-
-        val photos = bundle.photosOf(h)
-        if (photos.isNotEmpty()) {
-            out.append("<h3>").append(esc(s["section.photos"])).append("</h3>\n<div class=\"photos\">\n")
-            photos.forEachIndexed { i, p ->
-                val src = photoSrc(p)
-                // Its room, tags and caption (slice 5), those it has, after the file name.
-                val meta = ExportRows.photoLine(p, bundle)?.let { " · $it" }.orEmpty()
-                if (src == null) {
-                    out.append("<p class=\"missing\">").append(esc(p.fileName + meta)).append("</p>\n")
-                } else {
-                    // docs/05 section 5: the house's name plus the photo's position, so a screen-reader user
-                    // can tell six photos of one house apart ("Sunrise Apartments, Photos 2/6").
-                    val alt = "${h.label}, ${s["section.photos"]} ${i + 1}/${photos.size}"
-                    out.append("<figure><img src=\"").append(src).append("\" alt=\"")
-                        .append(esc(alt)).append("\"><figcaption>").append(esc(p.fileName + meta))
-                        .append("</figcaption></figure>\n")
+        val moveInBlock = block {
+            // Moving in (slice 5), after the distances and before the checklist: the date, the notes, the ticked list.
+            if (h.moveIn != null && bundle.shows(h, "section.moveIn")) {
+                out.append("<h3>").append(esc(s["section.movingIn"])).append("</h3>\n")
+                val lines = ExportRows.moveInLines(h, bundle)
+                if (lines.isNotEmpty()) {
+                    out.append("<dl>\n")
+                    for ((term, value) in lines) row(out, term, value)
+                    out.append("</dl>\n")
+                }
+                val items = ExportRows.moveInItems(h)
+                if (items.isNotEmpty()) {
+                    out.append("<ul class=\"move-in\">\n")
+                    for (item in items) out.append("<li>").append(esc(item)).append("</li>\n")
+                    out.append("</ul>\n")
                 }
             }
-            out.append("</div>\n")
         }
+
+        val checklistBlock = block {
+            val keys = ExportRows.checklistKeys(h, bundle)
+            if (keys.isNotEmpty()) {
+                out.append("<h3>").append(esc(s["section.checklist"])).append("</h3>\n")
+                out.append("<table>\n<thead><tr><th scope=\"col\">").append(esc(s["col.itemLabel"]))
+                    .append("</th><th scope=\"col\">").append(esc(s["col.score"])).append("</th></tr></thead>\n<tbody>\n")
+                for (key in keys) {
+                    out.append("<tr><th scope=\"row\">").append(esc(bundle.criterionLabel(key))).append("</th><td>")
+                        .append(h.checklist.getValue(key).toString()).append("/5</td></tr>\n")
+                }
+                out.append("</tbody>\n</table>\n")
+            }
+        }
+
+        val visitsBlock = block {
+            val visits = bundle.visitsOf(h)
+            if (visits.isNotEmpty()) {
+                out.append("<h3>").append(esc(s["section.visits"])).append("</h3>\n")
+                out.append("<table>\n<thead><tr>")
+                for (c in listOf(s["col.arrivedAt"], s["col.leftAt"], s["col.minutes"], s["col.source"])) {
+                    out.append("<th scope=\"col\">").append(esc(c)).append("</th>")
+                }
+                out.append("</tr></thead>\n<tbody>\n")
+                for (v in visits) {
+                    out.append("<tr><td>").append(esc(ExportTime.dateTime(v.arrivedAt, o.utcOffsetMinutes)))
+                        .append("</td><td>")
+                        .append(esc(v.leftAt?.let { ExportTime.dateTime(it, o.utcOffsetMinutes) } ?: s["none"]))
+                        .append("</td><td>").append(esc(v.minutes?.toString() ?: s["none"]))
+                        .append("</td><td>").append(esc(s.source(v.source))).append("</td></tr>\n")
+                }
+                out.append("</tbody>\n</table>\n")
+            }
+        }
+
+        val notesBlock = block {
+            val broker = bundle.brokerOf(h)
+            if (o.includeContacts &&
+                (!h.contactName.isNullOrEmpty() || !h.contactPhone.isNullOrEmpty() || broker != null)
+            ) {
+                out.append("<h3>").append(esc(s["section.contact"])).append("</h3>\n<dl>\n")
+                if (!h.contactName.isNullOrEmpty()) row(out, s["col.contactName"], h.contactName)
+                if (!h.contactPhone.isNullOrEmpty()) row(out, s["col.contactPhone"], h.contactPhone)
+                if (broker != null) row(out, s["col.broker"], broker.label)
+                out.append("</dl>\n")
+            }
+
+            if (!h.notes.isNullOrEmpty()) {
+                out.append("<h3>").append(esc(s["section.notes"])).append("</h3>\n")
+                out.append("<p class=\"notes\">").append(esc(h.notes)).append("</p>\n")
+            }
+        }
+
+        val photosBlock = block {
+            val photos = bundle.photosOf(h)
+            if (photos.isNotEmpty()) {
+                out.append("<h3>").append(esc(s["section.photos"])).append("</h3>\n<div class=\"photos\">\n")
+                photos.forEachIndexed { i, p ->
+                    val src = photoSrc(p)
+                    // Its room, tags and caption (slice 5), those it has, after the file name.
+                    val meta = ExportRows.photoLine(p, bundle)?.let { " · $it" }.orEmpty()
+                    if (src == null) {
+                        out.append("<p class=\"missing\">").append(esc(p.fileName + meta)).append("</p>\n")
+                    } else {
+                        // docs/05 section 5: the house's name plus the photo's position, so a screen-reader user
+                        // can tell six photos of one house apart ("Sunrise Apartments, Photos 2/6").
+                        val alt = "${h.label}, ${s["section.photos"]} ${i + 1}/${photos.size}"
+                        out.append("<figure><img src=\"").append(src).append("\" alt=\"")
+                            .append(esc(alt)).append("\"><figcaption>").append(esc(p.fileName + meta))
+                            .append("</figcaption></figure>\n")
+                    }
+                }
+                out.append("</div>\n")
+            }
+        }
+
+        val blocks = mapOf(
+            "cost" to costBlock, "rooms" to roomsBlock, "questions" to questionsBlock, "viewings" to viewingsBlock,
+            "areaNotes" to areaNotesBlock, "distances" to distancesBlock, "moveIn" to moveInBlock, "checklist" to checklistBlock,
+            "visits" to visitsBlock, "notes" to notesBlock, "photos" to photosBlock,
+        )
+        for (name in bundle.blockOrder(h)) blocks.getValue(name)()
         out.append("</section>\n")
     }
+
+    /** A block of a house page: its code runs when the block's turn comes. */
+    private fun block(write: () -> Unit): () -> Unit = write
 
     /** A house page's small table under [title], the first cell of each row its header; nothing when [rows] is empty. */
     private fun table(out: Appendable, title: String, columns: List<String>, rows: List<List<String>>) {

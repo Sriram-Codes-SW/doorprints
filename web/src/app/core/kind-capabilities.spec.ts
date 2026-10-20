@@ -32,6 +32,7 @@ import schemaJson from '../../../../docs/schemas/kinds/kind.schema.json';
 import houseJson from '../../../../docs/schemas/kinds/house.json';
 import schoolJson from '../../../../docs/schemas/kinds/school.json';
 import vectorsJson from '../../../../docs/schemas/kinds/capabilities-vectors.json';
+import testAllJson from '../../../../docs/schemas/kinds/test-all.json';
 
 interface KindFile { id: string; sections: { id: string; visible?: boolean }[]; core: { id: string; visible?: boolean }[]; extras: { id: string }[]; checklist: { key: string }[]; capabilities?: unknown }
 interface Vectors {
@@ -39,6 +40,7 @@ interface Vectors {
   today: { huntAlertRadiusM: number; sectionsFollow: Record<string, string> };
   kinds: Record<string, unknown>;
   unknown: string[];
+  synthetic: Record<string, unknown>;
   valid: { name: string; capabilities: unknown; resolved: unknown }[];
   invalid: { name: string; json: string }[];
   forbiddenMapKeys: string[];
@@ -74,6 +76,16 @@ describe('kind capabilities (docs/schemas/kinds, ADR-36 §18.19)', () => {
       expect(capabilitiesOf(id), id).toEqual(vectors.kinds[id]);
     }
     expect(Object.keys(vectors.kinds).sort()).toEqual(Object.keys(FILES).sort());
+  });
+
+  it('the synthetic kind of the conformance suite resolves to the set the vectors pin, and a number or an amount may be a filter (docs/03 §18.27)', () => {
+    const file = testAllJson as unknown as KindFile;
+    expect(validate(file), JSON.stringify(validate.errors)).toBe(true);
+    const resolved = parseCapabilities(file.capabilities);
+    expect(resolved).toEqual(vectors.synthetic['zz_all']);
+    expect(resolved?.filters).toEqual(['board', 'includesMeals', 'seats', 'fees']);
+    expect(resolved?.copyOrder).toEqual(['visits', 'notes', 'cost']);
+    for (const id of ['house', 'school']) expect(capabilitiesOf(id).copyOrder, id).toEqual([]);
   });
 
   it('the house\'s set is today\'s hard-coded behaviour: Hunt\'s radius, the checklist keys, the sections it shows, the broker rule', () => {

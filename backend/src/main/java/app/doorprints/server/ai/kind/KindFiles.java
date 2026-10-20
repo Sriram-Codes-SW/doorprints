@@ -505,7 +505,7 @@ public final class KindFiles {
         var p = "$.capabilities";
         object(n, p);
         only(n, p, Set.of("map", "hunt", "rooms", "moveIn", "contacts", "viewings", "compare", "paths", "identity", "baseline",
-                "filters"));
+                "filters", "copyOrder"));
         var map = n.has("map") ? bool(n, "map", p + ".map") : true;
         var rooms = n.has("rooms") && bool(n, "rooms", p + ".rooms");
         var moveIn = n.has("moveIn") && bool(n, "moveIn", p + ".moveIn");
@@ -578,9 +578,25 @@ public final class KindFiles {
             identity = new KindFile.Identity(oneOf(d, "icon", p + ".identity.icon", ICONS),
                     oneOf(d, "colour", p + ".identity.colour", COLOURS));
         }
+        var copyOrder = new ArrayList<String>();
+        if (n.has("copyOrder")) {
+            var list = n.get("copyOrder");
+            array(list, p + ".copyOrder", COPY_BLOCKS.size());
+            int ci = 0;
+            for (var item : list) {
+                var ip = p + ".copyOrder[" + ci++ + "]";
+                if (!item.isString() || !COPY_BLOCKS.contains(item.asString())) throw fault(ip, "not a copy block");
+                if (copyOrder.contains(item.asString())) throw fault(ip, "repeated");
+                copyOrder.add(item.asString());
+            }
+        }
         return new KindFile.Capabilities(map, hunt, rooms, moveIn, contacts, viewings, compare, paths, identity, baseline,
-                List.copyOf(filters));
+                List.copyOf(filters), List.copyOf(copyOrder));
     }
+
+    /** The blocks of a house's copy after its details, in the fixed order of the copies (docs/03 section 18.27); {@code copyOrder} lists some of them. */
+    static final List<String> COPY_BLOCKS = List.of("cost", "rooms", "questions", "viewings", "areaNotes", "distances", "moveIn",
+            "checklist", "visits", "notes", "photos");
 
     // ---- Small strict readers -----------------------------------------------------------------------------------
 

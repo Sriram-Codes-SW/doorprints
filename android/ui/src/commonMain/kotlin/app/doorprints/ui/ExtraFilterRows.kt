@@ -23,14 +23,23 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import app.doorprints.shared.export.ExportStrings
 import app.doorprints.shared.model.KindExtra
@@ -60,6 +69,10 @@ internal fun ExtraFilterRows(fields: KindFields, filter: Map<String, String?>, o
         for (row in rows) {
             val name = stringResource(kindStringResource(fields.label(row)))
             Text(name, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.semantics { heading() })
+            if (KindFilter.isRange(row)) {
+                RangeRow(row, name, filter[row.id]) { text -> onChange(rows.associate { it.id to if (it.id == row.id) text else filter[it.id] }) }
+                continue
+            }
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth().selectableGroup()) {
                 fun pick(choice: String?) = onChange(rows.associate { it.id to if (it.id == row.id) choice else filter[it.id] })
                 StatusChip(selected = filter[row.id] == null, onClick = { pick(null) }, label = stringResource(Res.string.list_filter_any))
@@ -69,6 +82,41 @@ internal fun ExtraFilterRows(fields: KindFields, filter: Map<String, String?>, o
             }
         }
     }
+}
+
+/**
+ * The two fields of a number or an amount (docs/03 §18.27): at least and at most, each named after the row for TalkBack, blank for no
+ * limit. [value] is the row's range text (`min:max`); [onChange] gets the new text (the ends swapped when the minimum is above the
+ * maximum) or null once both are blank, which is *Any*.
+ */
+@Composable
+private fun RangeRow(row: KindExtra, name: String, value: String?, onChange: (String?) -> Unit) {
+    val ends = value?.split(':').orEmpty()
+    var min by rememberSaveable(row.id) { mutableStateOf(ends.getOrNull(0).orEmpty()) }
+    var max by rememberSaveable(row.id) { mutableStateOf(ends.getOrNull(1).orEmpty()) }
+    // The row follows the filter when it is cleared or set from elsewhere (the list's *Clear filters*).
+    LaunchedEffect(value) {
+        if (KindFilter.rangeText(min, max) != value) {
+            min = ends.getOrNull(0).orEmpty()
+            max = ends.getOrNull(1).orEmpty()
+        }
+    }
+    @Composable
+    fun End(text: String, label: String, onText: (String) -> Unit, modifier: Modifier) = OutlinedTextField(
+        text,
+        { v ->
+            onText(v.filter { it.isDigit() || it == '.' || it == '-' }.take(19))
+            onChange(KindFilter.rangeText(min, max))
+        },
+        label = { Text(label) },
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
+        singleLine = true,
+        modifier = modifier,
+    )
+    PairOrStack(
+        first = { m -> End(min, stringResource(Res.string.list_filter_range_min, name), { min = it }, m) },
+        second = { m -> End(max, stringResource(Res.string.list_filter_range_max, name), { max = it }, m) },
+    )
 }
 
 @Composable
