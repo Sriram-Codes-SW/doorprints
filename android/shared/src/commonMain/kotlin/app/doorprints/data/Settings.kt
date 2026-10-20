@@ -232,9 +232,9 @@ class SettingsStore(
      * copy, sync or share file (TC-U-170 pattern); null where a platform has none (tests).
      */
     private val sarvamSecrets: SecretStore? = null,
-    private val now: () -> Long = { IsoTime.nowMillis() },
     /** The released kinds ([KindSetting.released]); only a test of the mechanism of an *unreleased* kind passes another list. */
     private val releasedKinds: List<String> = KindSettingRules.RELEASED,
+    private val now: () -> Long = { IsoTime.nowMillis() },
 ) {
     companion object {
         /** The DataStore's name: Android's file is `datastore/settings.preferences_pb`. Do not change it. */
