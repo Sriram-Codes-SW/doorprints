@@ -17,9 +17,10 @@
  */
 
 import { isDevMode } from '@angular/core';
-import { type BuiltInKind, builtInKind, creatableKinds, devKindsOn } from './dev-kinds';
+import { type BuiltInKind, builtInKind, builtInKindIds, devKindsOn } from './dev-kinds';
 import type { HouseDto } from './models';
 import { STORAGE_PREFIX } from './storage-keys';
+import { isUserKindId, userKindIds } from './user-kinds/user-kind-ids';
 
 /**
  * Which kinds this browser shows, and which one is the default (kinds PR 8, S4b-BL-212; docs/03 §18.12). A kind is a
@@ -45,10 +46,17 @@ export const ENABLED_KINDS_KEY = `${STORAGE_PREFIX}kinds.enabled`;
 /** The default kind's id; absent means the first enabled kind. */
 export const DEFAULT_KIND_KEY = `${STORAGE_PREFIX}kinds.default`;
 
+/**
+ * The switch *Kinds you add (experimental)* ('1' on; docs/03 ADR-38): the third layer for the kinds a person adds from a kind
+ * file. Imported, a kind is available; it is offered (listed in Settings and the chooser) only while this switch is on, and
+ * shown only once the person turns it on there. Off, nothing of theirs is deleted: the kinds and their entries stay.
+ */
+export const CUSTOM_KINDS_KEY = `${STORAGE_PREFIX}kinds.custom`;
+
 /** The kinds that need no experimental switch: the owner opens a kind's release gate by adding it here. */
 export const RELEASED_KINDS: readonly string[] = ['house', 'school'];
-/** Every built-in kind, the house first (and, in a test, the kinds it registered). */
-const builtIn = (): readonly string[] => creatableKinds(true).map((k) => k.id);
+/** Every built-in kind, the house first (and, in a test, the kinds it registered); never a kind a person added. */
+const builtIn = (): readonly string[] => builtInKindIds(true);
 const HOUSE_ONLY: readonly string[] = ['house'];
 
 type Read = Pick<Storage, 'getItem'> | null;
@@ -61,17 +69,34 @@ function buildFlag(): string | null {
   return typeof DOORPRINTS_KINDS === 'string' ? DOORPRINTS_KINDS : null;
 }
 
-/** The kinds this build may offer: the house always, then the built-in kinds the build lists, in their own order. */
+/**
+ * The kinds this build may offer: the house always, then the built-in kinds the build lists, in their own order, then the
+ * kinds this browser added from a kind file (docs/03 ADR-38; whatever the build lists, since they are the person's data).
+ */
 export function availableKinds(devMode: boolean = isDevMode(), flag: string | null = buildFlag()): readonly string[] {
+  return [...builtInAvailable(devMode, flag), ...userKindIds()];
+}
+
+function builtInAvailable(devMode: boolean, flag: string | null): readonly string[] {
   if (devMode) return builtIn();
   if (!flag) return HOUSE_ONLY;
   const listed = new Set(flag.split(',').map((s) => s.trim()));
   return builtIn().filter((id) => id === 'house' || listed.has(id));
 }
 
-/** The kinds this build lists that are not released: what *Experimental: more than houses* would show. */
+/** The built-in kinds this build lists that are not released: what *Experimental: more than houses* would show. */
 export function unreleasedKinds(available: readonly string[] = availableKinds()): readonly string[] {
-  return available.filter((id) => !RELEASED_KINDS.includes(id));
+  return available.filter((id) => !RELEASED_KINDS.includes(id) && !isUserKindId(id));
+}
+
+/** Whether the person turned *Kinds you add (experimental)* on ('1'); off on any doubt. */
+export function customKindsOn(storage: Read = localStore()): boolean {
+  return read(storage, CUSTOM_KINDS_KEY) === '1';
+}
+
+/** Turns *Kinds you add* on or off. Off, the added kinds leave Settings and the chooser; they and their entries are kept. */
+export function setCustomKinds(on: boolean, storage: Store = localStore()): void {
+  write(storage, CUSTOM_KINDS_KEY, on ? '1' : null);
 }
 
 /** Whether the person turned *Experimental: more than houses* on ('1'); off on any doubt. */
@@ -79,10 +104,14 @@ export function experimentalKindsOn(storage: Read = localStore()): boolean {
   return read(storage, EXPERIMENTAL_KINDS_KEY) === '1';
 }
 
-/** The kinds Settings > Kinds lists: the released ones, and the unreleased ones only while the switch is on. */
+/**
+ * The kinds Settings > Kinds lists: the released ones, the unreleased built-in ones only while *Experimental* is on, and the
+ * kinds a person added only while *Kinds you add* is on.
+ */
 export function offeredKinds(available: readonly string[] = availableKinds(), storage: Read = localStore()): readonly string[] {
   const on = experimentalKindsOn(storage);
-  return available.filter((id) => RELEASED_KINDS.includes(id) || on);
+  const custom = customKindsOn(storage);
+  return available.filter((id) => (isUserKindId(id) ? custom : RELEASED_KINDS.includes(id) || on));
 }
 
 /** The enabled kinds, in the built-in order: the stored list kept to the offered kinds; none left means the house. */

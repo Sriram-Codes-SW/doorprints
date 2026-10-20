@@ -19,6 +19,7 @@
 import { isBaselineKind } from './kind-capabilities';
 import type { HouseDto } from './models';
 import { kindOfCandidate } from './candidate';
+import { isUserKindId } from './user-kinds/user-kind-ids';
 
 /**
  * The rules that scope the tools to one space (kinds PR B, S4b-BL-279; docs/03 §18.12): what a space contains, Compare's
@@ -102,7 +103,8 @@ export function spaceFileName(name: string, space: string | undefined, many: str
  * its.
  */
 export function aiShownIn(kind: string, available: readonly string[], on: boolean, ownKey: boolean, serverKinds: readonly string[] = []): boolean {
-  if (!on) return false;
+  // No AI reads a kind a person added (its `ai` slots are empty by the profile, docs/03 ADR-38): its space has no assistant.
+  if (!on || isUserKindId(kind)) return false;
   return isBaselineKind(kind) || (available.includes(kind) && (ownKey || serverKinds.includes(kind)));
 }
 

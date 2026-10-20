@@ -21,6 +21,7 @@ import { HOUSE_FIELDS, type KindFields } from './kind-fields';
 import { HOUSE_KEYS, HOUSE_LABELS, type KindKeys, type KindLabels } from './kind-labels';
 import { SCHOOL_FIELDS, SCHOOL_KEYS, SCHOOL_LABELS } from './school-kind';
 import { STORAGE_PREFIX } from './storage-keys';
+import { userBuiltInKinds } from './user-kinds/user-kinds';
 
 /**
  * The developer flag of the schools kind (kinds PR 5, S4b-BL-209; docs/03 §18.9). Since 2026-10-15 the release build lists
@@ -74,9 +75,18 @@ export function registerTestKind(kind: BuiltInKind): () => void {
   return () => void TEST_KINDS.delete(kind.id);
 }
 
-/** The built-in kinds: the house, and the school while `on` (the developer flag or Settings' switch), then any a test registered. */
+/**
+ * The kinds: the house, and while `on` (the developer flag or Settings' switch) the school, any a test registered, then the
+ * kinds this browser added from a kind file (`user-kinds/user-kinds.ts`, docs/03 ADR-38). The built-in ones come first, so a
+ * kind a person adds can never stand in for one (its id starts `u_` anyway).
+ */
 export function creatableKinds(on: boolean): readonly BuiltInKind[] {
-  return on ? [HOUSE, SCHOOL, ...TEST_KINDS.values()] : [HOUSE];
+  return on ? [HOUSE, SCHOOL, ...TEST_KINDS.values(), ...userBuiltInKinds()] : [HOUSE];
+}
+
+/** The ids of the built-in kinds while `on`, without the kinds a person added. */
+export function builtInKindIds(on: boolean): readonly string[] {
+  return (on ? [HOUSE, SCHOOL, ...TEST_KINDS.values()] : [HOUSE]).map((k) => k.id);
 }
 
 /** The kind a candidate is drawn as: its own when this build has it and the flag allows it, else the house (as today). */
