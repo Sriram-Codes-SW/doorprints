@@ -19,6 +19,7 @@
 package app.doorprints.ui
 
 import androidx.compose.runtime.Composable
+import app.doorprints.shared.country.Country
 import app.doorprints.ui.res.*
 import kotlin.math.abs
 import kotlin.math.floor
@@ -39,19 +40,15 @@ object Formats {
     /** "₹12,50,000", "₹25,000", "₹999"; "-₹5,000" below zero (no price is negative, but nothing breaks). */
     fun rupees(amount: Long): String {
         val digits = indianGrouping(amount.toString().removePrefix("-"))
-        return if (amount < 0) "-₹$digits" else "₹$digits"
+        val symbol = Country.pack.money.symbol
+        return if (amount < 0) "-$symbol$digits" else "$symbol$digits"
     }
 
     /**
-     * [digits] (0-9 only) grouped the Indian way: the last three together, then pairs ("1250000" → "12,50,000";
-     * "100000000000" → "1,00,00,00,00,000").
+     * [digits] (0-9 only) grouped the country's way (the pack's `money.group`; India's: the last three together, then pairs,
+     * "1250000" → "12,50,000", "100000000000" → "1,00,00,00,00,000").
      */
-    fun indianGrouping(digits: String): String {
-        if (digits.length <= 3) return digits
-        val head = digits.dropLast(3)
-        val pairs = head.reversed().chunked(2).joinToString(",").reversed()
-        return "$pairs,${digits.takeLast(3)}"
-    }
+    fun indianGrouping(digits: String): String = Country.pack.money.group(digits)
 
     /**
      * The price as the app shows it: [rupees], and for a rent [perMonth] around it ("₹25,000/month"), or null without a

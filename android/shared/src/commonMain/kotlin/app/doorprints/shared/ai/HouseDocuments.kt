@@ -18,6 +18,7 @@
 
 package app.doorprints.shared.ai
 
+import app.doorprints.shared.country.Country
 import app.doorprints.shared.model.AnswerStatus
 import app.doorprints.shared.model.HouseAnswer
 import app.doorprints.shared.model.HouseAnswers
@@ -59,28 +60,28 @@ object HouseDocuments {
                 "RENT" -> " per month (rent)"
                 else -> " (sale)"
             }
-            line(sb, "Price", "Rs ${h.price}$type")
+            line(sb, "Price", "${Country.promptMoney(h.price)}$type")
         }
         if (h.bedrooms != null) line(sb, "Size", if (h.bedrooms == 0) "studio / 1RK" else "${h.bedrooms} BHK")
         // The house's own values (slice 1a), the same words as the server's; never "My offer" (docs/11 5.30 item 5).
-        if (h.areaSqft != null) line(sb, "Carpet area", "${h.areaSqft} sq ft")
+        if (h.areaSqft != null) line(sb, "Carpet area", "${h.areaSqft} ${Country.pack.areaUnit}")
         // S4b-BL-87: the floor in the server's words, 0 the ground floor and a negative one a basement level.
         h.floor?.let { line(sb, "Floor", if (it == 0) "ground floor" else if (it < 0) "basement ${-it}" else "$it") }
         h.cost?.let { c ->
-            line(sb, "Deposit", c.deposit?.let { "Rs $it" } ?: c.depositMonths?.let { months(it) })
+            line(sb, "Deposit", c.deposit?.let { Country.promptMoney(it) } ?: c.depositMonths?.let { months(it) })
             if (c.maintenance != null) {
                 val included = when (c.maintenanceIncluded) {
                     true -> " (included in the rent)"
                     false -> " (not included)"
                     null -> ""
                 }
-                line(sb, "Maintenance", "Rs ${c.maintenance} per month$included")
+                line(sb, "Maintenance", "${Country.promptMoney(c.maintenance)} per month$included")
             }
-            line(sb, "Brokerage", c.brokerage?.let { "Rs $it" } ?: c.brokerageMonths?.let { months(it) })
+            line(sb, "Brokerage", c.brokerage?.let { Country.promptMoney(it) } ?: c.brokerageMonths?.let { months(it) })
             line(sb, "Lock-in", c.lockInMonths?.let { months(it) })
             line(sb, "Notice", c.noticeMonths?.let { months(it) })
             line(sb, "Available from", c.availableFrom)
-            line(sb, "Agreed price", c.agreedPrice?.let { "Rs $it" })
+            line(sb, "Agreed price", c.agreedPrice?.let { Country.promptMoney(it) })
         }
         line(sb, "Rooms", rooms(h.rooms, r))
         answerLines(sb, h.answers, r)

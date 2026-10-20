@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | SSDLC document index |
-| Version | 0.140 |
+| Version | 0.139 |
 | Date | 2026-10-20 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -35,7 +35,8 @@
 | 0.134 | 2026-10-20 | Claude (Code), docs | Children's-data wording for the school kind, a draft for the owner's approval (`docs/privacy-children-data`): `web/public/privacy.html` *Children* section and a voice-audio sentence in four languages; 02 v0.99 (T-I55, RR-35 proposed), 04 v0.30 (§6), 13 v0.28 (G5). |
 | 0.135 | 2026-10-20 | Claude (Code), docs | 15 v0.41: §5.1 says the #383 wording (*30 days, and longer only while a backup you kept still holds it*) and no longer claims a Settings sentence that was never built; the change-log spec no longer pins 15's version list; the mutation list `kinds-10-web-settings.json` is re-pointed at current code. |
 | 0.136 | 2026-10-20 | Claude (Code), engineer | The school is released on the phones ([03](03-design.md) ADR-13b; `feat/school-release-phones`): versions 03 v0.177, 05 v0.36, 06 v0.296, 10 v0.360, 12 v0.13, 13 v0.29, 14 v0.205, ops checklist v0.33. |
-| 0.140 | 2026-10-20 | Claude (Code), engineer | Three test flakes fixed at their cause and the Drive photo-retention sentence built in Settings (`fix/flakes-and-retention-text`): 05 v0.37 (glossary), 15 v0.42 (§5.1: Settings now says it). |
+| 0.139 | 2026-10-20 | Claude (Code), engineer | Three test flakes fixed at their cause and the Drive photo-retention sentence built in Settings (`fix/flakes-and-retention-text`): 05 v0.38 (glossary), 15 v0.42 (§5.1: Settings now says it). |
+| 0.138 | 2026-10-20 | Claude (Code), engineer | The country pack (`refactor/country-pack`, no behaviour change): ADR-38 and §21 in 03 v0.178, §8.4 in 05 v0.37, TC-U-289..TC-U-291 in 06 v0.297, 16 v0.7, and `schemas/country-pack-vectors.json` in schemas README v1.76 (§8.2b). |
 | 0.112 | 2026-10-06 | Claude | The review backlog: docs/01 v0.41, 06 v0.131 (section 10.1), 07 v0.60, 14 v0.89. |
 | 0.111 | 2026-10-06 | Claude | Full-system review fixes and the manual test checklist (`docs/ops/manual-test-checklist.md`): docs/07 v0.59, docs/14 v0.88. |
 | 0.110 | 2026-10-06 | Claude | Review fixes on PR #139: docs/10 v0.149, 06 v0.130, 15 v0.27. |

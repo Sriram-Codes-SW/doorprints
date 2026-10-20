@@ -19,6 +19,7 @@
 package app.doorprints.shared.ai
 
 import app.doorprints.shared.api.HouseDraftDto
+import app.doorprints.shared.country.Country
 import kotlinx.serialization.Serializable
 
 /** What the model fills for *Fill in from listing text*: every field as written, or null (the server's `RawListing`). */
@@ -62,10 +63,6 @@ object DraftSanitizer {
     const val AREA_MAX = 100_000
 
     private val WS = Regex("\\s+")
-    private val PRICE = Regex(
-        "(\\d+(?:\\.\\d+)?)\\s*(k|thousand|l|lac|lakh|lakhs|lacs|cr|crore|crores|m|mn|million)?\\b",
-        RegexOption.IGNORE_CASE,
-    )
     private val FIRST_INT = Regex("\\d+")
     private val LINK = Regex("https?://[A-Za-z0-9\\-._~:/?#@!\$&*+,;=%]+", RegexOption.IGNORE_CASE)
     /** What a sentence puts after a link and is not part of it: the full stop, comma and so on, and a WhatsApp bold mark. */
@@ -162,18 +159,13 @@ object DraftSanitizer {
     fun price(value: String?, warnings: MutableList<String>, field: String = "price"): Long? {
         if (value.isNullOrBlank()) return null
         // A price in the digits of an Indian script (S4b-BL-174b) is read as 0-9, character for character.
-        val m = PRICE.find(ContactRedactor.asciiDigits(value).replace(",", "").replace("_", ""))
+        val derived = Country.derived
+        val m = derived.draftAmount.find(ContactRedactor.asciiDigits(value).replace(",", "").replace("_", ""))
         if (m == null) {
             warnings += "$field: could not read '${abbreviate(value)}', dropped"
             return null
         }
-        val multiplier = when (m.groupValues[2].lowercase()) {
-            "k", "thousand" -> 1_000L
-            "l", "lac", "lakh", "lakhs", "lacs" -> 100_000L
-            "cr", "crore", "crores" -> 10_000_000L
-            "m", "mn", "million" -> 1_000_000L
-            else -> 1L
-        }
+        val multiplier = derived.multiplier[m.groupValues[2].lowercase()] ?: 1L
         val number = m.groupValues[1]
         val whole = number.substringBefore('.').trimStart('0').ifEmpty { "0" }
         val fraction = number.substringAfter('.', "")
@@ -243,7 +235,7 @@ object DraftSanitizer {
             return null
         }
         val sourceDigits = ContactRedactor.asciiDigits(source).filter { it in '0'..'9' }
-        if (digits.takeLast(10) !in sourceDigits) {
+        if (digits.takeLast(Country.pack.phone.keptDigits) !in sourceDigits) {
             warnings += "contactPhone: not found in the listing text, dropped"
             return null
         }

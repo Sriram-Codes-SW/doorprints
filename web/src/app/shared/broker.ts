@@ -16,6 +16,8 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+import { country } from './country/country-pack';
+
 /**
  * A broker (or owner): a contact of its own that houses link to (docs/11 5.25, slice 1b of the Sprint 4b data
  * model). It is a record of type `broker`: the record id is the broker's UUID and the payload holds exactly the
@@ -101,7 +103,8 @@ export function brokerLine(broker: Pick<Broker, 'name' | 'agency'>): string {
  */
 export function phoneKey(phone: string | null | undefined): string | null {
   const digits = (phone ?? '').replace(/\D/g, '');
-  return digits.length < 6 ? null : digits.slice(-10);
+  const { keyMinDigits, keptDigits } = country().phone;
+  return digits.length < keyMinDigits ? null : digits.slice(-keptDigits);
 }
 
 /** True when both numbers have a {@link phoneKey} and it is the same. */
