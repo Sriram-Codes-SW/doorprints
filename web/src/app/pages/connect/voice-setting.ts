@@ -79,6 +79,19 @@ import { TPipe } from '../../i18n/t.pipe';
           <p id="voice-disclosure" class="muted small">
             {{ (voice.provider() === 'sarvam' ? 'voice.disclosureSarvam' : 'voice.disclosure') | t: { host: voice.host(), price: voice.price() ?? '' } }}
           </p>
+          <p id="voice-tier-hint" class="muted small">{{ 'voice.tierHint' | t }}</p>
+          @if (voice.enabled() && voice.verdict() === 'CHECKING') {
+            <p id="voice-tier-status" class="muted small" role="status">{{ 'voice.tierChecking' | t }}</p>
+          } @else if (voice.enabled() && voice.verdict() === 'REFUSE_FREE') {
+            <p id="voice-tier-status" class="field-error" role="alert">{{ 'voice.tierFree' | t: { provider: voice.tierProviderName() } }}</p>
+          }
+          @if (voice.canConfirmPaid()) {
+            <div class="field checkbox">
+              <input id="voice-tier-ack" type="checkbox" [checked]="voice.acknowledged()" (change)="acknowledge($event)" aria-describedby="voice-tier-ack-hint" />
+              <label for="voice-tier-ack">{{ 'voice.tierAck' | t: { provider: voice.tierProviderName() } }}</label>
+              <p id="voice-tier-ack-hint" class="muted small">{{ 'voice.tierAckHint' | t: { provider: voice.tierProviderName() } }}</p>
+            </div>
+          }
           @if (voice.enabled() && !recordable) {
             <p id="voice-no-recorder" class="muted small">{{ 'voice.noRecorder' | t }}</p>
           }
@@ -117,5 +130,9 @@ export class VoiceSetting {
 
   protected toggle(event: Event): void {
     this.voice.setEnabled((event.target as HTMLInputElement).checked);
+  }
+
+  protected acknowledge(event: Event): void {
+    this.voice.setAcknowledged((event.target as HTMLInputElement).checked);
   }
 }

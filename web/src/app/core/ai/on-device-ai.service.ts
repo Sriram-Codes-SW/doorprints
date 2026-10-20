@@ -37,6 +37,7 @@ import {
 } from './kind-ai';
 import { geminiBlocked } from './ai-blocked';
 import { isQuotaExhausted } from './ai-quota';
+import { noteGeminiAnswer } from '../voice/voice-tier-store';
 import type { JsonChatModel } from './json-chat-model';
 
 /**
@@ -161,6 +162,8 @@ export class GeminiChatModel implements JsonChatModel {
     } catch (e) {
       if (e instanceof HttpErrorResponse) {
         const text = typeof e.error === 'string' ? e.error : JSON.stringify(e.error ?? '');
+        // A free-tier quota id on an ordinary request downgrades what voice input kept for this key at once (ADR-37).
+        noteGeminiAnswer(this.key, e.status, text);
         if (isQuotaExhausted(e.status, text)) throw new OnDeviceAiError('quotaExhausted');
         if (e.status === 429) throw new OnDeviceAiError('rateLimited');
         if (e.status === 403 || (e.status === 400 && (text.includes('API_KEY_INVALID') || text.includes('API key not valid')))) {

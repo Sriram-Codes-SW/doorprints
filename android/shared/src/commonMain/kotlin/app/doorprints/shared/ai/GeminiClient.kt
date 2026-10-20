@@ -50,6 +50,12 @@ class GeminiClient(
     /** *AI speed and cost*: how long the model may think ([AiQuality.QUALITY] sends nothing, as before the setting existed). */
     private val quality: AiQuality = AiQuality.DEFAULT,
 ) : JsonChatModel {
+    /**
+     * Told of every failed answer's status and body, so voice input can learn that a key is on a free plan from an ordinary request
+     * (a 429 with a free-tier quota id, ADR-37). Set by the AI store; it reads the quota id only and keeps neither the body nor the key.
+     */
+    var onFailedAnswer: (suspend (status: Int, body: String) -> Unit)? = null
+
     companion object {
         const val MODEL = "gemini-3.5-flash"
         const val BASE_URL = "https://generativelanguage.googleapis.com/v1beta"
@@ -95,7 +101,10 @@ class GeminiClient(
         val response = postAiJson(http, "$baseUrl/models/$model:generateContent", mapOf("x-goog-api-key" to apiKey), body, timeoutMs)
         val status = response.status
         val text = response.body
-        if (status !in 200..299) throw failure(status, text)
+        if (status !in 200..299) {
+            onFailedAnswer?.invoke(status, text)
+            throw failure(status, text)
+        }
         if (AiBlocked.gemini(status, text)) throw AiBlocked.failure(status)
         val candidate = runCatching { json.parseToJsonElement(text).jsonObject["candidates"]?.jsonArray?.firstOrNull()?.jsonObject }
             .getOrNull() ?: throw ApiException(ApiException.Kind.AI_UNAVAILABLE, 502)

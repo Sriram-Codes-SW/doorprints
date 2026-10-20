@@ -39,6 +39,9 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertHeightIsAtLeast
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
@@ -68,7 +71,15 @@ import app.doorprints.screenshots.ScreenshotTestApp
 import app.doorprints.shared.ai.AiKind
 import app.doorprints.shared.ai.AiPreset
 import app.doorprints.shared.ai.AiProviderConfig
+import app.doorprints.shared.api.ApiHttp
+import app.doorprints.shared.voice.VoiceChoice
 import app.doorprints.shared.voice.VoiceFailure
+import app.doorprints.shared.voice.VoiceTier
+import app.doorprints.shared.voice.VoiceTierGate
+import io.ktor.client.engine.mock.MockEngine
+import io.ktor.client.engine.mock.respond
+import io.ktor.http.HttpStatusCode
+import io.ktor.http.headersOf
 import app.doorprints.ui.AiSettingsSection
 import app.doorprints.ui.AppServices
 import app.doorprints.ui.AssistantScreen
@@ -76,6 +87,8 @@ import app.doorprints.ui.LocalAppServices
 import app.doorprints.ui.PasteListingDialog
 import app.doorprints.ui.ProvideAppServices
 import app.doorprints.ui.VOICE_SETTING_TAG
+import app.doorprints.ui.VOICE_TIER_ACK_TAG
+import app.doorprints.ui.VOICE_TIER_REASON_TAG
 import app.doorprints.ui.VoiceMicButton
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -119,7 +132,18 @@ class VoiceInputUiTest {
         geminiSecrets = KeystoreSecretStore(seal, KeystoreSecretStore.GEMINI_ENTRY, open),
     )
     private val repo = FakeVoiceRepository(real, store)
-    private val voice = FakeVoiceServices()
+    /** What the fake provider answers to the free-plan probe (a 200 from a model with no free tier: a paid project). */
+    private var plan: () -> Pair<Int, String> = { 200 to "{}" }
+    private val probes = java.util.concurrent.CopyOnWriteArrayList<String>()
+    private val gate = VoiceTierGate(
+        store,
+        ApiHttp.client(MockEngine { request ->
+            probes += request.url.toString()
+            val (status, body) = plan()
+            respond(body, HttpStatusCode.fromValue(status), headersOf("Content-Type", "application/json"))
+        }),
+    )
+    private val voice = FakeVoiceServices().also { it.tierGate = gate }
     private val fakeKey = "k".repeat(6) + "-fake" // built at run time: no key-looking literal is committed
 
     @After fun tearDown() {
@@ -160,13 +184,29 @@ class VoiceInputUiTest {
         }
     }
 
+    /** The person's "my plan is paid" for the key now saved (what the setting's switch does). */
+    private fun confirmPaid() = runBlocking {
+        val subject = gate.subjectFor(VoiceChoice(true, store.current().aiProviderConfig))!!
+        gate.acknowledge(subject, true)
+    }
+
+    /** Whether the key saved now is confirmed paid; null while the settings are being rewritten (no key for a moment). */
+    private fun acknowledgedNow(): Boolean? = runBlocking { gate.subjectFor(VoiceChoice(true, store.current().aiProviderConfig))?.let { gate.isAcknowledged(it) } }
+
+    private val free429 = """{"error":{"code":429,"details":[{"violations":[{"quotaId":"GenerateRequestsPerDayPerProjectPerModel-FreeTier"}]}]}}"""
+    private val freeSentence = "Voice input is not available on a free Gemini plan: a free plan may let Gemini use what you say to improve its products. Use a paid key, or type instead."
+
     private fun boxText(): String = compose.onNode(hasSetTextAction()).fetchSemanticsNode().config[SemanticsProperties.EditableText].text
 
     private fun present(text: String) = compose.onAllNodesWithText(text, substring = true).fetchSemanticsNodes().isNotEmpty()
 
     private fun waitFor(text: String) = compose.waitUntil(5_000) { present(text) }
 
-    private fun tapSpeak() = compose.onNodeWithContentDescription("Speak instead of typing").performClick()
+    private fun tapSpeak() {
+        // The plan rule first (ADR-37): the microphone is usable once the one probe has answered.
+        compose.waitUntil(5_000) { !present("Checking that your plan") && present("Speak") }
+        compose.onNodeWithContentDescription("Speak instead of typing").performClick()
+    }
 
     private fun inLive(text: String, mode: LiveRegionMode) = compose.onNode(
         hasText(text, substring = true) and hasAnyAncestor(
@@ -231,6 +271,7 @@ class VoiceInputUiTest {
             AiProviderConfig(AiKind.OPENAI_COMPATIBLE, AiPreset.OPENROUTER.baseUrl, "m"),
         )) {
             runBlocking { store.saveAiProviderConfig(config, fakeKey) }
+            confirmPaid() // Groq and OpenRouter's plans cannot be read: the person's confirmation (ADR-37)
             waitFor("Speak")
             waitFor(config.baseUrl.substringAfter("://").substringBefore('/'))
         }
@@ -451,6 +492,82 @@ class VoiceInputUiTest {
         compose.waitUntil(5_000) { boxText().endsWith("two bhk near Baner") }
         assertEquals("2 BHK Baner, 28000. two bhk near Baner", boxText())
         assertTrue("nothing is read on its own", repo.extracted.isEmpty())
+    }
+
+    // --- the free-plan rule (owner decision 2026-10-19, ADR-37) -------------------------------------------------------------
+
+    @Test fun aFreeGeminiKeyDrawsTheMicrophoneDisabledWithTheFreePlanSentenceAndRecordsNothing() {
+        setUp()
+        plan = { 429 to free429 }
+        box()
+        waitFor(freeSentence)
+        compose.onNodeWithContentDescription("Speak instead of typing").assertIsNotEnabled()
+        // The reason is the button's description for the screen reader, and it is also on screen.
+        val description = compose.onNodeWithContentDescription("Speak instead of typing").fetchSemanticsNode().config[SemanticsProperties.StateDescription]
+        assertEquals(freeSentence, description)
+        compose.onNodeWithTag(VOICE_TIER_REASON_TAG).assertExists()
+        tapSpeak()
+        compose.waitForIdle()
+        assertTrue("no recorder was made", voice.recorders.isEmpty())
+        assertEquals("no permission prompt", 0, voice.requests)
+        assertFalse(present("Use the microphone?"))
+        assertEquals("one probe, nothing else sent", 1, probes.size)
+    }
+
+    @Test fun aPaidGeminiKeyEnablesTheMicrophoneAfterTheProbe() {
+        setUp()
+        box()
+        waitFor("generativelanguage.googleapis.com")
+        compose.onNodeWithContentDescription("Speak instead of typing").assertIsEnabled()
+        assertEquals(listOf("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent"), probes.toList())
+    }
+
+    @Test fun nothingIsAskedBeforeVoiceIsTurnedOn() {
+        setUp(on = false)
+        box()
+        compose.waitForIdle()
+        assertTrue(probes.isEmpty())
+    }
+
+    @Test fun aKeptFreeVerdictIsAskedNoMoreAndBeatsAConfirmation() {
+        setUp(AiProviderConfig(AiKind.OPENAI_COMPATIBLE, AiPreset.GROQ.baseUrl, "m"))
+        confirmPaid()
+        runBlocking {
+            store.voiceTier.saveEntry(VoiceTier.keyHash(fakeKey), "REFUSE_FREE|${System.currentTimeMillis()}|groq:ordinary-429")
+        }
+        box()
+        waitFor("Voice input is not available on a free Groq plan")
+        compose.onNodeWithContentDescription("Speak instead of typing").assertIsNotEnabled()
+        assertTrue(probes.isEmpty())
+    }
+
+    @Test fun groqIsRefusedAsUnknownUntilThePersonConfirmsInTheSetting() {
+        setUp(AiProviderConfig(AiKind.OPENAI_COMPATIBLE, AiPreset.GROQ.baseUrl, "m"))
+        box()
+        waitFor("cannot tell whether your Groq plan is paid")
+        compose.onNodeWithContentDescription("Speak instead of typing").assertIsNotEnabled()
+        assertTrue("Groq's plan cannot be read: no call is made", probes.isEmpty())
+    }
+
+    @Test fun theSettingOffersTheConfirmationForGroqAndKeepsItForThisKeyOnly() {
+        setUp(AiProviderConfig(AiKind.OPENAI_COMPATIBLE, AiPreset.GROQ.baseUrl, "m"))
+        settingsSection()
+        waitFor("Works only with a paid plan")
+        waitFor("My Groq plan is paid; I understand a free plan may let Groq use my voice")
+        waitFor("Audio goes from this phone straight to api.groq.com")
+        waitFor("free plans are refused")
+        compose.onNodeWithTag(VOICE_TIER_ACK_TAG).performScrollTo().performClick()
+        compose.waitUntil(5_000) { acknowledgedNow() == true }
+        runBlocking { store.saveAiProviderConfig(AiProviderConfig(AiKind.OPENAI_COMPATIBLE, AiPreset.GROQ.baseUrl, "m"), fakeKey + "2") }
+        compose.waitUntil(5_000) { acknowledgedNow() == false }
+    }
+
+    @Test fun aFreePlanInTheSettingShowsTheSentenceAndNoConfirmation() {
+        setUp()
+        plan = { 429 to free429 }
+        settingsSection()
+        waitFor(freeSentence)
+        assertEquals(0, compose.onAllNodesWithTag(VOICE_TIER_ACK_TAG).fetchSemanticsNodes().size)
     }
 
     // --- the setting -----------------------------------------------------------------------------------------------------

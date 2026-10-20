@@ -21,7 +21,7 @@ import { aiErrorMsg } from '../core/ai.service';
 import { AudioClipRejectedError } from '../core/ai/transcriber';
 import { type AudioRecorder, type RecordedClip, RecorderError } from '../core/voice/audio-recorder';
 import { appendTranscript } from '../core/voice/transcript-insert';
-import { VoiceInputService } from '../core/voice/voice-input.service';
+import { VoiceInputService, VoiceTierRefusedError } from '../core/voice/voice-input.service';
 import type { TKey } from '../i18n/en';
 import { type Msg } from '../i18n/translation.service';
 import { TPipe } from '../i18n/t.pipe';
@@ -59,7 +59,7 @@ type Phase = 'idle' | 'starting' | 'recording' | 'transcribing';
             [id]="fieldId() + '-mic'"
             [class.recording]="phase() === 'recording'"
             [attr.aria-label]="micLabel() | t"
-            [attr.aria-disabled]="phase() === 'transcribing' || phase() === 'starting' ? 'true' : null"
+            [attr.aria-disabled]="phase() === 'transcribing' || phase() === 'starting' || !voice.micEnabled() ? 'true' : null"
             [attr.aria-describedby]="fieldId() + '-voice-hint'"
             (click)="toggle()"
           >
@@ -77,7 +77,11 @@ type Phase = 'idle' | 'starting' | 'recording' | 'transcribing';
             <span class="voice-time" aria-hidden="true">{{ clock() }}</span>
           }
         </div>
-        <p [id]="fieldId() + '-voice-hint'" class="field-hint">{{ (voice.shortLimit() ? 'voice.hintShort' : 'voice.hint') | t: { host: voice.host() } }}</p>
+        @if (tierReason(); as reason) {
+          <p [id]="fieldId() + '-voice-hint'" class="field-hint voice-tier-reason">{{ reason | t: { provider: voice.tierProviderName() } }}</p>
+        } @else {
+          <p [id]="fieldId() + '-voice-hint'" class="field-hint">{{ (voice.shortLimit() ? 'voice.hintShort' : 'voice.hint') | t: { host: voice.host() } }}</p>
+        }
         <div class="field-hint voice-status" role="status" aria-live="polite">
           @if (status(); as key) {
             {{ key | t }}
@@ -143,14 +147,20 @@ export class VoiceButton implements OnDestroy {
   private run = 0;
 
   constructor() {
-    // The switch turned off, or the AI changed, while a recording is on: it ends, with nothing kept.
+    // The switch turned off, the AI changed or the plan turned out to be a free one while a recording is on: it ends, with nothing kept.
     effect(() => {
-      if (!this.voice.available()) this.discard();
+      if (!this.voice.micEnabled()) this.discard();
     });
   }
 
   ngOnDestroy(): void {
     this.discard();
+  }
+
+  /** Why the microphone cannot be used now (the plan rule, ADR-37), or null. It is the button's accessible description too. */
+  protected tierReason(): TKey | null {
+    const v = this.voice.verdict();
+    return v === 'ALLOW' ? null : v === 'CHECKING' ? 'voice.tierChecking' : v === 'REFUSE_FREE' ? 'voice.tierFree' : 'voice.tierUnknown';
   }
 
   protected micLabel(): TKey {
@@ -162,6 +172,7 @@ export class VoiceButton implements OnDestroy {
   }
 
   protected toggle(): void {
+    if (!this.voice.micEnabled()) return;
     if (this.phase() === 'recording') void this.finish();
     else if (this.phase() === 'idle') void this.begin();
   }
@@ -182,6 +193,7 @@ export class VoiceButton implements OnDestroy {
 
   /** The tap that starts: the microphone is asked for here, never earlier. */
   private async begin(): Promise<void> {
+    if (!this.voice.micEnabled()) return; // the plan rule first: no microphone, so no audio, until it says ALLOW
     const run = ++this.run;
     this.problem.set(null);
     this.phase.set('starting');
@@ -277,6 +289,9 @@ export class VoiceButton implements OnDestroy {
   }
 
   private messageOf(err: unknown): Msg {
+    if (err instanceof VoiceTierRefusedError) {
+      return { key: err.verdict === 'REFUSE_FREE' ? 'voice.tierFree' : err.verdict === 'CHECKING' ? 'voice.tierChecking' : 'voice.tierUnknown', params: { provider: this.voice.tierProviderName() } };
+    }
     if (err instanceof RecorderError) {
       if (err.reason === 'denied') return { key: 'voice.denied' };
       if (err.reason === 'noDevice') return { key: 'voice.noDevice' };
