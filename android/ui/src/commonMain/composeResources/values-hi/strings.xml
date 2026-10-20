@@ -24,7 +24,9 @@
      Keys mirror the web's i18n keys where both apps show the same text. -->
 <resources>
     <string name="app_name">Doorprints</string>
-    <string name="app_tagline">देखा हुआ हर मकान याद रखें।</string>
+    <string name="app_tagline">देखी हुई हर जगह याद रखें।</string>
+    <!-- The empty house list's title: house-only words, kept when the tagline became kind-neutral (ADR-13b). -->
+    <string name="houses_first_run_title">देखा हुआ हर मकान याद रखें।</string>
     <string name="nav_map">नक्शा</string>
     <string name="nav_houses">मकान</string>
     <string name="nav_compare">तुलना</string>
@@ -1717,7 +1719,7 @@
     <string name="kinds_heading">आप क्या ट्रैक करते हैं</string>
     <string name="kinds_body">चुनें कि Doorprints किसका हिसाब रखे। एक से ज़्यादा चालू होने पर Doorprints पहले पूछता है कि आप क्या ढूँढ रहे हैं।</string>
     <string name="kinds_switch">प्रायोगिक: मकानों के अलावा भी</string>
-    <string name="kinds_switch_hint">शुरू में बंद। वह दिखाता है जिसे अभी आज़माया जा रहा है, जैसे स्कूल। यह बदल सकता है। यह एक पूर्वावलोकन है।</string>
+    <string name="kinds_switch_hint">शुरू में बंद। वह दिखाता है जिसे अभी आज़माया जा रहा है। यह बदल सकता है।</string>
     <string name="kinds_show">%1$s दिखाएँ</string>
     <string name="kinds_default">डिफ़ॉल्ट</string>
     <string name="kinds_default_aria">%1$s को डिफ़ॉल्ट बनाएँ</string>
@@ -1733,8 +1735,8 @@
     <string name="school_region_desc">आपके स्कूलों का नक्शा। हर स्कूल ‘स्कूल’ टैब में भी है।</string>
     <string name="school_add_tip">सुझाव: स्कूल पर पहुँचकर ‘यहाँ स्कूल सहेजें’ दबाएँ, या कहीं भी स्कूल रखने के लिए नक्शे को दबाकर रखें।</string>
     <string name="school_add_tip_a11y">सुझाव: स्कूल पर रहते हुए ‘यहाँ स्कूल सहेजें’ दबाएँ।</string>
-    <string name="school_add_tip_listing">पूर्वावलोकन: यह स्कूल कहाँ है? वहाँ हों तो ‘यहाँ स्कूल सहेजें’ दबाएँ, या नक़्शे पर उस जगह देर तक दबाएँ; फिर लिस्टिंग फ़ॉर्म भर देगी।</string>
-    <string name="school_add_tip_listing_a11y">पूर्वावलोकन: यह स्कूल कहाँ है? वहाँ पहुँचकर ‘यहाँ स्कूल सहेजें’ दबाएँ; फिर लिस्टिंग फ़ॉर्म भर देगी।</string>
+    <string name="school_add_tip_listing">यह स्कूल कहाँ है? वहाँ हों तो ‘यहाँ स्कूल सहेजें’ दबाएँ, या नक़्शे पर उस जगह देर तक दबाएँ; फिर लिस्टिंग फ़ॉर्म भर देगी।</string>
+    <string name="school_add_tip_listing_a11y">यह स्कूल कहाँ है? वहाँ पहुँचकर ‘यहाँ स्कूल सहेजें’ दबाएँ; फिर लिस्टिंग फ़ॉर्म भर देगी।</string>
     <string name="school_unnamed">बिना नाम का स्कूल</string>
     <string name="school_compare_hint">4 स्कूल तक चुनें (चुने गए पहले दिखते हैं)। अस्वीकृत और नहीं चुने गए स्कूल शामिल नहीं किए जाते।</string>
     <string name="school_compare_pick_more">तुलना के लिए कम से कम दो स्कूल चुनें।</string>

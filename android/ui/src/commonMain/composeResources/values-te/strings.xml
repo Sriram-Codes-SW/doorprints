@@ -24,7 +24,9 @@
      Keys mirror the web's i18n keys where both apps show the same text. -->
 <resources>
     <string name="app_name">Doorprints</string>
-    <string name="app_tagline">మీరు చూసిన ప్రతి ఇంటినీ గుర్తుంచుకోండి.</string>
+    <string name="app_tagline">మీరు చూసిన ప్రతి ప్రదేశాన్నీ గుర్తుంచుకోండి.</string>
+    <!-- The empty house list's title: house-only words, kept when the tagline became kind-neutral (ADR-13b). -->
+    <string name="houses_first_run_title">మీరు చూసిన ప్రతి ఇంటినీ గుర్తుంచుకోండి.</string>
     <string name="nav_map">మ్యాప్</string>
     <string name="nav_houses">ఇళ్లు</string>
     <string name="nav_compare">పోల్చండి</string>
@@ -1717,7 +1719,7 @@
     <string name="kinds_heading">మీరు ట్రాక్ చేసేవి</string>
     <string name="kinds_body">Doorprints దేనిని ట్రాక్ చేయాలో ఎంచుకోండి. ఒకటి కంటే ఎక్కువ ఆన్‌లో ఉంటే, మీరు ఏమి వెతుకుతున్నారో Doorprints మొదట అడుగుతుంది.</string>
     <string name="kinds_switch">ప్రయోగాత్మకం: ఇళ్లు కాకుండా ఇంకా</string>
-    <string name="kinds_switch_hint">మొదట ఆఫ్‌లో ఉంటుంది. పాఠశాలల వంటి, ఇంకా పరీక్షిస్తున్నవాటిని చూపిస్తుంది. ఇది మారవచ్చు. ఇది ఒక ప్రివ్యూ.</string>
+    <string name="kinds_switch_hint">మొదట ఆఫ్‌లో ఉంటుంది. ఇంకా పరీక్షిస్తున్నవాటిని చూపిస్తుంది. ఇది మారవచ్చు.</string>
     <string name="kinds_show">%1$s చూపించు</string>
     <string name="kinds_default">డిఫాల్ట్</string>
     <string name="kinds_default_aria">%1$s‌ను డిఫాల్ట్ చేయండి</string>
@@ -1733,8 +1735,8 @@
     <string name="school_region_desc">మీ పాఠశాలల మ్యాప్. ప్రతి పాఠశాల ‘పాఠశాలలు’ ట్యాబ్‌లో కూడా ఉంది.</string>
     <string name="school_add_tip">చిట్కా: పాఠశాల దగ్గర ఉన్నప్పుడు ‘ఇక్కడ పాఠశాల సేవ్ చేయండి’ నొక్కండి, లేదా ఎక్కడైనా పాఠశాల ఉంచడానికి మ్యాప్‌ను నొక్కి పట్టుకోండి.</string>
     <string name="school_add_tip_a11y">చిట్కా: పాఠశాల దగ్గర ఉన్నప్పుడు ‘ఇక్కడ పాఠశాల సేవ్ చేయండి’ నొక్కండి.</string>
-    <string name="school_add_tip_listing">ప్రివ్యూ: ఈ పాఠశాల ఎక్కడ? అక్కడ ఉంటే ‘ఇక్కడ పాఠశాల సేవ్ చేయండి’ నొక్కండి, లేదా మ్యాప్‌లో ఆ చోటును నొక్కి పట్టుకోండి; అప్పుడు లిస్టింగ్ ఫారమ్‌ను నింపుతుంది.</string>
-    <string name="school_add_tip_listing_a11y">ప్రివ్యూ: ఈ పాఠశాల ఎక్కడ? అక్కడ ఉన్నప్పుడు ‘ఇక్కడ పాఠశాల సేవ్ చేయండి’ నొక్కండి; అప్పుడు లిస్టింగ్ ఫారమ్‌ను నింపుతుంది.</string>
+    <string name="school_add_tip_listing">ఈ పాఠశాల ఎక్కడ? అక్కడ ఉంటే ‘ఇక్కడ పాఠశాల సేవ్ చేయండి’ నొక్కండి, లేదా మ్యాప్‌లో ఆ చోటును నొక్కి పట్టుకోండి; అప్పుడు లిస్టింగ్ ఫారమ్‌ను నింపుతుంది.</string>
+    <string name="school_add_tip_listing_a11y">ఈ పాఠశాల ఎక్కడ? అక్కడ ఉన్నప్పుడు ‘ఇక్కడ పాఠశాల సేవ్ చేయండి’ నొక్కండి; అప్పుడు లిస్టింగ్ ఫారమ్‌ను నింపుతుంది.</string>
     <string name="school_unnamed">పేరు లేని పాఠశాల</string>
     <string name="school_compare_hint">4 పాఠశాలల వరకు ఎంచుకోండి (ఎంపికైనవి ముందు). తిరస్కరించిన, ఎంచుకోని పాఠశాలలను చేర్చరు.</string>
     <string name="school_compare_pick_more">పోల్చడానికి కనీసం రెండు పాఠశాలలను ఎంచుకోండి.</string>
