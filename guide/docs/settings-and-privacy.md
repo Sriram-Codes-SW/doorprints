@@ -231,8 +231,10 @@ Voice input sends what you say to your AI service. A **free plan** of a service 
 - **A program on your computer** (Ollama, LM Studio) keeps the audio on your computer. A **custom address** is your own choice and is not checked.
 - The answer is kept on the device for a day (free) or a week (paid), never in a backup, a copy or a Drive file, and it never holds your key or what was said.
 
-## More than houses (experimental) {#other-kinds}
 
-**Your data** on the website has one more section, **What you track**, with the switch
-**Experimental: more than houses**. It is off by default, and while it is off
-nothing in this guide changes. On, Doorprints can keep track of schools too: see [More than houses (experimental)](other-kinds.md).
+## Schools as well as houses {#other-kinds}
+
+**Your data** on the website has one more section, **What you track**, with a row for **Houses** and one for **Schools**.
+Schools are off by default, and while they are off nothing in this guide changes. Show them and Doorprints keeps track of
+schools too: see [Schools as well as houses](other-kinds.md). On the phones schools are still a preview, behind the switch
+**Experimental: more than houses**.

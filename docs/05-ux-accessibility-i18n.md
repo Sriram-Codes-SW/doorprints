@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | 05 UX, accessibility and i18n |
-| Version | 0.34 |
+| Version | 0.35 |
 | Date | 2026-10-13 |
 | Author | Claude (Cowork) – Design team |
 | Status | Draft |
@@ -47,6 +47,7 @@
 | 0.32 | 2026-10-10 | Claude (Code), engineer | Component inventory: the *AI speed and cost* group in the phones' Settings > AI features (S4b-BL-198 step 2; [10](10-sprint-log.md) v0.228): a radio group under a heading, hidden unless AI is on, the own AI answers and the service is Gemini. |
 | 0.33 | 2026-10-10 | Claude (Code), engineer | Component inventory: the three sentences and the guide link under the AI features switch, on the Connect page and in the phones' Settings (S4b-BL-215; [10](10-sprint-log.md) v0.241). |
 | 0.34 | 2026-10-13 | Claude (Code), engineer | Size to what is visible (S4b-BL-49): the phone map region is sized in CSS (`100cqh` less the counters' rem height, a 212 px floor for the map row), the actions sit under the map and the legend in its corner; nothing is measured by a script. |
+| 0.35 | 2026-10-20 | Claude (Code), engineer | Glossary: `app.tagline` on the website is the kind-neutral "Remember every place you've seen." in four languages ([03](03-design.md) ADR-13b; `feat/school-release-web`, #389); the phones' `app_tagline` is unchanged for now. |
 
 ---
 
@@ -610,7 +611,7 @@ Changing the English meaning of an existing key: rename the key instead of editi
 | Term (key) | English | हिन्दी (hi) | தமிழ் (ta) | తెలుగు (te) | Notes |
 |---|---|---|---|---|---|
 | app.name | Doorprints | Doorprints | Doorprints | Doorprints | Brand, never translated (was "House Hunt" until 2026-09-22). |
-| app.tagline | Remember every house you've seen. | देखा हुआ हर मकान याद रखें। | நீங்கள் பார்த்த ஒவ்வொரு வீட்டையும் நினைவில் வையுங்கள். | మీరు చూసిన ప్రతి ఇంటినీ గుర్తుంచుకోండి. | Web `app.tagline`, Android `app_tagline` (same wording on both). |
+| app.tagline | Remember every place you've seen. | देखी हुई हर जगह याद रखें। | நீங்கள் பார்த்த ஒவ்வொரு இடத்தையும் நினைவில் வையுங்கள். | మీరు చూసిన ప్రతి ప్రదేశాన్నీ గుర్తుంచుకోండి. | Web `app.tagline` (kind-neutral since ADR-13b, hi, ta, te under review). Android `app_tagline` still says *house* until the phones release the school. |
 | house | House | मकान | வீடு | ఇల్లు | Hindi "घर" means home; "मकान" is the building being rented or bought. |
 | map | Map | नक्शा | வரைபடம் | మ్యాప్ | Telugu loanword is more common in apps than "పటం". |
 | compare | Compare | तुलना | ஒப்பிடு | పోల్చండి | – |

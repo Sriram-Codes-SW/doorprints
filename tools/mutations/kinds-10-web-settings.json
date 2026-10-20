@@ -7,9 +7,23 @@
     "web/src/app/pages/map/map-page.spec.ts",
     "web/src/app/pages/house-detail/school-form.spec.ts",
     "web/src/app/export/export.service.spec.ts",
-    "web/src/app/core/ai/kind-ai.spec.ts"
+    "web/src/app/core/ai/kind-ai.spec.ts",
+    "web/src/app/core/release-kinds.spec.ts",
+    "web/src/app/experimental-off.spec.ts"
   ],
   "mutations": [
+    {
+      "file": "web/src/app/core/kind-setting.ts",
+      "find": "export const RELEASED_KINDS: readonly string[] = ['house', 'school'];",
+      "replace": "export const RELEASED_KINDS: readonly string[] = ['house'];",
+      "expect": "that list makes the school available and released"
+    },
+    {
+      "file": "web/src/app/pages/data/kinds-settings.ts",
+      "find": "        @if (unreleased.length) {",
+      "replace": "        @if (true) {",
+      "expect": "shows Settings > What you track with no switch and a Schools row, off"
+    },
     {
       "file": "web/src/app/core/kind-setting.ts",
       "find": "  if (!flag) return HOUSE_ONLY;",

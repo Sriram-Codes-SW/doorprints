@@ -1,6 +1,6 @@
 # Doorprints — web
 
-*Remember every house you've seen.*
+*Remember every place you've seen.*
 
 Angular 22 installable web app (PWA): a map + list of houses, house details (checklist, rating, photos, visits),
 a side-by-side comparison and an offline copy of your data in six formats. Uses MapLibre GL with the free

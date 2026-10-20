@@ -28,8 +28,8 @@
 export const en = {
   // App shell
   'app.name': 'Doorprints',
-  'app.tagline': "Remember every house you've seen.",
-  'app.description': "Doorprints: Remember every house you've seen. Save, rate and compare the houses you visit.",
+  'app.tagline': "Remember every place you've seen.",
+  'app.description': "Doorprints: Remember every place you've seen. Save, rate and compare the houses and schools you visit.",
   'app.skip': 'Skip to main content',
   'app.homeLink': 'Doorprints home',
   'nav.label': 'Main',
@@ -41,7 +41,7 @@ export const en = {
 
   // Page titles (browser tab)
   'title.app': 'Doorprints',
-  'title.map': "Doorprints: remember every house you've seen",
+  'title.map': "Doorprints: remember every place you've seen",
   'title.newHouse': 'New house · Doorprints',
   'title.house': 'House details · Doorprints',
   'title.compare': 'Compare · Doorprints',
@@ -1761,7 +1761,7 @@ export const en = {
   'kinds.heading': 'What you track',
   'kinds.body': 'Choose what Doorprints keeps track of. With more than one on, Doorprints first asks what you are looking for.',
   'kinds.switch': 'Experimental: more than houses',
-  'kinds.switchHint': 'Off by default. Shows what is still being tried out, such as schools. It may change. This is a preview.',
+  'kinds.switchHint': 'Off by default. Shows what is still being tried out. It may change.',
   'kinds.show': 'Show {kind}',
   'kinds.default': 'Default',
   'kinds.defaultAria': 'Make {kind} the default',
@@ -1891,7 +1891,7 @@ export const en = {
   'school.mapLabel': 'Map of the school location',
   'school.saveFirstVisits': 'Save the school first to record visits.',
   'school.saveFirstPhotos': 'Save the school first to add photos.',
-  'school.listingHint': 'Preview: the details are suggested by AI; check them, set the location on the map, then create the school.',
+  'school.listingHint': 'The details are suggested by AI; check them, set the location on the map, then create the school.',
   'school.aiDisclosure': 'The text is sent to the AI provider set up on your server, together with the matching school notes.',
   'school.aiDisclosureOwnKeyHost': 'The text is sent from this browser straight to {host} with your own key, together with the matching school notes.',
   'school.fitTitle': 'Zoom the map to show every school in the list',

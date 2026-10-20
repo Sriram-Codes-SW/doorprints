@@ -6,8 +6,9 @@ The houses in the pictures are made up for this guide ("Green Villa, 2BHK" and f
 
 ## What Doorprints is
 
-Doorprints remembers the houses you visit while you look for a home to rent or buy in India. It is not a listings
-site. It holds only the houses you have seen yourself.
+Doorprints remembers the places you visit in India, starting with the houses you see while you look for a home to rent
+or buy. It is not a listings site. It holds only what you have seen yourself. On the website it can keep your **schools**
+too, off until you show them; on the phones schools are still a preview (see [Schools as well as houses](other-kinds.md)).
 
 For each house you can keep the rent or price, BHK, address and the owner's or broker's contact. You can add notes,
 photos, a star rating and a ten-item checklist (water supply, power backup, parking and so on). Doorprints shows every

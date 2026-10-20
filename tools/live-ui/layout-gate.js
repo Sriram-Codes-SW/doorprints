@@ -178,17 +178,17 @@ function switchOff() {
   localStorage.setItem('doorprints.tour', 'skipped');
 }
 
-/** One route of the switch-off run: the map with no chooser, and Your data with the switch off and no kind rows. */
+/** One route of the school-off run: the map with no chooser, and Your data with no Experimental switch and a Schools row, off (the school is released, ADR-13b). */
 async function offRoute(page, route, tag, check) {
   try {
     const resp = await page.goto(`${BASE_FOR_KINDS}${route}`, { waitUntil: 'load', timeout: 30000 });
     check(`${tag}: loads`, !!resp && resp.status() < 400, resp && resp.status());
-    if (route === '/data') await page.waitForSelector('#kinds-experimental', { timeout: 15000 }).catch(() => null);
+    if (route === '/data') await page.waitForSelector('#kind-rows', { timeout: 15000 }).catch(() => null);
     await page.waitForTimeout(route === '/' ? 1500 : 400);
-    check(`${tag}: no chooser, no space chip`, (await page.locator('#chooser-heading, .space-chip').count()) === 0, 'a chooser or a chip with the switch off');
+    check(`${tag}: no chooser, no space chip`, (await page.locator('#chooser-heading, .space-chip').count()) === 0, 'a chooser or a chip with the school not shown');
     if (route === '/data') {
-      check(`${tag}: the switch is off`, (await page.locator('#kinds-experimental:not(:checked)').count()) === 1, 'no unchecked Experimental switch');
-      check(`${tag}: no kind rows`, (await page.locator('#kind-rows').count()) === 0, 'kind rows with the switch off');
+      check(`${tag}: no Experimental switch`, (await page.locator('#kinds-experimental').count()) === 0, 'an Experimental switch while no listed kind is unreleased');
+      check(`${tag}: a Schools row, off`, (await page.locator('#kind-on-school:not(:checked)').count()) === 1 && (await page.locator('#kind-on-house:checked').count()) === 1, 'no Houses row on and Schools row off');
     }
     const found = await page.evaluate(layoutAudit);
     check(`${tag}: layout`, found.length === 0, found.join(' ; '));
