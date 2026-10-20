@@ -196,8 +196,8 @@ describe('the public words name the released kinds and no other (ADR-13b)', () =
     expect(meta(doc, 'property="og:title"')).toBe(en['title.map']);
     expect(meta(doc, 'name="twitter:title"')).toBe(en['title.map']);
     expect(doc.querySelector('h1')!.textContent).toBe(en['title.map']);
-    expect(ld.description).toMatch(new RegExp(`^${en['app.tagline'].replace(/[.]/g, '\\.')}`));
-    expect(manifest.description).toMatch(new RegExp(`^${en['app.tagline'].replace(/[.]/g, '\\.')}`));
+    expect((ld.description as string).startsWith(en['app.tagline'])).toBe(true);
+    expect((manifest.description as string).startsWith(en['app.tagline'])).toBe(true);
   });
 
   it('says the same in all four languages: every language’s description keeps the brand and is not the English', () => {
