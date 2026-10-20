@@ -16,6 +16,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+import { country } from '../shared/country/country-pack';
 import { escapeXml } from './deterministic';
 import { utf8, zip } from './zip';
 import type { ZipEntry } from './zip';
@@ -154,7 +155,7 @@ function styles(): string {
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
     '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
     '<numFmts count="2">' +
-    '<numFmt numFmtId="164" formatCode="&quot;₹&quot;#,##,##0"/>' +
+    `<numFmt numFmtId="164" formatCode="${country().money.xlsxFormat.replace(/"/g, '&quot;')}"/>` +
     '<numFmt numFmtId="165" formatCode="yyyy\\-mm\\-dd"/>' +
     '</numFmts>' +
     '<fonts count="2"><font><sz val="11"/><name val="Calibri"/></font>' +

@@ -18,6 +18,8 @@
 
 package app.doorprints.shared.ai
 
+import app.doorprints.shared.country.Country
+
 /** Ask's optional filters (the server's `AskModels.Filters`); null means no filter. */
 data class AskFilters(
     val status: String? = null,
@@ -111,7 +113,7 @@ object OnDeviceSelection {
             "label: ${c.label}",
             "locality: ${c.locality ?: c.street ?: "-"}",
             "status: ${c.status ?: "-"}",
-            "price: ${c.price?.let { p -> "Rs $p" + if (c.priceType == "RENT") " per month" else if (c.priceType == "SALE") " (sale)" else "" } ?: "-"}",
+            "price: ${c.price?.let { p -> Country.promptMoney(p) + if (c.priceType == "RENT") " per month" else if (c.priceType == "SALE") " (sale)" else "" } ?: "-"}",
             "bedrooms: ${c.bedrooms ?: "-"}",
             "rating: ${c.rating?.let { "$it/5" } ?: "-"}",
             "distance: ${c.distanceMeters} m",

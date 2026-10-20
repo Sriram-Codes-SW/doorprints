@@ -160,6 +160,12 @@ jobs:
         run: |
           node --test tools/check-kind-literals.test.mjs
           node tools/check-kind-literals.mjs
+      # docs/03 §21 (ADR-38): the country tripwire. No source writes a rupee sign, +91, lakh or crore outside the two country packs and
+      # the allow-list, and the packs read no kind and carry no boundary lines (offline).
+      - name: Country tripwire (no rupee sign, +91, lakh or crore outside the country pack)
+        run: |
+          node --test tools/check-country-literals.test.mjs
+          node tools/check-country-literals.mjs
       # S4b-BL-175: the fake AI provider server's own tests (Node built-ins only, no network, no key). The adapters are run
       # against it by the Web (fake-provider.wire.spec.ts) and Android (FakeProviderWireTest) workflows.
       - name: Fake AI provider server tests

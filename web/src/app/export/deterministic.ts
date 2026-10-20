@@ -18,6 +18,7 @@
 
 import type { Dict, TKey } from '../i18n/en';
 import type { PriceType } from '../core/models';
+import { country } from '../shared/country/country-pack';
 
 /**
  * Formatting for the exported files (S4-03, docs/11 §5.2: "the same output for the same data and options").
@@ -39,35 +40,24 @@ export function tr(dict: Dict, key: TKey, params?: Readonly<Record<string, strin
   );
 }
 
-/** Indian digit grouping: 1,25,000 — last three digits, then pairs. Works on the absolute value. */
-export function indianGroup(value: number): string {
+/** The country's digit grouping (India's: 1,25,000, the last three digits, then pairs; the pack's `money.group`). Works on the absolute value. */
+export function groupAmount(value: number): string {
   const negative = value < 0;
-  const digits = Math.abs(Math.round(value)).toString();
-  let grouped: string;
-  if (digits.length <= 3) {
-    grouped = digits;
-  } else {
-    const last3 = digits.slice(-3);
-    let rest = digits.slice(0, -3);
-    const parts: string[] = [];
-    while (rest.length > 2) {
-      parts.unshift(rest.slice(-2));
-      rest = rest.slice(0, -2);
-    }
-    if (rest.length > 0) parts.unshift(rest);
-    grouped = `${parts.join(',')},${last3}`;
-  }
+  const grouped = country().money.group(Math.abs(Math.round(value)).toString());
   return negative ? `-${grouped}` : grouped;
 }
 
+/** The name the grouping had when India's was the only one: the same function as {@link groupAmount}. */
+export const indianGroup = groupAmount;
+
 /**
- * `₹12,50,000`, with the minus **before** the sign for a negative amount. Byte-identical to
- * `ExportRows.rupees` in `android/shared/.../export/ExportRows.kt`, so both apps print a price the same way.
+ * `₹12,50,000` (the active country pack's sign and grouping), with the minus **before** the sign for a negative amount.
+ * Byte-identical to `ExportRows.rupees` in `android/shared/.../export/ExportRows.kt`, so both apps print a price the same way.
  */
 export function rupees(amount: number): string {
   const negative = amount < 0;
-  const digits = indianGroup(Math.abs(Math.round(amount)));
-  return (negative ? '-₹' : '₹') + digits;
+  const digits = groupAmount(Math.abs(Math.round(amount)));
+  return (negative ? '-' : '') + country().money.symbol + digits;
 }
 
 /** "₹1,25,000" or, for rent, the translated "₹1,25,000/month". Empty input becomes an en dash. */

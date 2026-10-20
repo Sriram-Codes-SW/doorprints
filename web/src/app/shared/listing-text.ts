@@ -18,6 +18,7 @@
 
 import { asciiDigits } from '../core/ai/ai-core';
 import type { HouseDraft } from '../core/ai.service';
+import { country, derived } from './country/country-pack';
 
 /**
  * The no-AI listing parser (docs/11 5.29, S4b-FR-4; 5.9): what a portal's share sheet hands over (its title, price,
@@ -41,13 +42,10 @@ export const LISTING_PORTALS: ReadonlyArray<readonly [string, string]> = [
 
 const URL_RE = /https?:\/\/[^\s<>"']+/;
 const TRACKING = /^(utm_.*|fbclid|gclid|igshid|ref|src)$/;
-// A mobile number (with or without +91 or a 0), or a landline with its STD code (011 4155 0101, (022) 2655 0101).
-const PHONE = /(?:\+91[\s-]?)?(?:0)?[6-9]\d{4}[\s-]?\d{5}\b|(?<!\d)\(?0\d{2,4}\)?[\s-]?\d{3,4}[\s-]?\d{3,4}\b/;
+// The phone number and the price are the country pack's (`shared/country`, ADR-38): `derived().listingPhone`, `.listingPrice`.
 // "2.5 BHK" is 2 (the half is a study), as the sanitiser reads "2.5 BHK": never 5, from the digit after the dot.
 const BHK = /\b(\d{1,2})(?:\.5)?\s*-?\s*(?:BHK|bhk|Bhk|bedroom|bedrooms|BR)\b/;
 const STUDIO = /\b(studio|1\s*RK)\b/i;
-const PRICE =
-  /(?:₹|Rs\.?|INR)\s*([\d,]+(?:\.\d+)?)\s*(k|thousand|lac|lakh|lakhs|lacs|l|cr|crore|crores)?\b|\b(\d+(?:\.\d+)?)\s*(k|thousand|lac|lakh|lakhs|lacs|cr|crore|crores)\b/i;
 const RENT = /\b(for rent|rent|rental|per month|\/\s*month|monthly|lease|pm)\b/i;
 const SALE = /\b(for sale|sale|resale|buy|selling)\b/i;
 const CITIES = [
@@ -70,7 +68,6 @@ const LOCALITY = new RegExp(
 );
 const AREA = /(\d{3,5})\s*(?:sq\.?\s*ft|sqft|sq\.?\s*feet|square\s*feet|sq\.?\s*m)\b/i;
 const FURNISHING = /\b(fully[- ]furnished|semi[- ]furnished|unfurnished|furnished)\b/i;
-const SALE_FROM_RUPEES = 1_000_000;
 const LABEL_MAX = 120;
 const NOTES_MAX = 2000;
 const PHONE_MAX = 50;
@@ -106,21 +103,10 @@ export function listingPortal(url: string | null): string | null {
 
 /** "25,000", "1.2 Cr", "45 lakh" -> whole rupees, as the Kotlin sanitiser reads them; null when not a price. */
 function rupees(value: string): number | null {
-  const m = /(\d+(?:\.\d+)?)\s*(k|thousand|l|lac|lakh|lakhs|lacs|cr|crore|crores|m|mn|million)?\b/i.exec(
-    value.replace(/[,_]/g, ''),
-  );
+  const d = derived();
+  const m = d.draftAmount.exec(value.replace(/[,_]/g, ''));
   if (!m) return null;
-  const unit = (m[2] ?? '').toLowerCase();
-  const multiplier =
-    unit === 'k' || unit === 'thousand'
-      ? 1_000
-      : ['l', 'lac', 'lakh', 'lakhs', 'lacs'].includes(unit)
-        ? 100_000
-        : ['cr', 'crore', 'crores'].includes(unit)
-          ? 10_000_000
-          : ['m', 'mn', 'million'].includes(unit)
-            ? 1_000_000
-            : 1;
+  const multiplier = d.multiplier.get((m[2] ?? '').toLowerCase()) ?? 1;
   const [whole, fraction = ''] = m[1].split('.');
   if (whole.length > 15) return null;
   let total = Number(whole) * multiplier;
@@ -140,10 +126,10 @@ export function parseListingText(text: string): HouseDraft {
   // The numbers are read in 0-9 whatever script they are written in (S4b-BL-174b; one character for one character, so the
   // text and its reading line up); the words, the locality and the notes keep what was written.
   const digits = asciiDigits(words);
-  const priceMatch = PRICE.exec(digits);
+  const priceMatch = derived().listingPrice.exec(digits);
   const priceText = priceMatch ? (priceMatch[1] ? `${priceMatch[1]} ${priceMatch[2] ?? ''}` : `${priceMatch[3]} ${priceMatch[4]}`).trim() : null;
   const price = priceText ? rupees(priceText) : null;
-  const priceType = RENT.test(words) ? 'RENT' : SALE.test(words) ? 'SALE' : price !== null && price >= SALE_FROM_RUPEES ? 'SALE' : null;
+  const priceType = RENT.test(words) ? 'RENT' : SALE.test(words) ? 'SALE' : price !== null && price >= country().money.saleFrom ? 'SALE' : null;
   const bhk = BHK.exec(digits);
   const bedroomsRaw = bhk ? Number(bhk[1]) : STUDIO.test(words) ? 0 : null;
   const bedrooms = bedroomsRaw !== null && bedroomsRaw <= BEDROOMS_MAX ? bedroomsRaw : null;
@@ -152,11 +138,11 @@ export function parseListingText(text: string): HouseDraft {
   const areaSqft = area && Number(area[1]) >= 1 && Number(area[1]) <= AREA_MAX ? Number(area[1]) : null;
   const furnishing = FURNISHING.exec(words);
   const details = [
-    area ? `${area[1]} sq ft` : null,
+    area ? `${area[1]} ${country().area.unit}` : null,
     furnishing ? furnishing[1].toLowerCase().replace(/^./, (c) => c.toUpperCase()) : null,
   ].filter((d): d is string => d !== null);
   const notes = (details.length ? details.join(', ') + '\n\n' + t : t).trim().slice(0, NOTES_MAX);
-  const phone = PHONE.exec(digits)?.[0].trim().slice(0, PHONE_MAX) ?? null;
+  const phone = derived().listingPhone.exec(digits)?.[0].trim().slice(0, PHONE_MAX) ?? null;
   const locality = LOCALITY.exec(words)?.[1] ?? null;
   const label = firstLabel(t, url) ?? defaultLabel(bedrooms, locality);
   return {
