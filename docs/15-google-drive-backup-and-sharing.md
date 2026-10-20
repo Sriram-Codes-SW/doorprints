@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | Design of Google sign-in for backup, automatic sync, deletion and sharing through each person's own Google Drive (N13 3b, D-28) |
-| Version | 0.40 |
-| Date | 2026-10-16 |
+| Version | 0.41 |
+| Date | 2026-10-20 |
 | Author | Claude (Code), lead |
 | Status | **Decided by the owner on 2026-10-02** (§6, §6.1: "Let us implement it. After real world use, we can change as needed."); [03](03-design.md) ADR-33. Built so far: S4b-BL-70, S4b-BL-115, S4b-BL-125, S4b-BL-124 (the runbook incidents, [08](08-operations-runbook.md) IR-11..IR-13), and the **website** version 1 cards (draft PR #118): connect, backups, sync, photos on Wi-Fi, L1 on the site, L2/L3 only with a PRF-sealed passkey whose proof is an HMAC, 8-digit pairing and QR enrolment (paste, or the camera when the browser can scan), non-extractable folder keys, `config.js` from the repository variable `GOOGLE_OAUTH_WEB_CLIENT_ID`. **Android** (PR #142, branch `feat/android-drive`): the phones' Drive screens, the controller, the Keystore device key, the device check, enrolment by pasted `dp1.` offer, the Drive route for sync and the background run are built and tested on the JVM; **real-phone checks are open** ([ops/manual-test-checklist.md](ops/manual-test-checklist.md) §14); **the iPhone** (branch `feat/ios-drive`): the Drive wiring is built on the same common code, with the Secure Enclave device key, the Keychain refresh token and `ASWebAuthenticationSession` with PKCE, the Keychain-guarded HMAC proof, the Drive section in Settings with the iPhone scanner, and the triggers of §9.11; it is **compiled for the iOS Simulator and logic-tested on the host and, in CI, the simulator, and no iPhone and no Google round trip has run it** ([ops/manual-test-checklist.md](ops/manual-test-checklist.md) §14, MT-86..MT-92). Version 1 is §1.6; the tickets are S4b-BL-70, -73, -115..119, -121, -122, -124..128 and -130 ([10](10-sprint-log.md) §12.7), deferred S4b-BL-120 and -129; the phones' camera scan (S4b-BL-136) and the Android half of the phones' HMAC proof (S4b-BL-135) are built on `feat/qr-scanner-and-backlog` (draft PR #145) with their real-device checks open, the iPhone's scanner and HMAC proof are wired in the iPhone's Drive (§9.11); the order is §7 and [14](14-lead-backlog-and-handoff.md) N17 |
 
@@ -52,6 +52,7 @@
 | 0.38 | 2026-10-16 | Claude (Code), engineer | **Restore photos from Drive after a deletion** (S4b-BL-293, owner decision 2026-10-16; `feat/restore-photos-from-drive`): §1.4 item 11 (a deleted photo's encrypted file stays in the person's own Drive for at least 30 days, and *Recently deleted* > *Restore* reads it back: same scope `drive.file`, same `dpx/1` file, nothing uploaded or deleted by a restore, the sync read's pause rules, a per-photo result with its reason), §1.5, §3.3 (a photo deleted in the app is not in Drive's bin either, and *Delete everything* removes it for good, so nothing is restorable after it), §5.1 (what the 30-day clean-up, not yet built, may remove). |
 | 0.39 | 2026-10-16 | Claude (Code), engineer | **The 30-day clean-up on the phones** (S4b-BL-293, `feat/photo-sweep-android-finish`): §5.1 and §1.4 item 11 say the clean-up is built (the website since #377, the phones now): in the backup tidy, a deleted photo's file leaves Drive when its tombstone is older than 30 days and older than the oldest backup that stays; the shared vectors `photo-sweep-vectors.json`; the phones' tombstone source and its once-bound seam. The "at least 30 days" wording elsewhere is unchanged. |
 | 0.40 | 2026-10-19 | Claude (Code), engineer | **The photo wording made exactly true** (S4b-BL-293, owner decision 2026-10-19, `docs/thirty-days-wording`): §1.4 item 11 and §1.5. The words say *30 days, and for longer only while a backup you kept still holds it*, which is what the clean-up of [15](15-google-drive-backup-and-sharing.md) §5.1 does (`photo-sweep-rules.ts`, `PhotoSweepRules.kt`: the file moves to Drive's bin once its tombstone is older than 30 days and no kept backup could hold it); "at least 30 days" was written before the clean-up existed. |
+| 0.41 | 2026-10-20 | Claude (Code), engineer | **§5.1 agrees with #383.** The clean-up bullet now says *30 days, and longer only while a backup you kept still holds it*; the sentence "Settings says so (within 7 months, when no kept backup needs them)" is removed, because no such string exists on the web or the phones (checked in `en.ts`, `hi.ts`, `ta.ts`, `te.ts`, Android `strings.xml`), so there was nothing to change in the app; the 7-month figure stays only as the residual of RR-34. `docs-changelog.spec.ts` no longer pins the exact version list of this log. |
 
 **The owner's words (2026-10-02).** "Google Sign-In is to make a secure backup and restore drive and if possible to
 make it shareable to others using the same app/website. The backup can be time synced or manual with possibility of
@@ -501,9 +502,12 @@ My Drive/
   read `docs/schemas/photo-sweep-vectors.json`; the phones' tombstone source is `DriveConnectController.ownPhotoTombstones`,
   handed to the backup service through `PhotoTombstoneSource` (bound once by `DriveAssembly`).
 - **A photo is deleted from `Photos/`** only when it is a tombstone older than 30 days **and** no kept backup refers
-  to it. With the 6 monthly backups that means a deleted photo leaves Drive within about 7 months; Settings says so
-  ("Photos you delete leave your Google Drive within 7 months, when no kept backup needs them"), and *Delete all
-  backups* or *Delete everything* removes them at once.
+  to it. The words for the person are *30 days, and longer only while a backup you kept still holds it* (the privacy
+  page, the guide and §1.4 item 11; the wording of #383). With the 6 monthly backups the longest a deleted photo can stay
+  is about 7 months, and only while a backup made before the delete is kept; that figure is the residual in
+  [02](02-threat-model.md) RR-34, not a promise the screens make. The Settings screens carry no sentence about it today
+  (v0.40 said they did, with "within 7 months"; no such string was ever built in the web or the phones), so there is
+  no in-app string to keep in step. *Delete all backups* or *Delete everything* removes the photos at once.
 - **The website**: one tab syncs at a time (`navigator.locks`), so two tabs of one browser are one device. Its keys
   and data live in the browser's storage, which the browser may clear (Safari after 7 days without a visit for a site
   that is not on the Home Screen; any browser under storage pressure): at connect the website asks
