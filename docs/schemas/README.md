@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | `doorprints-backup/1` — the one backup format for server, Android and web |
-| Version | 1.75 |
-| Date | 2026-10-19 |
+| Version | 1.76 |
+| Date | 2026-10-20 |
 | Date | 2026-10-06 |
 | Author | Claude (Cowork) – Backend team |
 | Status | Pinned by story S4-00 (Sprint 4a). Changing anything here changes all three implementations at once. |
@@ -89,6 +89,7 @@
 | 1.73 | 2026-10-16 | Claude (Code), engineer | **`photo-restore-vectors.json`** (format `doorprints-photo-restore-vectors/1`, status *proposed*, S4b-BL-293, restoring photos from Drive): eight `plan` cases (which photos belong to a restored candidate: deleted a minute before it or later; the exact 30-day edge; a Drive file named by the sync file's row or by the device's own bookkeeping) and eight `summary` cases (the reasons in a fixed order, photos nobody recorded); read by the website's `data/drive/photo-restore-rules.spec.ts` and the phones' `PhotoRestoreVectorsTest`. Not part of any backup or sync format. |
 | 1.74 | 2026-10-16 | Claude (Code), engineer | **`photo-sweep-vectors.json`** (format `doorprints-photo-sweep-vectors/1`, status *proposed*, S4b-BL-293, the 30-day clean-up): thirteen cases of which deleted photos' Drive files the backup tidy may take (older than the window and strictly older than the oldest backup that stays; each boundary; no backup staying; a photo with no Drive file; one file named twice); read by the website's `data/drive/photo-sweep-rules.spec.ts` and the phones' `PhotoSweepRulesTest`. Not part of any backup or sync format. |
 | 1.75 | 2026-10-19 | Claude (Code), engineer | **`import-vectors.json` gains `limits`** (§6.1): the four ZIP-bomb numbers of an import (`maxEntries` 5 000, `maxUncompressedBytes` 1 GiB, `maxCompressionRatio` 100, `maxDataJsonBytes` 16 MiB) as one cross-stack constant. `ImportVectorsTest.theLimitsAreTheVectorsLimits` (Kotlin, which Android and the iPhone share), `backup-limits.spec.ts` (the website) and `BackupParityTest.theSharedImportLimitsAgreeWithTheServer` (the data.json cap, the server's only twin) hold every stack to them. No format change. |
+| 1.76 | 2026-10-20 | Claude (Code), engineer | **`country-pack-vectors.json`** (format `country-pack-vectors/1`, ADR-38, [03](../03-design.md) §21, new §8.2b; [06](../06-test-plan.md) TC-U-289, TC-U-290): what the code answered about money, phones, the geocoder and the AI words before the country pack existed (section `in`), and the answers of the synthetic second pack that exists in tests only (section `zz`). Read by the website's `country-pack.spec.ts` and `:shared`'s `CountryPackVectorsTest`. Additive: no existing file changed. |
 
 Related: [11 Feature parity and export spec](../11-feature-parity-and-export-spec.md) section 5.2 ·
 [03 Design](../03-design.md) ADR-20 and the API table (`GET /api/export`, `POST /api/import`) ·
@@ -808,6 +809,10 @@ portal shape is a new case here first. Since 1.30 the file also has share texts 
 ## 8.2a The India place vectors
 
 [`india-place-vectors.json`](india-place-vectors.json) (format `doorprints-india-place-vectors/1`) lists 55 places across India with their latitude and longitude and, for the 12 inside the held areas, `heldBy`. The website's `india-boundaries.spec.ts` draws a short admin line at each, through MapLibre's own filter evaluator and the real polygon, at tile zoom 9 and 14; the Android `IndiaBoundaryDataTest` tests the same points against the same polygon. Both must agree with the file, so a place cannot be 'in' on one app and 'out' on the other. The file does not change the boundary data (ADR-22); a new place is a new row here first.
+
+## 8.2b The country pack vectors
+
+[`country-pack-vectors.json`](country-pack-vectors.json) (format `country-pack-vectors/1`) holds the website and `:shared` to the same answers about everything the country pack carries ([03](../03-design.md) ADR-38, §21): digit grouping, money, the amount words, the phone comparison key, what the listing parser reads as a price, a rent or sale and a phone, what the redactor removes, the geocoder's parameters and queries, the starting view and box, the prompts' currency words and the speech tags. Section `in` is the shipped India pack and records what the code answered **before** the pack existed (no behaviour change); section `zz` is a synthetic country used in tests only (`web/src/app/shared/testing/zz-pack.ts`, `ZzPack.kt`) whose answers differ from India's on the same inputs, so a call site that still assumed India fails. A new country-specific rule is a new row here first, in both sections. The file never carries India's boundary lines (ADR-22); `xlsxFormat` has one value per stack because the two writers have always written the cell format differently.
 
 ## 8.3 The update sample
 

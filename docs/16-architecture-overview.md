@@ -142,6 +142,7 @@ stacks implement it, a vector file both test against. A rule that exists on thre
 | The server's REST API | [03](03-design.md) §9; the OpenAPI file `backend.yml` uploads as an artifact |
 | The AI request and answer shapes, prompts and the eval sets | [ai/ai-design.md](ai/ai-design.md) §6, §13, `ai/evals/` |
 | Path trace and place check | `schemas/trace-repeat-vectors.json`, schemas/README §6.4 |
+| The country pack: money, phones, geocoder and AI words, read by every feature (India's is the only real one) | `schemas/country-pack-vectors.json`, [03](03-design.md) §21 |
 | Deletion blast radius (one space never changes another) | `schemas/delete-scope-vectors.json` |
 | The shared default questions and moving-in list | `schemas/default-questions.json`, `default-movein.json` |
 
@@ -165,6 +166,7 @@ stacks implement it, a vector file both test against. A rule that exists on thre
 | Kind-aware AI | ADR-36, ADR-35 | [03](03-design.md) §18.11, §18.17; [ai/ai-design.md](ai/ai-design.md) §16.1 to §16.12 |
 | Own-key AI on the device, and the server's AI | ADR-26, ADR-35 | [03](03-design.md) §13, §13.1, §13.2; [ai/ai-design.md](ai/ai-design.md) |
 | Deletion safeguards (Undo, Recently deleted, Delete all in this space) | S4b-BL-283 to -285, -287 | [03](03-design.md) §20; [04](04-data-flow-diagrams.md) §5.2 |
+| The country pack (everything the app assumes about India, one object per stack; the boundary lines stay ADR-22's) | [03](03-design.md) ADR-38 | [03](03-design.md) §21; `web/src/app/shared/country/`, `android/shared/.../country/`; `tools/check-country-literals.mjs` |
 | Voice input | ADR-37 | [03](03-design.md) §19; [ai/voice-input.md](ai/voice-input.md); [ai/ai-design.md](ai/ai-design.md) §13.3, §8.8 |
 | Google Drive backup, sync, deletion and device keys | ADR-33 | [15](15-google-drive-backup-and-sharing.md); [03](03-design.md) §12.1 for the server's device keys |
 | Path trace and the place check | ADR-34 | [03](03-design.md) §6.2, §7.2a, §7.2b; [11](11-feature-parity-and-export-spec.md) 5.27 |

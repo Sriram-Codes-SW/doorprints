@@ -18,6 +18,7 @@
 
 package app.doorprints.shared.model
 
+import app.doorprints.shared.country.Country
 import app.doorprints.shared.records.RecordType
 import kotlinx.serialization.Serializable
 
@@ -89,8 +90,9 @@ val BrokerType: RecordType<Broker> = RecordType("broker", Broker.serializer())
  * matches nothing. The TypeScript twin is `phoneKey` in `web/src/app/shared/broker.ts`.
  */
 object PhoneKey {
-    const val MIN_DIGITS = 6
-    const val KEPT_DIGITS = 10
+    /** Fewer digits than this identify nobody, and the key keeps this many of the last: the country pack's (ADR-38). */
+    val MIN_DIGITS: Int get() = Country.pack.phone.keyMinDigits
+    val KEPT_DIGITS: Int get() = Country.pack.phone.keptDigits
 
     /** The comparison key of [phone], or null when it has too few digits to identify anyone. */
     fun of(phone: String?): String? {
