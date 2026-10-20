@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | Data flow diagrams (DFD) and data dictionary |
-| Version | 0.29 |
-| Date | 2026-10-15 |
+| Version | 0.30 |
+| Date | 2026-10-19 |
 | Author | Claude (Cowork) |
 | Status | Draft |
 
@@ -41,6 +41,7 @@
 | 0.27 | 2026-10-15 | Claude (Code), engineer | **DF-49 and Sarvam (S4b-BL-224, voice PR 7):** the destination `api.sarvam.ai` joins E6 for speech to text, with its own key slot (T-I52) and a 30 s cut; no new flow and no new trust boundary. |
 | 0.28 | 2026-10-16 | Claude (Code), engineer | **§5.2 items 3, 4 and 6: photos from the person's own Google Drive on *Restore*** (S4b-BL-293, owner decision 2026-10-16): a delete drops the photo from the device at once, the encrypted copy stays in the person's own Drive for at least 30 days so *Restore* can read it back and store it under a new id; the read is the existing sync channel (DF-25's Drive folder, the same `drive.file` scope, `dpx/1` files, nothing uploaded or deleted by the restore); no new data flow, store or trust boundary. |
 | 0.29 | 2026-10-19 | Claude (Code), engineer | **The photo wording made exactly true** (S4b-BL-293, owner decision 2026-10-19, `docs/thirty-days-wording`): §5.2 item 1. The words say *30 days, and for longer only while a backup you kept still holds it*, which is what the clean-up of [15](15-google-drive-backup-and-sharing.md) §5.1 does (`photo-sweep-rules.ts`, `PhotoSweepRules.kt`: the file moves to Drive's bin once its tombstone is older than 30 days and no kept backup could hold it); "at least 30 days" was written before the clean-up existed. |
+| 0.30 | 2026-10-19 | Claude (Code), docs | **Children's data in a school entry** (`docs/privacy-children-data`): §6 says what DF-21 and DF-32 can carry from a school entry's notes, that `ContactRedactor` does not remove a child's name written in a note, and that the privacy page says so ([02](02-threat-model.md) T-I55, RR-35; [13](13-release-security-checklist.md) G5). No new flow. |
 
 Related: [Threat model](02-threat-model.md) (uses these element IDs) · [Design](03-design.md) · [Requirements](01-requirements.md) · [AI docs](ai/)
 
@@ -390,6 +391,8 @@ flowchart LR
 The start location for "Plan visits" (class C3) goes to the API and, as part of the planner's tool results, may reach the LLM provider. The UI discloses that questions and matching house notes are sent to the configured provider (AI-010).
 
 **Voice input (website built, S4b-BL-221; Android built, S4b-BL-222; the iPhone in review, S4b-BL-223; S4b-BL-218, [03](03-design.md) ADR-37).** A microphone button in the Ask, Fill in from listing text and Plan notes boxes adds one flow, **DF-49** (section 7): the audio of a tap-to-talk recording (30 s at most) goes from P1/P4 to the AI provider the person already configured (E6; on a phone, *this device* keeps it on the phone when on-device recognition is forced). The reply is a transcript that lands in the text box as editable text; it is never sent on its own, and then DF-27 and DF-21/DF-22 run unchanged. The audio is never stored (bytes in memory only). A spoken phone number reaches E6 before `ContactRedactor` can act (T-I46, [02](02-threat-model.md) §11). Off by default. The website's side is built (S4b-BL-221): the audio is held by `AudioRecorder` in memory and passed to the `Transcriber`; TC-S-51 proves nothing else receives it. Android (S4b-BL-222): `AudioRecord` fills one array in `PcmVoiceRecorder` (a 16 kHz mono WAV built in memory, `audio/wav`), `VoiceSession` ends it at 60 s or 2 MB and on every exit, and `OwnKeyTranscription` sends it with the person's own key; TC-S-52 proves no file, preference, row, log line, backup or sync file receives it. iPhone (S4b-BL-223): an `AVAudioEngine` input tap copies the samples into a bounded in-memory queue and the same `PcmVoiceRecorder` array (no `AVAudioRecorder`, no file); TC-S-53 reads the source for any other receiver.
+
+**A school entry's notes and a child's details (T-I55; [13](13-release-security-checklist.md) G5).** A school entry holds the school, the fees and the commute, and whatever the person types into its notes; that can be about a child. No new flow: the entry travels on the flows it already has, **DF-10** to **DF-17** (the person's own server), the encrypted Drive files and backups of §5, readable copies and shares (§6a), and, only when AI is on with the person's own key, **DF-21** and **DF-32** (and **DF-49** for a spoken note, as audio). `ContactRedactor` removes the saved contact names and phone numbers of brokers and schools from DF-21 and DF-32; it does **not** remove a child's name that was written into a note. The owner receives none of it (no server of ours). The privacy page's *Children* section says all this in four languages and advises against writing a child's name or identifying details in notes.
 
 
 ## 6a. Level 2: Offline copy and import (Sprint 4a)

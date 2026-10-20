@@ -283,6 +283,35 @@ describe('privacy.html', () => {
     expect(doc.body.querySelector('time[datetime]')?.getAttribute('datetime')).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 
+  it("states children's-data handling in every language (docs/13 G5): a school entry, where it goes, the redactor's limit, voice audio", () => {
+    const sections = [...doc.body.querySelectorAll('section[lang]')];
+    const en = text(sections[0]);
+    for (const phrase of [
+      'A school entry may hold details about a child',
+      'the school, the fees and the commute',
+      'no accounts and no tracking',
+      'with a key of your own',
+      'do not write a child',
+      'does not remove a child',
+      'kept in the device\'s memory only while it is sent',
+      'only to the provider you chose',
+    ]) {
+      expect(en, phrase).toContain(phrase);
+    }
+    expect(en).not.toContain('collects no one');
+    // hi, ta and te each carry a Children paragraph (under review, English governs) that names the redactor's limit and
+    // the voice-audio sentence, so a translation cannot silently lose either.
+    for (const s of sections.slice(1)) {
+      const lang = s.getAttribute('lang')!;
+      const paragraphs = [...s.querySelectorAll('p')].map((p) => text(p));
+      const kids = paragraphs.filter((p) => /^(बच्चे|குழந்தைகள்|పిల్లలు):/.test(p));
+      expect(kids, lang).toHaveLength(1);
+      expect(kids[0], lang).toMatch(/redactor|रिडैक्टर|redactor|రెడాక్టర్/);
+      expect(kids[0], lang).toMatch(/Google Drive/);
+      expect(paragraphs.some((p) => /^(आवाज़|குரல்|వాయిస్):/.test(p)), lang).toBe(true);
+    }
+  });
+
   it('names no email address: the contact is the public issues page (no personal address on a public page)', () => {
     expect(privacyHtml).not.toMatch(/[\w.+-]+@[\w-]+\.[\w.]+/);
     expect(privacyHtml).not.toMatch(/mailto:/i);

@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | SSDLC document index |
-| Version | 0.133 |
+| Version | 0.134 |
 | Date | 2026-10-20 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -32,6 +32,7 @@
 | 0.130 | 2026-10-19 | Claude (Code), engineer | The release security checklist run on the v0.1.0 candidate (`11072090`): new session record [ops/release-run-2026-10-19.md](ops/release-run-2026-10-19.md) with every row of 13 section 3 (counts, the one FAIL, the owner's list). No other document changed. |
 | 0.131 | 2026-10-19 | Claude (Code), engineer | The first release is v0.1.1 (docs 14 v0.202, 13 v0.24: A5 and A6 name the owner's settings); the web README storage audit table matches the code (7 stores, `doorprints-drive`, `doorprints-offline-maps-v1`). |
 | 0.133 | 2026-10-20 | Claude (Code), engineer | Introduction: the tagline is "Remember every place you've seen." and the website keeps schools as well as houses ([03](03-design.md) ADR-13b; `feat/school-release-web`, #389); versions: 01 v0.53, 03 v0.176, 05 v0.35, 10 v0.359, 12 v0.12, 13 v0.27, 14 v0.204. |
+| 0.134 | 2026-10-20 | Claude (Code), docs | Children's-data wording for the school kind, a draft for the owner's approval (`docs/privacy-children-data`): `web/public/privacy.html` *Children* section and a voice-audio sentence in four languages; 02 v0.99 (T-I55, RR-35 proposed), 04 v0.30 (§6), 13 v0.28 (G5). |
 | 0.112 | 2026-10-06 | Claude | The review backlog: docs/01 v0.41, 06 v0.131 (section 10.1), 07 v0.60, 14 v0.89. |
 | 0.111 | 2026-10-06 | Claude | Full-system review fixes and the manual test checklist (`docs/ops/manual-test-checklist.md`): docs/07 v0.59, docs/14 v0.88. |
 | 0.110 | 2026-10-06 | Claude | Review fixes on PR #139: docs/10 v0.149, 06 v0.130, 15 v0.27. |
