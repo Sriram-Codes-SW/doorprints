@@ -91,7 +91,7 @@ class VoiceTierGateTest {
     private val calls = mutableListOf<Call>()
     private var reply: () -> Pair<Int, String> = { 200 to "{}" }
     private val engine = MockEngine { request ->
-        calls += Call(request.method, request.url.toString(), request.headers, String(request.body.toByteArray()))
+        calls += Call(request.method, request.url.toString(), request.headers, request.body.toByteArray().decodeToString())
         val (status, body) = reply()
         respond(body, HttpStatusCode.fromValue(status), Headers.build { append("Content-Type", "application/json") })
     }
@@ -185,7 +185,7 @@ class VoiceTierGateTest {
     @Test
     fun noAnswerAtAllIsUnknownAndAskedAgainAfterAMinute() = runTest {
         own(AiProviderConfig.GEMINI)
-        reply = { throw java.io.IOException("offline") }
+        reply = { error("offline") }
         assertEquals(VoiceVerdict.REFUSE_UNKNOWN, gate.verdict(subject()))
         assertEquals(1, calls.size)
         assertEquals(VoiceVerdict.REFUSE_UNKNOWN, gate.verdict(subject()))

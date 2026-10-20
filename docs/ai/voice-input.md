@@ -179,7 +179,7 @@ for that key's hash only and asked again when the key changes. That is the fail-
 **never allow unknown** by deleting that switch (the `canAcknowledge` rule in `voice-tier.ts` and `VoiceTier.kt` and the setting row);
 Groq and Sarvam then cannot be used for voice.
 
-**Residual risk (RR-33, re-rated to mitigated with residual, Medium-Low; the owner's acceptance is still to be recorded):** invisible opt-in programmes (OpenAI's
+**Residual risk (RR-33, re-rated to mitigated with residual, Medium-Low; accepted by the owner 2026-10-19, confirmed 2026-10-20, conditional on this control staying in the release):** invisible opt-in programmes (OpenAI's
 complimentary tokens, OpenRouter's account-level logging), provider policy drift, and *unknown plan + a stated paid plan* trust. The
 standing control is the re-check of this section at each release ([13](../13-release-security-checklist.md) F11).
 
