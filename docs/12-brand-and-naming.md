@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Brand and naming: the web address, the app icon, fallbacks, brand screening, custom-domain policy, naming guidelines and the import / backup / copy vocabulary |
-| Version | 0.11 |
+| Version | 0.12 |
 | Date | 2026-10-15 |
 | Author | Claude (Cowork), Docs team, from the brand advisor's naming brief of 2026-09-23 |
 | Status | Draft. The address (section A) and the import vocabulary (section G) are **decided** by the owner; the hi/ta/te wording in section G is a **first draft pending native-speaker review** (I18N-B06) |
@@ -23,6 +23,7 @@
 | 0.9 | 2026-10-15 | Claude (Code), docs | New section H: the root README may describe the kinds model; the tagline, the store listing and the meta description stay house-only until a second kind is in `AVAILABLE_KINDS` of a release. |
 | 0.10 | 2026-10-15 | Claude (Code), engineer | H: **"compiled in, off" is not "released"** (owner, 2026-10-15): the website's build lists the school behind *Experimental: more than houses* (off by default); the tagline, store listing and meta description stay house-only until `RELEASED_KINDS` gains a kind. |
 | 0.11 | 2026-10-15 | Claude (Code), engineer | H: the phones too (owner, 2026-10-15; `feat/kinds-24-ship-school-phones`): the Android release and the iPhone list the school behind *Experimental: more than houses* (off by default) and release the house alone; the tagline, the store listing and the phones' About text stay house-only; the switch hint and the school listing tips say *preview*. |
+| 0.12 | 2026-10-20 | Claude (Code), engineer | **H rewritten** (owner, 2026-10-19: tagline A; `feat/school-release-web`, #389): the tagline is kind-neutral, the descriptions name the released kinds, the store long name is "Doorprints: Visit Diary" with the tagline as its short description, the phones' words are unchanged ([03](03-design.md) ADR-13b). |
 
 Related: [Design, ADR-21](03-design.md) · [Build and deploy §6.3](07-secure-build-and-deploy.md#63-web-firebase-hosting) · [UX, a11y and i18n](05-ux-accessibility-i18n.md) · [Requirements §6.9](01-requirements.md) · [Backup format](schemas/README.md) · [Sprint log §11.6](10-sprint-log.md)
 
@@ -75,7 +76,7 @@ to the main address (section B).
 
 **WhatsApp sharing.** WhatsApp turns any `https://` address into a link with a preview card showing the page title
 and the meta description, which is already the tagline in the reader's language: "Doorprints — Remember every
-house you've seen." Keep the `<title>` and Open Graph tags aligned with it. **Always share the full
+place you've seen." Keep the `<title>` and Open Graph tags aligned with it. **Always share the full
 `https://doorprints.web.app` form**: the bare form without `https://` is still linked by WhatsApp, but some older
 Android browsers may not treat it as a web address.
 
@@ -207,7 +208,7 @@ cannot read a backup back in until the Sprint 4b web import ships ([05](05-ux-ac
 | Web address | `https://doorprints.web.app` (or `doorprints.in` if ever bought, section D). Always share it with `https://` | `doorprints.pages.dev`, `doorprints-test…`, the `firebaseapp.com` twin, GitHub Pages addresses |
 | Subdomains or extra sites (if a custom domain is bought) | Plain English nouns: `help.`, `status.`, `api.` | `dev.`, `beta.`, `app2.`, `new.` |
 | Non-public test sites | Non-public and outside the brand: a separate Firebase project with a neutral ID, linked from nowhere. Hosting preview channels are **not** used ([07](07-secure-build-and-deploy.md) §6.3): each is a public address | Preview links sent to real users |
-| Store listing name | **"Doorprints"**. If Play requires more words: "Doorprints: House Visit Diary" or "Doorprints – Remember every house" (listing only) | "Doorprints Lite", "Doorprints Beta", "Doorprints India", keyword stuffing ("Rent Flat PG House Finder") |
+| Store listing name | **"Doorprints"**. If Play requires more words: "Doorprints: Visit Diary" or "Doorprints – Remember every place" (listing only) | "Doorprints Lite", "Doorprints Beta", "Doorprints India", keyword stuffing ("Rent Flat PG House Finder") |
 | Store short description | The tagline in each language, from the glossary `app.tagline` | New wording that drifts from the tagline |
 | Package / bundle IDs for new apps | The existing Android app keeps `app.doorprints` (changing it makes a new app). New apps: `in.doorprints.<app>` only if `doorprints.in` is owned; otherwise `io.github.sriramcodessw.doorprints.<app>` | IDs under a domain the owner does not control, such as `com.doorprints.*` (the `.com` is a reseller's) |
 | Feature names | Capitalised two-word names with an everyday noun: **Hunt mode**, **Street memory**, **Stay detection**. The feature name is translated (unlike the brand), with the glossary as the single source | Brand-prefixed names ("DoorHunt", "PrintMode"), jargon ("geofence alerts"), puns that do not survive translation |
@@ -306,19 +307,22 @@ the file holds. Neither sentence ships yet; they are for the Sprint 4b import sc
 | [schemas](schemas/README.md) | §0 "What an import is" |
 | [10](10-sprint-log.md) | §12 Sprint 4b: S4b-00 and the renames still to do |
 
-## H. Where the kinds model may be named (2026-10-15)
+## H. Where the kinds model may be named (2026-10-15; rewritten 2026-10-20 for the school's release on the website)
 
 - The **root README** may describe the kinds model and what exists beyond houses (one `candidate` with a `kind` from a kind
-  file; schools as a preview: compiled into the website, off by default, not released), so a developer or an owner sees what the code can do.
-- The **tagline** ("Remember every house you've seen."), the **store listing** and the **meta description** of the website
-  stay **house-only** until a second kind is *released* (`RELEASED_KINDS` on the website; the phones' released list). Since
-  2026-10-15 the website's build has the school **compiled in but off** (listed in `AVAILABLE_KINDS`, behind the switch
-  *Experimental: more than houses*, off by default): that is not a release, and the words do not change (`seo.spec.ts`). Until then
-  nothing a person installs or finds in a search says "more than houses". The wording for the day it changes is a follow-up to
-  ADR-13 (the rename, [03](03-design.md) §14) and needs the owner's decision.
-- **The phones (2026-10-15).** The Android release and the iPhone list `house,school` (`AVAILABLE_KINDS`, `IOS_AVAILABLE_KINDS`): the school is *compiled in, off*, behind
-  *Experimental: more than houses* in Settings > What you track, and `KindSettingRules.RELEASED` stays the house. That is not a release: the store listing,
-  the app's name and tagline and every string a house hunter meets stay house-only; only the switch's hint and the school's AI help carry a *preview* mark.
+  file; houses and schools on the website, schools as a preview on the phones), so a developer or an owner sees what the code can do.
+- The **tagline** is **kind-neutral** (owner, 2026-10-19, option A): "Remember every place you've seen." ([03](03-design.md) ADR-13b).
+  It names no single kind, so it does not change when a kind is released. The **meta description**, the cards, the JSON-LD, the
+  manifest and the about page **name every released kind and no other**: today houses and schools on the website
+  ("Doorprints: Remember every place you've seen. Save, rate and compare the houses and schools you visit."), enforced by
+  `seo.spec.ts` against `RELEASED_KINDS`. When the owner releases or withdraws a kind the descriptions are decided again.
+- **The store listing** (the phones, later): name **"Doorprints"**, long name **"Doorprints: Visit Diary"**, short description = the
+  tagline. It is written when the phones release the school (their gates are separate); until then no store listing exists.
+- **The phones (2026-10-15, unchanged by the website's release of 2026-10-20).** The Android release and the iPhone list `house,school`
+  (`AVAILABLE_KINDS`, `IOS_AVAILABLE_KINDS`): the school is *compiled in, off*, behind *Experimental: more than houses* in
+  Settings > What you track, and `KindSettingRules.RELEASED` stays the house. Their strings (including `app_tagline`) are as they were
+  and follow in the phones' release; only the switch's hint and the school's AI help carry a *preview* mark. A school made on the
+  website is drawn as a house on a phone until its switch is on (the guide says so).
 - The apps' strings keep the rule of G.1: never "kind" or "space" in front of a person.
 
 ## Sources
