@@ -17,7 +17,7 @@
  */
 
 // The reader of a kind file a person imports against the shared vectors, the schema and hostile input (docs/03 ADR-38; docs/02 T-T25;
-// docs/06 TC-U-292). The phones and the server read the same vectors.
+// docs/06 TC-U-289). The phones and the server read the same vectors.
 import Ajv2020 from 'ajv/dist/2020';
 import { describe, expect, it } from 'vitest';
 import kindSchema from '../../../../../docs/schemas/kinds/kind.schema.json';

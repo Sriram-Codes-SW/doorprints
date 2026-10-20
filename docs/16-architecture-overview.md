@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | Architecture overview: the one entry page for the high-level and low-level design |
-| Version | 0.6 |
-| Date | 2026-10-15 |
+| Version | 0.7 |
+| Date | 2026-10-20 |
 | Owner | Lead (Claude, Code); product owner: Sriram |
 | Status | Draft |
 
@@ -23,6 +23,7 @@ stays in [03](03-design.md) and the satellites named below.
 | 0.4 | 2026-10-15 | Claude (Code), docs | The `school` kind is described as compiled in but off, offered after the switch (`docs/school-compiled-in-wording`). |
 | 0.5 | 2026-10-15 | Claude (Code), docs | Kinds: capabilities, every word from the kind file and the generated word tables (kinds PR 25 to 31, [03](03-design.md) §18.19 to §18.25) in §6. |
 | 0.6 | 2026-10-16 | Claude (Code), docs | Kinds: the conformance kind `zz_all` and the kind tripwire (kinds PR 32, [03](03-design.md) §18.26, ADR-36b) in §6. |
+| 0.7 | 2026-10-20 | Claude (Code), engineer | Kinds a person adds ([03](03-design.md) ADR-38, §18.28): the website module `core/user-kinds` in §6. |
 
 ## 1. Ten minutes
 
@@ -162,6 +163,7 @@ stacks implement it, a vector file both test against. A rule that exists on thre
 | Kinds and spaces (chooser, What you track, per-space Compare, Ask, Plan and copies, phones, the server's list of kinds) | [03](03-design.md) ADR-36 | [03](03-design.md) §18.12 to §18.15 (§18.1 to §18.11 the kind file and its doors); `app.kinds.available` / `KINDS_AVAILABLE` on the server |
 | Kind capabilities (Hunt, Compare, contacts, rooms, viewings, filters) and a kind's words (`words` ids, generated from the files by `tools/gen-kind-words.mjs`) | [03](03-design.md) ADR-36 | [03](03-design.md) §18.19 to §18.25; [schemas/README.md](schemas/README.md) §8.4 |
 | Kind-aware AI | ADR-36, ADR-35 | [03](03-design.md) §18.11, §18.17; [ai/ai-design.md](ai/ai-design.md) §16.1 to §16.12 |
+| Kinds a person adds (a kind file imported, its reader, the three layers, the backup) | [03](03-design.md) ADR-38 | [03](03-design.md) §18.28; `web/src/app/core/user-kinds/`; [schemas](schemas/README.md) §8.4 (`user-kind.schema.json`, `user-kind-vectors.json`) |
 | Own-key AI on the device, and the server's AI | ADR-26, ADR-35 | [03](03-design.md) §13, §13.1, §13.2; [ai/ai-design.md](ai/ai-design.md) |
 | Deletion safeguards (Undo, Recently deleted, Delete all in this space) | S4b-BL-283 to -285, -287 | [03](03-design.md) §20; [04](04-data-flow-diagrams.md) §5.2 |
 | Voice input | ADR-37 | [03](03-design.md) §19; [ai/voice-input.md](ai/voice-input.md); [ai/ai-design.md](ai/ai-design.md) §13.3, §8.8 |

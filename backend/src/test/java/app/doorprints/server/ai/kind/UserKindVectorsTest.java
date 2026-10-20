@@ -34,7 +34,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * The kinds a person adds (docs/03 ADR-38, docs/06 TC-U-292): the server stores no such kind and serves none, but they are the
+ * The kinds a person adds (docs/03 ADR-38, docs/06 TC-U-289): the server stores no such kind and serves none, but they are the
  * same format as its built-in files, so its one reader ({@link KindFiles#parse}) is held to the shared vectors
  * ({@code docs/schemas/kinds/user-kind-vectors.json}): it takes every valid sample, refuses exactly the invalid cases whose
  * {@code base} is true (the rules of the built-in format: size, duplicate, prototype and map keys, ids, types, ranges,

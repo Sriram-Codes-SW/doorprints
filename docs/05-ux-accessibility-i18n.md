@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | 05 UX, accessibility and i18n |
-| Version | 0.36 |
+| Version | 0.37 |
 | Date | 2026-10-20 |
 | Author | Claude (Cowork) – Design team |
 | Status | Draft |
@@ -49,6 +49,7 @@
 | 0.34 | 2026-10-13 | Claude (Code), engineer | Size to what is visible (S4b-BL-49): the phone map region is sized in CSS (`100cqh` less the counters' rem height, a 212 px floor for the map row), the actions sit under the map and the legend in its corner; nothing is measured by a script. |
 | 0.35 | 2026-10-20 | Claude (Code), engineer | Glossary: `app.tagline` on the website is the kind-neutral "Remember every place you've seen." in four languages ([03](03-design.md) ADR-13b; `feat/school-release-web`, #389); the phones' `app_tagline` is unchanged for now. |
 | 0.36 | 2026-10-20 | Claude (Code), engineer | Glossary: the phones' `app_tagline` follows the website ("Remember every place you've seen.", Settings > About only) and the empty house list keeps the old words under a new Android key `houses_first_run_title` ([03](03-design.md) ADR-13b; `feat/school-release-phones`); the switch hint and the school listing tips lose their preview marks. |
+| 0.37 | 2026-10-20 | Claude (Code), engineer | **Kinds you add** ([03](03-design.md) ADR-38, `feat/user-authored-kinds-web`): the settings, the preview and the refusals, in four languages; the neutral words of such a space. |
 
 ---
 
@@ -1075,6 +1076,9 @@ web's add mode, an accessible **pick-a-spot mode** (a centre crosshair and a 48 
 planned for Sprint 4b ([11](11-feature-parity-and-export-spec.md) §10, Android handover 22).
 
 ---
+
+
+**Kinds you add (website, [03](03-design.md) ADR-38).** In Your data > What you track: the switch *Kinds you add (experimental)* with its hint; while on, *Import a kind file* (a labelled native file input, its limits in the hint), a preview region with a heading that takes focus (name, fields, checklist, whether it replaces one), *Add this kind* and *Cancel*, a refusal as `role="alert"` with the reason in plain words and where in the file, a `role="status"` notice; each added kind's row says *Added by you* and has *Remove kind* (named for the kind). The person's own words are shown as written in every language (no translation, no markup); the app's words are in en, hi, ta and te (hi, ta, te under review); the space's words name no house (`ukind.*`).
 
 ## 15. Appendix: Design and UX self-check
 

@@ -36,6 +36,8 @@ import { isUserKindId, userKindIds } from './user-kinds/user-kind-ids';
  * - **Released** kinds ({@link RELEASED_KINDS}) need no switch: the house and, since the school's release, the school. Every
  *   other available kind is offered only while the person turns on *Experimental: more than houses*, which is shown only
  *   in a build that ships such a kind (none today, so the switch is hidden; the mechanism stays for the next kind).
+ * - **Kinds a person adds** from a kind file (docs/03 ADR-38, `user-kinds/user-kinds.ts`) are available once imported, offered
+ *   only while *Kinds you add (experimental)* ({@link CUSTOM_KINDS_KEY}) is on, whatever *Experimental* says, and never released.
  * - **Enabled** kinds are the offered ones the person turned on in Settings > Kinds (the house alone by default), and
  *   the **default** kind is the one the app opens with when only one is enabled, and the one deep links, `/houses/new`,
  *   the share target and notifications assume.
