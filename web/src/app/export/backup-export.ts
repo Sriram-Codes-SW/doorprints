@@ -581,7 +581,7 @@ export function buildBackupZip(
 ): Uint8Array {
   const data = buildBackupData(bundle);
   // Written in the new family (kinds step 3): `/1`, `search`, `candidates` with `kind`, `money` and `extras`.
-  const current = currentOf(data as unknown as Record<string, unknown>, bundle.spaces);
+  const current = currentOf(data as unknown as Record<string, unknown>, bundle.spaces, bundle.userKinds);
   // `Doorprints-copy-<date>.html`, the same name as the HTML download. Only the readers' *view* of a backup: no
   // importer reads this entry (Android's `BackupValidation` only checks that its path is safe), so the rename from
   // `Doorprints-<date>.html` cannot break an import either way; Android's `ExportFormat.HTML` follows it (handover).
@@ -633,7 +633,7 @@ export function buildBackupZip(
 
 /** `data.json` of a copy as the file holds it: the rows of {@link buildBackupData} in the new family (`backup-family.ts`). */
 export function backupDataJson(bundle: ExportBundle): string {
-  return backupJson(currentOf(buildBackupData(bundle) as unknown as Record<string, unknown>, bundle.spaces));
+  return backupJson(currentOf(buildBackupData(bundle) as unknown as Record<string, unknown>, bundle.spaces, bundle.userKinds));
 }
 
 /**

@@ -172,6 +172,8 @@ export interface ExportBundle {
   voice?: KindFields;
   /** The kinds enabled and the default (Settings > Kinds, S4b-BL-212), for the backup's `search`; none for the house alone. */
   spaces?: SearchSpaces;
+  /** The kind files this browser added (docs/03 ADR-38), for the backup's `search.userKinds`; none when there are none. */
+  userKinds?: readonly object[];
 }
 
 /** The contact fields; they are blanked rather than removed so every export has the same shape. */
@@ -204,6 +206,8 @@ export interface CollectInput {
   spaces?: SearchSpaces;
   /** Whether a candidate is in the space of `options.space` (left out: every candidate is). */
   inSpace?: (h: HouseRecord) => boolean;
+  /** The kind files this browser added (docs/03 ADR-38), for the backup's `search.userKinds`; left out for none. */
+  userKinds?: readonly object[];
   exportedAt: string;
   options: ExportOptions;
 }
@@ -318,6 +322,7 @@ export function collect(input: CollectInput): ExportBundle {
     ...(extraColumns.length ? { extraColumns } : {}),
     ...(voice ? { voice } : {}),
     ...(input.spaces && !(input.spaces.kinds.length === 1 && isBaselineKind(input.spaces.kinds[0])) ? { spaces: input.spaces } : {}),
+    ...(input.userKinds?.length ? { userKinds: input.userKinds } : {}),
     counts: {
       houses: houses.length,
       visits: houses.reduce((n, h) => n + h.visits.length, 0),
