@@ -97,6 +97,8 @@ has licence && start docs-versions bash -c "cd '$ROOT' && node --test tools/chec
 has licence && start kind-words bash -c "cd '$ROOT' && node --test tools/gen-kind-words.test.mjs && node tools/gen-kind-words.mjs --check"
 # Always: the kind tripwire (kinds PR 32, docs/03 section 18.26): no source names the house kind outside tools/kind-literals-allow.json, none names zz_all, the map rules read no kind.
 has licence && start kind-literals bash -c "cd '$ROOT' && node --test tools/check-kind-literals.test.mjs && node tools/check-kind-literals.mjs"
+# Always: the country tripwire (ADR-38, docs/03 section 21): no source writes a rupee sign, +91, lakh or crore outside the two country packs and tools/country-literals-allow.json; the packs read no kind.
+has licence && start country-literals bash -c "cd '$ROOT' && node --test tools/check-country-literals.test.mjs && node tools/check-country-literals.mjs"
 # Always: the floor guard (S4b-BL-157), this branch against origin/main; exit 2 (no origin/main) fails here too.
 has licence && start floor bash -c "cd '$ROOT' && node --test tools/check-floor.test.mjs && node tools/check-floor.mjs"
 # Always: the file-size budget (S4b-BL-205; warn at 600 lines, fail at 900, the allowlist in tools/size-budget.json only shrinks).

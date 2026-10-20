@@ -25,6 +25,7 @@ import app.doorprints.shared.ai.OpenAiAudioTranscriber
 import app.doorprints.shared.ai.SarvamTranscriber
 import app.doorprints.shared.ai.TranscribeCapability
 import app.doorprints.shared.ai.Transcriber
+import app.doorprints.shared.country.Country
 import io.ktor.client.HttpClient
 
 /**
@@ -82,7 +83,7 @@ object VoiceInput {
     fun keyTerms(kind: String): String = if (kind == "school") {
         "CBSE, ICSE, fees, classes, admission, school bus"
     } else {
-        "2 BHK, 3 BHK, lakh, crore, sq ft, rent, deposit, maintenance, society, locality"
+        Country.pack.voiceHouseKeyTerms
     }
 
     /**
@@ -115,11 +116,9 @@ object VoiceInput {
         if (choice.provider == VoiceProvider.SARVAM) AudioLimits.SARVAM_MAX_DURATION_MS else AudioLimits.MAX_DURATION_MS
 
     /** The spoken language as a BCP 47 tag from the app's language (`hi-IN`); the provider may hear another one. */
-    fun langHint(appLanguage: String?): String = when (appLanguage?.lowercase()?.substringBefore('-')) {
-        "hi" -> "hi-IN"
-        "ta" -> "ta-IN"
-        "te" -> "te-IN"
-        else -> "en-IN"
+    fun langHint(appLanguage: String?): String {
+        val locale = Country.pack.locale
+        return locale.speech[appLanguage?.lowercase()?.substringBefore('-')] ?: locale.fallback
     }
 
     /** The transcriber for the saved choice and the person's own [key], or null where the provider cannot take audio. */
