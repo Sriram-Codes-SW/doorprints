@@ -29,6 +29,7 @@ import app.doorprints.shared.voice.RecordedClip
 import app.doorprints.shared.voice.VoiceFailure
 import app.doorprints.shared.voice.VoiceRecorder
 import app.doorprints.shared.voice.VoiceRecorderException
+import app.doorprints.shared.voice.VoiceTierGate
 import app.doorprints.ui.VoiceServices
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -73,6 +74,9 @@ class FakeVoiceServices(
     var words = "two bhk near Baner"
     val clips = mutableListOf<RecordedClip>()
     val kinds = mutableListOf<String>()
+
+    /** The free-plan rule (ADR-37); a test builds one over its own settings and a fake provider. */
+    override var tierGate: VoiceTierGate? = null
 
     override fun newRecorder(): VoiceRecorder = FakeMicRecorder(failOnStart).also { recorders += it }
     override fun microphoneGranted() = granted

@@ -17,6 +17,7 @@
  */
 
 import type { RecorderEnv } from '../audio-recorder';
+import { writeAck, writeTier } from '../voice-tier-store';
 
 /**
  * A fake microphone for the voice specs: no real device, no real `MediaRecorder`, no provider call. The "audio" is text
@@ -146,4 +147,14 @@ export function fakeMic(behaviour: 'ok' | 'NotAllowedError' | 'NotFoundError' | 
     now: () => Date.now(),
   };
   return { env, streams, asked: () => asked, gate: () => open?.() };
+}
+
+/**
+ * Lets voice through the free-plan rule for `key` in a spec that is about something else (ADR-37): a paid verdict kept for a
+ * key the rule probes (Gemini, OpenRouter), the person's confirmation for one it cannot read (Groq, Sarvam). OpenAI needs
+ * neither. The specs of the rule itself never call this.
+ */
+export function allowVoicePlan(provider: string, key: string): void {
+  if (provider === 'gemini' || provider === 'openrouter') writeTier(provider, key, 'ALLOW', 'test', Date.now());
+  else if (provider !== 'openai') writeAck(provider, key, true);
 }

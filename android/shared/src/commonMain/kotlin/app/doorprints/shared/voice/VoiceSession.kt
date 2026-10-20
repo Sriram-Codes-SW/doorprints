@@ -36,7 +36,7 @@ enum class VoicePhase { IDLE, STARTING, RECORDING, TRANSCRIBING }
 enum class VoiceStatus { STARTING, RECORDING, WORKING, DONE, DONE_LIMIT, DONE_CUT, DONE_EARLY, CANCELLED }
 
 /** Why the last try did not give words; [PROVIDER] carries the service's own failure in [VoiceUi.error]. */
-enum class VoiceProblem { DENIED, NO_DEVICE, FAILED, NOTHING_HEARD, TOO_LONG, PROVIDER }
+enum class VoiceProblem { DENIED, NO_DEVICE, FAILED, NOTHING_HEARD, TOO_LONG, PROVIDER, PLAN_FREE, PLAN_UNKNOWN }
 
 /** What the button shows: [seconds] is the recording's length so far; at most one of [status] and [problem] is set. */
 data class VoiceUi(
@@ -195,6 +195,7 @@ class VoiceSession(
                         AudioClipRejected.Reason.TOO_LARGE, AudioClipRejected.Reason.TOO_LONG -> VoiceProblem.TOO_LONG
                         AudioClipRejected.Reason.UNSUPPORTED_TYPE -> VoiceProblem.FAILED
                     })
+                    e is VoiceTierRefused -> VoiceUi(problem = if (e.verdict == VoiceVerdict.REFUSE_FREE) VoiceProblem.PLAN_FREE else VoiceProblem.PLAN_UNKNOWN)
                     else -> VoiceUi(problem = VoiceProblem.PROVIDER, error = e)
                 }
             } finally {

@@ -25,9 +25,9 @@ import { clearLocalLeftovers, clearSessionLeftovers } from '../../pages/data/ses
 import { TranslationService } from '../../i18n/translation.service';
 import { AiService } from '../ai.service';
 import type { AiProviderConfig } from '../ai/ai-provider-config';
-import { GeminiTranscriber, OpenAiAudioTranscriber } from '../ai/transcriber';
+import { GeminiTranscriber, OpenAiAudioTranscriber, transcribePresetOf } from '../ai/transcriber';
 import { SARVAM_KEY_KEY, VOICE_INPUT_KEY, VOICE_PROVIDER_KEY } from '../storage-keys';
-import { FAKE_AUDIO, FAKE_AUDIO_B64, FakeRecorder, fakeMic } from './testing/voice-fakes';
+import { FAKE_AUDIO, FAKE_AUDIO_B64, FakeRecorder, allowVoicePlan, fakeMic } from './testing/voice-fakes';
 import { RECORDER_ENV, VoiceInputService, keyTermsFor, transcriberFor } from './voice-input.service';
 
 /**
@@ -59,6 +59,7 @@ function setup(opts: { config?: AiProviderConfig; own?: boolean; enabled?: boole
       { provide: RECORDER_ENV, useValue: opts.recorder === false ? { ...mic.env, recorder: null } : mic.env },
     ],
   });
+  allowVoicePlan(transcribePresetOf(ai.aiConfig()), 'own-key-not-real-1234');
   return { service: TestBed.inject(VoiceInputService), ai, mic };
 }
 
@@ -310,6 +311,7 @@ describe('VoiceInputService with Sarvam (voice PR 7, S4b-BL-224, TC-U-265)', () 
     service.setEnabled(true);
     service.setProvider('sarvam');
     service.saveSarvamKey(fakeKey('0001'), false);
+    allowVoicePlan('sarvam', fakeKey('0001'));
     expect((service.newRecorder() as unknown as { maxMs: number }).maxMs).toBe(30_000);
     const heard = await service.transcribe(clip(), 'house');
     expect(heard.text).toBe('two bhk in Beltola');
@@ -327,6 +329,7 @@ describe('VoiceInputService with Sarvam (voice PR 7, S4b-BL-224, TC-U-265)', () 
     service.setEnabled(true);
     service.setProvider('sarvam');
     service.saveSarvamKey(fakeKey('0001'), false);
+    allowVoicePlan('sarvam', fakeKey('0001'));
     await expect(service.transcribe({ ...clip(), durationMs: 31_000 }, 'house')).rejects.toMatchObject({ reason: 'tooLong' });
     expect(f).not.toHaveBeenCalled();
   });

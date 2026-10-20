@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | The complete manual test list for Doorprints before real-system testing starts and before Android/iOS development continues: every check a person redoes on real devices, whether or not an automated suite or a review session already covered it |
-| Version | 0.31 |
-| Date | 2026-10-15 |
+| Version | 0.32 |
+| Date | 2026-10-19 |
 | Author | Claude, senior reviewer |
 | Status | Draft |
 
@@ -43,6 +43,7 @@
 | 0.29 | 2026-10-16 | Claude (Code), engineer | **MT-121** (TC-M-89; kinds PR 32, [03](../03-design.md) §18.26): TC-M-25 in a school's and the synthetic kind's space. Not run. |
 | 0.30 | 2026-10-16 | Claude (Code), engineer | **MT-122** (TC-M-90; S4b-BL-293, [15](../15-google-drive-backup-and-sharing.md) §1.4 item 11): a deleted candidate's photos come back from the real Google Drive on *Restore*, and what is said when they cannot. Not run. |
 | 0.31 | 2026-10-16 | Claude (Code), engineer | **MT-123** (TC-M-91; S4b-BL-293, [15](../15-google-drive-backup-and-sharing.md) §5.1): the 30-day clean-up and *Retry photos* against the real Drive on the phone. Not run. |
+| 0.32 | 2026-10-19 | Claude (Code), engineer | **MT-124..MT-126** (TC-M-92..TC-M-94; voice refuses a free plan, owner decision 2026-10-19, [03](../03-design.md) ADR-37 §19, [02](../02-threat-model.md) T-I54, RR-33): a real free and a real paid Gemini key, an OpenRouter key, and the confirmation for Groq and Sarvam. Nothing is run. |
 
 ## 1. How to use this list
 
@@ -1235,3 +1236,40 @@ Expected: no photo is stored twice; a backup never fails because the clean-up co
 | ID | Name | Who | Env | Pass | Notes |
 |---|---|---|---|---|---|
 | MT-123 | The 30-day clean-up takes a deleted photo's file, and Retry photos brings the rest back | owner | E3 | no | |
+
+## 23. Voice input refuses a free plan, with real keys (TC-M-92..TC-M-94)
+
+Needs a Gemini key from a project **without** billing (free), a Gemini key from a project **with** billing (paid), an OpenRouter key from an account that has never bought credits and one from an account that has, a browser with its network panel, one Android phone (E3) and about 40 minutes. Do not paste any key anywhere but the app's own field. Nothing here is run; the unit tests use fake providers. The provider facts are re-read at each release (13 F11).
+
+#### MT-124 A real free Gemini key
+
+1. In the browser, *AI features* on, the free key saved, *Voice input* turned on. In the network panel a **single** request goes to `generativelanguage.googleapis.com` (`gemini-3.1-pro-preview:generateContent`, body one word, no audio) and the answer is a 429 whose body names a quota id ending `-FreeTier`.
+2. Ask a question: the *Speak* button is dimmed and the line under it reads *Voice input is not available on a free Gemini plan: a free plan may let Gemini use what you say to improve its products. Use a paid key, or type instead.* Pressing it asks for no microphone permission and sends nothing. With a screen reader, the button is announced with that sentence as its description. In Settings the same sentence shows and there is no switch to override it.
+3. Repeat on the phone (Settings > AI features), and in Hindi, Tamil and Telugu (the sentences are *under review*).
+
+Expected: no microphone permission prompt, no audio recorded, only the one probe sent. Record the quota id the 429 names, to check it against the vectors.
+
+#### MT-125 A real paid Gemini key
+
+1. Save the paid key, turn *Voice input* on: *Speak* is enabled after a moment; one probe went out and its answer was a 200 (or a 429 naming no `FreeTier` quota).
+2. Speak and stop: the words land in the box. Reload the page: no second probe within seven days (the kept verdict is used).
+3. Use the **free** key's project for an ordinary *Ask*, until a 429 with a free-tier quota id arrives (or swap the saved key for the free one): the microphone turns off at once, without a new probe.
+
+Expected: the paid key works end to end; the free signal on an ordinary request turns voice off.
+
+#### MT-126 OpenRouter, Groq and Sarvam
+
+1. OpenRouter key from an account that never bought credits: the free-plan sentence (the key's answer has `is_free_tier` true); from an account that has bought credits: *Speak* is enabled; a `:free` model is refused whatever the key.
+2. Groq key: *Speak* is dimmed with *Doorprints cannot tell whether your Groq plan is paid…*; in Settings switch on *My Groq plan is paid; I understand a free plan may let Groq use my voice*: *Speak* is enabled. Save a different Groq key: the switch is off again. Same for Sarvam.
+3. Check that the confirmation and the verdicts are in no backup, copy or Drive file (open one and search for `voice.tier`).
+
+Expected: the rows of the vectors hold with real providers. Record any provider whose answer differs.
+
+### 23.1 Summary rows (add to §13 when the owner starts the run)
+
+| ID | Name | Who | Env | Pass | Notes |
+|---|---|---|---|---|---|
+| MT-124 | A real free Gemini key is refused before any audio | owner | E3, browser | no | |
+| MT-125 | A real paid Gemini key is allowed; a later free-tier 429 turns it off | owner | E3, browser | no | |
+| MT-126 | OpenRouter's free and paid keys, and Groq and Sarvam's confirmation | owner | E3, browser | no | |
+

@@ -175,8 +175,8 @@ On the website, a microphone button can sit under the boxes of **Ask**, **Plan**
 it, speak, tap **Stop**, and the words are written into the box. You read and change them; nothing is sent to the AI until
 you press the box's own button (**Ask**, **Plan route** or **Fill in the form**).
 
-It is **off until you turn it on**: on the Connect page, under **AI features**, tick **Voice input**. It works only with your
-own AI key, and only with a service that takes audio: **Gemini**, **OpenAI**, **Groq** or **OpenRouter**. It is not available
+It is **off until you turn it on**: on the Connect page, under **AI features**, tick **Voice input**. It works only with a
+**paid** plan (see [Voice input needs a paid plan](#voice-input-paid-plan)), with your own AI key, and only with a service that takes audio: **Gemini**, **OpenAI**, **Groq** or **OpenRouter**. It is not available
 when your server answers, with **Anthropic**, with a program on your computer, or with a custom address.
 
 - **Where the audio goes.** A recording of up to a minute goes from this browser straight to the service you chose, which
@@ -196,7 +196,7 @@ it, speak, tap **Stop**, and the words are written into the box. You read and ch
 you press the box's own button (**Ask**, **Plan from my location** or **Fill in**).
 
 It is **off until you turn it on**: in **Settings**, under **AI features**, turn on **Voice input** (it shows once your own
-AI key is saved). It works only with your own AI key, and only with a service that takes audio: **Gemini**, **OpenAI**,
+AI key is saved). It works only with a **paid** plan (see [Voice input needs a paid plan](#voice-input-paid-plan)), with your own AI key, and only with a service that takes audio: **Gemini**, **OpenAI**,
 **Groq** or **OpenRouter**. It is not available when your server answers, with **Anthropic**, with a program on your
 computer, or with a custom address; Settings then says why.
 
@@ -219,6 +219,17 @@ Instead of your AI service, **Sarvam** (an Indian speech-to-text service, Sarvam
 - **Where the audio goes.** A recording of up to **30 seconds** goes straight to api.sarvam.ai, about INR 0.50 a minute at their list price. Numbers and names you say are sent as audio, as with the other services. The recording is not saved.
 - **Sarvam as a chat service.** Sarvam is also in the **AI service** list for the AI itself (Ask, Plan, Fill in); that is a separate choice with its own key and has nothing to do with speech.
 - **Everything else is as above:** off until you turn on **Voice input**, the words land in the box for you to check, nothing is sent until the box's own button, the microphone is asked for only when you tap it.
+
+### Voice input needs a paid plan {#voice-input-paid-plan}
+
+Voice input sends what you say to your AI service. A **free plan** of a service may let that service use what you say to improve its products, so Doorprints **refuses voice on a free plan** and says so: *Voice input is not available on a free Gemini plan: a free plan may let Gemini use what you say to improve its products. Use a paid key, or type instead.* The microphone button is dimmed with that sentence under it, nothing is recorded, and typing works as always. Ask, Plan and Fill in with typed text are not affected.
+
+- **Gemini:** when you turn **Voice input** on, Doorprints makes one small test call to Google with your key (one word, no audio, none of your houses). If Google answers that the key is on the free plan, voice is refused; with billing turned on, the microphone is enabled. If a later ordinary question shows the key is on the free plan, voice turns off at once.
+- **OpenRouter:** a key from an account that has never bought credits, and any model whose name ends in `:free`, is refused; a key from an account that has bought credits is allowed.
+- **OpenAI** has no free plan for its API, so it is allowed. (OpenAI also runs an opt-in programme of free tokens for shared data; Doorprints cannot see whether your account joined it, so check your OpenAI data-sharing setting.)
+- **Groq and Sarvam:** no test can tell the plan, so voice stays off until you confirm it: under **Voice input**, tick **My Groq plan is paid; I understand a free plan may let Groq use my voice** (the same for Sarvam). The tick is remembered for that key only; with a new key you are asked again. Only tick it when the plan really is paid.
+- **A program on your computer** (Ollama, LM Studio) keeps the audio on your computer. A **custom address** is your own choice and is not checked.
+- The answer is kept on the device for a day (free) or a week (paid), never in a backup, a copy or a Drive file, and it never holds your key or what was said.
 
 ## More than houses (experimental) {#other-kinds}
 

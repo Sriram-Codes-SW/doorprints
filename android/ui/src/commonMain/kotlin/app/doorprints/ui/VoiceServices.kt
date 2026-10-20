@@ -25,6 +25,7 @@ import app.doorprints.shared.voice.RecordedClip
 import app.doorprints.shared.voice.VoiceFailure
 import app.doorprints.shared.voice.VoiceRecorder
 import app.doorprints.shared.voice.VoiceRecorderException
+import app.doorprints.shared.voice.VoiceTierGate
 
 /**
  * What *Voice input* needs from the phone around it (docs/03 ADR-37, S4b-BL-222): the microphone, its permission and the
@@ -42,6 +43,12 @@ interface VoiceServices {
 
     /** True where this phone can record: a microphone and a recorder. False draws no microphone button and asks for nothing. */
     val recordable: Boolean get() = false
+
+    /**
+     * The free-plan rule (owner decision 2026-10-19, ADR-37): voice input refuses a free plan and lets a paid one through. A platform
+     * that offers a microphone must say how it checks; with none the microphone is drawn disabled, never enabled by default.
+     */
+    val tierGate: VoiceTierGate? get() = null
 
     /** A new recorder, used once; it opens the microphone only when [VoiceRecorder.start] is called (the person's tap). */
     fun newRecorder(): VoiceRecorder = throw VoiceRecorderException(VoiceFailure.NO_DEVICE)

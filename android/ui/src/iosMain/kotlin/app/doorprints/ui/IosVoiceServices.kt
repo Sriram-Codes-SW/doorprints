@@ -28,6 +28,7 @@ import app.doorprints.shared.voice.OwnKeyTranscription
 import app.doorprints.shared.voice.PcmVoiceRecorder
 import app.doorprints.shared.voice.RecordedClip
 import app.doorprints.shared.voice.VoiceRecorder
+import app.doorprints.shared.voice.VoiceTierGate
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -44,7 +45,8 @@ internal class IosVoiceServices(
     settings: SettingsStore,
     http: () -> HttpClient,
 ) : VoiceServices {
-    private val transcription by lazy { OwnKeyTranscription(settings, http()) }
+    override val tierGate: VoiceTierGate by lazy { VoiceTierGate(settings, http()) }
+    private val transcription by lazy { OwnKeyTranscription(settings, http(), tierGate) }
 
     /**
      * The one thread the capture loop blocks on (`read` waits for the next buffer): kotlinx.coroutines has no public IO

@@ -16,18 +16,22 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-import { Injectable, InjectionToken, computed, inject, signal } from '@angular/core';
+import { Injectable, InjectionToken, computed, effect, inject, signal, untracked } from '@angular/core';
 import { TranslationService } from '../../i18n/translation.service';
 import { LANGUAGES } from '../../i18n/languages';
 import { AiService } from '../ai.service';
 import { type AiProviderConfig, aiHostOf } from '../ai/ai-provider-config';
-import { OnDeviceAiError } from '../ai/on-device-ai.service';
+import type { FetchLike } from '../ai/ai-request';
+import { GEMINI_MODEL, OnDeviceAiError } from '../ai/on-device-ai.service';
 import {
   GeminiTranscriber, MAX_AUDIO_MS, OpenAiAudioTranscriber, SARVAM_HOST, SARVAM_MAX_AUDIO_MS, SarvamTranscriber, type Transcriber, type Transcript,
   canTranscribe, transcribePresetOf,
 } from '../ai/transcriber';
 import { SARVAM_KEY_KEY, VOICE_INPUT_KEY, VOICE_PROVIDER_KEY } from '../storage-keys';
 import { AudioRecorder, type RecordedClip, type RecorderEnv, browserRecorderEnv, canRecord } from './audio-recorder';
+import { ALLOW_TTL_MS, REFUSE_FREE_TTL_MS, type TierProbe, type VoiceVerdict, canAcknowledge, decideVoiceTier, keyHash, needsProbe } from './voice-tier';
+import { forgetTier, readAck, readTier, tierVersion, writeAck, writeTier } from './voice-tier-store';
+import { probeTier } from './voice-tier-probe';
 
 /**
  * The *Voice input* setting and the one place a recorded clip becomes text (docs/03 ADR-37, docs/ai/voice-input.md).
@@ -41,6 +45,22 @@ import { AudioRecorder, type RecordedClip, type RecorderEnv, browserRecorderEnv,
 
 /** The browser's microphone and recorder, replaceable in tests. */
 export const RECORDER_ENV = new InjectionToken<RecorderEnv>('RECORDER_ENV', { factory: () => browserRecorderEnv() });
+
+/** The call the free-plan check makes (a test's replacement); the real one is the browser's `fetch`. */
+export const VOICE_TIER_FETCH = new InjectionToken<FetchLike>('VOICE_TIER_FETCH', { factory: () => (input, init) => fetch(input, init) });
+
+/** Thrown, before any request, when the free-plan rule does not allow voice for this key (the words come from `voice.tier*`). */
+export class VoiceTierRefusedError extends Error {
+  constructor(readonly verdict: Exclude<VoiceVerdict, 'ALLOW'>, readonly provider: string) {
+    super(verdict);
+  }
+}
+
+/** The provider's name as the person knows it, for the words about its plan. */
+const PROVIDER_NAMES: Readonly<Record<string, string>> = { gemini: 'Gemini', openai: 'OpenAI', openrouter: 'OpenRouter', groq: 'Groq', sarvam: 'Sarvam' };
+
+/** A probe that could not tell is asked again after this long, when something asks (the switch, a new screen). */
+const REPROBE_AFTER_MS = 60_000;
 
 /**
  * The transcription model each speech-capable preset is called with (the later setting may let the person choose): OpenAI's
@@ -85,6 +105,11 @@ export class VoiceInputService {
   private readonly ai = inject(AiService);
   private readonly i18n = inject(TranslationService);
   private readonly env = inject(RECORDER_ENV);
+  private readonly tierFetch = inject(VOICE_TIER_FETCH);
+  /** What the probe found for one key (by fingerprint), in memory only; a verdict worth keeping is also written by the store. */
+  private readonly probeState = signal<{ fp: string; probe: TierProbe; at: number } | null>(null);
+  private readonly inflight = new Map<string, Promise<void>>();
+  private lastFp: Record<string, string> = {};
   private readonly enabledState = signal(readVoice());
   /** This browser's own *Voice input* switch. */
   readonly enabled = this.enabledState.asReadonly();
@@ -96,6 +121,23 @@ export class VoiceInputService {
   readonly hasSarvamKey = computed(() => this.sarvamKeyState() !== '');
   /** The last four characters of the saved Sarvam key, for "saved (ends …)"; empty for a short key. */
   readonly sarvamKeyHint = computed(() => (this.sarvamKeyState().length >= 8 ? this.sarvamKeyState().slice(-4) : ''));
+
+  constructor() {
+    // The plan is read once the person has turned Voice on and the service has a key; a replaced key's verdict and
+    // confirmation are dropped, so the next key is asked again.
+    effect(() => {
+      if (!this.enabledState() || !this.usable()) return;
+      const provider = this.tierProvider();
+      const key = this.tierKey();
+      untracked(() => {
+        const fp = key === '' ? '' : keyHash(key);
+        const before = this.lastFp[provider];
+        if (before !== undefined && before !== fp && before !== '') forgetTier(before);
+        this.lastFp[provider] = fp;
+        void this.refreshTier();
+      });
+    });
+  }
 
   /** The person's own AI is the one in use and it takes audio: what the switch can do anything for. */
   readonly providerOk = computed(() => this.ai.usesOwnKey() && canTranscribe(this.ai.aiConfig()));
@@ -109,6 +151,39 @@ export class VoiceInputService {
    */
   readonly available = computed(() => this.enabledState() && this.ai.enabled() && this.usable() && canRecord(this.env));
 
+  /** The provider the audio would go to, as the rule knows it: `sarvam` for the Sarvam service, else the AI provider's preset. */
+  readonly tierProvider = computed(() => (this.providerState() === 'sarvam' ? 'sarvam' : transcribePresetOf(this.ai.aiConfig())));
+  /** The provider's name for the words about its plan. */
+  readonly tierProviderName = computed(() => PROVIDER_NAMES[this.tierProvider()] ?? this.tierProvider());
+
+  /**
+   * Whether the free-plan rule lets this key send audio (owner decision 2026-10-19, ADR-37): `ALLOW`, `CHECKING` (the one
+   * probe is under way), `REFUSE_FREE` (a free plan, no way round) or `REFUSE_UNKNOWN` (the plan cannot be read: refused until
+   * the person confirms it is paid). Read again after every write of a verdict or an acknowledgement.
+   */
+  readonly verdict = computed<VoiceVerdict>(() => {
+    tierVersion();
+    this.probeState();
+    return this.currentVerdict();
+  });
+
+  /** The microphone may record: it is offered and the rule says `ALLOW`. Nothing is recorded while this is false. */
+  readonly micEnabled = computed(() => this.available() && this.verdict() === 'ALLOW');
+
+  /** Whether the person confirmed this key's plan is paid. */
+  readonly acknowledged = computed(() => {
+    tierVersion();
+    const key = this.tierKey();
+    return key !== '' && readAck(keyHash(key), this.tierProvider(), key);
+  });
+
+  /** The confirmation is offered: the rule cannot read this provider's plan (or its probe could not tell) and it is not a free plan. */
+  readonly canConfirmPaid = computed(() => {
+    const provider = this.tierProvider();
+    if (!canAcknowledge(provider) || this.verdict() === 'REFUSE_FREE' || this.verdict() === 'CHECKING') return false;
+    return !needsProbe(provider) || this.probeFor(this.tierKey()) === 'unknown';
+  });
+
   /** The host the audio goes to, for the disclosure. */
   readonly host = computed(() => (this.providerState() === 'sarvam' ? SARVAM_HOST : aiHostOf(this.ai.aiConfig())));
 
@@ -121,6 +196,71 @@ export class VoiceInputService {
   readonly maxMs = computed(() => (this.providerState() === 'sarvam' ? SARVAM_MAX_AUDIO_MS : MAX_AUDIO_MS));
   /** True when the limit is the short one (the words on screen say "30 seconds"). */
   readonly shortLimit = computed(() => this.providerState() === 'sarvam');
+
+  /** The key the audio call would use: Sarvam's own, else the AI key. */
+  private tierKey(): string {
+    return this.providerState() === 'sarvam' ? this.sarvamKeyState() : this.ai.ownKey();
+  }
+
+  /** The transcription model the request would name, for the `:free` rule. */
+  private tierModel(): string {
+    const preset = this.tierProvider();
+    return preset === 'gemini' ? GEMINI_MODEL : (TRANSCRIBE_MODELS[preset] ?? '');
+  }
+
+  private probeFor(key: string): TierProbe {
+    const state = this.probeState();
+    if (state === null || key === '' || state.fp !== keyHash(key)) return 'none';
+    // A definite answer is also kept in storage with its lifetime; here it holds only for that long (storage may be blocked).
+    const ttl = state.probe === 'free' ? REFUSE_FREE_TTL_MS : state.probe === 'paid' ? ALLOW_TTL_MS : Infinity;
+    return Date.now() - state.at < ttl ? state.probe : 'none';
+  }
+
+  /** The rule, applied to what is known now. A plain method: the second check before a request calls it, not a cached value. */
+  private currentVerdict(): VoiceVerdict {
+    const provider = this.tierProvider();
+    const key = this.tierKey();
+    const fp = keyHash(key);
+    return decideVoiceTier({
+      provider,
+      model: this.tierModel(),
+      probe: this.probeFor(key),
+      cached: key === '' ? null : readTier(fp, provider, key, Date.now()),
+      acknowledged: key !== '' && readAck(fp, provider, key),
+    });
+  }
+
+  /**
+   * Reads the plan if the rule is still waiting for it: one call, only for Gemini and OpenRouter, only online, never twice at
+   * once for a key. Resolves when the answer is in (or there was nothing to ask).
+   */
+  refreshTier(): Promise<void> {
+    const provider = this.tierProvider();
+    const key = this.tierKey();
+    if (key === '' || !needsProbe(provider) || !this.usable()) return Promise.resolve();
+    const fp = keyHash(key);
+    const state = this.probeState();
+    const retry = state?.fp === fp && state.probe === 'unknown' && Date.now() - state.at > REPROBE_AFTER_MS;
+    if (this.inflight.has(fp)) return this.inflight.get(fp)!;
+    if (!retry && this.currentVerdict() !== 'CHECKING') return Promise.resolve();
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return Promise.resolve();
+    this.probeState.set({ fp, probe: 'running', at: Date.now() });
+    const run = probeTier(provider, key, this.tierFetch)
+      .then((probe) => {
+        if (probe === 'free') writeTier(provider, key, 'REFUSE_FREE', 'probe', Date.now());
+        else if (probe === 'paid') writeTier(provider, key, 'ALLOW', 'probe', Date.now());
+        this.probeState.set({ fp, probe, at: Date.now() });
+      })
+      .finally(() => this.inflight.delete(fp));
+    this.inflight.set(fp, run);
+    return run;
+  }
+
+  /** Records or withdraws "my plan is paid" for the key now in use (asked again for a new key). */
+  setAcknowledged(on: boolean): void {
+    const key = this.tierKey();
+    if (key !== '') writeAck(this.tierProvider(), key, on);
+  }
 
   /** Chooses the service (localStorage: a preference, not a secret). */
   setProvider(p: VoiceProvider): void {
@@ -190,7 +330,16 @@ export class VoiceInputService {
         ? new SarvamTranscriber(this.sarvamKeyState())
         : transcriberFor(this.ai.aiConfig(), this.ai.ownKey(), kind);
     if (t === null) return Promise.reject(new OnDeviceAiError('unavailable'));
-    return t.transcribe(clip.bytes, clip.mime, this.langHint(), clip.durationMs);
+    // The second check, before the request (ADR-37): the rule is asked again here, from what is stored now, so a button that
+    // was drawn, a stale value or a caller that skipped the first check cannot send audio for a plan the rule refuses.
+    return this.confirmAllowed().then(() => t.transcribe(clip.bytes, clip.mime, this.langHint(), clip.durationMs));
+  }
+
+  /** Resolves when the rule says `ALLOW` (reading the plan first when it is still unknown); else rejects, and nothing is sent. */
+  private async confirmAllowed(): Promise<void> {
+    if (this.currentVerdict() === 'CHECKING') await this.refreshTier();
+    const verdict = this.currentVerdict();
+    if (verdict !== 'ALLOW') throw new VoiceTierRefusedError(verdict, this.tierProvider());
   }
 }
 
