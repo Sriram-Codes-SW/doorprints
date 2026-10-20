@@ -103,8 +103,8 @@
    "reason": "The label registry: the house's table (a copy of house.json)."
   },
   "web/src/app/core/kind-setting.ts": {
-   "max": 6,
-   "reason": "The kind settings rules: the baseline kind is always available and enabled, the stored default and list (docs/03 section 18.12)."
+   "max": 7,
+   "reason": "The kind settings rules: the baseline kind is always available and enabled, the stored default and list (docs/03 section 18.12); RELEASED_KINDS names the released kinds, the owner's release gate (ADR-13b)."
   },
   "web/src/app/core/kind-words.generated.ts": {
    "max": 1,
