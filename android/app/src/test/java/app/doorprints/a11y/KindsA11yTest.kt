@@ -121,8 +121,12 @@ class KindsA11yTest(private val lang: String) {
 
     private fun text(res: org.jetbrains.compose.resources.StringResource) = runBlocking { getString(res) }
 
-    /** Shows [content] at 200 % text on the store that lists the school, waits for [ready], and settles. */
-    private fun show(ready: String, content: @Composable () -> Unit) {
+    /**
+     * Shows [content] at 200 % text on the store that lists the school, waits for [ready], and settles. [data] is what the screen
+     * draws once Room has answered, when its [ready] heading is static: the chooser draws its heading at once and its cards after the
+     * first answer of the store's flow, so a test that asserted on the cards straight after the heading raced that answer.
+     */
+    private fun show(ready: String, data: () -> Boolean = { true }, content: @Composable () -> Unit) {
         compose.setContent {
             CompositionLocalProvider(LocalInspectionMode provides true) {
                 kinds.Provide {
@@ -134,6 +138,7 @@ class KindsA11yTest(private val lang: String) {
             }
         }
         compose.waitUntil(10_000) { compose.onAllNodes(hasText(ready, substring = true), useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty() }
+        compose.waitUntil(10_000) { shadowOf(Looper.getMainLooper()).idle(); data() }
         repeat(3) {
             shadowOf(Looper.getMainLooper()).idle()
             compose.waitForIdle()
@@ -154,14 +159,14 @@ class KindsA11yTest(private val lang: String) {
 
     @Test fun chooserHasNoViolationsAndReadsInOrderWithItsHeadings() {
         val on = KindSetting(both, experimental = "1", enabledText = "[\"house\",\"school\"]")
-        show(text(Res.string.chooser_heading)) {
+        val buttons = SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button)
+        show(text(Res.string.chooser_heading), data = { compose.onAllNodes(buttons and hasText("1", substring = true)).fetchSemanticsNodes().size == 2 }) {
             CompositionLocalProvider(LocalSpace provides SpaceUi(on, "house")) { ChooserScreen(onOpen = {}, onOpenSettings = {}) }
         }
         audit("chooser")
         val title = text(Res.string.chooser_heading)
         compose.onNode(heading and hasText(title)).assertExists()
         // A card is one button and its name is its visible words: the kind, then its count.
-        val buttons = SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button)
         val cards = compose.onAllNodes(buttons and hasText("1", substring = true)).fetchSemanticsNodes()
         assertEquals("two cards, each a Button naming its count", 2, cards.size)
         // Reading order is the screen's order: the heading, the cards, then the way to Settings.
