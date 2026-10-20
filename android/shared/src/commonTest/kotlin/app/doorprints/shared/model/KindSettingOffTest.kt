@@ -34,26 +34,49 @@ class KindSettingOffTest {
     private val shipped = KindSettingRules.availableOf("house,school")
     private val houseBuild = KindSetting()
 
+    /**
+     * A build that lists the school with the school *unreleased*: the case *Experimental: more than houses* exists for. The school
+     * was released on the phones on 2026-10-20 (docs/03 ADR-13b), so the mechanism is held by pinning the released list to the house
+     * (the website's `pinReleased`); [releasedSchoolIsOfferedWithNoSwitch] holds the real list.
+     */
+    private fun unreleased(available: List<String>, experimental: String? = null, enabled: String? = null, default: String? = null) =
+        KindSetting(available, experimental, enabled, default, released = listOf(KindSettingRules.HOUSE))
+
     /** The shipped list with the switch off, and any stored list or default (a backup's hint, an old build, a hand-edited file). */
     private val offVariants = listOf(
-        KindSetting(shipped),
-        KindSetting(shipped, null, "[\"house\",\"school\"]", "school"),
-        KindSetting(shipped, "0", "[\"school\"]", "school"),
-        KindSetting(shipped, "", "[\"house\",\"school\"]", null),
-        KindSetting(shipped, "true", "not json", "school"),
+        unreleased(shipped),
+        unreleased(shipped, null, "[\"house\",\"school\"]", "school"),
+        unreleased(shipped, "0", "[\"school\"]", "school"),
+        unreleased(shipped, "", "[\"house\",\"school\"]", null),
+        unreleased(shipped, "true", "not json", "school"),
     )
 
     @Test
     fun experimentalOffIsTheHouseAlone() {
-        val s = KindSetting(shipped)
+        val s = unreleased(shipped)
         assertEquals(listOf("house", "school"), s.available)
-        assertEquals(listOf("house"), KindSettingRules.RELEASED, "the school is available, not released")
+        assertEquals(listOf("house"), s.released, "the school is available, not released (pinned, see unreleased())")
         assertFalse(s.experimentalOn)
         assertEquals(listOf("house"), s.offered)
         assertEquals(listOf("house"), s.enabled)
         assertEquals("house", s.default)
         assertFalse(s.spaces)
         assertEquals(true, s.hasUnreleased, "the build lists a kind that needs the switch, so Settings shows the switch")
+    }
+
+    @Test
+    fun releasedSchoolIsOfferedWithNoSwitch() {
+        assertEquals(listOf("house", "school"), KindSettingRules.RELEASED, "the school is released on the phones (ADR-13b)")
+        val s = KindSetting(shipped)
+        assertEquals(listOf("house", "school"), s.offered, "offered with the switch off")
+        assertEquals(listOf("house"), s.enabled, "but shown only after the person turns it on")
+        assertEquals("house", s.default)
+        assertFalse(s.spaces, "the app is the house app, with no chooser")
+        assertFalse(s.hasUnreleased, "no unreleased kind is listed, so Settings hides Experimental: more than houses")
+        val shown = s.withKindEnabled("school", true)
+        assertEquals(listOf("house", "school"), shown.enabled)
+        assertEquals(true, shown.spaces)
+        assertEquals(houseBuild.spaceOf("school"), s.spaceOf("school"), "a school is held in the one space while it is not shown")
     }
 
     @Test
@@ -93,7 +116,7 @@ class KindSettingOffTest {
 
     @Test
     fun turningTheSwitchOffAgainPutsTheHouseBuildBackAndKeepsNothingEnabled() {
-        val on = KindSetting(shipped).withExperimental(true).withKindEnabled("school", true).withDefault("school")
+        val on = unreleased(shipped).withExperimental(true).withKindEnabled("school", true).withDefault("school")
         assertEquals(listOf("house", "school"), on.enabled)
         assertEquals("school", on.default)
         assertEquals(true, on.spaces)

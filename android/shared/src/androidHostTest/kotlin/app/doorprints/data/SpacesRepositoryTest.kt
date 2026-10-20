@@ -139,9 +139,10 @@ class SpacesRepositoryTest {
         assertEquals("school", stored.defaultText)
         assertEquals(listOf("house", "school"), stored.enabled)
         assertTrue(stored.spaces)
-        // Back to the house alone: the keys are removed, not left at their defaults.
-        settings.editKindSetting { it.withExperimental(false) }
-        assertEquals(KindSetting(both), settings.kindSetting().first().copy(enabledText = null, defaultText = null))
+        // Back to the house alone: the keys are removed, not left at their defaults. (The school is released, so the switch is not
+        // what turns it off; the Schools row is.)
+        settings.editKindSetting { it.withKindEnabled("school", false) }
+        assertEquals(KindSetting(both), settings.kindSetting().first().copy(experimental = null, enabledText = null, defaultText = null))
         assertEquals(listOf("house"), settings.kindSetting().first().enabled)
     }
 

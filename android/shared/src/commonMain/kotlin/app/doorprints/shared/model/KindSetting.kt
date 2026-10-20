@@ -29,9 +29,10 @@ import kotlinx.serialization.json.JsonPrimitive
  * shared or put in a copy, and every doubt (a missing or broken value, a kind the build does not offer) falls back to
  * the house alone, which is the app a house hunter has always had.
  *
- * - **Available** kinds are what the build ships ([available]): a build made with no list lists the house alone; the release build lists the school too (compiled in, off).
- * - **Released** kinds ([RELEASED]) need no switch; every other available kind is offered only while the person turns on
- *   *Experimental: more than houses*, which is shown only in a build that ships such a kind.
+ * - **Available** kinds are what the build ships ([available]): a build made with no list lists the house alone; the release build lists the school too.
+ * - **Released** kinds ([RELEASED]) need no switch: the house and, since the school's release on the phones (docs/03 ADR-13b), the
+ *   school. Every other available kind is offered only while the person turns on *Experimental: more than houses*, which is
+ *   shown only in a build that ships such a kind (none today, so the switch is hidden; the mechanism stays for the next kind).
  * - **Enabled** kinds are the offered ones the person turned on (the house alone by default), and the **default** kind
  *   is the one a link, a notification or a shared listing is saved as.
  *
@@ -43,12 +44,14 @@ data class KindSetting(
     val experimental: String? = null,
     val enabledText: String? = null,
     val defaultText: String? = null,
+    /** The released kinds; only a test of the mechanism of an *unreleased* kind passes another list (the website's `pinReleased`). */
+    val released: List<String> = KindSettingRules.RELEASED,
 ) {
     /** Whether the person turned *Experimental: more than houses* on (`1`); off on any doubt. */
     val experimentalOn: Boolean get() = experimental == "1"
 
     /** The kinds the settings screen lists: the released ones, and the others only while the switch is on. */
-    val offered: List<String> get() = available.filter { it in KindSettingRules.RELEASED || experimentalOn }
+    val offered: List<String> get() = available.filter { it in released || experimentalOn }
 
     /** The enabled kinds, in the build's order: the stored list kept to the offered kinds; none left means the house. */
     val enabled: List<String>
@@ -64,7 +67,7 @@ data class KindSetting(
     val spaces: Boolean get() = enabled.size > 1
 
     /** Whether this build ships a kind that needs the switch (what shows *Experimental: more than houses*). */
-    val hasUnreleased: Boolean get() = available.any { it !in KindSettingRules.RELEASED }
+    val hasUnreleased: Boolean get() = available.any { it !in released }
 
     /** The settings with the switch on or off; off, the unreleased kinds leave the screens and their entries are kept. */
     fun withExperimental(on: Boolean): KindSetting = copy(experimental = if (on) "1" else null)
@@ -101,7 +104,7 @@ object KindSettingRules {
     const val HOUSE = "house"
 
     /** The kinds that need no experimental switch: the owner opens a kind's release gate by adding it here (never before S4b-BL-268..271). */
-    val RELEASED: List<String> = listOf(HOUSE)
+    val RELEASED: List<String> = listOf(HOUSE, "school")
 
     /** Every built-in kind, the house first. */
     val BUILT_IN: List<String> = listOf(HOUSE, "school")
