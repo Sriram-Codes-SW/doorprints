@@ -594,7 +594,7 @@ public final class KindFiles {
                 List.copyOf(filters), List.copyOf(copyOrder));
     }
 
-    /** The blocks of a house's copy after its details, in the fixed order of the copies (docs/03 section 18.27); {@code copyOrder} lists some of them. */
+    /** The blocks of a house's copy after its details, in the fixed order of the copies (docs/03 section 18.28); {@code copyOrder} lists some of them. */
     static final List<String> COPY_BLOCKS = List.of("cost", "rooms", "questions", "viewings", "areaNotes", "distances", "moveIn",
             "checklist", "visits", "notes", "photos");
 

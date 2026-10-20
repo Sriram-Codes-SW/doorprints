@@ -63,7 +63,7 @@ export interface KindCapabilities {
   readonly baseline: boolean;
   /** The extras the list and the map can be filtered by, in the order the rows are shown (ids of enum, switch, number or amount extras of the kind). */
   readonly filters: readonly string[];
-  /** The blocks of a copy (Markdown and HTML) that come first after the details, in this order; the rest follow in {@link COPY_BLOCKS}'s order (docs/03 §18.27). None: the fixed order. */
+  /** The blocks of a copy (Markdown and HTML) that come first after the details, in this order; the rest follow in {@link COPY_BLOCKS}'s order (docs/03 §18.28). None: the fixed order. */
   readonly copyOrder: readonly CopyBlock[];
 }
 

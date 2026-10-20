@@ -77,7 +77,7 @@ object MarkdownWriter {
             val details = listOf(s["col.status"] to s.status(h.status)) + ExportRows.detailLines(h, bundle)
             table(out, listOf("", ""), details.map { listOf(it.first, it.second) })
 
-            // The blocks after the details, each its own text; the kind's `copyOrder` says which comes first (docs/03 section 18.27), the house's fixed order is the default.
+            // The blocks after the details, each its own text; the kind's `copyOrder` says which comes first (docs/03 section 18.28), the house's fixed order is the default.
             val costBlock = StringBuilder().also { b ->
                 val cost = ExportRows.costBlock(h, bundle)
                 if (cost.isNotEmpty()) {

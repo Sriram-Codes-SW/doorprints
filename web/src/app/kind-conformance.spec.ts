@@ -144,7 +144,7 @@ describe.each(FLOW_KINDS)('conformance of the kind %s: data flows', (id: FlowKin
     const rows = filterableExtras(fields);
     expect(rows.map((r) => r.id)).toEqual(k.caps.filters.filter((f) => fields.others().some((o) => o.id === f && ['enum', 'bool', 'number', 'money'].includes(o.type))));
     for (const row of rows) {
-      // A number or an amount filters by a range (docs/03 §18.27): from the first candidate's value towards the side the second one is not on.
+      // A number or an amount filters by a range (docs/03 §18.28): from the first candidate's value towards the side the second one is not on.
       const [v0, v1] = [h0, h1].map((h) => (h.extrasOther as Record<string, unknown>)[row.id]).map((v) => (typeof v === 'object' ? (v as { amount: number }).amount : v)) as number[];
       const choice = isRangeExtra(row) ? (v0 < v1 ? `:${v0}` : `${v0}:`) : row.type === 'bool' ? 'yes' : row.options![0].id;
       const filter = { [row.id]: choice };

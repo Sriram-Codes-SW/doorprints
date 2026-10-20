@@ -16,7 +16,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-// The order of a copy's blocks follows the kind file (docs/03 §18.27): `capabilities.copyOrder` names the blocks that come first after the
+// The order of a copy's blocks follows the kind file (docs/03 §18.28): `capabilities.copyOrder` names the blocks that come first after the
 // details, the rest follow in the copies' fixed order. The Markdown and the readable (HTML) copy are held to the shared vectors
 // (`capabilities-vectors.json`, `copyOrder`) and to the synthetic kind's file; a kind with no order, the house and the school, is as it was
 // (`house-pins.spec.ts` holds the house's copies byte for byte).
@@ -34,7 +34,7 @@ import { buildMarkdown } from './markdown-export';
 const V = (vectorsJson as unknown as { copyOrder: { blocks: string[]; effective: { copyOrder: string[]; order: string[] }[] } }).copyOrder;
 const dict = DICTIONARIES.en;
 
-describe('the order of a copy’s blocks (docs/03 §18.27)', () => {
+describe('the order of a copy’s blocks (docs/03 §18.28)', () => {
   let flow: ReturnType<typeof forKind>;
   beforeEach(() => {
     flow = forKind('zz_all');

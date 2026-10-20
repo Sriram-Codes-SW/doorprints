@@ -117,7 +117,7 @@ function houseSection(entry: ExportHouse, position: number, bundle: ExportBundle
     out.push('');
   }
 
-  // The blocks after the details, each its own lines; the kind's `copyOrder` says which comes first (docs/03 §18.27), the house's fixed order is the default.
+  // The blocks after the details, each its own lines; the kind's `copyOrder` says which comes first (docs/03 §18.28), the house's fixed order is the default.
   const blocks: Record<CopyBlock, string[]> = { cost: [], rooms: [], questions: [], viewings: [], areaNotes: [], distances: [], moveIn: [], checklist: [], visits: [], notes: [], photos: [] };
 
   const cost = costFacts(entry, bundle, dict);

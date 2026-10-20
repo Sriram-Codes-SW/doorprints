@@ -60,7 +60,7 @@ class KindConformanceFileTest {
     }
 
     /**
-     * The server's resolver agrees with the shared vectors on the synthetic kind (docs/03 section 18.26, 18.27): the capabilities of
+     * The server's resolver agrees with the shared vectors on the synthetic kind (docs/03 section 18.26, 18.28): the capabilities of
      * {@code test-all.json}, read on their own and as part of the whole file, are the resolved set {@code capabilities-vectors.json}
      * pins under {@code synthetic}, the same one the website and the phones resolve. Its filters name extras of the kind that a
      * range or a choice can filter (number, amount, enum, switch) and its copy order names blocks of the fixed order only.

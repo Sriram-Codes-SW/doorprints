@@ -1824,7 +1824,7 @@
 
     <!-- kinds PR 21 (S4b-BL-265, -291, -292, 2026-10-15): under review. -->
     <string name="list_filter_any">कोई भी</string>
-    <!-- docs/03 §18.27 (2026-10-20): a range for a number or an amount. Under review (owner rule: hi/ta/te ship marked under review). -->
+    <!-- docs/03 §18.28 (2026-10-20): a range for a number or an amount. Under review (owner rule: hi/ta/te ship marked under review). -->
     <string name="list_filter_range_min">%1$s: कम से कम</string>
     <string name="list_filter_range_max">%1$s: अधिकतम</string>
     <string name="export_copy_of">इसकी कॉपी सहेजें</string>

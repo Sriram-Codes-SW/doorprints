@@ -1111,7 +1111,7 @@ export const ta: Dict = {
   'map.costClear': 'செலவு வடிகட்டிகளை அழி',
   // S4b-BL-265 (2026-10-15): the filter chips of a kind's extras. Under review (owner rule: hi/ta/te ship marked under review).
   'map.extraAny': 'ஏதேனும்',
-  // docs/03 §18.27 (2026-10-20): a range for a number or an amount. Under review (owner rule: hi/ta/te ship marked under review).
+  // docs/03 §18.28 (2026-10-20): a range for a number or an amount. Under review (owner rule: hi/ta/te ship marked under review).
   'map.extraMin': '{name}: குறைந்தபட்சம்',
   'map.extraMax': '{name}: அதிகபட்சம்',
   // S4b-BL-75, S4b-BL-83 (2026-10-01): Import a backup on the website, and the locality lookup. Under review (owner rule: hi/ta/te ship marked under review).

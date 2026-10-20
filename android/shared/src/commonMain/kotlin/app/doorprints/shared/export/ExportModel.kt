@@ -544,7 +544,7 @@ data class ExportBundle(
     private fun kindOf(house: ExportHouse?): KindFields? =
         house?.let { KindCopy.fieldsOfKind(it.kind, options) }?.takeIf { !KindCapabilities.of(it.kind).baseline } ?: voice
 
-    /** The order the blocks of [house]'s section are written in (docs/03 section 18.27): its kind's `copyOrder` first, the rest in the fixed order. */
+    /** The order the blocks of [house]'s section are written in (docs/03 section 18.28): its kind's `copyOrder` first, the rest in the fixed order. */
     fun blockOrder(house: ExportHouse): List<String> = KindCapabilities.copyBlockOrder(kindOf(house)?.kind)
 
     /**

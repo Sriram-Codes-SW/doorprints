@@ -43,7 +43,7 @@ export class ExtraFilterState {
 
 /**
  * One chip row per enum or switch of the space's kind, under the status chips: *Any* and the extra's choices, one pressed
- * per row; and, for a number or an amount (docs/03 §18.27), a pair of fields, at least and at most, each blank for no limit. Drawn
+ * per row; and, for a number or an amount (docs/03 §18.28), a pair of fields, at least and at most, each blank for no limit. Drawn
  * only for a kind that has such an extra, so a house's list shows nothing new.
  */
 @Component({

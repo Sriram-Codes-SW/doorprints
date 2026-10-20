@@ -278,7 +278,7 @@ function houseSection(
         })
         .filter((tag) => tag !== '');
 
-  // The blocks after the details, each as its own string; the kind's `copyOrder` says which comes first (docs/03 §18.27), the house's fixed order is the default.
+  // The blocks after the details, each as its own string; the kind's `copyOrder` says which comes first (docs/03 §18.28), the house's fixed order is the default.
   const blocks: Record<CopyBlock, string> = {
     cost: costRows.length
       ? `<h3>${escapeHtml(costHeading(entry, bundle, dict))}</h3><table class="fields">${costRows.join('')}</table>`

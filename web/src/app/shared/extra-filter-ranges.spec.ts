@@ -16,7 +16,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-// The list's filter by a number or an amount (docs/03 §18.27): the range rows of the synthetic kind `zz_all` held to the `ranges`
+// The list's filter by a number or an amount (docs/03 §18.28): the range rows of the synthetic kind `zz_all` held to the `ranges`
 // part of docs/schemas/kinds/kind-filter-vectors.json (the phones' `KindFilterVectorsTest` reads the same part), the address they write
 // and read, and the two fields a row draws. The chip rows of the enums and switches are extra-filter.spec.ts's, unchanged.
 import { TestBed } from '@angular/core/testing';
@@ -44,7 +44,7 @@ const getter = (query: string) => {
   return (name: string) => p.get(name);
 };
 
-describe('the filter by a number or an amount (docs/03 §18.27)', () => {
+describe('the filter by a number or an amount (docs/03 §18.28)', () => {
   let flow: ReturnType<typeof forKind>;
   beforeEach(() => void (flow = forKind('zz_all')));
   afterEach(() => flow.release());
@@ -94,7 +94,7 @@ describe('the filter by a number or an amount (docs/03 §18.27)', () => {
   });
 });
 
-describe('the two fields of a range row (docs/03 §18.27)', () => {
+describe('the two fields of a range row (docs/03 §18.28)', () => {
   let flow: ReturnType<typeof forKind>;
   beforeEach(() => {
     TestBed.resetTestingModule();

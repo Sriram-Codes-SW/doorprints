@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Test plan (functional, security, accessibility, i18n, AI) |
-| Version | 0.296 |
+| Version | 0.297 |
 | Date | 2026-10-20 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -304,6 +304,7 @@
 | 0.294 | 2026-10-19 | Claude (Code), engineer | **TC-S-17 made executable** (`docs/repo-review-fixes`): the ZIP-bomb limits per stack with file and line, what is checked on the declared sizes and on the produced bytes, and the new tests (`backup-limits.spec.ts`, `ArchiveTest.aBombIsRefusedByWhatItClaimsAndByWhatItInflatesTo`, `JvmArchiveTest`, `ImportVectorsTest.theLimitsAreTheVectorsLimits`, `BackupParityTest.theSharedImportLimitsAgreeWithTheServer`); mutation lists `backup-limits-web.json` and `backup-limits-android.json`. No gap in the readers was found; the production `Inflater` had no direct test before. ([02](02-threat-model.md) T-T8) |
 | 0.295 | 2026-10-19 | Claude (Code), engineer | **TC-U-286, TC-U-287, TC-U-288, TC-M-92..TC-M-94, and TC-S-51..TC-S-53 extended** (voice refuses a free plan, owner decision 2026-10-19; [03](03-design.md) ADR-37 §19, [02](02-threat-model.md) T-I54, RR-33; branch `feat/voice-refuse-free-tier`): the rule on the shared vectors, the fake providers per tier, the Compose tests and two new Roborazzi baselines (the disabled microphone, English and Hindi). The manual rows with a real paid and a real free Gemini key and an OpenRouter key are **not run**. |
 | 0.296 | 2026-10-20 | Claude (Code), engineer | **TC-U-264, TC-U-226 and TC-M-81 amended for the school released on the phones** (`feat/school-release-phones`; [03](03-design.md) ADR-13b, [13](13-release-security-checklist.md) J8): the unreleased-kind cases pin the released list, new cases for the real list, the preview marks are asserted absent; no test id changes. |
+| 0.297 | 2026-10-20 | Claude (Code), engineer | **TC-U-282** (`feat/kinds-leftovers`, [03](03-design.md) §18.28): `extra-filter-ranges.spec.ts`, `KindFilterVectorsTest` (the `ranges` vectors), `copy-order.spec.ts`, `KindCopyOrderTest`, `kind-capabilities.spec.ts` and `KindCapabilitiesVectorsTest` (`synthetic`, `copyOrder`), the server's `KindConformanceFileTest`, `SyntheticKindScreensTest`, and the switch's accessibility with a synthetic unreleased kind (`kinds-switch-a11y.spec.ts`, `KindsSwitchSyntheticA11yTest`, four languages). |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [Design](03-design.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
