@@ -65,10 +65,10 @@ private class DeleteAsk(val name: String, val ids: List<String>)
 
 /**
  * Settings > *What you track* (kinds PR C, S4b-BL-274; docs/03 §18.12), the twin of the website's *Your data* section:
- * *Experimental: more than houses* (off by default), then one row per kind the switch offers with *Show*, *Default* and
- * what is saved. Drawn only in a build that lists more than houses (`SettingsStore.availableKinds`); since 2026-10-15 every
- * build lists the school (compiled in, off), so the section is always there, with the switch off and no kind rows until the
- * person turns it on. One kind always stays on (its *Show* is disabled), the
+ * *Experimental: more than houses* (off by default; drawn only while a listed kind is unreleased, so not since the school's
+ * release on 2026-10-20), then one row per kind offered with *Show*, *Default* and what is saved. Drawn only in a build that
+ * lists more than houses (`SettingsStore.availableKinds`); since 2026-10-15 every build lists the school, so the section is
+ * always there, with a *Houses* row on and a *Schools* row off. One kind always stays on (its *Show* is disabled), the
  * default is one of the kinds that are shown, and turning a kind off hides nothing and deletes nothing: the chooser keeps
  * it as a muted card. The choice is this phone's own (the settings store), never synced, shared or put in a copy.
  *
@@ -85,7 +85,8 @@ fun KindsSettingsSection(
     val repo = LocalAppServices.current.repository
     val setting by rememberKindSetting(repo)
     val current = setting ?: return
-    if (!current.hasUnreleased) return
+    // A build that lists the house alone has nothing to choose. The switch below is drawn only while a listed kind is unreleased.
+    if (current.available.size < 2) return
     val scope = rememberCoroutineScope()
     val rows: List<KindTally> by remember(repo) { repo.kindTallies }
         .collectAsStateWithLifecycle(emptyList())
@@ -131,11 +132,15 @@ fun KindsSettingsSection(
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         SectionHeading(stringResource(Res.string.kinds_heading))
         Text(stringResource(Res.string.kinds_body), style = MaterialTheme.typography.bodySmall)
-        SwitchRow(
-            text = stringResource(Res.string.kinds_switch), hint = stringResource(Res.string.kinds_switch_hint),
-            checked = current.experimentalOn, horizontalPadding = 0.dp,
-        ) { on -> change { it.withExperimental(on) } }
-        // Rows only while the switch offers a second kind; a lone house row would have nothing to choose.
+        // The switch hides itself while every listed kind is released (since 2026-10-20 the school is, docs/03 ADR-13b); the
+        // mechanism stays for the next kind.
+        if (current.hasUnreleased) {
+            SwitchRow(
+                text = stringResource(Res.string.kinds_switch), hint = stringResource(Res.string.kinds_switch_hint),
+                checked = current.experimentalOn, horizontalPadding = 0.dp,
+            ) { on -> change { it.withExperimental(on) } }
+        }
+        // Rows only while a second kind is offered; a lone house row would have nothing to choose.
         if (current.offered.size > 1) {
             val enabled = current.enabled
             current.offered.forEach { kind ->

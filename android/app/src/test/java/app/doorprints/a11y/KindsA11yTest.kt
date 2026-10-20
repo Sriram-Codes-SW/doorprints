@@ -66,6 +66,7 @@ import kotlinx.coroutines.runBlocking
 import org.jetbrains.compose.resources.getString
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -79,11 +80,11 @@ import org.robolectric.Shadows.shadowOf
 import java.util.TimeZone
 
 /**
- * The accessibility pass for the school compiled in and off (owner, 2026-10-15; docs/05 §5, TC-U-264): the chooser, Settings >
- * What you track and the *Experimental: more than houses* switch, in all four languages at 200 % text (the sweep's `A11yAudit`: a
+ * The accessibility pass for the released school (owner, 2026-10-15 and 2026-10-20; docs/05 §5, TC-U-264, docs/03 ADR-13b): the chooser
+ * and Settings > What you track (no *Experimental: more than houses* switch since the release), in all four languages at 200 % text (the sweep's `A11yAudit`: a
  * name for every control, 48 dp targets, no clipped or off-screen text, a glyph for every letter), plus what TalkBack needs that a
- * sweep cannot see: the headings, the switch's role and state, a disabled box that says why, the reading order, a card whose name
- * is its visible words, and the *preview* mark that Hindi, Tamil and Telugu carry (marked under review).
+ * sweep cannot see: the headings, a disabled box that says why, the reading order, a card whose name is its visible words, and that
+ * the switch hint and the school listing tips carry no *preview* mark in any language (hi, ta, te under review).
  */
 @RunWith(ParameterizedRobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -148,7 +149,7 @@ class KindsA11yTest(private val lang: String) {
     private val heading = SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading)
     private fun top(m: SemanticsMatcher) = compose.onAllNodes(m).fetchSemanticsNodes().first().boundsInRoot.top
 
-    /** The preview mark of each language (hi, ta, te under review; the website's words). */
+    /** The preview mark of each language (hi, ta, te under review; the website's words), which the released school's words no longer carry. */
     private val previewMark = mapOf("en" to "preview", "hi" to "पूर्वावलोकन", "ta" to "முன்னோட்டம்", "te" to "ప్రివ్యూ")
 
     @Test fun chooserHasNoViolationsAndReadsInOrderWithItsHeadings() {
@@ -169,23 +170,24 @@ class KindsA11yTest(private val lang: String) {
         assertTrue("heading, cards, then Settings", top(heading and hasText(title)) < first.min() && first == first.sorted() && first.max() < manage)
     }
 
-    @Test fun switchOffIsASwitchWithTheStateAndThePreviewMark() {
-        show(text(Res.string.kinds_switch)) { Column(Modifier.padding(16.dp).verticalScroll(rememberScrollState())) { KindsSettingsSection() } }
-        audit("What you track, switch off")
+    @Test fun theReleasedSchoolHasItsRowsOffAndNoSwitch() {
+        show(text(Res.string.kinds_heading)) { Column(Modifier.padding(16.dp).verticalScroll(rememberScrollState())) { KindsSettingsSection() } }
+        audit("What you track, the school released and not shown")
         compose.onNode(heading and hasText(text(Res.string.kinds_heading))).assertExists()
-        val switch = compose.onNode(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Switch)).fetchSemanticsNode()
-        assertEquals("off by default", androidx.compose.ui.state.ToggleableState.Off, switch.config.getOrNull(SemanticsProperties.ToggleableState))
-        val name = switch.config.getOrNull(SemanticsProperties.Text).orEmpty().joinToString(" ") { it.text }
-        assertTrue("the switch is named by its label ($name)", name.contains(text(Res.string.kinds_switch)))
-        assertTrue("and its hint, which says it is a preview ($name)", name.contains(previewMark.getValue(lang)))
-        // Off, there is no list of kinds to change: no checkbox and no radio, so nothing for a reader to land on that does nothing.
-        assertEquals(0, compose.onAllNodes(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Checkbox)).fetchSemanticsNodes().size)
-        assertEquals(0, compose.onAllNodes(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.RadioButton)).fetchSemanticsNodes().size)
+        // The switch hides itself while every listed kind is released: nothing named Experimental is left to read.
+        assertEquals(0, compose.onAllNodes(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Switch)).fetchSemanticsNodes().size)
+        assertEquals(0, compose.onAllNodes(hasText(text(Res.string.kinds_switch), substring = true)).fetchSemanticsNodes().size)
+        // A Show box and a Default radio for each kind; the house is on (its box says why it stays), the school is off.
+        val boxes = compose.onAllNodes(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Checkbox)).fetchSemanticsNodes()
+        assertEquals("a Show box for each kind", 2, boxes.size)
+        assertEquals("the house is on and the school off", listOf(androidx.compose.ui.state.ToggleableState.On, androidx.compose.ui.state.ToggleableState.Off),
+            boxes.map { it.config.getOrNull(SemanticsProperties.ToggleableState) })
+        assertEquals("a Default radio for each kind", 2, compose.onAllNodes(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.RadioButton)).fetchSemanticsNodes().size)
     }
 
     @Test fun kindsOnNameTheirRowsAndAreReadInOrder() {
         kinds.enableSchool()
-        show(text(Res.string.kinds_switch)) { Column(Modifier.padding(16.dp).verticalScroll(rememberScrollState())) { KindsSettingsSection() } }
+        show(text(Res.string.kinds_heading)) { Column(Modifier.padding(16.dp).verticalScroll(rememberScrollState())) { KindsSettingsSection() } }
         audit("What you track, school on")
         val headings = compose.onAllNodes(heading).fetchSemanticsNodes()
         assertTrue("the section's heading and one for each kind (${headings.size})", headings.size >= 3)
@@ -193,8 +195,8 @@ class KindsA11yTest(private val lang: String) {
         assertEquals("a Show box for each kind", 2, boxes.size)
         val radios = compose.onAllNodes(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.RadioButton)).fetchSemanticsNodes()
         assertEquals("a Default radio for each kind", 2, radios.size)
-        // Switch, then the first kind's rows, then the second's.
-        val order = (listOf(compose.onNode(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Switch)).fetchSemanticsNode()) + boxes.take(1) + radios.take(1) + boxes.drop(1) + radios.drop(1))
+        // The first kind's rows, then the second's.
+        val order = (boxes.take(1) + radios.take(1) + boxes.drop(1) + radios.drop(1))
             .map { it.boundsInRoot.top }
         assertEquals("the reading order is the screen's order", order.sorted(), order)
     }
@@ -202,7 +204,7 @@ class KindsA11yTest(private val lang: String) {
     @Test fun theLastKindThatIsOnSaysWhyItCannotBeTurnedOff() {
         kinds.enableSchool()
         runBlocking { kinds.store.editKindSetting { it.withKindEnabled("school", false) } }
-        show(text(Res.string.kinds_switch)) { Column(Modifier.padding(16.dp).verticalScroll(rememberScrollState())) { KindsSettingsSection() } }
+        show(text(Res.string.kinds_heading)) { Column(Modifier.padding(16.dp).verticalScroll(rememberScrollState())) { KindsSettingsSection() } }
         audit("What you track, the house alone on")
         val why = text(Res.string.kinds_last_on)
         val disabled = compose.onAllNodes(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Checkbox) and SemanticsMatcher.keyIsDefined(SemanticsProperties.Disabled)).fetchSemanticsNodes()
@@ -210,10 +212,10 @@ class KindsA11yTest(private val lang: String) {
         assertEquals("and it carries the reason as its state", why, disabled.single().config.getOrNull(SemanticsProperties.StateDescription))
     }
 
-    @Test fun thePreviewMarkIsInEveryLanguageOnTheSwitchHintAndTheSchoolListingTips() {
+    @Test fun noPreviewMarkIsOnTheSwitchHintOrTheSchoolListingTipsInAnyLanguage() {
         val mark = previewMark.getValue(lang)
         for (res in listOf(Res.string.kinds_switch_hint, Res.string.school_add_tip_listing, Res.string.school_add_tip_listing_a11y)) {
-            assertTrue("`${text(res)}` ($lang) says it is a preview", text(res).contains(mark, ignoreCase = true))
+            assertFalse("`${text(res)}` ($lang) still says it is a preview", text(res).contains(mark, ignoreCase = true))
         }
     }
 

@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | 05 UX, accessibility and i18n |
-| Version | 0.36 |
+| Version | 0.37 |
 | Date | 2026-10-20 |
 | Author | Claude (Cowork) – Design team |
 | Status | Draft |
@@ -48,7 +48,8 @@
 | 0.33 | 2026-10-10 | Claude (Code), engineer | Component inventory: the three sentences and the guide link under the AI features switch, on the Connect page and in the phones' Settings (S4b-BL-215; [10](10-sprint-log.md) v0.241). |
 | 0.34 | 2026-10-13 | Claude (Code), engineer | Size to what is visible (S4b-BL-49): the phone map region is sized in CSS (`100cqh` less the counters' rem height, a 212 px floor for the map row), the actions sit under the map and the legend in its corner; nothing is measured by a script. |
 | 0.35 | 2026-10-20 | Claude (Code), engineer | Glossary: `app.tagline` on the website is the kind-neutral "Remember every place you've seen." in four languages ([03](03-design.md) ADR-13b; `feat/school-release-web`, #389); the phones' `app_tagline` is unchanged for now. |
-| 0.36 | 2026-10-20 | Claude (Code), engineer | §8: the language and the country are two things ([03](03-design.md) ADR-38, §21): the app language decides the words and the `Intl` locale of the screens; the **country pack** decides the currency, the digit grouping of exported files, the phone shapes and the geocoder's country. New §8.4. No string changed; hi, ta and te untouched. |
+| 0.36 | 2026-10-20 | Claude (Code), engineer | Glossary: the phones' `app_tagline` follows the website ("Remember every place you've seen.", Settings > About only) and the empty house list keeps the old words under a new Android key `houses_first_run_title` ([03](03-design.md) ADR-13b; `feat/school-release-phones`); the switch hint and the school listing tips lose their preview marks. |
+| 0.37 | 2026-10-20 | Claude (Code), engineer | §8: the language and the country are two things ([03](03-design.md) ADR-38, §21): the app language decides the words and the `Intl` locale of the screens; the **country pack** decides the currency, the digit grouping of exported files, the phone shapes and the geocoder's country. New §8.4. No string changed; hi, ta and te untouched. |
 
 ---
 
@@ -612,7 +613,8 @@ Changing the English meaning of an existing key: rename the key instead of editi
 | Term (key) | English | हिन्दी (hi) | தமிழ் (ta) | తెలుగు (te) | Notes |
 |---|---|---|---|---|---|
 | app.name | Doorprints | Doorprints | Doorprints | Doorprints | Brand, never translated (was "House Hunt" until 2026-09-22). |
-| app.tagline | Remember every place you've seen. | देखी हुई हर जगह याद रखें। | நீங்கள் பார்த்த ஒவ்வொரு இடத்தையும் நினைவில் வையுங்கள். | మీరు చూసిన ప్రతి ప్రదేశాన్నీ గుర్తుంచుకోండి. | Web `app.tagline` (kind-neutral since ADR-13b, hi, ta, te under review). Android `app_tagline` still says *house* until the phones release the school. |
+| app.tagline | Remember every place you've seen. | देखी हुई हर जगह याद रखें। | நீங்கள் பார்த்த ஒவ்வொரு இடத்தையும் நினைவில் வையுங்கள். | మీరు చూసిన ప్రతి ప్రదేశాన్నీ గుర్తుంచుకోండి. | Web `app.tagline` and Android `app_tagline` (Settings > About only): kind-neutral since ADR-13b, on the phones since the school's release there (hi, ta, te under review). |
+| houses_first_run_title (Android only) | Remember every house you've seen. | देखा हुआ हर मकान याद रखें। | நீங்கள் பார்த்த ஒவ்வொரு வீட்டையும் நினைவில் வையுங்கள். | మీరు చూసిన ప్రతి ఇంటినీ గుర్తుంచుకోండి. | Android `houses_first_run_title`: the empty house list's title, the house-only words the tagline had before it became kind-neutral. |
 | house | House | मकान | வீடு | ఇల్లు | Hindi "घर" means home; "मकान" is the building being rented or bought. |
 | map | Map | नक्शा | வரைபடம் | మ్యాప్ | Telugu loanword is more common in apps than "పటం". |
 | compare | Compare | तुलना | ஒப்பிடு | పోల్చండి | – |
