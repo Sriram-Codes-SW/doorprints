@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | 05 UX, accessibility and i18n |
-| Version | 0.35 |
-| Date | 2026-10-13 |
+| Version | 0.36 |
+| Date | 2026-10-20 |
 | Author | Claude (Cowork) – Design team |
 | Status | Draft |
 | Scope | Web app (`web/`) and Android app (`android/`), both implemented |
@@ -48,6 +48,7 @@
 | 0.33 | 2026-10-10 | Claude (Code), engineer | Component inventory: the three sentences and the guide link under the AI features switch, on the Connect page and in the phones' Settings (S4b-BL-215; [10](10-sprint-log.md) v0.241). |
 | 0.34 | 2026-10-13 | Claude (Code), engineer | Size to what is visible (S4b-BL-49): the phone map region is sized in CSS (`100cqh` less the counters' rem height, a 212 px floor for the map row), the actions sit under the map and the legend in its corner; nothing is measured by a script. |
 | 0.35 | 2026-10-20 | Claude (Code), engineer | Glossary: `app.tagline` on the website is the kind-neutral "Remember every place you've seen." in four languages ([03](03-design.md) ADR-13b; `feat/school-release-web`, #389); the phones' `app_tagline` is unchanged for now. |
+| 0.36 | 2026-10-20 | Claude (Code), engineer | §8: the language and the country are two things ([03](03-design.md) ADR-38, §21): the app language decides the words and the `Intl` locale of the screens; the **country pack** decides the currency, the digit grouping of exported files, the phone shapes and the geocoder's country. New §8.4. No string changed; hi, ta and te untouched. |
 
 ---
 
@@ -1349,3 +1350,11 @@ problems: Pages headers, CSP and frame protection (`docs/02` F-31, `web/public/_
 `backup.golden.ts`). 1 was a sync-cursor internal. 3 were Android code-quality notes (the `PdfExporter.kt` memory risk and
 two KDoc problems). 2 were workflow-input errors (the DD round 1 got an empty change list, and one task did not match
 what the user asked).
+
+### 8.4 The country pack: where the money and the numbers come from (ADR-38)
+
+The app language (en, hi, ta, te) and the country are separate. The language picks the words of the screens and the `Intl` locale of the number and date formats (`en-IN`, `hi-IN`, `ta-IN`, `te-IN`, from `i18n/languages.ts` and the Android resources); the **country pack** ([03](03-design.md) §21) picks what no translation can: the currency (sign `₹`, code `INR`), the digit grouping of the files and documents that must not depend on ICU data (`1250000` gives `12,50,000`), the amount words a pasted listing or an AI draft may use (`lakh`, `crore`), the phone shapes, and the geocoder's country. A new country is a new pack plus its languages' dictionaries; a new language of India is only a dictionary ([9.2](#92-add-a-language-web)).
+
+- The dictionaries keep their money labels (`Price (₹)`, `Maximum price (₹)`); they are language work and on the tripwire's allow-list with that reason. A pack for another currency changes them in its own dictionaries.
+- The screens' amounts still come from `Intl` with the pack's currency code on the website (`TranslationService.price`) and from `Formats.rupees` on the phones, which now takes the sign and the grouping from the pack; the four languages write them as before (TC-U-8, `FormatsParityTest`).
+- A string that carries a number the pack formats is built from the pack's output, never from a literal sign.

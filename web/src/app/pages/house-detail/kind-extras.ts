@@ -25,6 +25,7 @@
 // extras (`HouseDto.extrasOther`, which `core/candidate.ts` keeps and writes back), each held to its type here.
 import type { TKey } from '../../i18n/en';
 import type { HouseDto } from '../../core/models';
+import { country } from '../../shared/country/country-pack';
 import { HOUSE_FIELDS, cadenceOf, controlOf, type Cadence, type ExtraControl, type KindExtra, type KindFields } from '../../core/kind-fields';
 
 /** One extra as the website's form draws it. */
@@ -77,7 +78,7 @@ function webExtra(fields: KindFields, f: KindExtra): WebExtra {
     control,
     domId,
     label: fields.label(f),
-    suffix: control === 'money' ? ' (₹)' : '',
+    suffix: control === 'money' ? ` (${country().money.symbol})` : '',
     narrow: f.section === MONEY_SECTION && fields.labels.isVisible('field.money'),
     min: control === 'money' || control === 'level' ? '0' : control === 'number' ? bound(f.min) : null,
     max: control === 'number' || control === 'level' ? bound(f.max) : null,

@@ -18,6 +18,7 @@
 
 import { validateWebBaseUrl } from '../ai/ai-provider-config';
 import { redactGeneric } from '../ai/ai-core';
+import { country, escapeForClass } from '../../shared/country/country-pack';
 
 /**
  * The pure parts of the manual `voice` suite of the *AI evals* workflow (voice PR 7, S4b-BL-224, docs/ai/voice-input.md §5):
@@ -93,7 +94,7 @@ export function normalise(text: string): string {
     .replace(/[​-‍⁠﻿]/g, '')
     .replace(/(?<![\p{N}]),|,(?![\p{N}])/gu, ' ')
     .replace(/(?<![\p{N}])\.|\.(?![\p{N}])/gu, ' ')
-    .replace(/[।॥!?;:"'“”‘’()\[\]{}₹]/g, ' ')
+    .replace(new RegExp(`[।॥!?;:"'“”‘’()\\[\\]{}${escapeForClass(country().money.symbol)}]`, 'g'), ' ')
     .replace(/\s+/g, ' ')
     .trim();
 }

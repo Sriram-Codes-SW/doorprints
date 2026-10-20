@@ -19,6 +19,7 @@
 import { Injectable, InjectionToken, computed, effect, inject, signal, untracked } from '@angular/core';
 import { TranslationService } from '../../i18n/translation.service';
 import { LANGUAGES } from '../../i18n/languages';
+import { country } from '../../shared/country/country-pack';
 import { AiService } from '../ai.service';
 import { type AiProviderConfig, aiHostOf } from '../ai/ai-provider-config';
 import type { FetchLike } from '../ai/ai-request';
@@ -89,7 +90,7 @@ export type VoiceProvider = 'own' | 'sarvam';
 export function keyTermsFor(kind: string): string {
   return kind === 'school'
     ? 'CBSE, ICSE, fees, classes, admission, school bus'
-    : '2 BHK, 3 BHK, lakh, crore, sq ft, rent, deposit, maintenance, society, locality';
+    : country().voice.houseKeyTerms;
 }
 
 /** What a `Transcriber` is built from: the saved choice and the key, or null where the provider cannot take audio. */
@@ -315,7 +316,7 @@ export class VoiceInputService {
 
   /** The spoken language as a BCP 47 tag, from the app's language (`hi-IN`); the provider may hear another one. */
   langHint(): string {
-    return LANGUAGES.find((l) => l.code === this.i18n.lang())?.locale ?? 'en-IN';
+    return LANGUAGES.find((l) => l.code === this.i18n.lang())?.locale ?? country().locale.fallback;
   }
 
   /**

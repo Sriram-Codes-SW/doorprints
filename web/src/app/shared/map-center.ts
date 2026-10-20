@@ -27,6 +27,8 @@
  * saves it on its first layout. parseMapView refuses it outright, and a starting point (Plan's start, a new house's
  * pin) goes through {@link loadStartPoint}, which also refuses the placeholder centre at another zoom.
  */
+import { country } from './country/country-pack';
+
 export interface MapView {
   lat: number;
   lon: number;
@@ -40,7 +42,18 @@ export const MAP_VIEW_KEY = 'doorprints.mapView';
  * built for (BHK, rupees, hi/ta/te). Used by the map page before any house is loaded, and by a new house with no
  * position (a starting view only: that house cannot be saved until the pin is put).
  */
-export const COUNTRY_VIEW: Readonly<MapView> = { lat: 20.5937, lon: 78.9629, zoom: 4 };
+export const COUNTRY_VIEW: Readonly<MapView> = {
+  // Read from the country pack at each use (ADR-38), so a swapped pack moves every call site.
+  get lat() {
+    return country().geo.defaultView.lat;
+  },
+  get lon() {
+    return country().geo.defaultView.lon;
+  },
+  get zoom() {
+    return country().geo.defaultView.zoom;
+  },
+};
 
 /** Parses a stored view; null for anything that is not a usable position. */
 export function parseMapView(raw: string | null): MapView | null {
