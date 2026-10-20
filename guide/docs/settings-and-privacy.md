@@ -236,5 +236,4 @@ Voice input sends what you say to your AI service. A **free plan** of a service 
 
 **Your data** on the website has one more section, **What you track**, with a row for **Houses** and one for **Schools**.
 Schools are off by default, and while they are off nothing in this guide changes. Show them and Doorprints keeps track of
-schools too: see [Schools as well as houses](other-kinds.md). On the phones schools are still a preview, behind the switch
-**Experimental: more than houses**.
+schools too: see [Schools as well as houses](other-kinds.md). The phones have the same section in **Settings**.

@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | Brand and naming: the web address, the app icon, fallbacks, brand screening, custom-domain policy, naming guidelines and the import / backup / copy vocabulary |
-| Version | 0.12 |
-| Date | 2026-10-15 |
+| Version | 0.13 |
+| Date | 2026-10-20 |
 | Author | Claude (Cowork), Docs team, from the brand advisor's naming brief of 2026-09-23 |
 | Status | Draft. The address (section A) and the import vocabulary (section G) are **decided** by the owner; the hi/ta/te wording in section G is a **first draft pending native-speaker review** (I18N-B06) |
 
@@ -24,6 +24,7 @@
 | 0.10 | 2026-10-15 | Claude (Code), engineer | H: **"compiled in, off" is not "released"** (owner, 2026-10-15): the website's build lists the school behind *Experimental: more than houses* (off by default); the tagline, store listing and meta description stay house-only until `RELEASED_KINDS` gains a kind. |
 | 0.11 | 2026-10-15 | Claude (Code), engineer | H: the phones too (owner, 2026-10-15; `feat/kinds-24-ship-school-phones`): the Android release and the iPhone list the school behind *Experimental: more than houses* (off by default) and release the house alone; the tagline, the store listing and the phones' About text stay house-only; the switch hint and the school listing tips say *preview*. |
 | 0.12 | 2026-10-20 | Claude (Code), engineer | **H rewritten** (owner, 2026-10-19: tagline A; `feat/school-release-web`, #389): the tagline is kind-neutral, the descriptions name the released kinds, the store long name is "Doorprints: Visit Diary" with the tagline as its short description, the phones' words are unchanged ([03](03-design.md) ADR-13b). |
+| 0.13 | 2026-10-20 | Claude (Code), engineer | **H: the phones follow the website** (owner approved going ahead, 2026-10-20; `feat/school-release-phones`; [03](03-design.md) ADR-13b): `RELEASED` gains the school, the tagline in Settings > About is kind-neutral, the preview marks go, the iPhone's location strings say *places you save*. |
 
 Related: [Design, ADR-21](03-design.md) · [Build and deploy §6.3](07-secure-build-and-deploy.md#63-web-firebase-hosting) · [UX, a11y and i18n](05-ux-accessibility-i18n.md) · [Requirements §6.9](01-requirements.md) · [Backup format](schemas/README.md) · [Sprint log §11.6](10-sprint-log.md)
 
@@ -310,7 +311,7 @@ the file holds. Neither sentence ships yet; they are for the Sprint 4b import sc
 ## H. Where the kinds model may be named (2026-10-15; rewritten 2026-10-20 for the school's release on the website)
 
 - The **root README** may describe the kinds model and what exists beyond houses (one `candidate` with a `kind` from a kind
-  file; houses and schools on the website, schools as a preview on the phones), so a developer or an owner sees what the code can do.
+  file; houses and schools on the website and the phones), so a developer or an owner sees what the code can do.
 - The **tagline** is **kind-neutral** (owner, 2026-10-19, option A): "Remember every place you've seen." ([03](03-design.md) ADR-13b).
   It names no single kind, so it does not change when a kind is released. The **meta description**, the cards, the JSON-LD, the
   manifest and the about page **name every released kind and no other**: today houses and schools on the website
@@ -318,11 +319,12 @@ the file holds. Neither sentence ships yet; they are for the Sprint 4b import sc
   `seo.spec.ts` against `RELEASED_KINDS`. When the owner releases or withdraws a kind the descriptions are decided again.
 - **The store listing** (the phones, later): name **"Doorprints"**, long name **"Doorprints: Visit Diary"**, short description = the
   tagline. It is written when the phones release the school (their gates are separate); until then no store listing exists.
-- **The phones (2026-10-15, unchanged by the website's release of 2026-10-20).** The Android release and the iPhone list `house,school`
-  (`AVAILABLE_KINDS`, `IOS_AVAILABLE_KINDS`): the school is *compiled in, off*, behind *Experimental: more than houses* in
-  Settings > What you track, and `KindSettingRules.RELEASED` stays the house. Their strings (including `app_tagline`) are as they were
-  and follow in the phones' release; only the switch's hint and the school's AI help carry a *preview* mark. A school made on the
-  website is drawn as a house on a phone until its switch is on (the guide says so).
+- **The phones (2026-10-15; released 2026-10-20, `feat/school-release-phones`).** The Android release and the iPhone list `house,school`
+  (`AVAILABLE_KINDS`, `IOS_AVAILABLE_KINDS`) and `KindSettingRules.RELEASED` is `house` and `school`: Settings > What you track shows a
+  Schools row, off, and *Experimental: more than houses* hides itself while no listed kind is unreleased. `app_tagline` (Settings >
+  About) is the kind-neutral tagline; the empty house list keeps the house words under `houses_first_run_title`. The switch's hint and
+  the school's AI help carry no *preview* mark any more (the website's words). The iPhone's location strings say *places you save*.
+  No store listing exists yet. A school made on the website is listed on a phone with the houses until *Show Schools* is on.
 - The apps' strings keep the rule of G.1: never "kind" or "space" in front of a person.
 
 ## Sources

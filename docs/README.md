@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | SSDLC document index |
-| Version | 0.134 |
+| Version | 0.135 |
 | Date | 2026-10-20 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -33,6 +33,7 @@
 | 0.131 | 2026-10-19 | Claude (Code), engineer | The first release is v0.1.1 (docs 14 v0.202, 13 v0.24: A5 and A6 name the owner's settings); the web README storage audit table matches the code (7 stores, `doorprints-drive`, `doorprints-offline-maps-v1`). |
 | 0.133 | 2026-10-20 | Claude (Code), engineer | Introduction: the tagline is "Remember every place you've seen." and the website keeps schools as well as houses ([03](03-design.md) ADR-13b; `feat/school-release-web`, #389); versions: 01 v0.53, 03 v0.176, 05 v0.35, 10 v0.359, 12 v0.12, 13 v0.27, 14 v0.204. |
 | 0.134 | 2026-10-20 | Claude (Code), docs | Children's-data wording for the school kind, a draft for the owner's approval (`docs/privacy-children-data`): `web/public/privacy.html` *Children* section and a voice-audio sentence in four languages; 02 v0.99 (T-I55, RR-35 proposed), 04 v0.30 (§6), 13 v0.28 (G5). |
+| 0.135 | 2026-10-20 | Claude (Code), engineer | The school is released on the phones ([03](03-design.md) ADR-13b; `feat/school-release-phones`): versions 03 v0.177, 05 v0.36, 06 v0.296, 10 v0.360, 12 v0.13, 13 v0.29, 14 v0.205, ops checklist v0.33. |
 | 0.112 | 2026-10-06 | Claude | The review backlog: docs/01 v0.41, 06 v0.131 (section 10.1), 07 v0.60, 14 v0.89. |
 | 0.111 | 2026-10-06 | Claude | Full-system review fixes and the manual test checklist (`docs/ops/manual-test-checklist.md`): docs/07 v0.59, docs/14 v0.88. |
 | 0.110 | 2026-10-06 | Claude | Review fixes on PR #139: docs/10 v0.149, 06 v0.130, 15 v0.27. |
@@ -146,7 +147,7 @@
 
 ---
 
-Doorprints ("Remember every place you've seen.") is a personal, single-user app that keeps a record of the places you see in India: the rental and for-sale houses you see while house hunting and, on the website, the schools you visit. It is not a property-listings site. It was called House Hunt until 2026-09-22; the repository was renamed the same day, and code packages, storage keys and database names followed on 2026-09-24 ([03](03-design.md) ADR-13, ADR-24). It has three parts:
+Doorprints ("Remember every place you've seen.") is a personal, single-user app that keeps a record of the places you see in India: the rental and for-sale houses you see while house hunting and, on the website and the phones, the schools you visit. It is not a property-listings site. It was called House Hunt until 2026-09-22; the repository was renamed the same day, and code packages, storage keys and database names followed on 2026-09-24 ([03](03-design.md) ADR-13, ADR-24). It has three parts:
 
 - an offline-first **Android app** (Kotlin, Compose, Room, WorkManager, foreground "Hunt mode" location service, MapLibre with OpenFreeMap tiles), whose platform-neutral rules and Ktor API client live in a Kotlin Multiplatform module `:shared` that also compiles for iOS (no iOS app; [03](03-design.md) ADR-14), and whose UI is moving to Compose Multiplatform in a module `:ui` that also compiles for iOS ([03](03-design.md) ADR-23),
 - a **Spring Boot 4.1 / Java 25 API** backed by **PostgreSQL + PostGIS**,
