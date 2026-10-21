@@ -16,7 +16,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
-// The reader of a kind file a person imports against the shared vectors, the schema and hostile input (docs/03 ADR-39; docs/02 T-T25;
+// The reader of a kind file a person imports against the shared vectors, the schema and hostile input (docs/03 ADR-39; docs/02 T-T23;
 // docs/06 TC-U-292). The phones and the server read the same vectors.
 import Ajv2020 from 'ajv/dist/2020';
 import { describe, expect, it } from 'vitest';

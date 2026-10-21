@@ -82,10 +82,11 @@ object BackupWire {
     /**
      * `data.json` as the file holds it: the rows of [data] in the new family. [kinds] and [default] are the kinds the phone
      * has on and its default (kinds PR C, S4b-BL-274): the `search` object names them, and is the house's
-     * `{"kind":"house"}` for the house alone, byte for byte the file before.
+     * `{"kind":"house"}` for the house alone, byte for byte the file before. [userKinds] are the checked kind files this phone
+     * added (docs/03 ADR-39): `search.userKinds`, left out for none.
      */
-    fun encodeData(data: BackupData, kinds: List<String> = listOf("house"), default: String = "house"): String =
-        currentOf(BackupFormat.json.encodeToJsonElement(BackupData.serializer(), data) as JsonObject, kinds, default).toString()
+    fun encodeData(data: BackupData, kinds: List<String> = listOf("house"), default: String = "house", userKinds: List<JsonElement> = emptyList()): String =
+        currentOf(BackupFormat.json.encodeToJsonElement(BackupData.serializer(), data) as JsonObject, kinds, default, userKinds).toString()
 
     /** `manifest.json` as the file holds it: `/1`, and `candidates` in place of `houses` in its counts. */
     fun encodeManifest(manifest: BackupManifest): String {
@@ -136,14 +137,14 @@ object BackupWire {
     // ---- Writing ----
 
     /** A `data.json` of the family before as the new family writes it. */
-    fun currentOf(legacy: JsonObject, kinds: List<String> = listOf("house"), default: String = "house"): JsonObject {
+    fun currentOf(legacy: JsonObject, kinds: List<String> = listOf("house"), default: String = "house", userKinds: List<JsonElement> = emptyList()): JsonObject {
         val out = LinkedHashMap<String, JsonElement>()
         for ((key, value) in legacy) {
             when (key) {
                 "format" -> out["format"] = JsonPrimitive(CURRENT_FORMAT)
                 "exportedAt" -> {
                     out["exportedAt"] = value
-                    out["search"] = BackupFormat.json.parseToJsonElement(KindSettingRules.searchOf(kinds, default))
+                    out["search"] = BackupFormat.json.parseToJsonElement(KindSettingRules.searchOf(kinds, default, userKinds))
                 }
                 "houses" -> out["candidates"] = JsonArray(rows(value).map(::candidateOf))
                 in ROWS_WITH_HOUSE -> out[key] = JsonArray(rows(value).map { rename(it, "houseId", "candidateId") })

@@ -253,7 +253,7 @@
    "properties": { "text": { "$ref": "#/$defs/userText" } }
   },
   "userText": {
-   "description": "A person's own words in a kind file (docs/03 ADR-39, docs/02 T-T25): 1 to 60 characters, no space at either end, and none of < > { } (so a word can carry no markup and no placeholder), no control character, no zero-width space or direction mark, no line or paragraph separator, override or isolate, and no byte-order mark (the zero-width non-joiner and joiner stay: Indian scripts need them). The apps also refuse a lone surrogate, which a schema cannot name.",
+   "description": "A person's own words in a kind file (docs/03 ADR-39, docs/02 T-T23): 1 to 60 characters, no space at either end, and none of < > { } (so a word can carry no markup and no placeholder), no control character, no zero-width space or direction mark, no line or paragraph separator, override or isolate, and no byte-order mark (the zero-width non-joiner and joiner stay: Indian scripts need them). The apps also refuse a lone surrogate, which a schema cannot name.",
    "type": "string",
    "minLength": 1,
    "maxLength": 60,

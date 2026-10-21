@@ -49,8 +49,12 @@ object KindWords {
         "school_admission_fee" to listOf("Admission fee (₹)", "दाख़िला फ़ीस (₹)", "சேர்க்கைக் கட்டணம் (₹)", "ప్రవేశ ఫీజు (₹)"),
     )
 
-    /** The words of [key] in [language] (any language outside the four reads as English); null for a key it has not. */
-    fun of(key: String, language: String): String? = WORDS[key]?.get(LANGUAGES.indexOf(language).coerceAtLeast(0))
+    /**
+     * The words of [key] in [language] (any language outside the four reads as English); null for a key it has not. A key of a
+     * person's own words (a kind they added, `user:<id>:<ref>`, docs/03 ADR-39) is their words, as written, in every language.
+     */
+    fun of(key: String, language: String): String? =
+        if (UserKinds.isTextKey(key)) UserKinds.text(key) else WORDS[key]?.get(LANGUAGES.indexOf(language).coerceAtLeast(0))
 
     /** Every key it has. */
     val keys: Set<String> get() = WORDS.keys

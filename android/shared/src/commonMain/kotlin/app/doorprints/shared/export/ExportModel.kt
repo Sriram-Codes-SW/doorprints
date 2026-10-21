@@ -43,6 +43,7 @@ import app.doorprints.shared.model.Distances
 import app.doorprints.shared.model.KindFields
 import app.doorprints.shared.model.KindSettingRules
 import app.doorprints.shared.model.SpaceView
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import app.doorprints.shared.model.HousePoint
 import app.doorprints.shared.model.Place
@@ -466,6 +467,8 @@ data class ExportOptions(
     /** The kinds the phone has on and its default: a backup's `search` object names them ([BackupWire.encodeData]). */
     val enabledKinds: List<String> = listOf(Candidates.BASELINE_KIND),
     val defaultKind: String = Candidates.BASELINE_KIND,
+    /** The checked kind files this phone added (docs/03 ADR-39): a backup's `search.userKinds`, whether they are shown or not. */
+    val userKinds: List<JsonElement> = emptyList(),
 ) {
     /** True for an update file (5.28), whose name is `Doorprints-updates-<date>` and whose manifest says who it is for. */
     val isUpdate: Boolean get() = since != null || sharedTo != null
