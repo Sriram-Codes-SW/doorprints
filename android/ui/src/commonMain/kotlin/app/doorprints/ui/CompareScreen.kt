@@ -374,7 +374,7 @@ private fun CompareTable(
     val extraRows = kindExtraRows(space.built, chosen, notSet)
     // A row's heading: Compare's own word for the house, the kind's label for another kind (S4b-BL-256, the website's labelKey).
     @Composable
-    fun head(id: String, house: StringResource) = stringResource(if (CompareCriteria.usesPersonScoring(space.built)) house else space.built.labels.fieldText(id))
+    fun head(id: String, house: StringResource) = stringResource(if (CompareCriteria.usesPersonScoring(space.built)) UiWord.Res(house) else space.built.labels.fieldText(id))
     val rows = buildList {
         fun row(ref: String, r: CompareRow) {
             if (space.shows(ref)) add(r)
@@ -510,7 +510,7 @@ private fun kindExtraRows(kind: BuiltInKind, chosen: List<HouseEntity>, notSet: 
                     is KindValue.Money -> Formats.rupees(v.amount)
                     is KindValue.Count -> v.value.toString()
                     is KindValue.Bool -> words[if (v.value) "yes" else "no"]
-                    is KindValue.Option -> stringResource(kindStringResource(v.label))
+                    is KindValue.Option -> stringResource(kindWord(v.label))
                     is KindValue.Text -> v.value
                 }
             }
@@ -522,6 +522,6 @@ private fun kindExtraRows(kind: BuiltInKind, chosen: List<HouseEntity>, notSet: 
     return extras.map { e ->
         val better = criteria.firstOrNull { it.id == e.id && it.source == CompareCriterion.Source.EXTRA }?.better
         val best = CompareCriteria.bestOfExtra(chosen.map { CompareCriteria.extraFigure(fields, it.extrasOther, e.id) }, better).map { chosen[it].id }.toSet()
-        CompareRow(stringResource(kindStringResource(fields.label(e))), notSet, { h -> texts[h.id]?.get(e.id) }, best = best)
+        CompareRow(stringResource(kindWord(fields.label(e))), notSet, { h -> texts[h.id]?.get(e.id) }, best = best)
     }
 }

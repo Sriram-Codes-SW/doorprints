@@ -61,6 +61,7 @@ import app.doorprints.shared.location.PlaceLookup
 import app.doorprints.ui.AppServices
 import app.doorprints.ui.AreaWakeupServices
 import app.doorprints.ui.CopyImportUndo
+import app.doorprints.ui.KindFilePick
 import app.doorprints.ui.CopyImportUndoes
 import app.doorprints.ui.ExportServices
 import app.doorprints.ui.HouseFormServices
@@ -185,6 +186,10 @@ private class AndroidSettingsServices(private val app: DoorprintsApp) : Settings
         }
         return { launcher.launch(null) }
     }
+
+    /** *Import a kind file* (docs/03 ADR-39): the document picker, one file read through the content resolver ([KindFilePicker]). */
+    @Composable
+    override fun rememberKindFilePicker(onPicked: (KindFilePick) -> Unit): () -> Unit = KindFilePicker.remember(onPicked)
 
     override suspend fun backupFolderLabel(folder: String): String? =
         withContext(Dispatchers.IO) { Saf.folderLabel(app, Uri.parse(folder)) }

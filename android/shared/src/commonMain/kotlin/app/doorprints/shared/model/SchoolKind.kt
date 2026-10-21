@@ -51,8 +51,16 @@ object DevKinds {
         return { TEST_ONLY.remove(kind) }
     }
 
-    /** The kinds a new candidate may be: the house, and the school while the flag is on (and, in a test, the kinds it registered). */
-    fun creatable(on: Boolean): List<BuiltInKind> = if (on) listOf(BuiltInKind.HOUSE, SCHOOL) + TEST_ONLY else listOf(BuiltInKind.HOUSE)
+    /**
+     * The kinds a new candidate may be: the house, and while [on] the school (and, in a test, the kinds it registered), then the
+     * kinds this phone added from a kind file ([UserKinds], docs/03 ADR-39). The built-in ones come first, so a kind a person adds
+     * can never stand in for one (its id starts `u_` anyway).
+     */
+    fun creatable(on: Boolean): List<BuiltInKind> =
+        if (on) builtIn(true) + UserKinds.ids().mapNotNull(UserKinds::kind) else listOf(BuiltInKind.HOUSE)
+
+    /** The built-in kinds while [on] (the house, the school, a test's), without the kinds a person added. */
+    fun builtIn(on: Boolean): List<BuiltInKind> = if (on) listOf(BuiltInKind.HOUSE, SCHOOL) + TEST_ONLY else listOf(BuiltInKind.HOUSE)
 
     /** The kind a candidate is drawn as: its own when the flag allows it, else the house (as today). */
     fun of(id: String?, on: Boolean): BuiltInKind = creatable(on).firstOrNull { it.id == id } ?: BuiltInKind.HOUSE

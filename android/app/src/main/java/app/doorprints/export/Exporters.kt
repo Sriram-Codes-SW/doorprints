@@ -173,7 +173,7 @@ object Exporters {
 
             // Built once: the manifest counts the rows data.json actually holds (unlinked visits included).
             val rows = BackupData.of(bundle)
-            val data = BackupWire.encodeData(rows)
+            val data = BackupWire.encodeData(rows, bundle.options.enabledKinds, bundle.options.defaultKind, bundle.options.userKinds)
             files += hashed(zip, BackupFormat.DATA_ENTRY) { target -> writing(target) { it.write(data) } }
             onProgress(++done, total)
 

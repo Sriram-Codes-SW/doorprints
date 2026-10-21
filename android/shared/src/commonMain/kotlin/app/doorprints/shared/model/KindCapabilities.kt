@@ -156,8 +156,12 @@ data class KindCapabilities(
             return { TEST_ONLY.remove(kindId) }
         }
 
-        /** The capabilities of a kind by its id: the built-in set, or [DEFAULT] for a kind this build does not know. */
-        fun of(kindId: String?): KindCapabilities = if (kindId == null) DEFAULT else BUILT_IN[kindId] ?: TEST_ONLY[kindId] ?: DEFAULT
+        /**
+         * The capabilities of a kind by its id: the built-in set, a kind this phone added from a kind file (its own block, read by
+         * [parse] and the user profile; docs/03 ADR-39, [UserKinds]), or [DEFAULT] for a kind this build does not know.
+         */
+        fun of(kindId: String?): KindCapabilities =
+            if (kindId == null) DEFAULT else BUILT_IN[kindId] ?: TEST_ONLY[kindId] ?: UserKinds.capabilities(kindId) ?: DEFAULT
 
         /**
          * The strict reader of a `capabilities` object, the schema's twin in code: the resolved set, or null when anything is

@@ -282,6 +282,10 @@ private class IosSettingsServices(private val drive: IosDriveServices) : Setting
     @Composable
     override fun rememberBackupFolderPicker(onPicked: (folder: String?) -> Unit): () -> Unit = remember { {} }
 
+    /** *Import a kind file* (docs/03 ADR-39): the Files app's picker, a copy of one JSON file read and removed ([IosKindFile]). */
+    @Composable
+    override fun rememberKindFilePicker(onPicked: (KindFilePick) -> Unit): () -> Unit = IosKindFile.rememberPicker(onPicked)
+
     override suspend fun backupFolderLabel(folder: String): String? = null
     override val backingUpNow: Flow<Boolean> = flowOf(false)
     override fun backUpNow() = Unit

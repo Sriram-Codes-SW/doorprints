@@ -473,14 +473,14 @@ open class CommonRepository(
 
     override suspend fun testAiProvider(config: AiProviderConfig, key: String): Result<Unit> = ai.testProvider(config, key)
 
-    /** The saved houses and their visits as on-device AI reads them, most recently changed first. */
+    /** The saved houses and their visits as on-device AI reads them, most recently changed first; none of a kind a person added (docs/03 ADR-39). */
     private suspend fun aiHouses(): List<AiHouse> {
         val visits = db.visits().all().groupBy { it.houseId }
         val viewings = viewings().groupBy { it.houseId }
         val areas = areas()
         val notes = areaNotes()
         val places = places()
-        return db.houses().all().sortedByDescending { it.updatedAt }.map { h ->
+        return db.houses().all().filter { !app.doorprints.shared.model.UserKindFiles.isUserKindId(it.kind) }.sortedByDescending { it.updatedAt }.map { h ->
             val point = HousePoint(h.lat, h.lon, h.street, h.locationSource)
             AiHouse(
                 id = h.id, label = h.label, address = h.address, street = h.street, locality = h.locality,

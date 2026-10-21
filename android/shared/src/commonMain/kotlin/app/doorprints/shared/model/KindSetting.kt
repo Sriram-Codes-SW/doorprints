@@ -20,6 +20,7 @@ package app.doorprints.shared.model
 
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 
 /**
@@ -33,11 +34,14 @@ import kotlinx.serialization.json.JsonPrimitive
  * - **Released** kinds ([RELEASED]) need no switch: the house and, since the school's release on the phones (docs/03 ADR-13b), the
  *   school. Every other available kind is offered only while the person turns on *Experimental: more than houses*, which is
  *   shown only in a build that ships such a kind (none today, so the switch is hidden; the mechanism stays for the next kind).
+ * - **Kinds a person adds** from a kind file (docs/03 ADR-39, [UserKinds]) are available once imported (after the built-in
+ *   ones, whatever the build lists, since they are the person's data), offered only while *Kinds you add (experimental)*
+ *   ([custom] `1`) is on, whatever *Experimental* says, and never released.
  * - **Enabled** kinds are the offered ones the person turned on (the house alone by default), and the **default** kind
  *   is the one a link, a notification or a shared listing is saved as.
  *
- * The three stored values are the settings store's text as it holds them ([experimental] `1`, [enabledText] a JSON list
- * of kind ids, [defaultText] a kind id); the setters give the new text to store, `null` removing the key.
+ * The four stored values are the settings store's text as it holds them ([experimental] and [custom] `1`, [enabledText] a
+ * JSON list of kind ids, [defaultText] a kind id); the setters give the new text to store, `null` removing the key.
  */
 data class KindSetting(
     val available: List<String> = listOf(KindSettingRules.HOUSE),
@@ -46,12 +50,26 @@ data class KindSetting(
     val defaultText: String? = null,
     /** The released kinds; only a test of the mechanism of an *unreleased* kind passes another list (the website's `pinReleased`). */
     val released: List<String> = KindSettingRules.RELEASED,
+    /** *Kinds you add (experimental)*: `1` on (docs/03 ADR-39; the website's `doorprints.kinds.custom`). */
+    val custom: String? = null,
+    /**
+     * Which stored kind files a person added this setting was read with (a hash of the stored text, 0 for none): a kind replaced
+     * by a new file keeps its id, so this is what tells the screens to read its words again.
+     */
+    val userRevision: Int = 0,
 ) {
     /** Whether the person turned *Experimental: more than houses* on (`1`); off on any doubt. */
     val experimentalOn: Boolean get() = experimental == "1"
 
-    /** The kinds the settings screen lists: the released ones, and the others only while the switch is on. */
-    val offered: List<String> get() = available.filter { it in released || experimentalOn }
+    /** Whether the person turned *Kinds you add (experimental)* on (`1`); off on any doubt. */
+    val customOn: Boolean get() = custom == "1"
+
+    /**
+     * The kinds the settings screen lists: the released ones, the unreleased built-in ones only while *Experimental* is on, and
+     * the kinds a person added only while *Kinds you add* is on.
+     */
+    val offered: List<String>
+        get() = available.filter { if (UserKindFiles.isUserKindId(it)) customOn else it in released || experimentalOn }
 
     /** The enabled kinds, in the build's order: the stored list kept to the offered kinds; none left means the house. */
     val enabled: List<String>
@@ -66,11 +84,17 @@ data class KindSetting(
     /** Whether the app has spaces: two or more kinds enabled. With one, the app is that kind's alone, on today's paths. */
     val spaces: Boolean get() = enabled.size > 1
 
-    /** Whether this build ships a kind that needs the switch (what shows *Experimental: more than houses*). */
-    val hasUnreleased: Boolean get() = available.any { it !in released }
+    /** Whether this build ships a built-in kind that needs the switch (what shows *Experimental: more than houses*). */
+    val hasUnreleased: Boolean get() = available.any { it !in released && !UserKindFiles.isUserKindId(it) }
 
     /** The settings with the switch on or off; off, the unreleased kinds leave the screens and their entries are kept. */
     fun withExperimental(on: Boolean): KindSetting = copy(experimental = if (on) "1" else null)
+
+    /**
+     * *Kinds you add* on or off. Off, the kinds a person added leave Settings and the chooser (and a default that was one gives
+     * way to the first kind still enabled, as [default] reads it); they and their entries are kept.
+     */
+    fun withCustom(on: Boolean): KindSetting = copy(custom = if (on) "1" else null)
 
     /**
      * Kind [id] turned on or off. The last enabled kind cannot be turned off; turning off the default makes the next
@@ -140,10 +164,15 @@ object KindSettingRules {
      * kinds PR 8): `{"kind":"house"}` for the house alone, byte for byte the file before; any other well-formed set
      * writes `{"kinds":[...],"defaultKind":"..."}`. A list that is not well formed (empty, an id outside door 3's pattern,
      * a repeated id, a default that is not in it) writes the house's. Every reader ignores it.
+     *
+     * With [userKinds] (the checked kind files this phone added, docs/03 ADR-39) it also carries them as `userKinds`, last: an
+     * optional field of the data set's object within `/1` (docs/schemas/README.md §1.1), which every older reader ignores (they
+     * read only `kinds` and `defaultKind`, the server none of it), so a file without them is byte for byte what it was.
      */
-    fun searchOf(kinds: List<String>, default: String): String {
+    fun searchOf(kinds: List<String>, default: String, userKinds: List<JsonElement> = emptyList()): String {
         val ok = kinds.isNotEmpty() && kinds.all { KIND_ID.matches(it) } && kinds.toSet().size == kinds.size && default in kinds
-        return if (!ok || kinds == listOf(HOUSE)) HOUSE_SEARCH else "{\"kinds\":${listText(kinds)},\"defaultKind\":\"$default\"}"
+        val spaces = if (!ok || kinds == listOf(HOUSE)) HOUSE_SEARCH else "{\"kinds\":${listText(kinds)},\"defaultKind\":\"$default\"}"
+        return if (userKinds.isEmpty()) spaces else spaces.dropLast(1) + ",\"userKinds\":${JsonArray(userKinds)}}"
     }
 
     /**

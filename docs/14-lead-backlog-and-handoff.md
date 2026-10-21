@@ -2,8 +2,8 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.207 |
-| Date | 2026-10-20 |
+| Version | 0.208 |
+| Date | 2026-10-21 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..183); this file lists the lead-level items and points to the rest. |
 
@@ -215,6 +215,7 @@
 | 0.205 | 2026-10-20 | Claude (Code), engineer | **§1 and §2: the school is released on the phones** (`feat/school-release-phones`; [03](03-design.md) ADR-13b): #389 is merged, so the website's note no longer says draft; the phones' `RELEASED` gains the school, the switch hides itself, the preview marks and the tagline follow; the phone device checks stay the owner's, not run. No sign-off is recorded here. |
 | 0.206 | 2026-10-20 | Claude (Code), engineer | **§1 and §2: kinds a person adds, the website** ([03](03-design.md) ADR-39, `feat/user-authored-kinds-web`; the phones next, `feat/user-authored-kinds-phones`). |
 | 0.207 | 2026-10-20 | Claude (Code), engineer | **§1 and §2: the kinds leftovers are built, In review** (`feat/kinds-leftovers`; [03](03-design.md) §18.29): the *Not built* list of N21 and the *Planned* list lose the `zz_all` space on the phones (in tests only), filters on number and amount extras and reordering the copy blocks; user-authored kinds by JSON import stay Planned. |
+| 0.208 | 2026-10-21 | Claude (Code), engineer | **§1 and §2: kinds a person adds, the phones** ([03](03-design.md) ADR-39, `feat/user-authored-kinds-phones`). |
 
 ## 1. Where things stand (2026-10-16, everything built is merged to `main`)
 
@@ -253,7 +254,7 @@ today's state. No pull request is open apart from a docs one.
     website and the server) with two tripwires, `tools/check-kind-literals.mjs` and `gen-kind-words --check` (§18.26). The house
     is byte-identical (its goldens, pins and screenshots show no diff). The school's question screen now has its own headings
     (this branch, §18.23). The school is still compiled in but off.
-  - **Kinds a person adds, by importing a kind file: the website in review** ([03](03-design.md) ADR-39, §18.28; `feat/user-authored-kinds-web`): *Kinds you add (experimental)* in What you track, the import with its preview and refusals, removal that keeps the entries, `search.userKinds` in a full backup, the shared `user-kind-vectors.json` (website and server); the phones follow in `feat/user-authored-kinds-phones`. Not in the Drive sync file or on the server (their entries are).
+  - **Kinds a person adds, by importing a kind file: the website built, the phones in review** ([03](03-design.md) ADR-39, §18.28; `feat/user-authored-kinds-web`): *Kinds you add (experimental)* in What you track, the import with its preview and refusals, removal that keeps the entries, `search.userKinds` in a full backup, the shared `user-kind-vectors.json` (website, phones and server); the phones in `feat/user-authored-kinds-phones` (the same rules in `:shared`, the words as `UiWord`, the Android and iPhone pickers). Not in the Drive sync file or on the server (their entries are).
   - **Built after #373, In review** (`feat/kinds-leftovers`, [03](03-design.md) §18.29): filters on number and amount extras (a range), the order of a copy's Markdown and readable blocks from the kind file (`copyOrder`; not the spreadsheet, CSV or the Android PDF), a `zz_all` space on the phones **in tests only** (`@TestOnlyKinds`; its Compose screens are not rendered).
   - **Docs and CI.** Architecture overview (#357), the README around the kinds model (#358), the gitleaks fingerprint for the
     made-up key of the Voice 7 test (#365), the Compose tests' main-thread flake fixed at its root (#368). The release
@@ -290,7 +291,7 @@ today's state. No pull request is open apart from a docs one.
    The phone device checks (MT-96, MT-97, MT-101, MT-103, MT-112, MT-113, MT-115, MT-116, MT-118..MT-121, and TC-M-25 in the
    school's space) are the owner's and not run. Optional at
    any time: `SARVAM_EVAL_API_KEY` for the voice eval suite.
-5. **Kinds a person adds** ([03](03-design.md) ADR-39): the website in review (`feat/user-authored-kinds-web`), then the phones (`feat/user-authored-kinds-phones`); the owner's check is [13](13-release-security-checklist.md) J9. **Planned, when the owner asks** (not built): a `zz_all`
+5. **Kinds a person adds** ([03](03-design.md) ADR-39): the website built (`feat/user-authored-kinds-web`), the phones in review (`feat/user-authored-kinds-phones`); on the iPhone the picker is compiled but not yet run on a device; the owner's check is [13](13-release-security-checklist.md) J9. **Planned, when the owner asks** (not built): a `zz_all`
    (A `zz_all` space on the phones in tests, filters on number and amount extras and the copy-block order are built, In review: [03](03-design.md) §18.29.)
 6. **Voice input refuses a free-plan provider key: built, In review** (owner request 2026-10-16, decision 2026-10-19; branch `feat/voice-refuse-free-tier`; no new backlog row). A rule `ALLOW | REFUSE_FREE | REFUSE_UNKNOWN | CHECKING` on a shared vector file, on the website and both phones: a free Gemini key (a `FreeTier` quota id), an OpenRouter free key or a `:free` model is refused with no way round; Groq, Sarvam and a probe that said nothing are refused until the person confirms "my plan is paid" for that key (the fail-closed design with an acknowledgement; **the owner can choose *never allow unknown* by deleting that switch**); the microphone is disabled before any audio and the check is made again before the request ([03](03-design.md) ADR-37 §19, [ai/voice-input](ai/voice-input.md) §8). **RR-33 is accepted by the owner** ("I accept this", 2026-10-19; confirmed 2026-10-20) at Medium-Low, mitigated with residual, conditional on this control staying in the release (removed or weakened, it lapses and RR-33 returns to Proposed). The per-release re-check of the provider facts is [13](13-release-security-checklist.md) F11. Owner-only left: the real-key rows TC-M-92..TC-M-94 (MT-124..MT-126), not run.
 

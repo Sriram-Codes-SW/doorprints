@@ -273,6 +273,27 @@ interface SettingsServices {
     @Composable
     fun DriveSection() {
     }
+
+    /**
+     * Settings > What you track > *Import a kind file* (docs/03 ADR-39): returns the function that opens the system's picker for
+     * one file and reads it, at most [app.doorprints.shared.model.UserKindFiles.MAX_BYTES] (a larger file is [KindFilePick.TooBig]
+     * before it is read); [onPicked] gets what was read, and nothing when the person backed out. Null (the default) where the
+     * platform has no picker: the import is not offered there, and kinds still arrive with a backup.
+     */
+    @Composable
+    fun rememberKindFilePicker(onPicked: (KindFilePick) -> Unit): (() -> Unit)? = null
+}
+
+/** What reading a kind file the person picked gave (docs/03 ADR-39). */
+sealed interface KindFilePick {
+    /** The file's text, decoded as UTF-8; the reader checks everything else. */
+    data class Text(val text: String) : KindFilePick
+
+    /** Larger than 64 KiB: refused before it is read. */
+    data object TooBig : KindFilePick
+
+    /** It could not be read. */
+    data object Failed : KindFilePick
 }
 
 /**

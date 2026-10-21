@@ -116,7 +116,7 @@ object CopyWriter {
 
         val rows = BackupData.of(bundle)
         files += hashed(zip, tools, BackupFormat.DATA_ENTRY) { out ->
-            out(BackupWire.encodeData(rows, bundle.options.enabledKinds, bundle.options.defaultKind).encodeToByteArray())
+            out(BackupWire.encodeData(rows, bundle.options.enabledKinds, bundle.options.defaultKind, bundle.options.userKinds).encodeToByteArray())
         }
         onProgress(++done, total)
 

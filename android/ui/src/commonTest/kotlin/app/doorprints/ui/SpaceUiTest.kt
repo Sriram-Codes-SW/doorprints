@@ -90,7 +90,7 @@ class SpaceUiTest {
             val w = SpaceWords.of(kind)
             assertEquals(
                 listOf("heading", "search", "shown", "emptyBody", "noMatch", "add", "create", "regionLabel", "addHint", "addHintShort").map(::key),
-                listOf(w.many, w.search, w.shown, w.empty, w.noMatch, w.addOnMap, w.saveHere, w.regionDesc, w.addTip, w.addTipA11y).map { it.key },
+                listOf(w.many.key, w.search.key, w.shown.key, w.empty.key, w.noMatch.key, w.addOnMap.key, w.saveHere.key, w.regionDesc.key, w.addTip.key, w.addTipA11y.key),
                 kind,
             )
             assertEquals(listOf(key("areaNotesNone"), key("areaInReach")), listOf(PageWords.of(kind).areaNotesNone.key, PageWords.of(kind).areaHere.key), kind)

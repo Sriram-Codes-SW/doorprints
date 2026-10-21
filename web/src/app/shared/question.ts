@@ -43,8 +43,8 @@ export type QuestionScope = 'RENT' | 'SALE' | 'BOTH';
 export const QUESTION_CATEGORIES: readonly QuestionCategory[] = ['MONEY', 'WATER_POWER', 'RULES', 'BUILDING', 'LEGAL', 'OTHER'];
 export const QUESTION_SCOPES: readonly QuestionScope[] = ['RENT', 'SALE', 'BOTH'];
 
-/** A custom question's id: `q_` and 8 lowercase hex characters; a kind's own adds its id first (`q_school_`, kinds PR 29). */
-const CUSTOM_ID_PATTERN = /^q_(?:[a-z]{2,12}_)?[0-9a-f]{8}$/;
+/** A custom question's id: `q_` and 8 lowercase hex characters; a kind's own adds its id first (`q_school_`, kinds PR 29; `q_u_gym_` for a kind a person added, docs/03 ADR-39). */
+const CUSTOM_ID_PATTERN = /^q_(?:(?:[a-z]{2,12}|u_[a-z][a-z0-9_]{1,29})_)?[0-9a-f]{8}$/;
 /** A record id: the pattern the records store accepts. */
 const ID_PATTERN = /^[A-Za-z0-9._-]{1,64}$/;
 

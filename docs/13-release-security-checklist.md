@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | The manual part of the release security gate: the one-hour list per release, and the scope of the deep self-run pentest |
-| Version | 0.30 |
-| Date | 2026-10-20 |
+| Version | 0.31 |
+| Date | 2026-10-21 |
 | Author | Claude (Code), lead |
 | Status | Draft. Written (story S4b-SEC-3); **not yet run on a release candidate**, which is the story's last acceptance item |
 
@@ -41,6 +41,7 @@
 | 0.28 | 2026-10-20 | Claude (Code), docs | **G5 new** (`docs/privacy-children-data`): the privacy page states how children's data is handled, in four languages, and the contact redactor's limit is documented (O-1 of the release run of 2026-10-19 is covered by the same page update: the voice-audio sentence). [02](02-threat-model.md) v0.98 T-I55, RR-35. |
 | 0.29 | 2026-10-20 | Claude (Code), engineer | **J8 rewritten for the school's release on the phones** (owner approved going ahead, 2026-10-20, [03](03-design.md) ADR-13b; `feat/school-release-phones`): `RELEASED` is the house and the school, a *Schools* row (off) and no *Experimental* switch, no preview marks; the phone device checks are named as the owner's and not run. H2 applies in the school's space on the phones. |
 | 0.30 | 2026-10-20 | Claude (Code), engineer | **New J9**, kinds a person adds ([03](03-design.md) ADR-39, `feat/user-authored-kinds-web`). |
+| 0.31 | 2026-10-21 | Claude (Code), engineer | **J9 on the phones too** ([03](03-design.md) ADR-39, `feat/user-authored-kinds-phones`). |
 
 ## 1. What this is, and when it runs
 
@@ -219,7 +220,7 @@ Run **AI evals** (`ai-evals.yml`, manual) on the release commit first. The golde
 | J6 | **AI input of a kind.** With a kind available: the evals' kind cases (TC-AI-04, `kind-ai-vectors.json`) pass; an extra with an instruction as its text, a number out of range or a money value with a foreign cadence is left out of the document; the contact's name and phone do not appear | Passed |
 | J7 | **The index follows the list.** After `KINDS_AVAILABLE` changes, `POST /api/ai/reindex` has been run (T-I49) | Done, or the list did not change |
 | J8 | **The phones: released** (owner approved going ahead, 2026-10-20, ADR-13b; the phones' half of J1; `feat/school-release-phones`; no Play release exists). The release APK's `AVAILABLE_KINDS` is `"house,school"` and `DEV_KINDS` is `false` (`BuildConfig`, or `aapt`/`jadx` of the signed APK); the iPhone's `IOS_AVAILABLE_KINDS` is the same (`ReleaseKindsTest`, `IosKindsGateTest`), `KindSettingRules.RELEASED` is the house and the school, and the iPhone's Info.plist names no kind (its location text says *places you save*). On a fresh install of each: the Map is the first screen, no chooser, no chip (the house alone is enabled), Settings has *What you track* with a **Houses** row on and a **Schools** row **off** and **no** *Experimental: more than houses* switch (it hides itself while no listed kind is unreleased); a stored `kinds.enabled` or `kinds.default` naming the school changes nothing a person sees until *Show Schools* is on. Turn on *Show Schools*: the chooser appears. The switch hint and the school listing tips carry no *preview* mark (en, hi, ta, te; hi, ta, te under review). Settings > About says "Remember every place you've seen.", and the empty house list still says houses. **Owner-pending device checks:** MT-96, MT-97, MT-101, MT-103, MT-112, MT-113, MT-115, MT-116, MT-118..MT-121 and TC-M-25 in the school's space on a phone are not run | All true. Releasing a second kind (adding it to `RELEASED`) is a deliberate decision of the owner, recorded in [10](10-sprint-log.md) and [03](03-design.md) ADR-13b |
-| J9 | **Kinds a person adds** ([03](03-design.md) ADR-39, T-T23). On the release website, with *Kinds you add* on: the sample gym of `user-kind-vectors.json` imports, shows its preview, is added, turned on and used as a space; three hostile cases of the vectors (markup in a label, a map style, a prototype key) are refused with their reason and nothing is stored; the map in the gym's space draws India's boundaries as the house's (TC-M-25); *Remove kind* keeps its entries | Done, with the browser and the date |
+| J9 | **Kinds a person adds** ([03](03-design.md) ADR-39, T-T23). On the release website, an Android phone and an iPhone, each with *Kinds you add* on: the sample gym of `user-kind-vectors.json` imports, shows its preview, is added, turned on and used as a space; three hostile cases of the vectors (markup in a label, a map style, a prototype key) are refused with their reason and nothing is stored; the map in the gym's space draws India's boundaries as the house's (TC-M-25); *Remove kind* keeps its entries | Done, with the browser or phone and the date |
 
 ## 4. Judging and recording
 

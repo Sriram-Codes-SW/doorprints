@@ -606,9 +606,9 @@ fun HouseEditScreen(
                     Text(
                         stringResource(
                             when {
-                                notFound -> pages.notFoundTitle
+                                notFound -> UiWord.Res(pages.notFoundTitle)
                                 isNew -> L.refText("kind.new")
-                                else -> pages.detailsTitle
+                                else -> UiWord.Res(pages.detailsTitle)
                             },
                         ),
                         maxLines = 1,

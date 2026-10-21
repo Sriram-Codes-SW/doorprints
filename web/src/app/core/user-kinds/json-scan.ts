@@ -17,7 +17,7 @@
  */
 
 /**
- * A strict look at a JSON text before it is parsed (docs/03 ADR-39, docs/02 T-T25): one document and nothing after it, no
+ * A strict look at a JSON text before it is parsed (docs/03 ADR-39, docs/02 T-T23): one document and nothing after it, no
  * key twice in one object (`JSON.parse` would keep the last, where another reader might keep the first), at most `maxDepth`
  * arrays and objects inside one another, at most `maxValues` values and no string longer than `maxString` characters. It
  * walks the text once, keeps only the keys of the objects it is inside, and stops at the first fault, so a hostile file

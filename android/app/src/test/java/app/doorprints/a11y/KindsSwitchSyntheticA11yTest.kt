@@ -151,7 +151,8 @@ class KindsSwitchSyntheticA11yTest(private val lang: String) {
         assertTrue("$what ($lang, 200 %):\n" + found.joinToString("\n"), found.isEmpty())
     }
 
-    private val isSwitch = SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Switch)
+    /** The *Experimental* switch, by its label: the section also has *Kinds you add (experimental)* (docs/03 ADR-39), a switch of its own. */
+    private val isSwitch get() = SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Switch) and hasText(text(Res.string.kinds_switch), substring = true)
     private val isCheckbox = SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Checkbox)
     private val isRadio = SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.RadioButton)
     private val heading = SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading)

@@ -116,10 +116,14 @@ object ArchiveImports {
     /**
      * A backup's kinds and default as a hint (kinds PR C, S4b-BL-274): taken only by a phone that never chose what it tracks
      * (neither the list nor the default is stored), never applied over a choice, and never a reason to change a candidate.
-     * Called after a file was imported; returns whether the hint was taken.
+     * Called after a file was imported; returns whether the hint was taken. First, the kinds a person added that the file carries
+     * (`search.userKinds`, docs/03 ADR-39) and this phone does not have are added, each checked as an imported kind file is; one
+     * already here is never replaced, and none is turned on (they are offered while *Kinds you add* is on).
      */
-    suspend fun adoptKinds(repository: Repository, archive: BackupArchive): Boolean =
-        archive.spaces?.let { (kinds, default) -> repository.settings.adoptKinds(kinds, default) } ?: false
+    suspend fun adoptKinds(repository: Repository, archive: BackupArchive): Boolean {
+        repository.settings.adoptUserKinds(archive.userKinds)
+        return archive.spaces?.let { (kinds, default) -> repository.settings.adoptKinds(kinds, default) } ?: false
+    }
 
     /**
      * Writes the confirmed import [request] from [archive] (a merge row by row, a copy all or nothing:

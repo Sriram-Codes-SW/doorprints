@@ -81,9 +81,9 @@ KINDS_AVAILABLE=house,school
 Without it, the server reads every saved entry as a house, and **Fill in from listing text** on a new school shows an
 error. Your own AI key on this device needs no server setting.
 
-## Kinds you add (website, experimental) {#kinds-you-add}
+## Kinds you add (experimental) {#kinds-you-add}
 
-Besides houses and schools you can keep a kind of your own, such as gyms, cafes or offices. In **Your data**, under **What you track**, turn on **Kinds you add (experimental)**, then choose **Import a kind file**. A kind file is a small JSON file (at most 64 KB) that names the kind's fields and words. Doorprints shows its name, fields and checklist first; choose **Add this kind**, then turn it on in its row. It is then a list of its own, with your words exactly as you wrote them, in every language.
+Besides houses and schools you can keep a kind of your own, such as gyms, cafes or offices. On the website open **Your data**, on a phone **Settings**; under **What you track**, turn on **Kinds you add (experimental)**, then choose **Import a kind file**. A kind file is a small JSON file (at most 64 KB) that names the kind's fields and words. Doorprints shows its name, fields and checklist first; choose **Add this kind**, then turn it on in its row. It is then a list of its own, with your words exactly as you wrote them, in every language.
 
 The smallest useful file looks like this (the full format is `docs/schemas/kinds/user-kind.schema.json` in the repository, with a complete example in `user-kind-vectors.json`):
 
@@ -115,4 +115,4 @@ The smallest useful file looks like this (the full format is `docs/schemas/kinds
 
 The id starts with `u_`. A file is refused, with the reason and where in the file, when it is too big, is not JSON, has markup or a `{` in a word, tries to set up the map, asks for AI, or names a field it does not have. Nothing in it is run or fetched. No AI reads a kind you add.
 
-A full backup (**Save a copy**, then the backup) carries your kinds, and **Import a backup** on another browser adds them. **Remove kind** asks first and keeps every entry: they move to your default list until you import the kind again. To delete the entries too, use **Delete all in this space** first. The phone apps follow later; until then a phone shows such entries in its default list.
+A full backup (**Save a copy**, then the backup) carries your kinds, and **Import a backup** on another browser or phone adds them. **Remove kind** asks first and keeps every entry: they move to your default list until you import the kind again. To delete the entries too, use **Delete all in this space** first. A phone or browser that does not have the kind shows its entries in its default list until you import the kind there.

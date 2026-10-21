@@ -92,7 +92,7 @@ fun PasteResult(
             val extraMarks = if (merge != null && current != null) remainingExtraMarks(merge, current) else emptyList()
             if (marks.isNotEmpty() || extraMarks.isNotEmpty()) {
                 val names = marks.map { stringResource(it.nameRes) } +
-                    fields.others().filter { it.id in extraMarks }.map { stringResource(kindStringResource(fields.label(it))) }
+                    fields.others().filter { it.id in extraMarks }.map { stringResource(kindWord(fields.label(it))) }
                 Text(
                     stringResource(Res.string.house_paste_from_listing, names.joinToString(", ")),
                     style = MaterialTheme.typography.bodySmall,

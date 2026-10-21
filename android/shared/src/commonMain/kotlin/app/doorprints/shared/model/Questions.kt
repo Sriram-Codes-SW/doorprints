@@ -89,13 +89,18 @@ data class Question(
         /** At most this many questions in all, seeded and custom, archived ones included. */
         const val MAX_QUESTIONS = 100
         const val CUSTOM_PREFIX = "q_"
-        private val CUSTOM_ID = Regex("q_(?:[a-z]{2,12}_)?[0-9a-f]{8}")
+        /** `q_`, the kind's id for a kind's own bank (a built-in one, or one a person added: `u_…`, docs/03 ADR-39), then 8 hex digits. */
+        private val CUSTOM_ID = Regex("q_(?:(?:[a-z]{2,12}|u_[a-z][a-z0-9_]{1,29})_)?[0-9a-f]{8}")
 
         /** The kinds besides the house that have a question bank of their own; their ids carry the kind (docs/03 section 18.23). */
         val KINDS: List<String> = listOf("school")
 
-        /** The kind a question id belongs to: a kind's own ids start `qd_<kind>_` or `q_<kind>_`, every other id is the house's. */
-        fun kindOf(id: String): String = KINDS.firstOrNull { id.startsWith("qd_${it}_") || id.startsWith("q_${it}_") } ?: Candidates.BASELINE_KIND
+        /**
+         * The kind a question id belongs to: a kind's own ids start `qd_<kind>_` or `q_<kind>_`, every other id is the house's. The
+         * longest id first: a kind a person added may be `u_gym_hall` beside `u_gym` (docs/03 ADR-39).
+         */
+        fun kindOf(id: String): String = (KINDS + UserKinds.ids()).sortedByDescending { it.length }
+            .firstOrNull { id.startsWith("qd_${it}_") || id.startsWith("q_${it}_") } ?: Candidates.BASELINE_KIND
 
         /** The bank's order: [sort], then the id. */
         val ORDER: Comparator<Question> = compareBy<Question> { it.sort }.thenBy { it.id }
@@ -139,7 +144,7 @@ enum class QuestionScope {
          */
         private val BY_KIND: Map<String, List<QuestionScope>> = mapOf("school" to listOf(BOTH))
 
-        fun of(kind: String): List<QuestionScope> = BY_KIND[kind] ?: entries
+        fun of(kind: String): List<QuestionScope> = BY_KIND[kind] ?: if (UserKinds.kind(kind) != null) listOf(BOTH) else entries
 
         fun fromWire(value: String?): QuestionScope = entries.firstOrNull { it.name == value } ?: BOTH
     }
