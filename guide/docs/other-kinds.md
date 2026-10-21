@@ -80,3 +80,39 @@ KINDS_AVAILABLE=house,school
 
 Without it, the server reads every saved entry as a house, and **Fill in from listing text** on a new school shows an
 error. Your own AI key on this device needs no server setting.
+
+## Kinds you add (website, experimental) {#kinds-you-add}
+
+Besides houses and schools you can keep a kind of your own, such as gyms, cafes or offices. In **Your data**, under **What you track**, turn on **Kinds you add (experimental)**, then choose **Import a kind file**. A kind file is a small JSON file (at most 64 KB) that names the kind's fields and words. Doorprints shows its name, fields and checklist first; choose **Add this kind**, then turn it on in its row. It is then a list of its own, with your words exactly as you wrote them, in every language.
+
+The smallest useful file looks like this (the full format is `docs/schemas/kinds/user-kind.schema.json` in the repository, with a complete example in `user-kind-vectors.json`):
+
+```json
+{
+  "format": "doorprints-kind/1",
+  "id": "u_gym",
+  "version": 1,
+  "labels": { "new": { "text": "New gym" }, "many": { "text": "Gyms" }, "delete": { "text": "Delete gym" } },
+  "statuses": [
+    { "id": "NEW", "label": { "text": "New" } },
+    { "id": "SHORTLISTED", "label": { "text": "Shortlisted" } },
+    { "id": "REJECTED", "label": { "text": "Rejected" } },
+    { "id": "TAKEN", "label": { "text": "Joined" } },
+    { "id": "NOT_CHOSEN", "label": { "text": "Not chosen" } }
+  ],
+  "sections": [{ "id": "details", "label": { "text": "Details" } }, { "id": "location", "label": { "text": "Location" } }],
+  "core": [
+    { "id": "label", "section": "details", "order": 10, "label": { "text": "Gym name" } },
+    { "id": "location", "section": "location", "order": 10, "label": { "text": "Location" } }
+  ],
+  "extras": [{ "id": "hours", "type": "text", "maxLength": 80, "section": "details", "order": 50, "label": { "text": "Opening hours" } }],
+  "checklist": [{ "key": "clean", "label": { "text": "Clean and airy" } }],
+  "questions": { "seed": "docs/schemas/default-questions.json", "scopes": [{ "id": "BOTH", "cadences": ["month"] }] },
+  "search": ["label", "hours"],
+  "ai": { "extract": [], "ask": [], "plan": [], "never": [] }
+}
+```
+
+The id starts with `u_`. A file is refused, with the reason and where in the file, when it is too big, is not JSON, has markup or a `{` in a word, tries to set up the map, asks for AI, or names a field it does not have. Nothing in it is run or fetched. No AI reads a kind you add.
+
+A full backup (**Save a copy**, then the backup) carries your kinds, and **Import a backup** on another browser adds them. **Remove kind** asks first and keeps every entry: they move to your default list until you import the kind again. To delete the entries too, use **Delete all in this space** first. The phone apps follow later; until then a phone shows such entries in its default list.

@@ -1,0 +1,84 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "https://doorprints.web.app/schemas/kinds/user-kind.schema.json",
+ "title": "Doorprints kind file a person adds, doorprints-kind/1 under the user profile",
+ "description": "A kind a person adds by importing a file (a gym, a cafe, an office; docs/03 ADR-39): the built-in kind format (`kind.schema.json`, every rule of it applies through `allOf`) with a stricter profile. The id starts `u_`, so it can never be or shadow a built-in id (house, school, the test kind); every label is the person's own words (`textLabel`), shown as written in every language; there are no `words` (the app's neutral words name the kind's entries) and no `was`; the `ai` slots are empty (no AI reads a kind a person adds); the question seed is one of the built-in banks' paths and the question scopes are the one `BOTH`; the limits are smaller. Data only: nothing here is code, a link that is fetched, markup or map configuration (the map keys are refused anywhere, India's boundaries apply to every kind, ADR-22). What a schema cannot say, the readers check too, the same on every stack (`user-kind-vectors.json`): the file is at most 64 KiB, a key is not repeated in one object, nesting is at most 8 deep, at most 4,000 values, no key `__proto__`, `constructor` or `prototype`, ids are unique, the `search`, Compare and filter ids name the kind's own fields, at most 300 options in all, and no lone surrogate in a text.",
+ "allOf": [{ "$ref": "kind.schema.json" }],
+ "type": "object",
+ "not": { "required": ["words"] },
+ "properties": {
+  "id": { "type": "string", "pattern": "^u_[a-z][a-z0-9_]{1,29}$" },
+  "note": { "type": "string", "maxLength": 500 },
+  "labels": {
+   "type": "object",
+   "properties": { "new": { "$ref": "#/$defs/text" }, "many": { "$ref": "#/$defs/text" }, "delete": { "$ref": "#/$defs/text" } }
+  },
+  "statuses": { "type": "array", "items": { "type": "object", "properties": { "label": { "$ref": "#/$defs/text" } } } },
+  "sections": { "type": "array", "maxItems": 13, "items": { "type": "object", "properties": { "label": { "$ref": "#/$defs/text" } } } },
+  "core": {
+   "type": "array",
+   "maxItems": 14,
+   "items": {
+    "type": "object",
+    "not": { "required": ["was"] },
+    "properties": {
+     "label": { "$ref": "#/$defs/text" },
+     "cadences": {
+      "type": "array",
+      "items": { "type": "object", "not": { "required": ["was"] }, "properties": { "label": { "$ref": "#/$defs/text" } } }
+     }
+    }
+   }
+  },
+  "extras": {
+   "type": "array",
+   "maxItems": 30,
+   "items": {
+    "type": "object",
+    "not": { "required": ["was"] },
+    "properties": {
+     "id": {
+      "type": "string",
+      "not": {
+       "enum": ["label", "status", "rating", "money", "address", "street", "locality", "contactName", "contactPhone", "brokerId", "listingUrl", "notes", "location", "locationSource",
+        "bedrooms", "areaSqft", "floor", "deposit", "depositMonths", "maintenance", "maintenanceIncluded", "brokerage", "brokerageMonths", "lockInMonths", "noticeMonths", "availableFrom", "myOffer", "agreedPrice"]
+      }
+     },
+     "label": { "$ref": "#/$defs/text" },
+     "min": { "type": "integer", "minimum": -1000000000000, "maximum": 1000000000000 },
+     "max": { "type": "integer", "minimum": -1000000000000, "maximum": 1000000000000 },
+     "options": { "type": "array", "items": { "type": "object", "properties": { "label": { "$ref": "#/$defs/text" } } } }
+    }
+   }
+  },
+  "checklist": { "type": "array", "maxItems": 20, "items": { "type": "object", "properties": { "label": { "$ref": "#/$defs/text" } } } },
+  "questions": {
+   "type": "object",
+   "properties": {
+    "seed": { "enum": ["docs/schemas/default-questions.json", "docs/schemas/kinds/school-questions.json"] },
+    "scopes": { "type": "array", "maxItems": 1, "items": { "type": "object", "properties": { "id": { "const": "BOTH" } } } }
+   }
+  },
+  "search": { "type": "array", "maxItems": 80 },
+  "ai": {
+   "type": "object",
+   "not": { "required": ["words"] },
+   "properties": {
+    "extract": { "type": "array", "maxItems": 0 },
+    "ask": { "type": "array", "maxItems": 0 },
+    "plan": { "type": "array", "maxItems": 0 },
+    "never": { "type": "array", "maxItems": 0 }
+   }
+  },
+  "capabilities": { "type": "object", "properties": { "baseline": { "const": false } } }
+ },
+ "$defs": {
+  "text": {
+   "description": "Only the person's own words: a key label (`web`, `android`) is refused in a kind a person adds.",
+   "type": "object",
+   "additionalProperties": false,
+   "required": ["text"],
+   "properties": { "text": { "$ref": "kind.schema.json#/$defs/userText" } }
+  }
+ }
+}
