@@ -10,7 +10,7 @@
 | Date | 2026-10-21 |
 | Author | Claude (Code), engineer |
 | Code | `origin/main` at `85d672fd`; the fixes are on `fix/dependabot-alerts-2026-10-21` |
-| Status | Fixes made and checked locally; the alerts close only after the merge, when the dependency graph is re-submitted (section 4) |
+| Status | **Closed 2026-10-21.** The fixes are merged (#401); after the owner re-ran the `Security` workflow by hand, the graph was submitted and Security > Dependabot shows no open alerts (section 6) |
 
 ## 1. How this was derived
 
@@ -40,7 +40,7 @@ one manifest. That is why a build tool shows up as an "Android" alert.
 | 5 | `bcpkix-jdk18on` | 1.80.2 | GHSA-wg6q-6289-32hp / CVE-2026-5588 (Moderate; fixed 1.84) | as #8 | No | Pinned to **1.85**, with `bcutil-jdk18on` so the three stay together |
 | 2 | `org.apache.commons:commons-lang3` | 3.16.0 | GHSA-j288-q9x7-2f5v / CVE-2025-48924 (Moderate, uncontrolled recursion; fixed 3.18.0) | `androidLintTool` (via `commons-compress`) and the plugin classpath | No | Pinned to **3.18.0** |
 | 4 | `org.bitbucket.b_c:jose4j` | 0.9.5 | GHSA-3677-xxcr-wjqv / CVE-2024-29371 (High, DoS; fixed 0.9.6) | plugin classpath only (AGP) | No | Pinned to **0.9.6** |
-| 7 | `io.opentelemetry:opentelemetry-api` | not found | GHSA-rcgg-9c38-7xpx / CVE-2026-45292 (Moderate; fixed 1.62.0) | **Not in any graph this session could resolve**: not in the APK, test, lint or plugin classpaths, not in the Gradle cache. The graph that CI submits has a configuration this machine does not resolve (Kotlin/Native or similar, not available offline) | Not on any shipped path found | Pinned to **1.62.0** on the plugin classpath and in every project configuration, as a precaution. **Unproven**: whether it closes #7 depends on the CI graph (section 4) |
+| 7 | `io.opentelemetry:opentelemetry-api` | not found | GHSA-rcgg-9c38-7xpx / CVE-2026-45292 (Moderate; fixed 1.62.0) | **Not in any graph this session could resolve**: not in the APK, test, lint or plugin classpaths, not in the Gradle cache. The graph that CI submits has a configuration this machine does not resolve (Kotlin/Native or similar, not available offline) | Not on any shipped path found | Pinned to **1.62.0** on the plugin classpath and in every project configuration, as a precaution. The pin closed #7 once the graph was re-submitted (section 6) |
 | 10 | `source-map-js` | 1.2.1 | GHSA-68fv-2mgg-jv7q (High) | web `devDependencies`, via `postcss` and `sass` | No (build tool, not in `dist/`) | Bumped to **1.2.2** in `web/package-lock.json` |
 | 13, 14, 11 | `launch-editor` (reported against `vite`) | via `vite` 8.3.0 | GHSA-587h-7wmj-h5pm (High), GHSA-r825-w8mm-5pxw, GHSA-698v-4r3x-3vcv (Moderate) | web `devDependencies`: `@angular/build` 22.2.3 pins `vite` 8.3.0 exactly | No (dev server only) | `vite` raised to **8.3.3** with an `overrides` entry (and `rolldown` ~1.2.11, which 8.3.3 needs, so there is one hoisted copy); `launch-editor` is no longer in the lock file at all |
 
@@ -80,3 +80,12 @@ The repository has no `gradle.lockfile` and no `verification-metadata.xml`, so t
   `androidLintTool` configuration were checked locally instead.
 - The backend's `mvn verify` (needs JDK 25 and the PostGIS container); no backend file changed and the dependency tree
   was checked only.
+
+## 6. Outcome (owner, 2026-10-21)
+
+- The owner ran the `Security` workflow by hand on `main` after #401 merged. The `Submit Gradle dependency graph (android/)`
+  step logged `Submitted dependency-graph-reports/security-gradle-dependency-graph.json: Dependency results for the
+  repository have been successfully updated.`
+- Security > Dependabot then showed **no open alerts**: all 14 closed, #7 `opentelemetry-api` included (the precautionary
+  1.62.0 pin was enough, so there is no unpinnable build tool to decide on). Secret scanning was enabled the same day.
+- Sections 4 and 5 are the state before this check and are kept as they were written.
