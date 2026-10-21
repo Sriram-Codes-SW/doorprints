@@ -78,6 +78,16 @@ describe('AI core parity with the server', () => {
     expect(redactGeneric(`Mail ${'a'.repeat(70)}@example.com now`)).toBe('Mail [email] now');
   });
 
+  it('removes a phone written in full-width digits or split by an invisible character (pentest PT-5)', () => {
+    expect(redactGeneric('call ９８４００１１１１１ now')).toBe('call [phone] now');
+    expect(redactGeneric('call 98400​11111 now')).toBe('call [phone] now');
+    expect(redactGeneric('call 98400⁠11111, 98400﻿11111 or 984­0011111')).toBe('call [phone], [phone] or [phone]');
+    // A saved number, written with an invisible character in a note.
+    expect(new Redactor(null, '+91 98400 11111').freeText('ring 9​8400​11111')).toBe('ring [phone]');
+    // The rest of the text is kept as written, invisible characters and Indic joiners included.
+    expect(redactGeneric('क्‍ष flat 2​3')).toBe('क्‍ष flat 2​3');
+  });
+
   it('keeps an at sign that is not an email address', () => {
     const text = 'Rent 28k @ month, ask x@y or a@b.';
     expect(new Redactor(null, null).freeText(text)).toBe(text);

@@ -48,11 +48,11 @@ export function asciiDigits(s: string): string {
   });
 }
 
-/** `s` with every match of `re` (global) replaced by `[phone]`; the matching reads native digits as 0-9, the rest of `s` is kept. */
+/** `s` with every match of `re` (global) replaced by `[phone]`; the matching reads native and full-width digits as 0-9 and a zero-width space, word joiner, BOM or soft hyphen as a space, one for one (pentest PT-5; the joiners Indic words use stay), the rest of `s` is kept. */
 function replaceInDigits(re: RegExp, s: string): string {
   let out = '';
   let last = 0;
-  for (const m of asciiDigits(s).matchAll(re)) {
+  for (const m of asciiDigits(s).replace(/[\uFF10-\uFF19]/g, (c) => String(c.charCodeAt(0) - 0xff10)).replace(/[\u200B\u2060\uFEFF\u00AD]/g, ' ').matchAll(re)) {
     const at = m.index ?? 0;
     out += s.slice(last, at) + PHONE;
     last = at + m[0].length;
