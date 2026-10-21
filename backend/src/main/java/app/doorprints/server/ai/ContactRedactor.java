@@ -129,7 +129,7 @@ public final class ContactRedactor {
      * What the phone patterns read: {@link #asciiDigits}, then full-width digits (U+FF10..FF19) as 0-9 and the invisible
      * characters that can sit inside a pasted number (zero-width space, word joiner, zero-width no-break space, soft
      * hyphen) as a space, one character for one character (pentest of 2026-10-21, PT-5). Zero-width joiner and non-joiner
-     * are left alone: Indic scripts use them inside words. The website's and the phones' {@code phoneView} are the same.
+     * are left alone: Indic scripts use them inside words. The website's {@code replaceInDigits} and the phones' {@code phoneView} read the same.
      */
     static String phoneView(String s) {
         var out = new StringBuilder(asciiDigits(s));

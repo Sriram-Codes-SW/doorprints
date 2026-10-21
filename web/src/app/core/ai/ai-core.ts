@@ -48,23 +48,11 @@ export function asciiDigits(s: string): string {
   });
 }
 
-/**
- * What the phone patterns read: {@link asciiDigits}, then full-width digits (U+FF10..FF19) as 0-9 and the invisible
- * characters that can sit inside a pasted number (zero-width space, word joiner, zero-width no-break space, soft hyphen)
- * as a space, one character for one character, so `98400` + U+200B + `11111` is a phone too (pentest of 2026-10-21, PT-5).
- * Zero-width joiner and non-joiner are left alone: Indic scripts use them inside words.
- */
-function phoneView(s: string): string {
-  return asciiDigits(s)
-    .replace(/[０-９]/g, (c) => String(c.charCodeAt(0) - 0xff10))
-    .replace(/[​⁠﻿­]/g, ' ');
-}
-
-/** `s` with every match of `re` (global) replaced by `[phone]`; the matching reads native digits as 0-9, the rest of `s` is kept. */
+/** `s` with every match of `re` (global) replaced by `[phone]`; the matching reads native and full-width digits as 0-9 and a zero-width space, word joiner, BOM or soft hyphen as a space, one for one (pentest PT-5; the joiners Indic words use stay), the rest of `s` is kept. */
 function replaceInDigits(re: RegExp, s: string): string {
   let out = '';
   let last = 0;
-  for (const m of phoneView(s).matchAll(re)) {
+  for (const m of asciiDigits(s).replace(/[\uFF10-\uFF19]/g, (c) => String(c.charCodeAt(0) - 0xff10)).replace(/[\u200B\u2060\uFEFF\u00AD]/g, ' ').matchAll(re)) {
     const at = m.index ?? 0;
     out += s.slice(last, at) + PHONE;
     last = at + m[0].length;
