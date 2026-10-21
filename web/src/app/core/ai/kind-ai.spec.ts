@@ -25,6 +25,7 @@ import { LocalStore } from '../../data/local-store.service';
 import { type CandidateDto, houseOf } from '../candidate';
 import { DEV_KINDS_KEY } from '../dev-kinds';
 import { EXPERIMENTAL_KINDS_KEY } from '../kind-setting';
+import { pinReleased, unpinReleased } from '../../shared/testing/released-kinds';
 import { en } from '../../i18n/en';
 import { SCHOOL_FIELDS } from '../school-kind';
 import type { HouseDto } from '../models';
@@ -224,7 +225,10 @@ describe('kind-aware AI through OnDeviceAiService (kinds PR 7)', () => {
   let houses: unknown[];
   const reply = (json: unknown) => ({ candidates: [{ content: { parts: [{ text: JSON.stringify(json) }] } }] });
 
+  // "The flag off" is a build or a browser where the school is not offered: since the school's release (ADR-13b) the website has
+  // none, so those cases pin the released set to the house (a listed, unreleased kind); the released case is the last test.
   beforeEach(() => {
+    pinReleased();
     houses = [];
     TestBed.configureTestingModule({
       providers: [
@@ -237,6 +241,7 @@ describe('kind-aware AI through OnDeviceAiService (kinds PR 7)', () => {
   });
 
   afterEach(() => {
+    unpinReleased();
     localStorage.removeItem(DEV_KINDS_KEY);
     http.verify();
   });
@@ -261,6 +266,29 @@ describe('kind-aware AI through OnDeviceAiService (kinds PR 7)', () => {
       req.flush(reply({ answer: 'none' }));
       await answer;
     }
+  });
+
+  it('the released school, with no developer flag and no switch, is read as a school in Ask and Extract, and a house as a house (ADR-13b)', async () => {
+    unpinReleased();
+    houses = [houseOf(docCase(2).candidate as CandidateDto)];
+    const answer = ai.ask('AIzaTestKey1234', 'Which school runs a bus?');
+    const req = await sent();
+    expect(req.request.body.contents[0].parts[0].text).toContain(docCase(2).expected.replace(/<\/?\s*schools[^>]*>/gi, ''));
+    req.flush(reply({ answer: 'none' }));
+    await answer;
+    const draft = ai.extractListing('AIzaTestKey1234', V.extract.listing, 'school');
+    const ex = await sent();
+    expect(ex.request.body.generationConfig.responseSchema).toBe(SCHOOL_LISTING_SCHEMA);
+    ex.flush(reply(V.extract.sanitize[0].raw));
+    await draft;
+    // A house keeps the house's words and lines although the kinds are now on for everyone.
+    houses = [houseOf({ ...docCase(0).candidate, id: '55555555-5555-4555-8555-0000000002ff', kind: 'house' } as CandidateDto)];
+    const h = ai.ask('AIzaTestKey1234', 'Which house has parking?');
+    const hr = await sent();
+    expect(hr.request.body.systemInstruction.parts[0].text).toContain('ONE person\'s house hunt');
+    expect(hr.request.body.contents[0].parts[0].text).toMatch(/^<houses-[0-9a-f]{6}>/);
+    hr.flush(reply({ answer: '' }));
+    await h;
   });
 
   it('Settings’ switch alone, with no developer flag, reads a school as a school in Ask and Extract (S4b-BL-212)', async () => {

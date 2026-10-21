@@ -22,6 +22,7 @@ package app.doorprints.ui
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import app.doorprints.shared.model.KindWordKeys
+import app.doorprints.shared.model.UserKinds
 import app.doorprints.ui.res.*
 import org.jetbrains.compose.resources.StringResource
 
@@ -106,8 +107,8 @@ class PageWords(
         val HOUSE = BY_KIND.getValue(KindWordKeys.KINDS.first())
         val SCHOOL = BY_KIND.getValue("school")
 
-        /** The words of [kind]; a kind with no entry of its own reads the house's. */
-        fun of(kind: String): PageWords = BY_KIND[kind] ?: HOUSE
+        /** The words of [kind]; a kind a person added reads the neutral ones (docs/03 ADR-39); any other kind with no entry of its own reads the house's. */
+        fun of(kind: String): PageWords = BY_KIND[kind] ?: UserKinds.wordKeys(kind)?.let(::from) ?: HOUSE
     }
 }
 

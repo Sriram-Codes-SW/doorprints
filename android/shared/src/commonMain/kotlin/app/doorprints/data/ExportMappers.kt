@@ -30,6 +30,7 @@ import app.doorprints.shared.model.HouseStatus
 import app.doorprints.shared.model.HouseValues
 import app.doorprints.shared.model.LocationSource
 import app.doorprints.shared.model.MoveIn
+import app.doorprints.shared.model.UserKinds
 import app.doorprints.shared.model.VisitSource
 import app.doorprints.shared.records.RecordRules
 
@@ -105,7 +106,7 @@ fun ExportPhoto.toEntity(path: String, id: String = this.id, houseId: String = t
  * on the main thread for every option tap. Common since ADR-23 CMP-6 P6b.
  */
 fun Repository.LocalRows.toBundle(options: ExportOptions): ExportBundle = ExportBundle.build(
-    options.copy(lengthUnit = lengthUnit, enabledKinds = kinds.enabled, defaultKind = kinds.default),
+    options.copy(lengthUnit = lengthUnit, enabledKinds = kinds.enabled, defaultKind = kinds.default, userKinds = UserKinds.files().map { it.json }),
     houses.map { it.toExport() },
     visits.map { it.toExport() },
     photos.map { it.toExport() },

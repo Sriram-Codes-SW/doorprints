@@ -22,6 +22,7 @@ import app.doorprints.shared.ai.ContactRedactor
 import app.doorprints.shared.ai.DraftSanitizer
 import app.doorprints.shared.ai.RawListing
 import app.doorprints.shared.api.HouseDraftDto
+import app.doorprints.shared.country.Country
 
 /**
  * The no-AI listing parser (docs/11 5.29, S4b-FR-4; 5.9): what a portal's share sheet hands over (its title, price,
@@ -47,16 +48,10 @@ object ListingText {
 
     private val URL = Regex("""https?://[^\s<>"']+""")
     private val TRACKING = Regex("""^(utm_.*|fbclid|gclid|igshid|ref|src)$""")
-    /** An Indian mobile number, with or without +91, spaces or dashes, or a landline with its STD code (011 4155 0101, (022) 2655 0101). */
-    private val PHONE = Regex("""(?:\+91[\s-]?)?(?:0)?[6-9]\d{4}[\s-]?\d{5}\b|(?<!\d)\(?0\d{2,4}\)?[\s-]?\d{3,4}[\s-]?\d{3,4}\b""")
+    // The phone number and the price are the country pack's (ADR-38): `Country.derived.listingPhone` and `.listingPrice`.
     /** "2.5 BHK" is 2 (the half is a study), as the sanitiser reads it: never 5, from the digit after the dot. */
     private val BHK = Regex("""\b(\d{1,2})(?:\.5)?\s*-?\s*(?:BHK|bhk|Bhk|bedroom|bedrooms|BR)\b""")
     private val STUDIO = Regex("""\b(studio|1\s*RK)\b""", RegexOption.IGNORE_CASE)
-    /** A price with the rupee sign or Rs, or a bare lakh/crore amount. */
-    private val PRICE = Regex(
-        """(?:₹|Rs\.?|INR)\s*([\d,]+(?:\.\d+)?)\s*(k|thousand|lac|lakh|lakhs|lacs|l|cr|crore|crores)?\b|\b(\d+(?:\.\d+)?)\s*(k|thousand|lac|lakh|lakhs|lacs|cr|crore|crores)\b""",
-        RegexOption.IGNORE_CASE,
-    )
     private val RENT = Regex("""\b(for rent|rent|rental|per month|/\s*month|monthly|lease|pm)\b""", RegexOption.IGNORE_CASE)
     private val SALE = Regex("""\b(for sale|sale|resale|buy|selling)\b""", RegexOption.IGNORE_CASE)
     /** The cities a locality can be followed by (the same list as the website's CITIES). */
@@ -84,9 +79,6 @@ object ListingText {
     private val AREA = Regex("""(\d{3,5})\s*(?:sq\.?\s*ft|sqft|sq\.?\s*feet|square\s*feet|sq\.?\s*m)\b""", RegexOption.IGNORE_CASE)
     private val FURNISHING = Regex("""\b(fully[- ]furnished|semi[- ]furnished|unfurnished|furnished)\b""", RegexOption.IGNORE_CASE)
 
-    /** Ten lakh and above with no rent words is a sale (a monthly rent of ten lakh is not a house hunt). */
-    private const val SALE_FROM_RUPEES = 1_000_000L
-
     /** The draft from [text]: the fields the text says, the whole text kept in the notes so nothing shared is lost. */
     fun parse(text: String): HouseDraftDto {
         val t = text.take(MAX_CHARS)
@@ -96,7 +88,8 @@ object ListingText {
         // The numbers are read in 0-9 whatever script they are written in (S4b-BL-174b; one character for one character, so
         // the text and its reading line up); the words, the locality and the notes keep what was written.
         val digits = ContactRedactor.asciiDigits(words)
-        val priceMatch = PRICE.find(digits)
+        val derived = Country.derived
+        val priceMatch = derived.listingPrice.find(digits)
         val priceText = priceMatch?.let { m ->
             if (m.groupValues[1].isNotEmpty()) m.groupValues[1] + " " + m.groupValues[2] else m.groupValues[3] + " " + m.groupValues[4]
         }?.trim()
@@ -104,13 +97,14 @@ object ListingText {
         val priceType = when {
             RENT.containsMatchIn(words) -> "RENT"
             SALE.containsMatchIn(words) -> "SALE"
-            rupees != null && rupees >= SALE_FROM_RUPEES -> "SALE"
+            // Ten lakh and above with no rent words is a sale (a monthly rent of ten lakh is not a house hunt): the pack's `saleFrom`.
+            rupees != null && rupees >= Country.pack.money.saleFrom -> "SALE"
             else -> null
         }
         val bedrooms = BHK.find(digits)?.groupValues?.get(1) ?: STUDIO.find(words)?.let { "studio" }
         val area = AREA.find(digits)?.groupValues?.get(1)
         val details = listOfNotNull(
-            area?.let { "$it sq ft" },
+            area?.let { "$it ${Country.pack.areaUnit}" },
             FURNISHING.find(words)?.value?.lowercase()?.replaceFirstChar { it.uppercase() },
         )
         val notes = (if (details.isEmpty()) t else details.joinToString(", ") + "\n\n" + t).trim()
@@ -121,7 +115,7 @@ object ListingText {
             priceType = priceType,
             bedrooms = bedrooms,
             areaSqft = area,
-            contactPhone = PHONE.find(digits)?.value,
+            contactPhone = derived.listingPhone.find(digits)?.value,
             listingUrl = url,
             notes = notes,
         )

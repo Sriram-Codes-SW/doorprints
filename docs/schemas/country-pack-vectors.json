@@ -1,0 +1,120 @@
+{
+ "format": "country-pack-vectors/1",
+ "note": "The characterization vectors of the country pack (ADR-38, docs/03 section 21; WP-C1, WP-C2). Both stacks read this file and must give the same answers: the website in web/src/app/shared/country/country-pack.spec.ts, the Android app and the iPhone core in android/shared CountryPackVectorsTest. Section 'in' is the shipped India pack: it records what the code answered before the pack existed (no behaviour change). Section 'zz' is the synthetic second pack that exists in tests only (web/src/app/shared/testing/zz-pack.ts, android/shared androidHostTest ZzPack.kt): it proves the call sites read the pack, because the same inputs give other answers under it. No second real country ships.",
+ "in": {
+  "group": [
+   ["0", "0"], ["12", "12"], ["999", "999"], ["1000", "1,000"], ["1234", "1,234"], ["100000", "1,00,000"],
+   ["1250000", "12,50,000"], ["12345678", "1,23,45,678"], ["100000000000", "1,00,00,00,00,000"]
+  ],
+  "money": [
+   {"amount": 0, "text": "₹0"}, {"amount": 999, "text": "₹999"}, {"amount": 25000, "text": "₹25,000"},
+   {"amount": 1250000, "text": "₹12,50,000"}, {"amount": -5000, "text": "-₹5,000"}
+  ],
+  "amounts": [
+   {"text": "25,000", "value": 25000}, {"text": "1.2 Cr", "value": 12000000}, {"text": "85 lakh", "value": 8500000},
+   {"text": "25k", "value": 25000}, {"text": "₹ 25000/month", "value": 25000}, {"text": "1.5 m", "value": 1500000},
+   {"text": "2 crores", "value": 20000000}, {"text": "0.5 lakh", "value": 50000}, {"text": "1,25,000", "value": 125000},
+   {"text": "abc", "value": null}
+  ],
+  "phoneKey": [
+   {"phone": "+91 98400 11111", "key": "9840011111"}, {"phone": "098400-11111", "key": "9840011111"},
+   {"phone": "9840011111", "key": "9840011111"}, {"phone": "123456", "key": "123456"},
+   {"phone": "12345", "key": null}, {"phone": "", "key": null}
+  ],
+  "listing": [
+   {"text": "3 BHK flat for sale in Adyar, Chennai. ₹1.2 Cr. Contact +91 98400 11111", "price": 12000000, "priceType": "SALE", "phone": "+91 98400 11111"},
+   {"text": "Rs 25,000 per month, 2 BHK", "price": 25000, "priceType": "RENT", "phone": null},
+   {"text": "2BHK 45 lakh", "price": 4500000, "priceType": "SALE", "phone": null},
+   {"text": "Call (022) 2655 0101", "price": null, "priceType": null, "phone": "(022) 2655 0101"},
+   {"text": "₹ 9,50,000 2 BHK monthly", "price": 950000, "priceType": "RENT", "phone": null}
+  ],
+  "redact": [
+   {"text": "Call 98400 11111 now", "out": "Call [phone] now"},
+   {"text": "Call +91 98400 11111 now", "out": "Call [phone] now"},
+   {"text": "Landline (022) 2655 0101", "out": "Landline [phone]"},
+   {"text": "Mail ravi@example.com or 9840011111", "out": "Mail [email] or [phone]"},
+   {"text": "Rent is 25000", "out": "Rent is 25000"},
+   {"text": "Flat 2BHK, 1250000 sale", "out": "Flat 2BHK, 1250000 sale"},
+   {"text": "Call ९८४००१११११ now", "out": "Call [phone] now"},
+   {"text": "Order 1234567890123 shipped", "out": "Order [phone] shipped"}
+  ],
+  "geocoder": {
+   "countryCode": "in",
+   "queryName": "India",
+   "box": {"south": 6.5, "west": 68.1, "north": 37.1, "east": 97.4},
+   "defaultView": {"lat": 20.5937, "lon": 78.9629, "zoom": 4},
+   "params": [
+    {"place": "Indiranagar", "language": "hi", "params": {"q": "Indiranagar", "format": "jsonv2", "limit": "1", "countrycodes": "in", "accept-language": "hi"}},
+    {"place": "   ", "language": "en", "params": null}
+   ],
+   "queries": [
+    {"locality": "Indiranagar", "address": null, "query": "Indiranagar, India"},
+    {"locality": "Indiranagar, India", "address": null, "query": "Indiranagar, India"},
+    {"locality": null, "address": "12 MG  Road Bengaluru", "query": "12 MG Road Bengaluru, India"},
+    {"locality": null, "address": null, "query": null}
+   ]
+  },
+  "prompt": {
+   "name": "India", "word": "Rs", "currencyName": "rupees", "areaUnit": "sq ft",
+   "priceExamples": "\"25,000\", \"1.2 Cr\", \"85 lakh\"", "feeExamples": "\"96,000\", \"1.2 lakh\"",
+   "moneyLine": {"amount": 28000, "text": "Rs 28000"},
+   "houseKeyTerms": "2 BHK, 3 BHK, lakh, crore, sq ft, rent, deposit, maintenance, society, locality"
+  },
+  "locale": {
+   "fallback": "en-IN",
+   "speech": [["hi", "hi-IN"], ["ta", "ta-IN"], ["te", "te-IN"]]
+  },
+  "xlsxFormat": {"web": "\"₹\"#,##,##0", "kotlin": "\"₹\"\\ #,##,##0"}
+ },
+ "zz": {
+  "group": [
+   ["0", "0"], ["999", "999"], ["1000", "1,000"], ["100000", "100,000"], ["1234567", "1,234,567"], ["100000000000", "100,000,000,000"]
+  ],
+  "money": [
+   {"amount": 0, "text": "$0"}, {"amount": 25000, "text": "$25,000"}, {"amount": 1234567, "text": "$1,234,567"}, {"amount": -5000, "text": "-$5,000"}
+  ],
+  "amounts": [
+   {"text": "3k", "value": 3000}, {"text": "2 mm", "value": 2000000}, {"text": "1.5 bn", "value": 1500000000},
+   {"text": "25 lakh", "value": 25}, {"text": "1.2 Cr", "value": 1}, {"text": "1,234,567", "value": 1234567}
+  ],
+  "phoneKey": [
+   {"phone": "+99 234 5678", "key": "2345678"}, {"phone": "99-234-5678", "key": "2345678"},
+   {"phone": "2345", "key": null}, {"phone": "98400 11111", "key": "0011111"}
+  ],
+  "listing": [
+   {"text": "Flat for rent $ 1,200 per month. Call +99 234 5678", "price": 1200, "priceType": "RENT", "phone": "+99 234 5678"},
+   {"text": "Bungalow 2 mm", "price": 2000000, "priceType": "SALE", "phone": null},
+   {"text": "Flat 45 lakh for 2 BHK", "price": null, "priceType": null, "phone": null}
+  ],
+  "redact": [
+   {"text": "Call +99 234 5678 now", "out": "Call [phone] now"},
+   {"text": "Call 234 5678 now", "out": "Call [phone] now"},
+   {"text": "Call ๒๓๔๕๖๗๘ now", "out": "Call [phone] now"},
+   {"text": "Call 98400 11111 now", "out": "Call 98400 11111 now"},
+   {"text": "Call ९८४००१११११ now", "out": "Call ९८४००१११११ now"}
+  ],
+  "geocoder": {
+   "countryCode": "zz",
+   "queryName": "Zedland",
+   "box": {"south": -10, "west": -10, "north": 10, "east": 10},
+   "defaultView": {"lat": 1.5, "lon": 2.5, "zoom": 6},
+   "params": [
+    {"place": "Foo Town", "language": "en", "params": {"q": "Foo Town", "format": "jsonv2", "limit": "1", "countrycodes": "zz", "accept-language": "en"}}
+   ],
+   "queries": [
+    {"locality": "Foo Town", "address": null, "query": "Foo Town, Zedland"},
+    {"locality": "Foo Town Zedland", "address": null, "query": "Foo Town Zedland"}
+   ]
+  },
+  "prompt": {
+   "name": "Zedland", "word": "Zd", "currencyName": "zeds", "areaUnit": "sq m",
+   "moneyLine": {"amount": 28000, "text": "Zd 28000"},
+   "houseKeyTerms": "2 rooms, mm, bn, sq m, rent"
+  },
+  "locale": {
+   "fallback": "zz-ZZ",
+   "speech": [["hi", "zz-ZZ"], ["zq", "zq-ZZ"]]
+  },
+  "xlsxFormat": {"web": "\"$\"#,##0", "kotlin": "\"$\"#,##0"}
+ }
+}

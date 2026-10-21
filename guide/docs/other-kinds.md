@@ -1,15 +1,14 @@
-# More than houses (experimental)
+# Schools as well as houses {#more-than-houses-experimental}
 
-Doorprints is made for house hunting, and that is all most people need. This page is about an early preview that lets
-the same app keep track of **schools** too. It is **off** unless you turn it on, on the website and the phones it is a preview you find in Settings, and
-it may change or go away.
+Doorprints began as a notebook for house hunting, and the same app now keeps track of **schools** too, on the website and on
+the phones. Schools are **off** until you show them, so Doorprints opens on your houses as it always did. We have not yet
+checked schools by hand on real phones, so tell us if something looks wrong there.
 
 ## Turn it on
 
-- **Website:** in Settings, off by default. Open **Your data** and find **What you track**.
-- **Android and iPhone:** in Settings, off by default. Open **Settings** and find **What you track**; **Experimental: more than houses** is there, off, and the app is the house app until you turn it on.
+- **Website:** open **Your data** and find **What you track**. A row for **Houses** and one for **Schools** are there. Turn on **Show Schools**. There is no preview switch on the website.
+- **Android and iPhone:** open **Settings** and find **What you track**. A row for **Houses** and one for **Schools** are there. Turn on **Show Schools**. There is no preview switch on the phones either.
 
-Turn on **Experimental: more than houses**. A row for **Houses** and one for **Schools** appear. Turn on **Show Schools**.
 **Default** marks the one Doorprints assumes when it cannot ask: a listing you share into Doorprints, or a link that
 adds a new entry. Houses are the default until you choose another.
 
@@ -54,7 +53,7 @@ On the website, the list of schools has a row of buttons for each of **Board**, 
 
 ## Turn it off again
 
-Turn off **Show Schools**, or **Experimental: more than houses**. Doorprints opens on your houses again. Nothing is
+Turn off **Show Schools**. Doorprints opens on your houses again. Nothing is
 deleted: the schools you saved stay, a backup keeps them, and they come back when you show them again.
 
 You can turn off **Show Houses** instead and keep only Schools. Your houses are not hidden or deleted: with one list shown
@@ -81,3 +80,39 @@ KINDS_AVAILABLE=house,school
 
 Without it, the server reads every saved entry as a house, and **Fill in from listing text** on a new school shows an
 error. Your own AI key on this device needs no server setting.
+
+## Kinds you add (experimental) {#kinds-you-add}
+
+Besides houses and schools you can keep a kind of your own, such as gyms, cafes or offices. On the website open **Your data**, on a phone **Settings**; under **What you track**, turn on **Kinds you add (experimental)**, then choose **Import a kind file**. A kind file is a small JSON file (at most 64 KB) that names the kind's fields and words. Doorprints shows its name, fields and checklist first; choose **Add this kind**, then turn it on in its row. It is then a list of its own, with your words exactly as you wrote them, in every language.
+
+The smallest useful file looks like this (the full format is `docs/schemas/kinds/user-kind.schema.json` in the repository, with a complete example in `user-kind-vectors.json`):
+
+```json
+{
+  "format": "doorprints-kind/1",
+  "id": "u_gym",
+  "version": 1,
+  "labels": { "new": { "text": "New gym" }, "many": { "text": "Gyms" }, "delete": { "text": "Delete gym" } },
+  "statuses": [
+    { "id": "NEW", "label": { "text": "New" } },
+    { "id": "SHORTLISTED", "label": { "text": "Shortlisted" } },
+    { "id": "REJECTED", "label": { "text": "Rejected" } },
+    { "id": "TAKEN", "label": { "text": "Joined" } },
+    { "id": "NOT_CHOSEN", "label": { "text": "Not chosen" } }
+  ],
+  "sections": [{ "id": "details", "label": { "text": "Details" } }, { "id": "location", "label": { "text": "Location" } }],
+  "core": [
+    { "id": "label", "section": "details", "order": 10, "label": { "text": "Gym name" } },
+    { "id": "location", "section": "location", "order": 10, "label": { "text": "Location" } }
+  ],
+  "extras": [{ "id": "hours", "type": "text", "maxLength": 80, "section": "details", "order": 50, "label": { "text": "Opening hours" } }],
+  "checklist": [{ "key": "clean", "label": { "text": "Clean and airy" } }],
+  "questions": { "seed": "docs/schemas/default-questions.json", "scopes": [{ "id": "BOTH", "cadences": ["month"] }] },
+  "search": ["label", "hours"],
+  "ai": { "extract": [], "ask": [], "plan": [], "never": [] }
+}
+```
+
+The id starts with `u_`. A file is refused, with the reason and where in the file, when it is too big, is not JSON, has markup or a `{` in a word, tries to set up the map, asks for AI, or names a field it does not have. Nothing in it is run or fetched. No AI reads a kind you add.
+
+A full backup (**Save a copy**, then the backup) carries your kinds, and **Import a backup** on another browser or phone adds them. **Remove kind** asks first and keeps every entry: they move to your default list until you import the kind again. To delete the entries too, use **Delete all in this space** first. A phone or browser that does not have the kind shows its entries in its default list until you import the kind there.

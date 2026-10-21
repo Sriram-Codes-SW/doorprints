@@ -49,8 +49,10 @@ data class KindCapabilities(
      * kinds PR 30, docs/03 section 18.24). Only the house has it; a kind this build does not know does not.
      */
     val baseline: Boolean = false,
-    /** The extras the list and the map can be filtered by, in the order the rows are shown (ids of enum or switch extras of the kind). */
+    /** The extras the list and the map can be filtered by, in the order the rows are shown (ids of enum, switch, number or amount extras of the kind). */
     val filters: List<String> = emptyList(),
+    /** The blocks of a copy that come first after the details, in this order; the rest follow in [COPY_BLOCKS]'s order (docs/03 section 18.29). None: the fixed order. */
+    val copyOrder: List<String> = emptyList(),
 ) {
     /**
      * Hunt mode (docs/03 section 18.20): the alert radius in metres (30 to 300; the default of the kind's radius), whether a stay
@@ -134,8 +136,32 @@ data class KindCapabilities(
         /** The kinds that have capabilities, for the tests. */
         val KINDS: Set<String> get() = BUILT_IN.keys
 
-        /** The capabilities of a kind by its id: the built-in set, or [DEFAULT] for a kind this build does not know. */
-        fun of(kindId: String?): KindCapabilities = if (kindId == null) DEFAULT else BUILT_IN[kindId] ?: DEFAULT
+        /** The blocks of a house's copy after its details, in the copies' fixed order (`kind.schema.json`, `capabilities.copyOrder`; docs/03 section 18.29). */
+        val COPY_BLOCKS: List<String> =
+            listOf("cost", "rooms", "questions", "viewings", "areaNotes", "distances", "moveIn", "checklist", "visits", "notes", "photos")
+
+        /** The order a kind's copy writes its blocks in: the kind's `copyOrder` first, then the rest in the fixed order. */
+        fun copyBlockOrder(kindId: String?): List<String> {
+            val first = of(kindId).copyOrder
+            return if (first.isEmpty()) COPY_BLOCKS else first + COPY_BLOCKS.filter { it !in first }
+        }
+
+        /** Capabilities a test registered for a kind of its own (the conformance suite's synthetic kind): empty in every build. */
+        private val TEST_ONLY = HashMap<String, KindCapabilities>()
+
+        /** Gives a kind capabilities for a test; returns the call that takes them away again. Only a test may ([TestOnlyKinds]). */
+        @TestOnlyKinds
+        fun registerForTest(kindId: String, capabilities: KindCapabilities): () -> Unit {
+            TEST_ONLY[kindId] = capabilities
+            return { TEST_ONLY.remove(kindId) }
+        }
+
+        /**
+         * The capabilities of a kind by its id: the built-in set, a kind this phone added from a kind file (its own block, read by
+         * [parse] and the user profile; docs/03 ADR-39, [UserKinds]), or [DEFAULT] for a kind this build does not know.
+         */
+        fun of(kindId: String?): KindCapabilities =
+            if (kindId == null) DEFAULT else BUILT_IN[kindId] ?: TEST_ONLY[kindId] ?: UserKinds.capabilities(kindId) ?: DEFAULT
 
         /**
          * The strict reader of a `capabilities` object, the schema's twin in code: the resolved set, or null when anything is
@@ -186,10 +212,15 @@ data class KindCapabilities(
             if (listOf("hunt" to hunt, "contacts" to contacts, "viewings" to viewings, "compare" to compare, "identity" to identity)
                     .any { (key, value) -> key in obj && value == null }
             ) return null
-            return KindCapabilities(map, hunt, rooms, moveIn, contacts, viewings, compare, paths, identity, baseline, filters)
+            val copyOrder = if ("copyOrder" in obj) {
+                val list = (obj["copyOrder"] as? JsonArray)?.map { (it as? JsonPrimitive)?.takeIf { p -> p.isString }?.content } ?: return null
+                if (list.size > COPY_BLOCKS.size || list.any { it == null || it !in COPY_BLOCKS } || list.toSet().size != list.size) return null
+                list.filterNotNull()
+            } else emptyList()
+            return KindCapabilities(map, hunt, rooms, moveIn, contacts, viewings, compare, paths, identity, baseline, filters, copyOrder)
         }
 
-        private val KEYS = setOf("map", "hunt", "rooms", "moveIn", "contacts", "viewings", "compare", "paths", "identity", "baseline", "filters")
+        private val KEYS = setOf("map", "hunt", "rooms", "moveIn", "contacts", "viewings", "compare", "paths", "identity", "baseline", "filters", "copyOrder")
 
         /** A boolean member: its value, [absent] when missing, null when present and not a boolean. */
         private fun JsonObject.flag(key: String, absent: Boolean?): Boolean? {

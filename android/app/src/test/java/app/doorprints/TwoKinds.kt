@@ -25,6 +25,7 @@ import app.doorprints.data.KeystoreSecretStore
 import app.doorprints.data.Repository
 import app.doorprints.data.SettingsStore
 import app.doorprints.location.HuntState
+import app.doorprints.shared.model.KindSettingRules
 import app.doorprints.ui.AppServices
 import app.doorprints.ui.MapServices
 import app.doorprints.ui.LocalAppServices
@@ -43,7 +44,12 @@ import java.io.File
  * on it. Robolectric has no Android Keystore, so the store has a stand-in cipher (as `AiSettingsSectionTest` does). Close it
  * after the test.
  */
-class TwoKinds(app: DoorprintsApp, available: List<String> = listOf("house", "school")) : AutoCloseable {
+class TwoKinds(
+    app: DoorprintsApp,
+    available: List<String> = listOf("house", "school"),
+    /** The released kinds; a test of the mechanism of an *unreleased* kind (a synthetic one, which no build lists) passes its own list. */
+    released: List<String> = KindSettingRules.RELEASED,
+) : AutoCloseable {
     private val job = SupervisorJob()
     private val file = File.createTempFile("two-kinds", ".preferences_pb").also { it.delete() }
     private val seal: (String) -> String = { "v1:" + it.reversed() }
@@ -54,6 +60,7 @@ class TwoKinds(app: DoorprintsApp, available: List<String> = listOf("house", "sc
         KeystoreSecretStore(seal, open = open),
         geminiSecrets = KeystoreSecretStore(seal, KeystoreSecretStore.GEMINI_ENTRY, open),
         availableKinds = available,
+        releasedKinds = released,
     )
     private val real = app.container.repository
     val repository: Repository = object : Repository by real {

@@ -38,6 +38,7 @@ import app.doorprints.shared.model.KindWordKeys
 import app.doorprints.shared.model.KindSettingRules
 import app.doorprints.shared.model.SpaceScope
 import app.doorprints.shared.model.SpaceView
+import app.doorprints.shared.model.UserKinds
 import app.doorprints.ui.res.*
 import org.jetbrains.compose.resources.StringResource
 
@@ -51,13 +52,14 @@ import org.jetbrains.compose.resources.StringResource
  */
 @Immutable
 class SpaceWords(
-    /** The bottom bar's list tab and the list's heading: the kind's plural (`kind.many`). */
-    val many: StringResource,
+    /** The bottom bar's list tab and the list's heading: the kind's plural (`kind.many`): a kind a person added gives its own words (docs/03 ADR-39). */
+    val many: UiWord,
     val search: StringResource,
     val shown: StringResource,
     val empty: StringResource,
     val noMatch: StringResource,
-    val addOnMap: StringResource,
+    /** The list's add button: a kind a person added gives its own *new* (docs/03 ADR-39). */
+    val addOnMap: UiWord,
     val saveHere: StringResource,
     val regionDesc: StringResource,
     val addTip: StringResource,
@@ -109,9 +111,10 @@ class SpaceWords(
         /** The words of the kind whose file keys are [keys] (`KindWordKeys`): every word is the file's `android` key, none is this class's. */
         private fun from(keys: Map<String, String?>): SpaceWords {
             fun w(id: String): StringResource = kindStringResource(checkNotNull(keys[id]) { "no Android word for $id" })
+            fun own(id: String): UiWord = kindWord(checkNotNull(keys[id]) { "no Android word for $id" })
             return SpaceWords(
-                many = w("heading"), search = w("search"), shown = w("shown"), empty = w("emptyBody"), noMatch = w("noMatch"),
-                addOnMap = w("add"), saveHere = w("create"), regionDesc = w("regionLabel"), addTip = w("addHint"),
+                many = own("heading"), search = w("search"), shown = w("shown"), empty = w("emptyBody"), noMatch = w("noMatch"),
+                addOnMap = own("add"), saveHere = w("create"), regionDesc = w("regionLabel"), addTip = w("addHint"),
                 addTipA11y = w("addHintShort"), addTipListing = w("addHintListing"), addTipListingA11y = w("addHintListingShort"),
                 unnamed = w("unnamed"), compareHint = w("compareHint"), comparePickMore = w("comparePickMore"),
                 compareChoose = w("compareChoose"), compareEmpty = w("compareEmpty"), compareEmptyBody = w("compareEmptyBody"),
@@ -132,8 +135,12 @@ class SpaceWords(
         val HOUSE = BY_KIND.getValue(KindWordKeys.KINDS.first())
         val SCHOOL = BY_KIND.getValue("school")
 
-        /** The words of [kind]; a kind with no entry of its own reads the house's. */
-        fun of(kind: String): SpaceWords = BY_KIND[kind] ?: HOUSE
+        /**
+         * The words of [kind]; a kind this phone added from a kind file reads its own heading and add button and the neutral
+         * `ukind_*` words elsewhere (docs/03 ADR-39, built anew each time: the person may replace its file); any other kind with
+         * no entry of its own reads the house's.
+         */
+        fun of(kind: String): SpaceWords = BY_KIND[kind] ?: UserKinds.wordKeys(kind)?.let(::from) ?: HOUSE
     }
 }
 
@@ -184,8 +191,8 @@ class HuntWords(
         val HOUSE = BY_KIND.getValue(KindWordKeys.KINDS.first())
         val SCHOOL = BY_KIND.getValue("school")
 
-        /** The Hunt words of [kind]; a kind with no entry of its own reads the house's. */
-        fun of(kind: String): HuntWords = BY_KIND[kind] ?: HOUSE
+        /** The Hunt words of [kind]; a kind a person added reads the neutral ones (docs/03 ADR-39); any other kind with no entry of its own reads the house's. */
+        fun of(kind: String): HuntWords = BY_KIND[kind] ?: UserKinds.wordKeys(kind)?.let(::from) ?: HOUSE
     }
 }
 

@@ -31,12 +31,14 @@ import {
 import { type AiQuality, geminiThinkingLevel } from './ai-quality';
 import { availableKinds, defaultKind, kindsOn, spacesOn } from '../kind-setting';
 import { holdsFor } from '../space-scope';
+import { isUserKindId } from '../user-kinds/user-kind-ids';
 import {
   SCHOOL_LISTING_SCHEMA, aiKindOf, aiText, askView, kindAskPrompt, kindExtractionPrompt, kindPlanPrompt, planExtras, planView, promptKind,
   refusalOf, sanitizeKindDraft,
 } from './kind-ai';
 import { geminiBlocked } from './ai-blocked';
 import { isQuotaExhausted } from './ai-quota';
+import { noteGeminiAnswer } from '../voice/voice-tier-store';
 import type { JsonChatModel } from './json-chat-model';
 
 /**
@@ -161,6 +163,8 @@ export class GeminiChatModel implements JsonChatModel {
     } catch (e) {
       if (e instanceof HttpErrorResponse) {
         const text = typeof e.error === 'string' ? e.error : JSON.stringify(e.error ?? '');
+        // A free-tier quota id on an ordinary request downgrades what voice input kept for this key at once (ADR-37).
+        noteGeminiAnswer(this.key, e.status, text);
         if (isQuotaExhausted(e.status, text)) throw new OnDeviceAiError('quotaExhausted');
         if (e.status === 429) throw new OnDeviceAiError('rateLimited');
         if (e.status === 403 || (e.status === 400 && (text.includes('API_KEY_INVALID') || text.includes('API key not valid')))) {
@@ -249,7 +253,8 @@ export class OnDeviceAiService {
     const places = await this.store.places.all();
     const noteRows = await this.store.areaNotes.rows();
     const holds = kind ? holdsFor(kind, spacesOn(), defaultKind(), availableKinds()) : () => true;
-    const live = (await this.store.allHouses()).filter((h) => !h.deleted && holds(h));
+    // No AI reads an entry of a kind a person added (docs/03 ADR-39), whichever space holds it.
+    const live = (await this.store.allHouses()).filter((h) => !h.deleted && holds(h) && !isUserKindId(h.kind));
     live.sort((a, b) => Date.parse(b.updatedAt ?? '') - Date.parse(a.updatedAt ?? '') || 0);
     return live.map((h) => ({
       id: h.id, label: h.label, address: h.address, street: h.street, locality: h.locality, lat: h.lat, lon: h.lon,

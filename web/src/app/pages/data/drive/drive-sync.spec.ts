@@ -18,7 +18,7 @@
 
 import { TestBed } from '@angular/core/testing';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import '../../../i18n/all-dictionaries';
+import { DICTIONARIES } from '../../../i18n/all-dictionaries';
 import { DriveSyncCard, DRIVE_SYNC_AFTER_CHANGE_MS } from './drive-sync';
 import { DriveConnectService } from '../../../data/drive/connect/drive-connect.service';
 import { LocalStore } from '../../../data/local-store.service';
@@ -151,5 +151,21 @@ describe('DriveSyncCard', () => {
     const { host, i18n } = await render();
     shown(host, i18n, 'driveSync.afterChange');
     shown(host, i18n, 'driveSync.websitePhotos');
+  });
+
+  // docs/15 5.1 (S4b-BL-293): the screen says how long a deleted photo stays in Drive, in the words of the privacy page and the guide.
+  it('says how long a deleted photo stays in Google Drive, in four languages', async () => {
+    const { host, i18n } = await render();
+    const english = 'Photos you delete leave your Google Drive after 30 days, and later only if a backup you kept still holds them.';
+    expect(i18n.t('driveSync.photoRetention')).toBe(english);
+    expect(host.textContent).toContain(english);
+    // The other three languages are read from their dictionaries, so no spec changes the page's language for the ones after it.
+    for (const lang of ['hi', 'ta', 'te'] as const) {
+      const text = DICTIONARIES[lang]['driveSync.photoRetention'];
+      expect(text, lang).toBeTruthy();
+      expect(text, lang).not.toBe(english);
+      expect(text, lang).toContain('30');
+      expect(text, lang).toContain('Google Drive');
+    }
   });
 });

@@ -49,7 +49,7 @@ packages:
 
 settings:
   base:
-    MARKETING_VERSION: "0.1.0"  # the Android app's versionName (android/app/build.gradle.kts)
+    MARKETING_VERSION: "0.1.1"  # the Android app's versionName (android/app/build.gradle.kts)
     CURRENT_PROJECT_VERSION: "1"
 
 targets:

@@ -504,7 +504,7 @@ fun HouseListScreen(
                 if (!platformFeatures.map) {
                     HeroEmptyState(
                         icon = Icons.Default.Home,
-                        title = stringResource(Res.string.app_tagline),
+                        title = stringResource(Res.string.houses_first_run_title),
                         body = stringResource(LocalSpace.current.words.listEmptyIos),
                         horizontalPadding = 0.dp,
                         action = {
@@ -516,7 +516,7 @@ fun HouseListScreen(
                 } else {
                     HeroEmptyState(
                         icon = Icons.Default.Home,
-                        title = stringResource(Res.string.app_tagline),
+                        title = stringResource(Res.string.houses_first_run_title),
                         body = stringResource(LocalSpace.current.words.empty),
                         horizontalPadding = 0.dp,
                         action = {

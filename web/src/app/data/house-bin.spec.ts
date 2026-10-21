@@ -17,7 +17,8 @@
  */
 
 import { beforeEach, describe, expect, it } from 'vitest';
-import { BIN_DAYS, binRows, inBin, nextStamp, parseNotes, withNote } from './house-bin';
+import { BIN_DAYS, binRows, goneOfRecord, inBin, nextStamp, parseNotes, restoredPhoto, withNote } from './house-bin';
+import { cleanMeta } from '../shared/photo-tags';
 import { LocalStore } from './local-store.service';
 import type { HouseRecord } from './records';
 import type { HouseDto } from '../core/models';
@@ -160,8 +161,35 @@ describe('LocalStore.restoreHouse', () => {
     await store.photos.add('h1', jpeg(), 'p1', T1);
     await store.photos.put({ ...(await store.photos.get('p1'))!, uploaded: true });
     await store.deleteHouse('h1', T1 + 1000);
-    expect(await store.restoreHouse('h1', NOW)).toMatchObject({ photosBack: 0, photosGone: 1 });
+    const result = await store.restoreHouse('h1', NOW);
+    expect(result).toMatchObject({ photosBack: 0, photosGone: 1, deletedAt: T1 + 1000 });
+    expect(result?.gone.map((g) => [g.id, g.deletedAt, g.contentType])).toEqual([['p1', T1 + 1000, 'image/jpeg']]);
     expect(await store.photos.ofHouse('h1')).toEqual([]);
+  });
+});
+
+describe('the photo that comes back from Google Drive', () => {
+  const gone = { id: 'old', deletedAt: NOW, contentType: 'image/png', createdAt: iso(NOW - 9 * DAY), meta: cleanMeta({ roomId: 'r1', tags: ['kitchen'], caption: 'sink', metaUpdatedAt: 5 }), ref: null };
+
+  it('is a new row with the bytes, the old photo\'s type, date and words, not uploaded', async () => {
+    const row = restoredPhoto(gone, 'h1', new Uint8Array([4, 5, 6, 7]), iso(NOW));
+    expect(row.id).not.toBe('old');
+    expect(row).toMatchObject({ houseId: 'h1', contentType: 'image/png', sizeBytes: 4, createdAt: iso(NOW - 9 * DAY), updatedAt: iso(NOW), deleted: false, uploaded: false, syncVersion: 0, roomId: 'r1', tags: ['kitchen'], caption: 'sink', metaUpdatedAt: 5, metaDirty: true });
+    expect(row.blob!.size).toBe(4);
+    expect(row.blob!.type).toBe('image/png');
+  });
+
+  it('has no words to push when the old photo had none, and falls back to a JPEG dated now', () => {
+    const row = restoredPhoto({ ...gone, contentType: null, createdAt: null, meta: cleanMeta(null) }, 'h1', new Uint8Array([1]), iso(NOW));
+    expect(row).toMatchObject({ contentType: 'image/jpeg', createdAt: iso(NOW) });
+    expect(row.metaDirty).toBeUndefined();
+    expect(row.tags).toBeUndefined();
+  });
+
+  it('reads a photo tombstone of this device as what Drive is asked for', () => {
+    expect(goneOfRecord({ id: 'p9', houseId: 'h1', blob: null, contentType: 'image/jpeg', sizeBytes: 0, createdAt: iso(1), updatedAt: iso(NOW), deleted: true, syncVersion: 0, uploaded: true })).toEqual({
+      id: 'p9', deletedAt: NOW, contentType: 'image/jpeg', createdAt: iso(1), meta: cleanMeta(null), ref: null,
+    });
   });
 });
 

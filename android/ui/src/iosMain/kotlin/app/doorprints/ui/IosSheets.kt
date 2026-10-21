@@ -110,6 +110,21 @@ internal object IosSheets {
         return true
     }
 
+    /**
+     * The Files app's picker for a kind file (docs/03 ADR-39): one JSON file, copied by the system into the app's own temporary
+     * folder (so no security scope is held); [onPicked] gets the copy, or null. False when there is nothing to show it over.
+     */
+    fun pickKindFile(onPicked: (NSURL?) -> Unit): Boolean {
+        val top = top() ?: return false
+        val picker = UIDocumentPickerViewController(forOpeningContentTypes = listOf(UTTypeJSON), asCopy = true)
+        picker.allowsMultipleSelection = false
+        val delegate = PickerDelegate { urls -> onPicked(urls?.firstOrNull()) }
+        picker.delegate = delegate
+        pickerDelegate = delegate
+        top.presentViewController(picker, animated = true, completion = null)
+        return true
+    }
+
     /** A picker's answer: the picked files, or null when the person backed out. */
     private class PickerDelegate(private val done: (List<NSURL>?) -> Unit) : NSObject(), UIDocumentPickerDelegateProtocol {
         override fun documentPicker(controller: UIDocumentPickerViewController, didPickDocumentsAtURLs: List<*>) {

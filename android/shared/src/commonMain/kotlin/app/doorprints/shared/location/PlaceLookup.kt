@@ -18,6 +18,8 @@
 
 package app.doorprints.shared.location
 
+import app.doorprints.shared.country.Country
+
 /**
  * Looking up a locality by name for a shared listing's "Where is it?" (S4b-BL-83, docs/11 5.29 item 4): the parts that
  * need no geocoder. The platform asks its own, on the person's tap only (Android `Geocoder.getFromLocationName`, the
@@ -33,7 +35,8 @@ object PlaceLookup {
      * 37.1° in Ladakh): the area a platform geocoder is asked for, and the quick first test of [pick]. The box is not
      * India's outline (Dhaka and Colombo are inside it); [IndiaOutline] is, and [pick] applies both.
      */
-    val INDIA = Box(south = 6.5, west = 68.1, north = 37.1, east = 97.4)
+    val INDIA: Box
+        get() = Country.pack.geo.box.let { Box(south = it.south, west = it.west, north = it.north, east = it.east) }
 
     data class Box(val south: Double, val west: Double, val north: Double, val east: Double) {
         fun contains(lat: Double, lon: Double): Boolean = lat in south..north && lon in west..east
@@ -50,7 +53,8 @@ object PlaceLookup {
     fun query(locality: String?, address: String? = null): String? {
         val name = (locality?.takeIf { it.isNotBlank() } ?: address?.takeIf { it.isNotBlank() } ?: return null)
             .replace(Regex("\\s+"), " ").trim().let { cutOnCharacters(it, MAX_QUERY) }
-        return if (name.contains("india", ignoreCase = true)) name else "$name, India"
+        val country = Country.pack.geo.queryName ?: return name
+        return if (name.contains(country, ignoreCase = true)) name else "$name, $country"
     }
 
     /** [text] cut to [max] characters (code points), never inside a surrogate pair: half an emoji would reach the geocoder as a lone surrogate. */
@@ -69,6 +73,6 @@ object PlaceLookup {
      * town inside the [INDIA] box is not one), or null; "no location" (0, 0) is never one.
      */
     fun pick(candidates: List<Pair<Double, Double>>): Found? = candidates.firstOrNull { (lat, lon) ->
-        lat.isFinite() && lon.isFinite() && !(lat == 0.0 && lon == 0.0) && INDIA.contains(lat, lon) && IndiaOutline.contains(lat, lon)
+        lat.isFinite() && lon.isFinite() && !(lat == 0.0 && lon == 0.0) && INDIA.contains(lat, lon) && Country.pack.geo.contains(lat, lon)
     }?.let { Found(it.first, it.second) }
 }

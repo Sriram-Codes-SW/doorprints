@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | Design of Google sign-in for backup, automatic sync, deletion and sharing through each person's own Google Drive (N13 3b, D-28) |
-| Version | 0.37 |
-| Date | 2026-10-13 |
+| Version | 0.42 |
+| Date | 2026-10-20 |
 | Author | Claude (Code), lead |
 | Status | **Decided by the owner on 2026-10-02** (§6, §6.1: "Let us implement it. After real world use, we can change as needed."); [03](03-design.md) ADR-33. Built so far: S4b-BL-70, S4b-BL-115, S4b-BL-125, S4b-BL-124 (the runbook incidents, [08](08-operations-runbook.md) IR-11..IR-13), and the **website** version 1 cards (draft PR #118): connect, backups, sync, photos on Wi-Fi, L1 on the site, L2/L3 only with a PRF-sealed passkey whose proof is an HMAC, 8-digit pairing and QR enrolment (paste, or the camera when the browser can scan), non-extractable folder keys, `config.js` from the repository variable `GOOGLE_OAUTH_WEB_CLIENT_ID`. **Android** (PR #142, branch `feat/android-drive`): the phones' Drive screens, the controller, the Keystore device key, the device check, enrolment by pasted `dp1.` offer, the Drive route for sync and the background run are built and tested on the JVM; **real-phone checks are open** ([ops/manual-test-checklist.md](ops/manual-test-checklist.md) §14); **the iPhone** (branch `feat/ios-drive`): the Drive wiring is built on the same common code, with the Secure Enclave device key, the Keychain refresh token and `ASWebAuthenticationSession` with PKCE, the Keychain-guarded HMAC proof, the Drive section in Settings with the iPhone scanner, and the triggers of §9.11; it is **compiled for the iOS Simulator and logic-tested on the host and, in CI, the simulator, and no iPhone and no Google round trip has run it** ([ops/manual-test-checklist.md](ops/manual-test-checklist.md) §14, MT-86..MT-92). Version 1 is §1.6; the tickets are S4b-BL-70, -73, -115..119, -121, -122, -124..128 and -130 ([10](10-sprint-log.md) §12.7), deferred S4b-BL-120 and -129; the phones' camera scan (S4b-BL-136) and the Android half of the phones' HMAC proof (S4b-BL-135) are built on `feat/qr-scanner-and-backlog` (draft PR #145) with their real-device checks open, the iPhone's scanner and HMAC proof are wired in the iPhone's Drive (§9.11); the order is §7 and [14](14-lead-backlog-and-handoff.md) N17 |
 
@@ -49,6 +49,11 @@
 | 0.35 | 2026-10-14 | Claude (Code), engineer | §1.4 item 10: **sync is kind-blind** (kinds PR 8, S4b-BL-212, `feat/kinds-10-settings-kind-guide`): the kinds a device shows and its default are device-local, never synced; a device with a kind turned off still stores and backs up its rows. |
 | 0.36 | 2026-10-14 | Claude (Code), engineer | **§3.2: level 3 says all kinds** (deletion safeguards PR 2, S4b-BL-284, the website): with spaces the deletion takes every kind, not the space on screen, and the plan and the confirmation now say so. |
 | 0.37 | 2026-10-14 | Claude (Code), engineer | **§3.2: level 3 says all kinds on the phones** (deletion safeguards PR 3, S4b-BL-285): the Android and iPhone plan for *Delete everything* shows the same sentence as the website. |
+| 0.38 | 2026-10-16 | Claude (Code), engineer | **Restore photos from Drive after a deletion** (S4b-BL-293, owner decision 2026-10-16; `feat/restore-photos-from-drive`): §1.4 item 11 (a deleted photo's encrypted file stays in the person's own Drive for at least 30 days, and *Recently deleted* > *Restore* reads it back: same scope `drive.file`, same `dpx/1` file, nothing uploaded or deleted by a restore, the sync read's pause rules, a per-photo result with its reason), §1.5, §3.3 (a photo deleted in the app is not in Drive's bin either, and *Delete everything* removes it for good, so nothing is restorable after it), §5.1 (what the 30-day clean-up, not yet built, may remove). |
+| 0.39 | 2026-10-16 | Claude (Code), engineer | **The 30-day clean-up on the phones** (S4b-BL-293, `feat/photo-sweep-android-finish`): §5.1 and §1.4 item 11 say the clean-up is built (the website since #377, the phones now): in the backup tidy, a deleted photo's file leaves Drive when its tombstone is older than 30 days and older than the oldest backup that stays; the shared vectors `photo-sweep-vectors.json`; the phones' tombstone source and its once-bound seam. The "at least 30 days" wording elsewhere is unchanged. |
+| 0.40 | 2026-10-19 | Claude (Code), engineer | **The photo wording made exactly true** (S4b-BL-293, owner decision 2026-10-19, `docs/thirty-days-wording`): §1.4 item 11 and §1.5. The words say *30 days, and for longer only while a backup you kept still holds it*, which is what the clean-up of [15](15-google-drive-backup-and-sharing.md) §5.1 does (`photo-sweep-rules.ts`, `PhotoSweepRules.kt`: the file moves to Drive's bin once its tombstone is older than 30 days and no kept backup could hold it); "at least 30 days" was written before the clean-up existed. |
+| 0.41 | 2026-10-20 | Claude (Code), engineer | **§5.1 agrees with #383.** The clean-up bullet now says *30 days, and longer only while a backup you kept still holds it*; the sentence "Settings says so (within 7 months, when no kept backup needs them)" is removed, because no such string exists on the web or the phones (checked in `en.ts`, `hi.ts`, `ta.ts`, `te.ts`, Android `strings.xml`), so there was nothing to change in the app; the 7-month figure stays only as the residual of RR-34. `docs-changelog.spec.ts` no longer pins the exact version list of this log. |
+| 0.42 | 2026-10-20 | Claude (Code), engineer | **Settings now states how long a deleted photo stays in Drive** (`fix/flakes-and-retention-text`): §5.1's last clean-up bullet says the Drive section of the website's Your data page and of the phones' Settings (Android and iPhone, `:ui`) carries the sentence "Photos you delete leave your Google Drive after 30 days, and later only if a backup you kept still holds them." in four languages (hi, ta, te under review), under the photo upload switch (`driveSync.photoRetention`, `drive_sync_photo_retention`); v0.41 had said no such sentence existed. The wording stays that of #383; the 7-month figure is still only the residual of RR-34. |
 
 **The owner's words (2026-10-02).** "Google Sign-In is to make a secure backup and restore drive and if possible to
 make it shareable to others using the same app/website. The backup can be time synced or manual with possibility of
@@ -151,6 +156,21 @@ photos on Wi-Fi only; one switch turns it off. Decision 6 (§6).
    are that device's own settings, never synced; a device with a kind turned off still receives and stores that kind's
    rows, keeps them in its backups and lists them as hidden in its chooser, so turning a kind off loses nothing.
 
+11. **A deleted photo is recoverable for 30 days (S4b-BL-293).** Deleting a photo, or a candidate with photos, drops the
+    photo's bytes from the device at once and writes a tombstone that syncs (item 7). The encrypted `photo/1` file is **not**
+    removed from the person's own Drive by that delete: it stays there for 30 days after the delete, and for longer only while a backup that stays still holds it (the clean-up of §5.1 moves a file to Drive's bin only when its tombstone is older than 30 days and no kept backup refers to it), so that
+    *Recently deleted* > *Restore* can bring the photos back. A restore reads each file named by the candidate's photo
+    tombstones (this device's own sync file, and the tombstones still stored here) exactly like a sync download: the folder
+    pin, Drive's checksum, the keys through the pin, a writer that is not revoked, and the plaintext SHA-256 of the row; the
+    bytes are stored under a **new photo id** and the next ordinary sync sends them like any new photo. The restore itself
+    **uploads nothing, deletes nothing and writes nothing to Drive**, asks for no scope beyond `drive.file` and opens no
+    connection other than the person's own Drive. It follows the rules of any Drive read: the folder must be open on this
+    device (connected), the screen-lock pause and a half-finished deletion stop it, and it asks nothing more of the person (it
+    reads their own files; the phone's own check is for deletions, §10). The candidate's own restore never fails because of
+    it. The result is told per photo: how many of how many came back, and why the others did not (Google Drive is not
+    connected on this device, there was no connection, deleted more than 30 days ago, no copy is left in Drive, the copy could
+    not be opened or checked). *Delete everything* (§3) deletes the photo files for good, so after it nothing is restorable.
+
 ### 1.5 What Doorprints cannot promise (said in the guide and on the screen)
 
 - Edits made on the website and not yet synced are lost if the browser's storage is cleared before the next sync
@@ -159,6 +179,9 @@ photos on Wi-Fi only; one switch turns it off. Decision 6 (§6).
   gone. Doorprints cannot keep a copy anywhere else (it has no server).
 - If the Google account is lost or closed, its Drive goes with it.
 - If Drive is full, backups stop (the app says so, once, and keeps everything on the device).
+- A deleted photo can be brought back only while its encrypted copy is still in the person's own Drive (30 days
+  after the delete, and longer only while a kept backup still holds it, §1.4 item 11), Google Drive is connected on that device and it is online. Restoring while
+  disconnected or offline brings the candidate back without those photos, and the result says so.
 - If Google stops the Doorprints project (§8 R1), the app can no longer reach Drive; the files stay in the person's
   Drive, where they can download them and open them with the Doorprints website and their recovery key (they are
   encrypted, §9.5 vii). (This is why §2 recommends a visible folder, not the hidden app folder.)
@@ -317,6 +340,10 @@ largest one:
 - **Permanently, not to the bin**: `files.delete` (Drive's permanent delete for files the person owns), file by file,
   children before the folder. A deliberate deletion that left everything in Drive's bin for 30 days would surprise the
   person. Automatic pruning (§1.4 item 5) is the only thing that uses the bin.
+- **A photo deleted in the app is not in Drive's bin either; it is still a file in `Photos/`** (§1.4 item 11) until the
+  clean-up or *Delete everything* removes it. *Delete everything* (level 3) deletes every file of `Photos/`, deleted
+  photos' files included, with the same permanent `files.delete`, so no photo is restorable after it (and *Recently deleted*
+  says *no copy is left in your Google Drive*). *Delete all backups* keeps the photos, as the table says.
 - **Where it may linger, said in the guide:** Google removes deleted data from its own systems on its own schedule
   (Google's privacy policy describes it); Doorprints cannot speed that up. Drive's revisions of a file go with the
   file. Copies on the person's other devices, in *Save a copy* files and in what others imported stay where they are.
@@ -462,10 +489,24 @@ My Drive/
   available by hand (*Save a copy* > Google Drive). Whether the photo reference needs a new format number is checked
   against the versioning rule (docs/schemas §1.1) in S4b-BL-116: an older reader reports the photos as missing,
   which is visible, not silent.
+- **Restoring a deleted photo** (S4b-BL-293, §1.4 item 11) is the reason a deleted photo's file is kept: *Recently deleted*
+  reads it (the tombstone row of this device's own sync file names the file and the plaintext SHA-256) for up to 30 days. The
+  clean-up below is built on the website and on the phones (S4b-BL-293): it runs in the backup tidy, after retention, and takes
+  a deleted photo's file only when its tombstone is older than 30 days and no backup that stays could still hold the photo.
+  That second half needs no download: a backup never exports tombstones, so a backup made after a photo was deleted cannot
+  hold it, and every backup that stays was made after the deletion exactly when the tombstone is older than the **oldest
+  backup that stays** (its authenticated `createdAt`, which the listing already has). The oldest backup that *stays* is read
+  from the listing minus the files retention pruned, not from retention's `keep`: when the shrink guard holds, nothing is
+  pruned and every backup is still there. The tombstones come from this device's own sync file (`ownPhotoRows`); a read that
+  fails sweeps nothing and never fails the backup. The window is `RESTORE_WINDOW_DAYS` itself, so the clean-up can never take
+  a file *Restore* still promises. Rules: web `data/drive/photo-sweep-rules.ts` and `:shared` `PhotoSweepRules.kt`, both
+  read `docs/schemas/photo-sweep-vectors.json`; the phones' tombstone source is `DriveConnectController.ownPhotoTombstones`,
+  handed to the backup service through `PhotoTombstoneSource` (bound once by `DriveAssembly`).
 - **A photo is deleted from `Photos/`** only when it is a tombstone older than 30 days **and** no kept backup refers
-  to it. With the 6 monthly backups that means a deleted photo leaves Drive within about 7 months; Settings says so
-  ("Photos you delete leave your Google Drive within 7 months, when no kept backup needs them"), and *Delete all
-  backups* or *Delete everything* removes them at once.
+  to it. The words for the person are *30 days, and longer only while a backup you kept still holds it* (the privacy
+  page, the guide and §1.4 item 11; the wording of #383). With the 6 monthly backups the longest a deleted photo can stay
+  is about 7 months, and only while a backup made before the delete is kept; that figure is the residual in
+  [02](02-threat-model.md) RR-34, not a promise the screens make. The Drive section of Settings says it, in one sentence under the photo upload switch, on the website (`driveSync.photoRetention`) and on the phones (`drive_sync_photo_retention`, Android and iPhone), in four languages (hi, ta, te under review): *Photos you delete leave your Google Drive after 30 days, and later only if a backup you kept still holds them.* It is the same sentence everywhere (the phones' `DriveStringsTest` reads it against the website's), and says nothing about 7 months. *Delete all backups* or *Delete everything* removes the photos at once.
 - **The website**: one tab syncs at a time (`navigator.locks`), so two tabs of one browser are one device. Its keys
   and data live in the browser's storage, which the browser may clear (Safari after 7 days without a visit for a site
   that is not on the Home Screen; any browser under storage pressure): at connect the website asks

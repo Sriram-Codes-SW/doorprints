@@ -24,6 +24,11 @@ import app.doorprints.TwoKinds
 import app.doorprints.shared.model.KindSetting
 import app.doorprints.ui.ChooserScreen
 import app.doorprints.ui.BinLine
+import app.doorprints.ui.binRestoreMessage
+import app.doorprints.data.BinRestore
+import app.doorprints.drive.photo.PhotoRestoreReason
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.Text
 import app.doorprints.ui.DeleteSpaceDialogCard
 import app.doorprints.ui.KindsSettingsSection
 import app.doorprints.ui.RecentlyDeletedList
@@ -33,6 +38,7 @@ import app.doorprints.ui.res.chooser_heading
 import app.doorprints.ui.res.chooser_hidden_heading
 import app.doorprints.ui.res.kinds_heading
 import app.doorprints.ui.res.delete_restore
+import app.doorprints.ui.res.delete_retry_photos
 import app.doorprints.ui.res.delete_space_do
 import app.doorprints.ui.res.schools_title
 import android.graphics.Bitmap
@@ -158,6 +164,8 @@ import app.doorprints.ui.res.school_trace_pick_title
 import app.doorprints.ui.res.voice_mic
 import app.doorprints.ui.res.voice_mic_desc
 import app.doorprints.ui.res.voice_status_recording
+import app.doorprints.ui.res.voice_tier_checking
+import io.ktor.client.engine.mock.respond
 import kotlinx.coroutines.test.StandardTestDispatcher
 import org.junit.After
 import org.junit.Before
@@ -570,7 +578,7 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
         }
     }
 
-    /** Settings > What you track (kinds PR C): the section only, cropped to its own node, in a build that ships the school with the switch on. */
+    /** Settings > What you track (kinds PR C): the section only, cropped to its own node, in a build that releases the school, with the school shown (no switch: it hides itself). */
     @Test fun settingsKinds() {
         assumeTrue((lang == "en" && !dark) || (lang == "ta" && dark))
         RuntimeEnvironment.setQualifiers("+h1200dp")
@@ -588,9 +596,9 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
     }
 
     /**
-     * Settings > What you track as the shipped app has it, the school compiled in and off (owner, 2026-10-15): the heading, the line
-     * under it and the switch, off, with its preview hint and no kind rows. English light only; the section drawn with the switch on is
-     * `settings_kinds`. This is the one new section of the Settings screen in a release.
+     * Settings > What you track as the shipped app has it, the school released and not shown (owner, 2026-10-15 and 2026-10-20): the
+     * heading, the line under it and a Houses row on and a Schools row off, with no switch and no preview hint. English light only; the
+     * section drawn with the school shown is `settings_kinds`. This is the one new section of the Settings screen in a release.
      */
     @Test fun settingsKindsOff() {
         englishLightOnly()
@@ -623,6 +631,43 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
                 RecentlyDeletedList(
                     listOf(BinLine("a", "Green View", "14 Oct 2026, 11:30"), BinLine("b", "Lake Road flat", "9 Oct 2026, 18:05")),
                     hidden = 0, onRestore = {},
+                )
+            }
+        }
+    }
+
+    /**
+     * The words after *Restore* in *Recently deleted* (S4b-BL-293): all the photos back from Google Drive, some back and why the
+     * others are not, none back and why. English light and Hindi dark (hi under review); the messages are the real ones.
+     */
+    @Test fun recentlyDeletedResult() {
+        assumeTrue((lang == "en" && !dark) || (lang == "hi" && dark))
+        val messages = runBlocking {
+            listOf(
+                binRestoreMessage("Green View", BinRestore(photosTotal = 4, photosBack = 4, photosFromDrive = 4)),
+                binRestoreMessage("Green View", BinRestore(4, 3, 3, listOf(PhotoRestoreReason.MISSING))),
+                binRestoreMessage("Lake Road flat", BinRestore(2, 0, 0, listOf(PhotoRestoreReason.NOT_CONNECTED, PhotoRestoreReason.PAST_WINDOW))),
+            )
+        }
+        shoot("recently_deleted_result", messages.first()) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                for (m in messages) Snackbar { Text(m) }
+            }
+        }
+    }
+
+    /**
+     * *Recently deleted* with the result of a restore that Google Drive could not finish, and *Retry photos* under it
+     * (S4b-BL-293): the words in a live region, the button outside it. English light and Hindi dark (hi under review).
+     */
+    @Test fun recentlyDeletedRetry() {
+        assumeTrue((lang == "en" && !dark) || (lang == "hi" && dark))
+        val message = runBlocking { binRestoreMessage("Green View", BinRestore(4, 3, 3, listOf(PhotoRestoreReason.OFFLINE))) }
+        shoot("recently_deleted_retry", text(Res.string.delete_retry_photos)) {
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                RecentlyDeletedList(
+                    listOf(BinLine("b", "Lake Road flat", "9 Oct 2026, 18:05")),
+                    hidden = 0, note = message, retryName = "Green View", onRetry = {}, onRestore = {},
                 )
             }
         }
@@ -995,10 +1040,17 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
             app.doorprints.data.KeystoreSecretStore(seal, open = open),
             geminiSecrets = app.doorprints.data.KeystoreSecretStore(seal, app.doorprints.data.KeystoreSecretStore.GEMINI_ENTRY, open),
         )
-        runBlocking { store.saveVoiceInput(true) }
+        // A paid Gemini key (the plan rule's one probe is answered 200), so the microphone is usable as it was before the rule (ADR-37).
+        runBlocking {
+            store.saveVoiceInput(true)
+            store.saveAiProviderConfig(app.doorprints.shared.ai.AiProviderConfig.GEMINI, listOf("voice", "shot", "key").joinToString("-"))
+            store.saveAiProvider(app.doorprints.data.AiProviderChoice.DEVICE)
+        }
         val real = ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository
         val fake = FakeVoiceRepository(real, store)
-        val voice = FakeVoiceServices(granted = true)
+        val voice = FakeVoiceServices(granted = true).also {
+            it.tierGate = app.doorprints.shared.voice.VoiceTierGate(store, io.ktor.client.HttpClient(io.ktor.client.engine.mock.MockEngine { respond("{}", io.ktor.http.HttpStatusCode.OK) }))
+        }
         try {
             show(readyText = text(Res.string.voice_mic)) {
                 val services = LocalAppServices.current
@@ -1008,11 +1060,60 @@ class ScreensScreenshotTest(private val lang: String, private val dark: Boolean)
                 }
                 CompositionLocalProvider(LocalAppServices provides wrapped) { AssistantScreen(onOpenHouse = {}) }
             }
+            compose.waitUntil(5_000) { compose.onAllNodesWithText(text(Res.string.voice_tier_checking)).fetchSemanticsNodes().isEmpty() }
             compose.onNodeWithContentDescription(text(Res.string.voice_mic_desc)).performClick()
             settle()
             awaitStableFrame()
             compose.onNodeWithText(text(Res.string.voice_status_recording), substring = true).assertExists()
             compose.onRoot().captureRoboImage(file("assistant_voice"))
+        } finally {
+            runBlocking { job.cancelAndJoin() }
+            file.delete()
+        }
+    }
+    /**
+     * Voice input on a free plan (owner decision 2026-10-19, ADR-37): Ask with the microphone **disabled** and the free-plan
+     * sentence under it, English and Hindi, light. A Gemini key whose kept verdict is a free plan; a fake microphone that must
+     * never be touched. The existing voice shot is untouched.
+     */
+    @Test fun assistantVoiceFreePlan() {
+        assumeTrue(!dark && (lang == "en" || lang == "hi"))
+        val job = kotlinx.coroutines.SupervisorJob()
+        val file = java.io.File.createTempFile("voice-free-shot", ".preferences_pb").also { it.delete() }
+        val seal: (String) -> String = { "v1:" + it.reversed() }
+        val open: (String?) -> String? = { v -> v?.takeIf { it.startsWith("v1:") }?.removePrefix("v1:")?.reversed() }
+        val store = app.doorprints.data.SettingsStore(
+            androidx.datastore.preferences.core.PreferenceDataStoreFactory.create(scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO + job)) { file },
+            app.doorprints.data.KeystoreSecretStore(seal, open = open),
+            geminiSecrets = app.doorprints.data.KeystoreSecretStore(seal, app.doorprints.data.KeystoreSecretStore.GEMINI_ENTRY, open),
+        )
+        val placeholderKey = listOf("free", "plan", "shot", "key").joinToString("-")
+        runBlocking {
+            store.saveVoiceInput(true)
+            store.saveAiFeatures(true)
+            store.saveAiProviderConfig(app.doorprints.shared.ai.AiProviderConfig.GEMINI, placeholderKey)
+            store.saveAiProvider(app.doorprints.data.AiProviderChoice.DEVICE)
+            store.voiceTier.saveEntry(app.doorprints.shared.voice.VoiceTier.keyHash(placeholderKey), "REFUSE_FREE|${System.currentTimeMillis()}|gemini:probe")
+        }
+        val real = ApplicationProvider.getApplicationContext<DoorprintsApp>().container.repository
+        val fake = FakeVoiceRepository(real, store)
+        val voice = FakeVoiceServices(granted = true).also {
+            it.tierGate = app.doorprints.shared.voice.VoiceTierGate(store, io.ktor.client.HttpClient(io.ktor.client.engine.mock.MockEngine { error("the plan was kept; nothing is asked") }))
+        }
+        try {
+            show(readyText = text(Res.string.voice_mic)) {
+                val services = LocalAppServices.current
+                val wrapped = object : app.doorprints.ui.AppServices by services {
+                    override val repository: app.doorprints.data.Repository = fake
+                    override val voice = voice
+                }
+                CompositionLocalProvider(LocalAppServices provides wrapped) { AssistantScreen(onOpenHouse = {}) }
+            }
+            compose.waitUntil(5_000) { compose.onAllNodesWithText("Gemini", substring = true).fetchSemanticsNodes().isNotEmpty() }
+            settle()
+            awaitStableFrame()
+            compose.onRoot().captureRoboImage(file("assistant_voice_free_plan"))
+            org.junit.Assert.assertTrue("the microphone was never touched", voice.recorders.isEmpty() && voice.requests == 0)
         } finally {
             runBlocking { job.cancelAndJoin() }
             file.delete()

@@ -24,7 +24,9 @@
      Keys mirror the web's i18n keys where both apps show the same text. -->
 <resources>
     <string name="app_name">Doorprints</string>
-    <string name="app_tagline">మీరు చూసిన ప్రతి ఇంటినీ గుర్తుంచుకోండి.</string>
+    <string name="app_tagline">మీరు చూసిన ప్రతి ప్రదేశాన్నీ గుర్తుంచుకోండి.</string>
+    <!-- The empty house list's title: house-only words, kept when the tagline became kind-neutral (ADR-13b). -->
+    <string name="houses_first_run_title">మీరు చూసిన ప్రతి ఇంటినీ గుర్తుంచుకోండి.</string>
     <string name="nav_map">మ్యాప్</string>
     <string name="nav_houses">ఇళ్లు</string>
     <string name="nav_compare">పోల్చండి</string>
@@ -1324,6 +1326,8 @@
     <string name="drive_sync_not_now">ఇప్పుడు కాదు</string>
     <string name="drive_sync_upload_now">మొబైల్ డేటా ఉపయోగించి ఇప్పుడు ఫోటోలను అప్‌లోడ్ చేయండి (%1$s)</string>
     <string name="drive_sync_photo_error">ఫోటో సెట్టింగ్‌లను నవీకరించలేకపోయాం</string>
+    <!-- S4b-BL-293 (2026-10-20): how long a deleted photo stays in Drive, the website's driveSync.photoRetention: under review. -->
+    <string name="drive_sync_photo_retention">మీరు తొలగించిన ఫోటోలు 30 రోజుల తర్వాత మీ Google Drive నుండి వెళ్లిపోతాయి, ఆ తర్వాత మీరు ఉంచిన బ్యాకప్ ఇంకా వాటిని కలిగి ఉంటేనే అవి ఉంటాయి.</string>
     <string name="drive_delete_heading">Google Drive నుండి డేటాను తొలగించండి</string>
     <string name="drive_delete_older_backups">పాత బ్యాకప్‌లను తొలగించండి</string>
     <string name="drive_delete_all_backups">అన్ని బ్యాకప్‌లను తొలగించండి</string>
@@ -1720,7 +1724,7 @@
     <string name="kinds_heading">మీరు ట్రాక్ చేసేవి</string>
     <string name="kinds_body">Doorprints దేనిని ట్రాక్ చేయాలో ఎంచుకోండి. ఒకటి కంటే ఎక్కువ ఆన్‌లో ఉంటే, మీరు ఏమి వెతుకుతున్నారో Doorprints మొదట అడుగుతుంది.</string>
     <string name="kinds_switch">ప్రయోగాత్మకం: ఇళ్లు కాకుండా ఇంకా</string>
-    <string name="kinds_switch_hint">మొదట ఆఫ్‌లో ఉంటుంది. పాఠశాలల వంటి, ఇంకా పరీక్షిస్తున్నవాటిని చూపిస్తుంది. ఇది మారవచ్చు. ఇది ఒక ప్రివ్యూ.</string>
+    <string name="kinds_switch_hint">మొదట ఆఫ్‌లో ఉంటుంది. ఇంకా పరీక్షిస్తున్నవాటిని చూపిస్తుంది. ఇది మారవచ్చు.</string>
     <string name="kinds_show">%1$s చూపించు</string>
     <string name="kinds_default">డిఫాల్ట్</string>
     <string name="kinds_default_aria">%1$s‌ను డిఫాల్ట్ చేయండి</string>
@@ -1736,8 +1740,8 @@
     <string name="school_region_desc">మీ పాఠశాలల మ్యాప్. ప్రతి పాఠశాల ‘పాఠశాలలు’ ట్యాబ్‌లో కూడా ఉంది.</string>
     <string name="school_add_tip">చిట్కా: పాఠశాల దగ్గర ఉన్నప్పుడు ‘ఇక్కడ పాఠశాల సేవ్ చేయండి’ నొక్కండి, లేదా ఎక్కడైనా పాఠశాల ఉంచడానికి మ్యాప్‌ను నొక్కి పట్టుకోండి.</string>
     <string name="school_add_tip_a11y">చిట్కా: పాఠశాల దగ్గర ఉన్నప్పుడు ‘ఇక్కడ పాఠశాల సేవ్ చేయండి’ నొక్కండి.</string>
-    <string name="school_add_tip_listing">ప్రివ్యూ: ఈ పాఠశాల ఎక్కడ? అక్కడ ఉంటే ‘ఇక్కడ పాఠశాల సేవ్ చేయండి’ నొక్కండి, లేదా మ్యాప్‌లో ఆ చోటును నొక్కి పట్టుకోండి; అప్పుడు లిస్టింగ్ ఫారమ్‌ను నింపుతుంది.</string>
-    <string name="school_add_tip_listing_a11y">ప్రివ్యూ: ఈ పాఠశాల ఎక్కడ? అక్కడ ఉన్నప్పుడు ‘ఇక్కడ పాఠశాల సేవ్ చేయండి’ నొక్కండి; అప్పుడు లిస్టింగ్ ఫారమ్‌ను నింపుతుంది.</string>
+    <string name="school_add_tip_listing">ఈ పాఠశాల ఎక్కడ? అక్కడ ఉంటే ‘ఇక్కడ పాఠశాల సేవ్ చేయండి’ నొక్కండి, లేదా మ్యాప్‌లో ఆ చోటును నొక్కి పట్టుకోండి; అప్పుడు లిస్టింగ్ ఫారమ్‌ను నింపుతుంది.</string>
+    <string name="school_add_tip_listing_a11y">ఈ పాఠశాల ఎక్కడ? అక్కడ ఉన్నప్పుడు ‘ఇక్కడ పాఠశాల సేవ్ చేయండి’ నొక్కండి; అప్పుడు లిస్టింగ్ ఫారమ్‌ను నింపుతుంది.</string>
     <string name="school_unnamed">పేరు లేని పాఠశాల</string>
     <string name="school_compare_hint">4 పాఠశాలల వరకు ఎంచుకోండి (ఎంపికైనవి ముందు). తిరస్కరించిన, ఎంచుకోని పాఠశాలలను చేర్చరు.</string>
     <string name="school_compare_pick_more">పోల్చడానికి కనీసం రెండు పాఠశాలలను ఎంచుకోండి.</string>
@@ -1769,18 +1773,30 @@
     <!-- S4b-BL-285 (2026-10-14): deletion safeguards on the phones (PR 3): Delete all in this space, Recently deleted, Drive level 3 "all kinds"; the website's words (web i18n `delete.*`, `driveDelete.allKinds`). hi, ta and te are under review. -->
     <string name="delete_space_button">ఈ స్థలంలో అన్నీ తొలగించు</string>
     <string name="delete_space_button_aria">ఈ స్థలంలో అన్నీ తొలగించు: %1$s</string>
-    <string name="delete_space_confirm">%1$sలో భద్రపరచినవన్నీ తొలగించాలా: %2$s? ఈ స్థలం మాత్రమే తొలగిస్తుంది, మీ ఇతర స్థలాలను తాకదు. 10 సెకన్ల వరకు రద్దు చేయవచ్చు, 30 రోజుల వరకు ఇటీవల తొలగించినవి నుండి తిరిగి తీసుకురావచ్చు. వాటి భద్రపరచిన నడకలను తిరిగి తీసుకురాలేము.</string>
+    <string name="delete_space_confirm">%1$sలో భద్రపరచినవన్నీ తొలగించాలా: %2$s? ఈ స్థలం మాత్రమే తొలగిస్తుంది, మీ ఇతర స్థలాలను తాకదు. 10 సెకన్ల వరకు రద్దు చేయవచ్చు, 30 రోజుల వరకు ఇటీవల తొలగించినవి నుండి తిరిగి తీసుకురావచ్చు (Google Drive కనెక్ట్ అయి, అందులో కాపీ ఉంటే ఫోటోలు కూడా). వాటి భద్రపరచిన నడకలను తిరిగి తీసుకురాలేము.</string>
     <string name="delete_space_do">అన్నీ తొలగించు</string>
     <string name="delete_deleted_many">%1$s నుండి తొలగించినవి: %2$s</string>
     <string name="delete_restored_many">%1$sలో పునరుద్ధరించినవి: %2$s</string>
     <string name="delete_restored">%1$s పునరుద్ధరించబడింది</string>
     <string name="delete_bulk_wait">ఇప్పుడే ఒక సామూహిక తొలగింపు జరిగింది. %1$d సెకన్లు ఆగి మళ్లీ ప్రయత్నించండి.</string>
     <string name="delete_recently_deleted">ఇటీవల తొలగించినవి</string>
-    <string name="delete_bin_body">గత 30 రోజుల్లో మీరు తొలగించినవి ఇక్కడ ఉంటాయి, వాటిని పునరుద్ధరించవచ్చు. సేవ్ చేసిన నడకలు ఉంచబడవు.</string>
+    <string name="delete_bin_body">గత 30 రోజుల్లో మీరు తొలగించినవి ఇక్కడ ఉంటాయి, వాటిని పునరుద్ధరించవచ్చు. ఫోటోల గుప్తీకరించిన కాపీ మీ సొంత Google Driveలో ఉన్నంతవరకు అవీ తిరిగి వస్తాయి: పునరుద్ధరించేటప్పుడు Google Drive కనెక్ట్ అయి, ఆన్‌లైన్‌లో ఉండండి. సేవ్ చేసిన నడకలు ఉంచబడవు.</string>
+    <!-- S4b-BL-293 (2026-10-16): photos of a restored entry come back from the person's own Google Drive. Under review (owner rule: hi/ta/te ship marked under review). -->
+    <string name="delete_photos_all_drive">%1$s పునరుద్ధరించబడింది. దీని ఫోటోలు మీ Google Drive నుండి తిరిగి వచ్చాయి (ఫోటోలు: %2$s).</string>
+    <string name="delete_photos_some">%1$s పునరుద్ధరించబడింది. తిరిగి వచ్చిన ఫోటోలు: %3$sలో %2$s. మిగిలినవి పునరుద్ధరించలేకపోయాము: %4$s.</string>
+    <string name="delete_photos_none">%1$s పునరుద్ధరించబడింది. దీని ఫోటోలను పునరుద్ధరించలేకపోయాము: %2$s.</string>
+    <string name="delete_why_not_connected">ఈ పరికరంలో Google Drive కనెక్ట్ కాలేదు</string>
+    <string name="delete_why_offline">Google Driveతో కనెక్షన్ లేదు</string>
+    <string name="delete_why_past_window">అవి 30 రోజుల కంటే ముందే తొలగించబడ్డాయి</string>
+    <string name="delete_why_missing">మీ Google Driveలో కాపీ లేదు</string>
+    <string name="delete_why_unreadable">మీ Google Driveలోని కాపీని తెరవలేకపోయాము లేదా తనిఖీ చేయలేకపోయాము</string>
     <string name="delete_bin_empty">గత 30 రోజుల్లో ఏదీ తొలగించలేదు.</string>
     <string name="delete_bin_more">మరో %1$d 30 రోజుల పాటు ఉంచబడతాయి. తర్వాతిది చూడటానికి ఒకదాన్ని పునరుద్ధరించండి.</string>
     <string name="delete_restore">పునరుద్ధరించు</string>
     <string name="delete_restore_aria">%1$s ను పునరుద్ధరించు</string>
+    <!-- S4b-BL-293 (2026-10-16): Retry photos under the result of a restore (the website's delete.retryPhotos, delete.retryAria). Under review (owner rule: hi/ta/te ship marked under review). -->
+    <string name="delete_retry_photos">ఫోటోలను మళ్లీ ప్రయత్నించండి</string>
+    <string name="delete_retry_aria">%1$s ఫోటోలను మళ్లీ ప్రయత్నించండి</string>
     <string name="delete_deleted_on">తొలగించిన సమయం: %1$s</string>
     <string name="drive_delete_all_kinds">ఇది అన్ని రకాలను తొలగిస్తుంది: ఇళ్లు, పాఠశాలలు మరియు ప్రతి ఇతర స్థలం, మీరు ఉన్నది మాత్రమే కాదు.</string>
     <!-- S4b-BL-256, S4b-BL-259, S4b-BL-266, S4b-BL-277 (2026-10-14): under review (the website's school words where it has the key, else the house string with the school's noun). -->
@@ -1813,6 +1829,9 @@
 
     <!-- kinds PR 21 (S4b-BL-265, -291, -292, 2026-10-15): under review. -->
     <string name="list_filter_any">ఏదైనా</string>
+    <!-- docs/03 §18.29 (2026-10-20): a range for a number or an amount. Under review (owner rule: hi/ta/te ship marked under review). -->
+    <string name="list_filter_range_min">%1$s: కనీసం</string>
+    <string name="list_filter_range_max">%1$s: గరిష్ఠం</string>
     <string name="export_copy_of">దీని కాపీని సేవ్ చేయండి</string>
     <string name="export_scope_any">ఏ నమోదులు</string>
     <string name="export_scope_all_any">అన్ని నమోదులు</string>
@@ -1846,7 +1865,7 @@
     <!-- S4b-BL-222 (2026-10-15): under review: voice input. -->
     <string name="voice_switch">వాయిస్ ఇన్‌పుట్ (AI బాక్సుల కోసం మైక్రోఫోన్ బటన్)</string>
     <string name="voice_switch_hint">మీరు ఆన్ చేసే వరకు ఆఫ్‌లో ఉంటుంది. మైక్రోఫోన్ నొక్కి, మాట్లాడండి; మాటలు బాక్స్‌లో రాయబడతాయి, మీరు చూసి మార్చవచ్చు. బాక్స్ సొంత బటన్ నొక్కే వరకు ఏదీ పంపబడదు. మీ సొంత AI కీతో మాత్రమే పనిచేస్తుంది.</string>
-    <string name="voice_disclosure">ఆడియో ఈ ఫోన్ నుండి నేరుగా %1$s కి వెళ్తుంది, వారి జాబితా ధరతో నిమిషానికి సుమారు ₹%2$s. మీరు చెప్పేదంతా, సంఖ్యలు, పేర్లతో సహా, ఆడియోగా పంపబడుతుంది; చెప్పిన ఫోన్ నంబర్‌ను టైప్ చేసిన నంబర్ లాగా తొలగించలేరు. రికార్డింగ్ ఈ ఫోన్‌లో సేవ్ చేయబడదు.</string>
+    <string name="voice_disclosure">ఆడియో ఈ ఫోన్ నుండి నేరుగా %1$s కి వెళ్తుంది, వారి జాబితా ధరతో నిమిషానికి సుమారు ₹%2$s. మీరు చెప్పేదంతా, సంఖ్యలు, పేర్లతో సహా, ఆడియోగా పంపబడుతుంది; చెప్పిన ఫోన్ నంబర్‌ను టైప్ చేసిన నంబర్ లాగా తొలగించలేరు. రికార్డింగ్ ఈ ఫోన్‌లో సేవ్ చేయబడదు. వాయిస్ ఇన్‌పుట్ చెల్లింపు ప్లాన్‌తో మాత్రమే పనిచేస్తుంది: ఉచిత ప్లాన్‌లు తిరస్కరించబడతాయి.</string>
     <string name="voice_needs_own_key">వాయిస్ ఇన్‌పుట్‌కు ఆడియో తీసుకునే సేవ కోసం మీ సొంత AI కీ కావాలి: Gemini, OpenAI, Groq లేదా OpenRouter. మీ సర్వర్ AI, Anthropic లేదా లోకల్ సర్వర్‌తో ఇది అందుబాటులో లేదు.</string>
     <string name="voice_no_recorder">ఈ ఫోన్ ఆడియో రికార్డ్ చేయలేదు, కాబట్టి మైక్రోఫోన్ బటన్ కనిపించదు.</string>
     <string name="voice_mic">మాట్లాడండి</string>
@@ -1883,6 +1902,13 @@
     <string name="voice_rationale_body_short">మీరు “మాట్లాడండి” నొక్కిన తర్వాత మాత్రమే, గరిష్ఠంగా 30 సెకన్లు, మీరు చెప్పేది రాయడానికి Doorprints రికార్డ్ చేస్తుంది. రికార్డింగ్ మీ సొంత కీతో %1$s కి వెళ్తుంది, మెమరీలోనే ఉంటుంది, ఎప్పుడూ సేవ్ చేయబడదు. తర్వాత Android మీ అనుమతి అడుగుతుంది.</string>
     <string name="voice_rationale_body_ios_short">మీరు “మాట్లాడండి” నొక్కిన తర్వాత మాత్రమే, గరిష్ఠంగా 30 సెకన్లు, మీరు చెప్పేది రాయడానికి Doorprints రికార్డ్ చేస్తుంది. రికార్డింగ్ మీ సొంత కీతో %1$s కి వెళ్తుంది, మెమరీలోనే ఉంటుంది, ఎప్పుడూ సేవ్ చేయబడదు. తర్వాత iOS మీ అనుమతి అడుగుతుంది.</string>
     <string name="voice_status_done_limit_short">పూర్తయింది. రికార్డింగ్ 30 సెకన్ల పరిమితి వద్ద ఆగింది. మాటలు బాక్స్‌లో ఉన్నాయి. పంపే ముందు సరిచూడండి.</string>
+    <!-- Voice free-plan refusal (2026-10-19, ADR-37): under review. -->
+    <string name="voice_tier_checking">మీ ప్లాన్ చెల్లింపు ప్లానేనా అని తనిఖీ చేస్తోంది…</string>
+    <string name="voice_tier_free">ఉచిత %1$s ప్లాన్‌లో వాయిస్ ఇన్‌పుట్ అందుబాటులో లేదు: ఉచిత ప్లాన్‌లో %1$s మీరు చెప్పేదాన్ని తన ఉత్పత్తులను మెరుగుపరచడానికి వాడవచ్చు. చెల్లింపు కీని వాడండి, లేదా టైప్ చేయండి.</string>
+    <string name="voice_tier_unknown">మీ %1$s ప్లాన్ చెల్లింపు ప్లానేనా అని Doorprints తనిఖీ చేయలేదు, మరియు ఉచిత ప్లాన్‌లో %1$s మీరు చెప్పేదాన్ని వాడవచ్చు. సెట్టింగ్స్‌లో ప్లాన్ చెల్లింపుదని నిర్ధారించండి, లేదా టైప్ చేయండి.</string>
+    <string name="voice_tier_ack">నా %1$s ప్లాన్ చెల్లింపుది; ఉచిత ప్లాన్‌లో %1$s నా స్వరాన్ని వాడవచ్చని నాకు తెలుసు</string>
+    <string name="voice_tier_ack_hint">%1$s కోసం Doorprints దీన్ని తనిఖీ చేయలేదు. మీ నిర్ధారణ ఈ కీకి మాత్రమే గుర్తుంటుంది; కొత్త కీకి మళ్లీ అడుగుతుంది.</string>
+    <string name="voice_tier_hint">చెల్లింపు ప్లాన్‌తో మాత్రమే పనిచేస్తుంది</string>
     <string name="settings_ai_service_sarvam">Sarvam (భారత్)</string>
     <string name="voice_provider">మాటలను రాయడానికి</string>
     <string name="voice_provider_own">నా AI ప్రొవైడర్ (Gemini, OpenAI, Groq లేదా OpenRouter)</string>
@@ -1893,7 +1919,7 @@
     <string name="voice_sarvam_save">Sarvam కీని సేవ్ చేయండి</string>
     <string name="voice_sarvam_remove">Sarvam కీని తొలగించండి</string>
     <string name="voice_switch_hint_sarvam">మీరు ఆన్ చేసే వరకు ఆఫ్‌లో ఉంటుంది. మైక్రోఫోన్ నొక్కి, 30 సెకన్ల వరకు మాట్లాడండి; మాటలు బాక్స్‌లో రాయబడతాయి, మీరు చూసి మార్చవచ్చు. బాక్స్ సొంత బటన్ నొక్కే వరకు ఏదీ పంపబడదు.</string>
-    <string name="voice_disclosure_sarvam">ఆడియో ఈ ఫోన్ నుండి నేరుగా %1$s కి (Sarvam AI, భారత్) మీ సొంత Sarvam కీతో వెళ్తుంది, వారి జాబితా ధరతో నిమిషానికి సుమారు ₹%2$s, ఒకసారికి 30 సెకన్ల వరకు. మీరు చెప్పేదంతా, సంఖ్యలు, పేర్లతో సహా, ఆడియోగా పంపబడుతుంది; చెప్పిన ఫోన్ నంబర్‌ను టైప్ చేసిన నంబర్ లాగా తొలగించలేరు. రికార్డింగ్ ఈ ఫోన్‌లో సేవ్ చేయబడదు.</string>
+    <string name="voice_disclosure_sarvam">ఆడియో ఈ ఫోన్ నుండి నేరుగా %1$s కి (Sarvam AI, భారత్) మీ సొంత Sarvam కీతో వెళ్తుంది, వారి జాబితా ధరతో నిమిషానికి సుమారు ₹%2$s, ఒకసారికి 30 సెకన్ల వరకు. మీరు చెప్పేదంతా, సంఖ్యలు, పేర్లతో సహా, ఆడియోగా పంపబడుతుంది; చెప్పిన ఫోన్ నంబర్‌ను టైప్ చేసిన నంబర్ లాగా తొలగించలేరు. రికార్డింగ్ ఈ ఫోన్‌లో సేవ్ చేయబడదు. వాయిస్ ఇన్‌పుట్ చెల్లింపు ప్లాన్‌తో మాత్రమే పనిచేస్తుంది: ఉచిత ప్లాన్‌లు తిరస్కరించబడతాయి.</string>
     <string name="voice_needs_sarvam_key">వాయిస్ ఇన్‌పుట్‌కు Sarvam వాడాలంటే పైన మీ సొంత Sarvam కీని సేవ్ చేయండి.</string>
     <!-- Kinds PR 26, Hunt as a capability (docs/03 §18.20, 2026-10-15): the Hunt words of the kind files. The house's three are the :app
          notification strings (same text, kept equal by KindWordVectorsTest); the school's are under review. -->
@@ -1968,4 +1994,151 @@
     <!-- Kinds PR 31 (docs/03 section 18.25, 2026-10-15): under review. -->
     <string name="school_houses_empty_ios">ఇంకా పాఠశాలలు లేవు. iPhoneలో ఇంకా పాఠశాలలు చేర్చలేరు. మీకు Doorprints సర్వర్ ఉంటే, దాన్ని సెట్టింగ్‌లలో కనెక్ట్ చేయండి; మీ పాఠశాలలు ఇక్కడ కనిపిస్తాయి.</string>
     <string name="school_map_not_on_this_phone">మ్యాప్ ఇంకా iPhoneలో లేదు. మీ పాఠశాలలన్నీ ‘పాఠశాలలు’ ట్యాబ్‌లో ఉన్నాయి.</string>
+    <!-- Kinds a person adds: the neutral words of their space (docs/03 ADR-39, 2026-10-21): under review. -->
+    <string name="ukind_regionLabel">మీ నమోదుల మ్యాప్. ప్రతి నమోదు జాబితాలో కూడా ఉంది.</string>
+    <string name="ukind_addHint">చిట్కా: ఆ చోటు దగ్గర ఉన్నప్పుడు ‘ఇక్కడ నమోదు సేవ్ చేయండి’ నొక్కండి, లేదా ఎక్కడైనా నమోదు ఉంచడానికి మ్యాప్‌ను నొక్కి పట్టుకోండి.</string>
+    <string name="ukind_addHintShort">చిట్కా: ఆ చోటు దగ్గర ఉన్నప్పుడు ‘ఇక్కడ నమోదు సేవ్ చేయండి’ నొక్కండి.</string>
+    <string name="ukind_search">ఈ జాబితాలో వెతకండి</string>
+    <string name="ukind_shown">చూపినవి: %2$dలో %1$d</string>
+    <string name="ukind_emptyBody">ఇక్కడ ఇంకా ఏమీ సేవ్ చేయలేదు. ఆ చోటు దగ్గర ఉన్నప్పుడు మ్యాప్ ట్యాబ్‌లో ‘ఇక్కడ నమోదు సేవ్ చేయండి’ నొక్కండి, లేదా మ్యాప్‌ను నొక్కి పట్టుకోండి.</string>
+    <string name="ukind_noMatch">మీ వెతుకులాటకు లేదా ఫిల్టర్‌కు ఏదీ సరిపోలలేదు.</string>
+    <string name="ukind_create">ఇక్కడ నమోదు సేవ్ చేయండి</string>
+    <string name="ukind_areaNotesNone">ఇంకా ఏ ప్రాంత గమనికా ఈ నమోదుకు వర్తించదు.</string>
+    <string name="ukind_areaInReach">%1$s (ఈ నమోదు ఇందులో ఉంది)</string>
+    <string name="ukind_unnamed">పేరు లేని నమోదు</string>
+    <string name="ukind_addHintListing">ఈ నమోదు ఎక్కడ? అక్కడ ఉంటే ‘ఇక్కడ నమోదు సేవ్ చేయండి’ నొక్కండి, లేదా మ్యాప్‌లో ఆ చోటును నొక్కి పట్టుకోండి; అప్పుడు లిస్టింగ్ ఫారమ్‌ను నింపుతుంది.</string>
+    <string name="ukind_addHintListingShort">ఈ నమోదు ఎక్కడ? అక్కడ ఉన్నప్పుడు ‘ఇక్కడ నమోదు సేవ్ చేయండి’ నొక్కండి; అప్పుడు లిస్టింగ్ ఫారమ్‌ను నింపుతుంది.</string>
+    <string name="ukind_compareHint">4 నమోదుల వరకు ఎంచుకోండి (ఎంపికైనవి ముందు). తిరస్కరించిన, ఎంచుకోని నమోదులను చేర్చరు.</string>
+    <string name="ukind_comparePickMore">పోల్చడానికి కనీసం రెండు నమోదులను ఎంచుకోండి.</string>
+    <string name="ukind_compareChoose">నమోదులను ఎంచుకోండి (%2$d లో %1$d)</string>
+    <string name="ukind_compareEmpty">పోల్చడానికి కనీసం రెండు నమోదులను చేర్చండి.</string>
+    <string name="ukind_compareEmptyBody">తిరస్కరించిన, ఎంచుకోని నమోదులను చేర్చరు.</string>
+    <string name="ukind_compareFootnote">తెరవడానికి పేరు నొక్కండి.</string>
+    <string name="ukind_askLabel">ఈ జాబితా గురించి అడగండి</string>
+    <string name="ukind_askHint">ఉదా. ఏది దగ్గరగా ఉంది?</string>
+    <string name="ukind_askNotGrounded">ఈ సమాధానం మీరు సేవ్ చేసిన నమోదుల ఆధారంగా లేదు.</string>
+    <string name="ukind_askSources">ఈ సమాధానం ఉపయోగించిన నమోదులు</string>
+    <string name="ukind_planHint">ఉదా. ఈ మధ్యాహ్నం ఎంపికైనవి</string>
+    <string name="ukind_exportEmpty">సేవ్ చేయడానికి ఇంకా ఏమీ లేదు. మొదట ఒక నమోదును చేర్చండి.</string>
+    <string name="ukind_exportScope">ఏ నమోదులు</string>
+    <string name="ukind_exportScopeAll">అన్ని నమోదులు</string>
+    <string name="ukind_exportIncludeRejected">తిరస్కరించిన నమోదులను కూడా చేర్చండి</string>
+    <string name="ukind_exportPhotosShortlisted">ఎంపికైన నమోదుల ఫోటోలు</string>
+    <string name="ukind_locationOff">Doorprints కోసం స్థానం ఆఫ్‌లో ఉంది. హంట్ మోడ్‌కు, ‘ఇక్కడ నమోదు సేవ్ చేయండి’కి ఇది అవసరం.</string>
+    <string name="ukind_needsPrecise">హంట్ మోడ్‌కు, ‘ఇక్కడ నమోదు సేవ్ చేయండి’కి ఖచ్చితమైన స్థానం అవసరం.</string>
+    <string name="ukind_locationOffNoHunt">Doorprints కోసం స్థానం ఆఫ్‌లో ఉంది. ‘ఇక్కడ నమోదు సేవ్ చేయండి’కి ఇది అవసరం.</string>
+    <string name="ukind_needsPreciseNoHunt">‘ఇక్కడ నమోదు సేవ్ చేయండి’కి ఖచ్చితమైన స్థానం అవసరం.</string>
+    <string name="ukind_saveNeedsLocation">‘ఇక్కడ నమోదు సేవ్ చేయండి’కి మీ స్థానం అవసరం. స్థాన అనుమతి ఇచ్చి, ఆ చోటు దగ్గర మళ్లీ నొక్కండి.</string>
+    <string name="ukind_detailsTitle">వివరాలు</string>
+    <string name="ukind_notFoundTitle">నమోదు కనబడలేదు</string>
+    <string name="ukind_notFound">ఈ నమోదు ఇకపై ఈ ఫోన్‌లో లేదు.</string>
+    <string name="ukind_defaultLabel">కొత్త నమోదు</string>
+    <string name="ukind_defaultLabelStreet">%1$s లోని నమోదు</string>
+    <string name="ukind_discardNew">ఈ కొత్త నమోదును వదిలేయాలా?</string>
+    <string name="ukind_deleteTitle">ఈ నమోదును తొలగించాలా?</string>
+    <string name="ukind_pageNeedsPrecise">ఈ నమోదు స్థానాన్ని గుర్తించడానికి ఖచ్చితమైన స్థానం అవసరం, లేదా అక్షాంశం, రేఖాంశం టైప్ చేయండి.</string>
+    <string name="ukind_savePhotosFirst">ఫోటోలు చేర్చడానికి ముందుగా నమోదును సేవ్ చేయండి.</string>
+    <string name="ukind_walkButton">నేను ఈ చోటు పక్కగా నడిచానా?</string>
+    <string name="ukind_walkPlace">ఈ చోటు</string>
+    <string name="ukind_walkLabel">ఈ చోటు</string>
+    <string name="ukind_walkApprox">ఈ నమోదుకు ఇంకా కచ్చితమైన చోటు లేదు, ఒక ప్రాంతం మాత్రమే ఉంది. ముందుగా మ్యాప్‌లో ఉంచండి, తర్వాత తనిఖీ చేయండి.</string>
+    <string name="ukind_walksEmpty">సేవ్ చేసిన నడకలు లేవు. నడక ముగించినప్పుడు దాన్ని ఈ నమోదుకు లింక్ చేయవచ్చు.</string>
+    <string name="ukind_aiDisclosure">మీ ప్రశ్న, సరిపోలే గమనికలు మీ సర్వర్‌లో సెట్ చేసిన AI సేవకు పంపబడతాయి.</string>
+    <string name="ukind_aiDisclosureOwnKey">ఈ టెక్స్ట్, సరిపోలే గమనికలతో కలిసి, మీ సొంత కీతో ఈ ఫోన్ నుండి నేరుగా %1$s కి పంపబడుతుంది.</string>
+    <string name="ukind_placeFound">మ్యాప్ “%1$s”ను చూపుతోంది. నమోదును అక్కడ చేర్చడానికి ఆ చోటును ఎక్కువసేపు నొక్కండి.</string>
+    <string name="ukind_placeNotFound">భారతదేశంలో “%1$s” అనే స్థలం దొరకలేదు. మ్యాప్‌ను మీరే ఆ చోటు వరకు జరపండి.</string>
+    <string name="ukind_openDetails">వివరాలు తెరవండి</string>
+    <string name="ukind_areasEmptyBody">మీరు వెతుకుతున్న ప్రాంతాలను జోడించండి. ఒక ప్రాంతంపై గమనిక దానిలోని ప్రతి నమోదుపై కనిపిస్తుంది.</string>
+    <string name="ukind_notesEmpty">ఇంకా గమనికలు లేవు. ఒక నమోదు నుండి జోడించండి.</string>
+    <string name="ukind_areaDeleteBody">దీని గమనికలు ఉంటాయి, కానీ ఇకపై ఏ నమోదుపైనా కనిపించవు.</string>
+    <string name="ukind_placeDeleteBody">ఇది ఎంత దూరమో నమోదులు ఇకపై చూపవు.</string>
+    <string name="ukind_placesEmptyBody">ఆఫీసు, పాఠశాల లేదా కుటుంబాన్ని జోడించండి. అప్పుడు ప్రతి నమోదు వాటిలో ప్రతిదానికీ ఎంత దూరమో చూపుతుంది.</string>
+    <string name="ukind_huntSeen">దీన్ని మీరు ఇప్పటికే చూశారు: %1$s</string>
+    <string name="ukind_huntStreetText">సేవ్ చేసిన నమోదులు: %1$d, సందర్శనలు: %2$d</string>
+    <string name="ukind_huntStreetTextSince">సేవ్ చేసిన నమోదులు: %1$d, సందర్శనలు: %2$d, మొదటిసారి %3$s</string>
+    <string name="ukind_huntStreetSeen">%1$s · ఇక్కడికి వచ్చారు: నమోదులు %2$d, సందర్శనలు %3$d</string>
+    <string name="ukind_huntStayTitle">మీరు సేవ్ చేయాలనుకునే చోటు దగ్గర ఉన్నారా?</string>
+    <string name="ukind_huntNotifyRationale">మీరు చూసిన నమోదు దగ్గర నుండి వెళ్లినప్పుడు హంట్ మోడ్ నోటిఫికేషన్‌తో చెబుతుంది.</string>
+    <string name="ukind_huntLeftSpace">హంట్ మోడ్ ఆగిపోయింది. ఇది మొదలుపెట్టిన విభాగంలో మాత్రమే నడుస్తుంది.</string>
+    <string name="ukind_huntNeedsKind">హంట్ మోడ్ ఈ రకం విభాగంలో మాత్రమే నడుస్తుంది; మీరు ట్రాక్ చేసేవిలో ఇది ఆఫ్‌లో ఉంది.</string>
+    <string name="ukind_huntOngoingText">మీరు చూసిన నమోదులు, వీధుల కోసం గమనిస్తోంది</string>
+    <string name="ukind_huntChannelAlerts">నమోదు, వీధి హెచ్చరికలు</string>
+    <string name="ukind_huntChannelAlertsDesc">మీరు ఇంతకు ముందు చూసిన నమోదు లేదా వీధిని దాటినప్పుడు</string>
+    <string name="ukind_huntNotificationsOff">నోటిఫికేషన్‌లు ఆఫ్‌లో ఉన్నాయి, కాబట్టి మీరు నమోదు దగ్గర నుండి వెళ్లినప్పుడు హంట్ మోడ్ మీకు తెలియజేయదు.</string>
+    <string name="ukind_viewingPlan">సందర్శనను ప్లాన్ చేయండి</string>
+    <string name="ukind_viewingNone">ప్లాన్ చేసిన సందర్శన లేదు</string>
+    <string name="ukind_viewingAll">ఈ నమోదుకు సంబంధించిన అన్ని సందర్శనలు</string>
+    <string name="ukind_viewingsIntro">మీరు ఎప్పుడు వెళ్లాలని ప్లాన్ చేశారు, అది ఎలా జరిగింది.</string>
+    <string name="ukind_viewingsEmpty">ఇంకా సందర్శనలు లేవు. ఒక నమోదు నుండి ప్లాన్ చేయండి.</string>
+    <string name="ukind_viewingsDataBody">సందర్శనను ప్లాన్ చేసి, రాబోయేవి, పూర్తయినవి చూడండి.</string>
+    <string name="ukind_questionsDataBody">సందర్శనలో మీరు అడగాలనుకునే ప్రశ్నలు.</string>
+    <string name="ukind_viewingChannel">సందర్శన రిమైండర్లు</string>
+    <string name="ukind_viewingChannelDesc">మీరు ప్లాన్ చేసిన సందర్శనకు ముందు</string>
+    <string name="ukind_viewingSoon">%1$s సందర్శన %2$d నిమిషాల్లో</string>
+    <string name="ukind_viewingTitle">%1$s సందర్శన</string>
+    <string name="ukind_viewingOpen">నమోదును తెరవండి</string>
+    <string name="ukind_viewingGone">తొలగించిన నమోదు</string>
+    <string name="ukind_viewingDirections">ఆ చోటుకు దారి</string>
+    <string name="ukind_questionsIntro">సందర్శనలో మీరు అడగాలనుకునే ప్రశ్నలు. నమోదుపై “సాధారణ ప్రశ్నలను జోడించు” అనేది “ఎప్పుడూ అడగండి” అని గుర్తించినవాటిని జోడిస్తుంది.</string>
+    <string name="ukind_questionsEmpty">ఇంకా ప్రశ్నలు లేవు. సందర్శనకు తీసుకెళ్లడానికి సాధారణ ప్రశ్నలను జోడించండి.</string>
+    <string name="ukind_questionsNoneToPick">మీ జాబితాలోని ప్రతి ప్రశ్న ఇప్పటికే ఈ నమోదులో ఉంది.</string>
+    <string name="ukind_viewingBody">%1$s సందర్శన, %2$s కి</string>
+    <string name="ukind_traceEndBody">ఉంచుకోవడానికి దీన్ని ఒక నమోదుకు జోడించండి. లేకపోతే ఇది 30 రోజులు ఉండి, తర్వాత పోతుంది. ఇది ఈ ఫోన్‌లో మాత్రమే ఉంటుంది; బ్యాకప్‌లో లేదా కాపీలో ఉండదు.</string>
+    <string name="ukind_traceEndSave">నమోదుతో సేవ్ చేయి</string>
+    <string name="ukind_tracePickTitle">ఈ నడక ఏ నమోదు వరకు?</string>
+    <string name="ukind_tracePickSearch">మీ నమోదులను వెతకండి</string>
+    <string name="ukind_tracePickNone">మీరు ఇంకా నమోదులను సేవ్ చేయలేదు. ముందు ఒకటి చేర్చండి, లేదా నడకను 30 రోజులు ఉంచండి.</string>
+    <string name="ukind_traceSaveFull">ఈ నమోదుకు ఇప్పటికే %1$d నడకలు సేవ్ అయ్యాయి. ముందు ఒకదాన్ని తొలగించండి.</string>
+    <string name="ukind_listEmptyIos">ఇక్కడ ఇంకా ఏమీ సేవ్ చేయలేదు. iPhoneలో ఇంకా నమోదులు చేర్చలేరు. మీకు Doorprints సర్వర్ ఉంటే, దాన్ని సెట్టింగ్‌లలో కనెక్ట్ చేయండి; మీ నమోదులు ఇక్కడ కనిపిస్తాయి.</string>
+    <string name="ukind_mapNotHere">మ్యాప్ ఇంకా iPhoneలో లేదు. మీ నమోదులన్నీ జాబితాలో ఉన్నాయి.</string>
+    <!-- Kinds a person adds: Settings > What you track (docs/03 ADR-39, 2026-10-21): under review. -->
+    <string name="userkinds_heading">మీరు జోడించే రకాలు</string>
+    <string name="userkinds_switch">మీరు జోడించే రకాలు (ప్రయోగాత్మకం)</string>
+    <string name="userkinds_switch_hint">ఒక రకం ఫైల్ నుండి మీ సొంత రకాన్ని జోడించండి, ఉదా. జిమ్, కేఫ్ లేదా ఆఫీసు. ఇది ఆన్‌లో ఉన్నప్పుడే మీ రకాలు ఇక్కడ, ఎంపిక జాబితాలో కనిపిస్తాయి; ఆఫ్ చేస్తే ఏదీ తొలగించబడదు.</string>
+    <string name="userkinds_import">రకం ఫైల్‌ను ఇంపోర్ట్ చేయండి</string>
+    <string name="userkinds_import_hint">రకం ఫైల్ అనేది రకం యొక్క ఫీల్డ్‌లు, పదాలను చెప్పే చిన్న JSON ఫైల్ (గరిష్ఠంగా 64 KB). అందులోని ఏదీ నడపబడదు, డౌన్‌లోడ్ చేయబడదు; దాని పదాలు అన్ని భాషల్లో మీరు రాసినట్లే కనిపిస్తాయి.</string>
+    <string name="userkinds_reading">ఫైల్ చదువుతోంది…</string>
+    <string name="userkinds_preview_title">జోడించే ముందు ఈ రకాన్ని తనిఖీ చేయండి</string>
+    <string name="userkinds_preview_name">పేరు: %1$s</string>
+    <string name="userkinds_preview_fields">దీని సొంత ఫీల్డ్‌లు: %1$s</string>
+    <string name="userkinds_preview_no_fields">పేరు, స్థలం, గమనికలు తప్ప దీనికి సొంత ఫీల్డ్‌లు లేవు.</string>
+    <string name="userkinds_preview_checklist">చెక్‌లిస్ట్: %1$s</string>
+    <string name="userkinds_preview_replaces">ఈ రకం (%1$s) ఇప్పటికే మీ దగ్గర ఉంది. జోడిస్తే దాని ఫీల్డ్‌లు, పదాలు మారుతాయి; దాని నమోదులు అలాగే ఉంటాయి.</string>
+    <string name="userkinds_add">ఈ రకాన్ని జోడించండి</string>
+    <string name="userkinds_replace">రకాన్ని మార్చండి</string>
+    <string name="userkinds_added">%1$s జోడించబడింది. వాడటానికి కింద దాన్ని ఆన్ చేయండి.</string>
+    <string name="userkinds_replaced">%1$s నవీకరించబడింది. దాని నమోదులు అలాగే ఉన్నాయి.</string>
+    <string name="userkinds_full">ఈ ఫోన్ ఇప్పటికే మీరు జోడించిన %1$d రకాలను ఉంచుతోంది, అదే గరిష్ఠం. ముందుగా ఒకదాన్ని తీసివేయండి.</string>
+    <string name="userkinds_refused">ఈ ఫైల్ జోడించబడలేదు: %1$s</string>
+    <string name="userkinds_where">ఫైల్‌లో ఎక్కడ: %1$s</string>
+    <string name="userkinds_yours">మీరు జోడించినది</string>
+    <string name="userkinds_remove">రకాన్ని తీసివేయండి</string>
+    <string name="userkinds_remove_aria">%1$s రకాన్ని తీసివేయండి</string>
+    <string name="userkinds_remove_confirm">%1$s రకాన్ని తీసివేయాలా? దాని %2$d సేవ్ చేసిన నమోదులు అలాగే ఉంటాయి: రకాన్ని మళ్లీ ఇంపోర్ట్ చేసే వరకు అవి మీ డిఫాల్ట్ స్పేస్‌కు వెళ్తాయి. వాటినీ తొలగించాలంటే ముందుగా “ఈ స్పేస్‌లోని అన్నీ తొలగించు” వాడండి.</string>
+    <string name="userkinds_remove_do">రకాన్ని తీసివేయండి</string>
+    <string name="userkinds_removed">%1$s తీసివేయబడింది. దాని నమోదులు అలాగే ఉన్నాయి.</string>
+    <string name="userkinds_err_tooBig">ఫైల్ 64 KB కంటే పెద్దది.</string>
+    <string name="userkinds_err_notJson">ఇది రకం ఫైల్ కాదు (ఒక JSON పత్రం కాదు).</string>
+    <string name="userkinds_err_duplicateKey">ఒకే చోట ఒక పేరు రెండుసార్లు ఉంది.</string>
+    <string name="userkinds_err_tooDeep">ఇది చాలా లోతుగా అమర్చబడింది.</string>
+    <string name="userkinds_err_tooMany">ఇందులో చాలా ఎక్కువ విలువలు ఉన్నాయి.</string>
+    <string name="userkinds_err_tooLong">ఇందులోని ఒక పాఠ్యం 2,000 అక్షరాల కంటే పొడవు.</string>
+    <string name="userkinds_err_prototypeKey">ఇది అనుమతి లేని పేరు వాడుతోంది (__proto__, constructor లేదా prototype).</string>
+    <string name="userkinds_err_mapKey">ఇది మ్యాప్‌ను అమర్చడానికి ప్రయత్నిస్తోంది. రకం ఫైల్ మ్యాప్‌ను లేదా దాని సరిహద్దులను మార్చలేదు.</string>
+    <string name="userkinds_err_unknownKey">రకం ఫార్మాట్‌లో లేని భాగం ఇందులో ఉంది.</string>
+    <string name="userkinds_err_notAllowed">మీరు జోడించే రకంలో ఉండకూడని భాగం ఇందులో ఉంది (కీ లేబుళ్లు, AI పదాలు లేదా స్లాట్‌లు, అంతర్నిర్మిత పదాలు లేదా బ్యాకప్ స్థలాలు).</string>
+    <string name="userkinds_err_required">అవసరమైన ఒక భాగం లేదు.</string>
+    <string name="userkinds_err_type">ఒక విలువ తప్పు రకంలో ఉంది.</string>
+    <string name="userkinds_err_format">ఇది doorprints-kind/1 ఫైల్ కాదు.</string>
+    <string name="userkinds_err_id">దాని id u_ తో మొదలవ్వాలి, తర్వాత చిన్న అక్షరాలు, అంకెలు లేదా _ (4 నుండి 32 అక్షరాలు).</string>
+    <string name="userkinds_err_reserved">యాప్ తనకోసం ఉంచుకున్న id లేదా ఫీల్డ్ పేరును ఇది వాడుతోంది.</string>
+    <string name="userkinds_err_textLength">ఒక పేరు లేదా లేబుల్ ఖాళీగా ఉంది లేదా 60 అక్షరాల కంటే పొడవు (గమనిక: 500).</string>
+    <string name="userkinds_err_textChars">ఒక పేరు లేదా లేబుల్ ఖాళీతో మొదలవుతుంది లేదా ముగుస్తుంది, లేదా అనుమతి లేని అక్షరం ఉంది (&lt; &gt; { }, నియంత్రణ, కనిపించని లేదా దిశ గుర్తు).</string>
+    <string name="userkinds_err_range">ఒక సంఖ్య దాని పరిధి బయట ఉంది.</string>
+    <string name="userkinds_err_limit">ఒక జాబితాలో చాలా తక్కువ లేదా చాలా ఎక్కువ అంశాలు ఉన్నాయి.</string>
+    <string name="userkinds_err_repeated">ఒక id రెండుసార్లు ఉంది.</string>
+    <string name="userkinds_err_value">ఒక విలువ ఫార్మాట్ అనుమతించేది కాదు.</string>
+    <string name="userkinds_err_ref">రకంలో లేని ఫీల్డ్‌ను ఇది పేర్కొంటోంది.</string>
+    <string name="userkinds_err_capabilities">దాని సామర్థ్యాలు యాప్‌లో లేనివి, లేదా వాటి పరిధి బయట ఉన్నాయి.</string>
+    <string name="userkinds_read_failed">ఫైల్‌ను చదవలేకపోయాం. మళ్లీ ప్రయత్నించండి, లేదా వేరే ఫైల్ ఎంచుకోండి.</string>
 </resources>

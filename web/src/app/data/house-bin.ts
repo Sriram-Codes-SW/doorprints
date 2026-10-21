@@ -20,7 +20,8 @@ import { uuid } from '../core/models';
 import { spaceOf } from '../core/space.service';
 import type { LocalDb } from './local-db';
 import type { HouseRecord, PhotoRecord } from './records';
-import { isoNow, millis } from './records';
+import { isoNow, millis, photoMetaOf, withPhotoMeta } from './records';
+import type { GonePhoto } from './drive/photo-restore-rules';
 
 // The bin behind *Recently deleted* (deletion safeguards PR 1, docs/04 §tombstone and restore, docs/11 5.27.6): a deleted
 // candidate is already a tombstone (`deleted: true`), kept and synced for ever; this file lists the ones younger than 30
@@ -65,8 +66,38 @@ export interface RestoreResult {
   readonly house: HouseRecord;
   /** Photos whose bytes were still here and are back (they upload again on the next sync). */
   readonly photosBack: number;
-  /** Photo tombstones whose bytes are gone (a delete drops them at once; docs/15: Drive drops them after 30 days). */
+  /** Photo tombstones whose bytes are gone (a delete drops them at once; Drive keeps the encrypted copy for 30 days, docs/15 §1.4). */
   readonly photosGone: number;
+  /** Those photos, for getting them back from Google Drive (S4b-BL-293). */
+  readonly gone: readonly GonePhoto[];
+  /** Epoch milliseconds of the candidate's tombstone, before this restore moved it on. */
+  readonly deletedAt: number;
+}
+
+/** A tombstone of a photo on this device, without its bytes, as the Drive restore reads it. */
+export function goneOfRecord(p: PhotoRecord): GonePhoto {
+  return { id: p.id, deletedAt: millis(p.updatedAt), contentType: p.contentType || null, createdAt: p.createdAt, meta: photoMetaOf(p), ref: null };
+}
+
+/**
+ * The row of a photo that came back from Google Drive: a new id (the old one is a tombstone every device and the Drive sync
+ * file keep), the bytes, the room, tags and caption it had, not uploaded (the next sync sends it like any new photo).
+ */
+export function restoredPhoto(gone: GonePhoto, houseId: string, bytes: Uint8Array, stamp: string): PhotoRecord {
+  const type = gone.contentType || 'image/jpeg';
+  const row: PhotoRecord = {
+    id: uuid(),
+    houseId,
+    blob: new Blob([bytes as BlobPart], { type }),
+    contentType: type,
+    sizeBytes: bytes.length,
+    createdAt: gone.createdAt ?? stamp,
+    updatedAt: stamp,
+    deleted: false,
+    syncVersion: 0,
+    uploaded: false,
+  };
+  return (gone.meta.metaUpdatedAt ?? 0) > 0 ? withPhotoMeta(row, gone.meta, true) : row;
 }
 
 /**
@@ -84,10 +115,10 @@ export async function restoreRows(db: LocalDb, id: string, now: number, held: re
   const heldIds = new Set(held.map((p) => p.id));
   const stored = (await db.getAllByIndex<PhotoRecord>('photos', 'houseId', id)).filter((p) => p.deleted && !heldIds.has(p.id));
   let photosBack = 0;
-  let photosGone = 0;
+  const gone: GonePhoto[] = [];
   for (const p of [...held, ...stored]) {
     if (!p.blob) {
-      photosGone++;
+      gone.push(goneOfRecord(p));
       continue;
     }
     const hasMeta = (p.metaUpdatedAt ?? 0) > 0;
@@ -95,7 +126,7 @@ export async function restoreRows(db: LocalDb, id: string, now: number, held: re
     if (stored.includes(p)) await db.delete('photos', p.id);
     photosBack++;
   }
-  return { house, photosBack, photosGone };
+  return { house, photosBack, photosGone: gone.length, gone, deletedAt: millis(existing.updatedAt) };
 }
 
 /**

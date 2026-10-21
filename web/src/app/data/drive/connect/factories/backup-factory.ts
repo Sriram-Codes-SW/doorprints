@@ -22,6 +22,8 @@ import type { DriveImportService } from '../../backup/drive-import.service';
 import { DriveBackupService as BackupServiceClass } from '../../backup/drive-backup.service';
 import { DriveImportService as ImportServiceClass } from '../../backup/drive-import.service';
 import { DriveBackupAdapter, type BackupAdapterInterface } from '../backup-adapter';
+import { createSyncAdapter } from './sync-factory';
+import type { GonePhoto } from '../../photo-restore-rules';
 import type { DriveRuntime } from './runtime';
 import type { DriveConnection, ReadyFolder } from '../../backup/drive-backup-results';
 import { FolderSession } from '../../drive-sync-seams';
@@ -37,6 +39,15 @@ import { kidOf } from '../../../crypto/folder-key';
  * S4b-BL-117, S4b-BL-73, docs/15 §9.4.
  */
 export function createBackupAdapter(rt: DriveRuntime): DriveBackupAdapter {
+  // The 30-day clean-up (docs/15 §5.1, S4b-BL-293) reads this device's own photo tombstones. Built lazily from the
+  // runtime, and only once a session exists; the adapter is memoized so the sweep and the sync read the same rows.
+  let sync: ReturnType<typeof createSyncAdapter> | null = null;
+  const photoTombstones = async (): Promise<readonly GonePhoto[]> => {
+    if (!rt.session) return [];
+    sync ??= createSyncAdapter(rt);
+    return sync.photoTombstones();
+  };
+
   // Create the backup service with production dependencies from runtime
   const backupService: DriveBackupService = new BackupServiceClass(
     rt.drive,
@@ -54,6 +65,9 @@ export function createBackupAdapter(rt: DriveRuntime): DriveBackupAdapter {
       const now = new Date();
       return -now.getTimezoneOffset();
     },
+    undefined, // scratch space: the default in-memory one
+    undefined, // locks: the browser's Web Locks
+    photoTombstones,
   );
 
   // The import service shares the same drive and crypto

@@ -29,6 +29,7 @@ import type { ExportBundle, ExportHouse } from './export-model';
 import { brokerEntries } from './html-export';
 import { checklistEntries, checklistLabel, costFacts, costHeading, detailFacts, labelOf, rankingShows, sectionShown, statusText, voiced } from './copy-facts';
 import { movingInView, photoNote, answerCells, answerDisplayColumns, areaNoteCells, areaNoteDisplayColumns, distanceCells, distanceDisplayColumns, criteriaTable, customLabels, display, ratingShareLine, roomCells, roomDisplayColumns, stringsOf, viewingCells, viewingDisplayColumns } from './export-rows';
+import { copyBlockOrder, type CopyBlock } from '../core/kind-capabilities';
 import { optionSummaryKeys } from './option-summary';
 import { photoFileName } from './photo-names';
 
@@ -116,109 +117,123 @@ function houseSection(entry: ExportHouse, position: number, bundle: ExportBundle
     out.push('');
   }
 
+  // The blocks after the details, each its own lines; the kind's `copyOrder` says which comes first (docs/03 §18.29), the house's fixed order is the default.
+  const blocks: Record<CopyBlock, string[]> = { cost: [], rooms: [], questions: [], viewings: [], areaNotes: [], distances: [], moveIn: [], checklist: [], visits: [], notes: [], photos: [] };
+
   const cost = costFacts(entry, bundle, dict);
   if (cost.length) {
-    out.push(`### ${escapeMarkdown(costHeading(entry, bundle, dict))}`, '');
-    out.push(row([tr(dict, 'exp.colField'), tr(dict, 'exp.colValue')]));
-    out.push(separator(2));
-    for (const [name, value] of cost) out.push(row([name, value]));
-    out.push('');
+    const b = blocks.cost;
+    b.push(`### ${escapeMarkdown(costHeading(entry, bundle, dict))}`, '');
+    b.push(row([tr(dict, 'exp.colField'), tr(dict, 'exp.colValue')]));
+    b.push(separator(2));
+    for (const [name, value] of cost) b.push(row([name, value]));
+    b.push('');
   }
 
-  // The rooms (slice 1c), after the cost and before the checklist.
+  // The rooms (slice 1c).
   const rooms = shows('section.rooms') ? roomCells(entry, bundle.lengthUnit, stringsOf(bundle)) : [];
   if (rooms.length) {
-    out.push(`### ${escapeMarkdown(stringsOf(bundle).get('table.rooms'))}`, '');
-    out.push(row(roomDisplayColumns(bundle)));
-    out.push(separator(7));
-    for (const r of rooms) out.push(row(r.map(escapeMarkdown)));
-    out.push('');
+    const b = blocks.rooms;
+    b.push(`### ${escapeMarkdown(stringsOf(bundle).get('table.rooms'))}`, '');
+    b.push(row(roomDisplayColumns(bundle)));
+    b.push(separator(7));
+    for (const r of rooms) b.push(row(r));
+    b.push('');
   }
 
-  // The questions (slice 3a), after the rooms and before the checklist; open ones first.
+  // The questions (slice 3a); open ones first.
   const questions = shows('section.questions') ? answerCells(entry, stringsOf(bundle)) : [];
   if (questions.length) {
-    out.push(`### ${escapeMarkdown(stringsOf(bundle).get('section.questions'))}`, '');
-    out.push(row(answerDisplayColumns(bundle)));
-    out.push(separator(3));
-    for (const r of questions) out.push(row(r.map(escapeMarkdown)));
-    out.push('');
+    const b = blocks.questions;
+    b.push(`### ${escapeMarkdown(stringsOf(bundle).get('section.questions'))}`, '');
+    b.push(row(answerDisplayColumns(bundle)));
+    b.push(separator(3));
+    for (const r of questions) b.push(row(r));
+    b.push('');
   }
 
-  // The viewings (slice 3b-1), after the questions and before the checklist; upcoming first, then newest first.
+  // The viewings (slice 3b-1); upcoming first, then newest first.
   const viewings = shows('section.viewings') ? viewingCells(entry, stringsOf(bundle), bundle.options.includeContacts) : [];
   if (viewings.length) {
-    out.push(`### ${escapeMarkdown(stringsOf(bundle).get('section.viewings'))}`, '');
+    const b = blocks.viewings;
+    b.push(`### ${escapeMarkdown(stringsOf(bundle).get('section.viewings'))}`, '');
     const columns = viewingDisplayColumns(bundle);
-    out.push(row(columns));
-    out.push(separator(columns.length));
-    for (const r of viewings) out.push(row(r.map(escapeMarkdown)));
-    out.push('');
+    b.push(row(columns));
+    b.push(separator(columns.length));
+    for (const r of viewings) b.push(row(r));
+    b.push('');
   }
 
-  // Area notes and distances (slice 4a), after the viewings and before the checklist.
-  for (const [heading, columns, list] of [
-    [stringsOf(bundle).get('section.areaNotes'), areaNoteDisplayColumns(bundle), shows('section.areaNotes') ? areaNoteCells(entry) : []],
-    [stringsOf(bundle).get('section.distances'), distanceDisplayColumns(bundle), shows('section.distances') ? distanceCells(entry) : []],
+  // Area notes and distances (slice 4a).
+  for (const [block, heading, columns, list] of [
+    ['areaNotes', stringsOf(bundle).get('section.areaNotes'), areaNoteDisplayColumns(bundle), shows('section.areaNotes') ? areaNoteCells(entry) : []],
+    ['distances', stringsOf(bundle).get('section.distances'), distanceDisplayColumns(bundle), shows('section.distances') ? distanceCells(entry) : []],
   ] as const) {
     if (!list.length) continue;
-    out.push(`### ${escapeMarkdown(heading)}`, '');
-    out.push(row([...columns]));
-    out.push(separator(columns.length));
-    for (const r of list) out.push(row(r.map(escapeMarkdown)));
-    out.push('');
+    const b = blocks[block];
+    b.push(`### ${escapeMarkdown(heading)}`, '');
+    b.push(row([...columns]));
+    b.push(separator(columns.length));
+    for (const r of list) b.push(row(r));
+    b.push('');
   }
 
-  // Moving in (slice 5), after the distances and before the checklist: date, notes, then the items with a tick.
+  // Moving in (slice 5): date, notes, then the items with a tick.
   const movingIn = shows('section.moveIn') ? movingInView(entry, stringsOf(bundle)) : { facts: [], items: [] };
   if (movingIn.facts.length || movingIn.items.length) {
-    out.push(`### ${escapeMarkdown(stringsOf(bundle).get('section.movingIn'))}`, '');
+    const b = blocks.moveIn;
+    b.push(`### ${escapeMarkdown(stringsOf(bundle).get('section.movingIn'))}`, '');
     if (movingIn.facts.length) {
-      out.push(row([tr(dict, 'exp.colField'), tr(dict, 'exp.colValue')]));
-      out.push(separator(2));
-      for (const [name, value] of movingIn.facts) out.push(row([name, value]));
-      out.push('');
+      b.push(row([tr(dict, 'exp.colField'), tr(dict, 'exp.colValue')]));
+      b.push(separator(2));
+      for (const [name, value] of movingIn.facts) b.push(row([name, value]));
+      b.push('');
     }
-    for (const item of movingIn.items) out.push(`- ${item.done ? '✓' : '○'} ${escapeMarkdown(item.text)}`);
-    if (movingIn.items.length) out.push('');
+    for (const item of movingIn.items) b.push(`- ${item.done ? '✓' : '○'} ${escapeMarkdown(item.text)}`);
+    if (movingIn.items.length) b.push('');
   }
 
   const checklist = shows('section.checklist') ? checklistEntries(house.checklist) : [];
   if (checklist.length) {
-    out.push(`### ${escapeMarkdown(tr(dict, 'house.checklist'))}`, '');
-    out.push(row([tr(dict, 'compare.criterion'), tr(dict, 'common.score')]));
-    out.push(separator(2));
-    for (const [key, value] of checklist) out.push(row([checklistLabel(key, dict, labels), tr(dict, 'exp.scoreOf5', { n: value })]));
-    out.push('');
+    const b = blocks.checklist;
+    b.push(`### ${escapeMarkdown(tr(dict, 'house.checklist'))}`, '');
+    b.push(row([tr(dict, 'compare.criterion'), tr(dict, 'common.score')]));
+    b.push(separator(2));
+    for (const [key, value] of checklist) b.push(row([checklistLabel(key, dict, labels), tr(dict, 'exp.scoreOf5', { n: value })]));
+    b.push('');
   }
 
   if (visits.length) {
-    out.push(`### ${escapeMarkdown(tr(dict, 'house.visits'))}`, '');
-    out.push(row([tr(dict, 'exp.colArrived'), tr(dict, 'exp.colLeft'), tr(dict, 'exp.colStreet')]));
-    out.push(separator(3));
+    const b = blocks.visits;
+    b.push(`### ${escapeMarkdown(tr(dict, 'house.visits'))}`, '');
+    b.push(row([tr(dict, 'exp.colArrived'), tr(dict, 'exp.colLeft'), tr(dict, 'exp.colStreet')]));
+    b.push(separator(3));
     for (const visit of visits) {
-      out.push(
+      b.push(
         row([formatDateTime(visit.arrivedAt), visit.leftAt ? formatDateTime(visit.leftAt) : '–', visit.street ?? '']),
       );
     }
-    out.push('');
+    b.push('');
   }
 
   if (house.notes) {
-    out.push(`### ${escapeMarkdown(tr(dict, 'house.notes'))}`, '');
-    for (const line of house.notes.split(/\r?\n/)) out.push(escapeMarkdown(line));
-    out.push('');
+    const b = blocks.notes;
+    b.push(`### ${escapeMarkdown(tr(dict, 'house.notes'))}`, '');
+    for (const line of house.notes.split(/\r?\n/)) b.push(escapeMarkdown(line));
+    b.push('');
   }
 
   if (photos.length) {
-    out.push(`### ${escapeMarkdown(tr(dict, 'house.photos'))}`, '');
+    const b = blocks.photos;
+    b.push(`### ${escapeMarkdown(tr(dict, 'house.photos'))}`, '');
     for (const photo of photos) {
       const note = photoNote(entry, photo, stringsOf(bundle));
-      out.push(`- \`${photoFileName(photo.id)}\`${note ? ` — ${escapeMarkdown(note)}` : ''}`);
+      b.push(`- \`${photoFileName(photo.id)}\`${note ? ` — ${escapeMarkdown(note)}` : ''}`);
     }
-    out.push('');
+    b.push('');
   }
 
+  for (const block of copyBlockOrder((entry.kind ?? bundle.voice)?.kind)) out.push(...blocks[block]);
   return out;
 }
 

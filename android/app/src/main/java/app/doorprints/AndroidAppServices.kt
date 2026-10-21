@@ -42,6 +42,7 @@ import androidx.work.WorkInfo
 import app.doorprints.data.AndroidRepository
 import app.doorprints.data.Api
 import app.doorprints.data.Repository
+import app.doorprints.drive.photo.PhotoRestoreReport
 import app.doorprints.drive.wiring.DriveSettingsSection
 import app.doorprints.export.AndroidExportServices
 import app.doorprints.export.AndroidImportServices
@@ -60,11 +61,13 @@ import app.doorprints.shared.location.PlaceLookup
 import app.doorprints.ui.AppServices
 import app.doorprints.ui.AreaWakeupServices
 import app.doorprints.ui.CopyImportUndo
+import app.doorprints.ui.KindFilePick
 import app.doorprints.ui.CopyImportUndoes
 import app.doorprints.ui.ExportServices
 import app.doorprints.ui.HouseFormServices
 import app.doorprints.ui.ImportServices
 import app.doorprints.ui.LanguageChange
+import app.doorprints.ui.PhotoRestoreServices
 import app.doorprints.ui.LocationSource
 import app.doorprints.ui.MapServices
 import app.doorprints.ui.OfflineMapsServices
@@ -95,6 +98,12 @@ import java.io.File
  * Each member forwards to the code the screens called before they moved to `:ui`, with the same context.
  */
 class AndroidAppServices(private val app: DoorprintsApp, override val repository: AndroidRepository) : AppServices {
+    /** *Recently deleted* getting photos back from Google Drive (S4b-BL-293): only when Drive is in use on this phone, so a phone that never used it never builds it. */
+    override val photoRestore: PhotoRestoreServices = PhotoRestoreServices { req ->
+        val drive = app.container.drive
+        if (drive.engaged) drive.controller.restorePhotos(req, connectIfClosed = true) else PhotoRestoreReport.noConnection(req.known)
+    }
+
     override val appScope: CoroutineScope get() = app.appScope
 
     /** *Voice input* (S4b-BL-222): the microphone, its permission and the own-key transcription, on the app-wide HTTP client. */
@@ -177,6 +186,10 @@ private class AndroidSettingsServices(private val app: DoorprintsApp) : Settings
         }
         return { launcher.launch(null) }
     }
+
+    /** *Import a kind file* (docs/03 ADR-39): the document picker, one file read through the content resolver ([KindFilePicker]). */
+    @Composable
+    override fun rememberKindFilePicker(onPicked: (KindFilePick) -> Unit): () -> Unit = KindFilePicker.remember(onPicked)
 
     override suspend fun backupFolderLabel(folder: String): String? =
         withContext(Dispatchers.IO) { Saf.folderLabel(app, Uri.parse(folder)) }

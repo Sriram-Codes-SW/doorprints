@@ -36,6 +36,7 @@ import { msgOfThrown, problemToMsg } from '../backup/drive-backup-results';
 import type { TKey } from '../../../i18n/en';
 import type { SyncAdapterStatus } from './sync-adapter';
 import type { PhotoSettings, OneOffGrant } from '../photo-network-policy';
+import type { PhotoRestoreReport, PhotoRestoreRequest } from '../photo-restorer';
 import type { DeletionContext } from '../../device-auth/delete-policy';
 import type { PolicyDeletionAction } from './deletion-adapter';
 import type {
@@ -500,6 +501,11 @@ export class DriveConnectService {
 
   async uploadPhotosNowOverMobile(): Promise<OneOffGrant> {
     return this.syncAdapter.uploadPhotosNowOverMobile();
+  }
+
+  /** The photos of a restored candidate, read back from this person's own Google Drive (*Recently deleted*, S4b-BL-293); never throws. */
+  async restorePhotos(req: PhotoRestoreRequest): Promise<PhotoRestoreReport> {
+    return this.syncAdapter.restorePhotos(req);
   }
 
   // ==================== Deletion (see delete-flow.ts) ====================

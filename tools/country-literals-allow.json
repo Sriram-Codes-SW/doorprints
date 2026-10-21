@@ -1,0 +1,38 @@
+{
+ "note": "The allow-list of tools/check-country-literals.mjs (ADR-38, docs/03 section 21): the source files outside the two country packs that may still write the rupee sign, +91, lakh or crore. Only language work (the dictionaries), sample data and the server's own copies, until the backend has its pack, belong here; a feature asks the country pack. `size` is the number of files and `max` the most literals each may have; both only go down without a conscious edit.",
+ "size": 8,
+ "files": {
+  "android/shared/src/commonMain/kotlin/app/doorprints/shared/model/KindWords.kt": {
+   "max": 2,
+   "reason": "The School kind's two money labels in four languages, ending (₹): language work, the dictionaries' twin (hi, ta and te marked under review)."
+  },
+  "backend/src/main/java/app/doorprints/server/ai/extract/DraftSanitizer.java": {
+   "max": 3,
+   "reason": "The server's own amount-word pattern and multipliers (lakh, crore), the twin of the apps' pack units: the backend country pack is a later work package, so the server keeps its copy until then (docs/03 section 21)."
+  },
+  "backend/src/main/java/app/doorprints/server/ai/kind/KindPrompts.java": {
+   "max": 1,
+   "reason": "The School prompt's fee example (1.2 lakh), the server twin of the apps' pack prompt words: moves with the backend pack."
+  },
+  "web/src/app/core/ai/house-ai-outputs.ts": {
+   "max": 1,
+   "reason": "A made-up sample contact number (+91 98450 12345) in the golden-output builder for the AI tests: sample data, not logic."
+  },
+  "web/src/app/i18n/en.ts": {
+   "max": 4,
+   "reason": "The English dictionary's money labels (Price (₹) and so on): the words of the screens are language work, not the pack's."
+  },
+  "web/src/app/i18n/hi.ts": {
+   "max": 6,
+   "reason": "The Hindi dictionary's money labels and the voice disclosure's price in rupees: language work (marked under review)."
+  },
+  "web/src/app/i18n/ta.ts": {
+   "max": 6,
+   "reason": "The Tamil dictionary's money labels and the voice disclosure's price in rupees: language work (marked under review)."
+  },
+  "web/src/app/i18n/te.ts": {
+   "max": 6,
+   "reason": "The Telugu dictionary's money labels and the voice disclosure's price in rupees: language work (marked under review)."
+  }
+ }
+}

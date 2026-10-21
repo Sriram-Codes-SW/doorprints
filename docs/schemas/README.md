@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | `doorprints-backup/1` — the one backup format for server, Android and web |
-| Version | 1.72 |
-| Date | 2026-10-16 |
+| Version | 1.77 |
+| Date | 2026-10-20 |
 | Date | 2026-10-06 |
 | Author | Claude (Cowork) – Backend team |
 | Status | Pinned by story S4-00 (Sprint 4a). Changing anything here changes all three implementations at once. |
@@ -86,6 +86,11 @@
 | 1.70 | 2026-10-15 | Claude (Code), engineer | §8.4: **every word has an id** (kinds PR 31; `feat/kinds-31-words-from-files`; [03](../03-design.md) §18.25): `kind.schema.json` `words` names 65 more ids (159 in all; additive), `web` and `android` null where only one stack has the word; the website's and the phones' tables of words are generated from `house.json` and `school.json` by `tools/gen-kind-words.mjs`; `kind-word-vectors.json` pins 143 words after the sixteen; the backend's copies of the two files are updated. |
 | 1.71 | 2026-10-16 | Claude (Code), engineer | `test-all.json`, the synthetic conformance kind `zz_all` (kinds PR 32; [03](../03-design.md) §18.26): every capability on, valid against the schema and the Java loader, in no build's list. A kind's `ai.extract` names no number extra (the loader refuses it). |
 | 1.72 | 2026-10-16 | Claude (Code), engineer | `kinds/school-questions.json` gains `categoryLabels` (the school's own headers for the bank's six category ids, en, hi, ta and te; [03](../03-design.md) §18.23); the admission question's category is `LEGAL`. The house's headers are unchanged. |
+| 1.73 | 2026-10-16 | Claude (Code), engineer | **`photo-restore-vectors.json`** (format `doorprints-photo-restore-vectors/1`, status *proposed*, S4b-BL-293, restoring photos from Drive): eight `plan` cases (which photos belong to a restored candidate: deleted a minute before it or later; the exact 30-day edge; a Drive file named by the sync file's row or by the device's own bookkeeping) and eight `summary` cases (the reasons in a fixed order, photos nobody recorded); read by the website's `data/drive/photo-restore-rules.spec.ts` and the phones' `PhotoRestoreVectorsTest`. Not part of any backup or sync format. |
+| 1.74 | 2026-10-16 | Claude (Code), engineer | **`photo-sweep-vectors.json`** (format `doorprints-photo-sweep-vectors/1`, status *proposed*, S4b-BL-293, the 30-day clean-up): thirteen cases of which deleted photos' Drive files the backup tidy may take (older than the window and strictly older than the oldest backup that stays; each boundary; no backup staying; a photo with no Drive file; one file named twice); read by the website's `data/drive/photo-sweep-rules.spec.ts` and the phones' `PhotoSweepRulesTest`. Not part of any backup or sync format. |
+| 1.75 | 2026-10-19 | Claude (Code), engineer | **`import-vectors.json` gains `limits`** (§6.1): the four ZIP-bomb numbers of an import (`maxEntries` 5 000, `maxUncompressedBytes` 1 GiB, `maxCompressionRatio` 100, `maxDataJsonBytes` 16 MiB) as one cross-stack constant. `ImportVectorsTest.theLimitsAreTheVectorsLimits` (Kotlin, which Android and the iPhone share), `backup-limits.spec.ts` (the website) and `BackupParityTest.theSharedImportLimitsAgreeWithTheServer` (the data.json cap, the server's only twin) hold every stack to them. No format change. |
+| 1.76 | 2026-10-20 | Claude (Code), engineer | **`country-pack-vectors.json`** (format `country-pack-vectors/1`, ADR-38, [03](../03-design.md) §21, new §8.2b; [06](../06-test-plan.md) TC-U-289, TC-U-290): what the code answered about money, phones, the geocoder and the AI words before the country pack existed (section `in`), and the answers of the synthetic second pack that exists in tests only (section `zz`). Read by the website's `country-pack.spec.ts` and `:shared`'s `CountryPackVectorsTest`. Additive: no existing file changed. |
+| 1.77 | 2026-10-20 | Claude (Code), engineer | §8.4: **`kinds/user-kind.schema.json` and `kinds/user-kind-vectors.json`**, kinds a person adds ([03](../03-design.md) ADR-39); `kind.schema.json` gains `textLabel` and `userText` (additive); a backup's `search` may carry `userKinds`. |
 
 Related: [11 Feature parity and export spec](../11-feature-parity-and-export-spec.md) section 5.2 ·
 [03 Design](../03-design.md) ADR-20 and the API table (`GET /api/export`, `POST /api/import`) ·
@@ -584,7 +589,9 @@ reader and `ImportPlan`, `android/app`'s `BackupReaderParityTest` through Androi
 `backup-import.spec.ts` through its reader and `import-plan.ts`. A check with `candidatesWrittenBack` (S4b-BL-248) is
 also read into each stack's own rows and written again, and its `candidates` must be those, byte for byte: on the
 website (`backup-import.spec.ts`), the phone (`ImportVectorsTest`, through its database rows) and the server
-(`BackupWireTest`). A new rule is a new case here first. The stamps are in the
+(`BackupWireTest`). Its `limits` object (`maxEntries`, `maxUncompressedBytes`, `maxCompressionRatio`, `maxDataJsonBytes`) is the one cross-stack copy of the
+ZIP-bomb numbers of an import ([06](../06-test-plan.md) TC-S-17): each stack's constant must equal it (`theLimitsAreTheVectorsLimits`,
+`backup-limits.spec.ts`, `BackupParityTest`). A new rule is a new case here first. The stamps are in the
 past (2026-05-28); the photo is 300 bytes whose byte *i* is *i* × 31 mod 256.
 
 ### 6.2 The shared Drive vectors
@@ -804,6 +811,10 @@ portal shape is a new case here first. Since 1.30 the file also has share texts 
 
 [`india-place-vectors.json`](india-place-vectors.json) (format `doorprints-india-place-vectors/1`) lists 55 places across India with their latitude and longitude and, for the 12 inside the held areas, `heldBy`. The website's `india-boundaries.spec.ts` draws a short admin line at each, through MapLibre's own filter evaluator and the real polygon, at tile zoom 9 and 14; the Android `IndiaBoundaryDataTest` tests the same points against the same polygon. Both must agree with the file, so a place cannot be 'in' on one app and 'out' on the other. The file does not change the boundary data (ADR-22); a new place is a new row here first.
 
+## 8.2b The country pack vectors
+
+[`country-pack-vectors.json`](country-pack-vectors.json) (format `country-pack-vectors/1`) holds the website and `:shared` to the same answers about everything the country pack carries ([03](../03-design.md) ADR-38, §21): digit grouping, money, the amount words, the phone comparison key, what the listing parser reads as a price, a rent or sale and a phone, what the redactor removes, the geocoder's parameters and queries, the starting view and box, the prompts' currency words and the speech tags. Section `in` is the shipped India pack and records what the code answered **before** the pack existed (no behaviour change); section `zz` is a synthetic country used in tests only (`web/src/app/shared/testing/zz-pack.ts`, `ZzPack.kt`) whose answers differ from India's on the same inputs, so a call site that still assumed India fails. A new country-specific rule is a new row here first, in both sections. The file never carries India's boundary lines (ADR-22); `xlsxFormat` has one value per stack because the two writers have always written the cell format differently.
+
 ## 8.3 The update sample
 
 [`update-sample.json`](update-sample.json) is the `data.json` of an update file: one changed candidate and one deletion
@@ -853,6 +864,8 @@ read, and names where each value lives there.
 
 [`kinds/compare-vectors.json`](kinds/compare-vectors.json) (format `doorprints-compare-vectors/1`, [03](../03-design.md) §18.21) pins Compare per kind: `kinds` (each kind's resolved criteria in the kind file's order, each a checklist item or an extra, with its direction `higher`, `lower` or none, its label key per stack and its English words; a kind with no `compare` has none), `resolve` (lists of ids that must resolve alike: an unknown id is dropped, a text or an enum has no direction), `scoring` (the house's is the person's own, the school's its eight items, Medium each) and `outcomes` (entries with a rating, checklist scores and extras, to the ranking, the overall scores and the cells marked best, worked by hand). Readers: the website's `compare-criteria.spec.ts` and the phones' `CompareCriteriaVectorsTest`.
 
+[`kinds/user-kind.schema.json`](kinds/user-kind.schema.json) is the profile of a kind a person adds ([03](../03-design.md) ADR-39, §18.28): every rule of `kind.schema.json` (`allOf`), an id `u_…`, labels as the person's words (`textLabel`, added to `kind.schema.json` as an additive choice), no `words`, no `was`, empty `ai` slots, smaller limits. [`kinds/user-kind-vectors.json`](kinds/user-kind-vectors.json) (format `doorprints-user-kind-vectors/1`) pins what every reader answers: `limits`, 4 `valid` files with what they resolve to, and 114 `invalid` cases, each one fault with its `code` and `path`, whether the schema refuses it (`schema`) and whether the server's reader of built-in files does (`base`). Read by the website (`user-kind-file.spec.ts`), the server (`UserKindVectorsTest`) and the phones (the second pull request). A full backup carries such kinds as the optional `search.userKinds` (section 1.1: an optional field of the data set's object within `/1`, which every reader of before ignores).
+
 ## 9. Open items (handovers)
 
 Each ticket below is in another team's files, so it is listed here rather than edited across ownership
@@ -876,3 +889,7 @@ changed — the ordering, the checklist leniency, the cap — the change goes in
 document and `backup-sample.json` in one commit.
 
 [`delete-scope-vectors.json`](delete-scope-vectors.json) (format `doorprints-delete-scope-vectors/1`, S4b-BL-287, [02](../02-threat-model.md) T-D15) pins that one delete in a space writes one row. Each case seeds rows (`id`, `kind`, `label`, `deleted`, `dirty`, `updatedAt`), runs `steps` (`delete`, `undo`, `restore`, `deleteSpace`, each with an injected clock `at`; a stamp is the later of `at` and the previous `updatedAt` + 1 ms) and names the expected rows and the ids that must be byte-identical; the list cases name the ids of the *Recently deleted* list per space (`deleted` and `updatedAt` after now - 30 days, newest first; a row with no kind is a house, a kind with no space is the default space's). Status *confirmed*: the website, the phones and the server read it.
+
+[`photo-restore-vectors.json`](photo-restore-vectors.json) (format `doorprints-photo-restore-vectors/1`, S4b-BL-293, [15](../15-google-drive-backup-and-sharing.md) §1.4 item 11, [03](../03-design.md) §20) pins the rules of getting a restored candidate's photos back from the person's own Google Drive. `plan` cases give the candidate (`houseId`, `houseDeletedAt`), `now`, the photo tombstones still stored on the device (`local`: `id`, `deletedAt`), the tombstone rows of the device's own sync file (`file`: `id`, `houseId` or `candidateId`, `deleted`, `deletedAt`, optional `driveFileId` and `sha256`) and the device's own bookkeeping (`refs`), and name the expected `FETCH`, `PAST_WINDOW` or `MISSING` per photo, in order (the local photos first); a photo counts as deleted with its candidate when its tombstone is at most `withCandidateMs` before the candidate's, and as past the window when more than `windowDays` days before `now`. `summary` cases give how many photos the candidate had (`noted`), how many are back, the reasons of the others and how far Drive itself was reached (`connection`), and name the total, the restored count and the reasons once each in a fixed order. Not part of any backup or sync format; status *proposed* until both stacks have read it in a merged pull request.
+
+[`photo-sweep-vectors.json`](photo-sweep-vectors.json) (format `doorprints-photo-sweep-vectors/1`, S4b-BL-293, [15](../15-google-drive-backup-and-sharing.md) §5.1, [03](../03-design.md) §20) pins which deleted photos' encrypted files the backup tidy may move to Drive's bin. `now` and `windowDays` are given once; each case gives `oldestStayingBackupAgoMs` (null when no backup stays), the photos (`id`, `deletedAgoMs`, `driveFileId` or null) and `expect`, the file ids to take, in order, each once. A file is taken when its photo's tombstone is more than the window before `now` and strictly older than the oldest backup that stays. Not part of any backup or sync format; status *proposed* until both stacks have read it in a merged pull request.

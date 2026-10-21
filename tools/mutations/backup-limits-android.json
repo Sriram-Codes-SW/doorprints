@@ -1,0 +1,57 @@
+{
+  "spec": "android/shared/src/androidHostTest/kotlin/app/doorprints/shared/export/ (ArchiveTest, JvmArchiveTest, ImportVectorsTest); the shared ZIP reader of Android and the iPhone (TC-S-17)",
+  "gradle": [
+    ":shared:testAndroidHostTest",
+    "--rerun",
+    "--tests",
+    "app.doorprints.shared.export.ArchiveTest",
+    "--tests",
+    "app.doorprints.shared.export.JvmArchiveTest",
+    "--tests",
+    "app.doorprints.shared.export.ImportVectorsTest"
+  ],
+  "mutations": [
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/export/Zip.kt",
+      "find": "if (count > maxEntries) return",
+      "replace": "if (count > maxEntries * 2) return",
+      "expect": "aBadFileGetsAndroidsAnswer"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/export/BackupArchive.kt",
+      "find": "if (declared > BackupFormat.MAX_UNCOMPRESSED_BYTES) return",
+      "replace": "if (declared > BackupFormat.MAX_UNCOMPRESSED_BYTES * 1000) return",
+      "expect": "aBombIsRefusedByWhatItClaimsAndByWhatItInflatesTo"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/export/BackupArchive.kt",
+      "find": "entry.size / packed > BackupFormat.MAX_COMPRESSION_RATIO",
+      "replace": "entry.size / packed > BackupFormat.MAX_COMPRESSION_RATIO * 1_000_000",
+      "expect": "aBombIsRefusedByWhatItClaimsAndByWhatItInflatesTo"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/export/BackupArchive.kt",
+      "find": "val dataBytes = zip.readAtMost(dataEntry, BackupFormat.MAX_DATA_JSON_BYTES, tools)",
+      "replace": "val dataBytes = zip.readAtMost(dataEntry, Int.MAX_VALUE.toLong(), tools)",
+      "expect": "aBombIsRefusedByWhatItClaimsAndByWhatItInflatesTo"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/export/BackupArchive.kt",
+      "find": "private const val MAX_MANIFEST_BYTES = 8L * 1024 * 1024",
+      "replace": "private const val MAX_MANIFEST_BYTES = 8L * 1024 * 1024 * 1024",
+      "expect": "aBombIsRefusedByWhatItClaimsAndByWhatItInflatesTo"
+    },
+    {
+      "file": "android/shared/src/androidMain/kotlin/app/doorprints/shared/export/JvmArchive.kt",
+      "find": "if (out.size().toLong() + n > maxBytes) return null",
+      "replace": "if (out.size().toLong() + n > maxBytes * 1000L) return null",
+      "expect": "inflatingStopsAtTheLimitWhateverTheDataWouldCome"
+    },
+    {
+      "file": "android/shared/src/commonMain/kotlin/app/doorprints/shared/export/Backup.kt",
+      "find": "const val MAX_COMPRESSION_RATIO = 100L",
+      "replace": "const val MAX_COMPRESSION_RATIO = 101L",
+      "expect": "theLimitsAreTheVectorsLimits"
+    }
+  ]
+}

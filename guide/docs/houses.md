@@ -2,7 +2,7 @@
 
 !!! note "About this page: written for houses"
     This page describes houses, what Doorprints keeps track of by default. If you also track schools (**What you
-    track**, **Experimental: more than houses**), a school has other fields: see [More than houses (experimental)](other-kinds.md).
+    track**), a school has other fields: see [Schools as well as houses](other-kinds.md).
 
 ## Add your first house
 
@@ -91,7 +91,7 @@ Remember to choose **Save**.
 
 ![The checklist on the website: water supply, power backup, parking, sunlight, ventilation and quiet, each scored 0 to 5](images/web-house-checklist.png)
 
-**Delete house** removes a house with its notes, contact details and photos. Its visits stay in your history. On the website there is no question: a bar at the bottom says **Deleted** and offers **Undo** for 10 seconds (press Shift+Tab from the top of the page to reach it with the keyboard). If the house has saved walks, one question tells you how many go with it, because they cannot come back. Later, **Your data** > **Recently deleted** lists what you deleted in the last 30 days, and **Restore** brings it back; the photos of a house are not kept after the 10 seconds, and the page says so. On the Android and iPhone apps the same list is in **Settings** > **Recently deleted** (for the space you are in), and a phone does not remove a house's photos when you delete it, so **Restore** brings them back unless a sync has already carried the delete to your server and back.
+**Delete house** removes a house with its notes, contact details and photos. Its visits stay in your history. On the website there is no question: a bar at the bottom says **Deleted** and offers **Undo** for 10 seconds (press Shift+Tab from the top of the page to reach it with the keyboard). If the house has saved walks, one question tells you how many go with it, because they cannot come back. Later, **Your data** > **Recently deleted** lists what you deleted in the last 30 days, and **Restore** brings it back. Deleting drops a photo from the device at once, but its encrypted copy stays in your own Google Drive for at least 30 days, so **Restore** can bring the photos back too: when Google Drive is connected on that device and you are online, the page says how many of how many came back and why the others did not (Drive not connected, no connection, deleted more than 30 days ago, no copy left in your Drive). Connect Google Drive and go online *before* you press **Restore**; the house itself always comes back. **Delete everything Doorprints keeps in my Google Drive** removes those copies for good. On the Android and iPhone apps the same list is in **Settings** > **Recently deleted** (for the space you are in), and a phone does not remove a house's photos when you delete it, so **Restore** brings them back; photos that another device deleted with the house are read back from your Drive.
 
 ## Your areas and places
 

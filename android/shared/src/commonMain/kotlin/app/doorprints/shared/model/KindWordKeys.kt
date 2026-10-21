@@ -39,8 +39,11 @@ object KindWordKeys {
 
     val SCHOOL: Map<String, String?> = KindWordData.BY_KIND.getValue("school")
 
-    /** The keys of [kind]; a kind with no table of its own reads the house's. */
-    fun of(kind: String): Map<String, String?> = KindWordData.BY_KIND[kind] ?: HOUSE
+    /**
+     * The keys of [kind]; a kind this phone added from a kind file reads its own plural and *new* for the heading and the add
+     * button and the neutral `ukind_*` words elsewhere ([UserKinds], docs/03 ADR-39); any other kind with no table reads the house's.
+     */
+    fun of(kind: String): Map<String, String?> = KindWordData.BY_KIND[kind] ?: UserKinds.wordKeys(kind) ?: HOUSE
 
     /** The Android key of word [id] in the kind of a stored candidate ([kind] null or one this build does not have: the house's). */
     fun key(kind: String?, id: String): String = checkNotNull(of(kind ?: KindWordData.BY_KIND.keys.first())[id]) { "no Android word for $id" }

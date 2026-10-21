@@ -18,13 +18,25 @@
 
 import { Component, ElementRef, effect, inject, signal, untracked, viewChild } from '@angular/core';
 import { DeleteUndoService } from '../../core/delete-undo.service';
-import type { BinEntry } from '../../core/delete-undo.service';
+import type { BinEntry, PhotoRestorer, PhotoRetry, Restored } from '../../core/delete-undo.service';
+import { DriveConnectService } from '../../data/drive/connect/drive-connect.service';
 import { errorMsg } from '../../core/format';
 import { LocalDataService } from '../../core/local-data.service';
 import { SpaceService } from '../../core/space.service';
+import type { PhotoRestoreReason } from '../../data/drive/photo-restore-rules';
+import type { TKey } from '../../i18n/en';
 import { TPipe } from '../../i18n/t.pipe';
 import { TranslationService } from '../../i18n/translation.service';
 import type { Msg } from '../../i18n/translation.service';
+
+/** The words for each reason a photo did not come back. */
+const WHY: Record<PhotoRestoreReason, TKey> = {
+  NOT_CONNECTED: 'delete.why.notConnected',
+  OFFLINE: 'delete.why.offline',
+  PAST_WINDOW: 'delete.why.pastWindow',
+  MISSING: 'delete.why.missing',
+  UNREADABLE: 'delete.why.unreadable',
+};
 
 /**
  * *Recently deleted* on *Your data* (deletion safeguards PR 1, docs/11 5.27.6): this space's candidates deleted in the last
@@ -48,6 +60,14 @@ import type { Msg } from '../../i18n/translation.service';
           <p class="note">{{ m.key | t: m.params }}</p>
         }
       </div>
+      <!-- Outside the live region: a control inside role="status" would be announced as part of its text. -->
+      @if (retry(); as r) {
+        <div class="retry-row">
+          <button type="button" class="btn retry" [disabled]="busy()" [attr.aria-label]="'delete.retryAria' | t: { name: r.name || ('delete.unnamed' | t) }" (click)="retryPhotos()">
+            {{ 'delete.retryPhotos' | t }}
+          </button>
+        </div>
+      }
       @if (error(); as e) {
         <p class="error" role="alert">{{ e.key | t: e.params }}</p>
       }
@@ -83,6 +103,7 @@ import type { Msg } from '../../i18n/translation.service';
     .row { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-2) var(--space-3); padding: var(--space-2) 0; border-top: 1px solid var(--border); }
     .what p { margin: 0; overflow-wrap: anywhere; }
     .note { margin: var(--space-2) 0 0; }
+    .retry-row { margin: var(--space-2) 0 0; }
     .empty { margin-top: var(--space-3); }
     @media (min-width: 40rem) { .row { grid-template-columns: minmax(0, 1fr) auto; align-items: center; } }
   `,
@@ -90,6 +111,8 @@ import type { Msg } from '../../i18n/translation.service';
 export class RecentlyDeleted {
   private readonly undo = inject(DeleteUndoService);
   private readonly data = inject(LocalDataService);
+  /** The Data page's Google Drive service: where photos with no bytes left here are read back from (S4b-BL-293). */
+  private readonly drive: PhotoRestorer | null = inject(DriveConnectService, { optional: true });
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly heading = viewChild.required<ElementRef<HTMLElement>>('heading');
   protected readonly space = inject(SpaceService);
@@ -99,6 +122,8 @@ export class RecentlyDeleted {
   protected readonly note = signal<Msg | null>(null);
   protected readonly error = signal<Msg | null>(null);
   protected readonly busy = signal(false);
+  /** The photos of the entry just restored that a retry can still bring back, or null (S4b-BL-293). */
+  protected readonly retry = signal<PhotoRetry | null>(null);
 
   constructor() {
     // Read again after every write to the store (a sync pull, a delete elsewhere) and when the space changes.
@@ -129,9 +154,10 @@ export class RecentlyDeleted {
     const at = before.findIndex((e) => e.id === entry.id);
     let failed: Msg | null = null;
     try {
-      const result = await this.undo.restore(entry);
-      const name = entry.name || this.i18n.t('delete.unnamed');
-      if (result) this.note.set(result.photosGone > 0 ? { key: 'delete.photosGone', params: { name } } : { key: 'delete.restored', params: { name } });
+      const result = await this.undo.restore(entry, Date.now(), this.drive);
+      if (result) this.note.set(this.words(result, entry.name || this.i18n.t('delete.unnamed')));
+      // A result of undefined means the entry is no longer a tombstone (restored elsewhere): offer nothing.
+      this.retry.set(result?.retry ?? null);
     } catch (err: unknown) {
       failed = { key: 'delete.restoreFailed', params: { reason: errorMsg(err) } };
     }
@@ -139,6 +165,38 @@ export class RecentlyDeleted {
     if (failed) this.error.set(failed);
     this.busy.set(false);
     this.focusAfter(at);
+  }
+
+  /**
+   * Tries the just-restored entry's photos again, after the person reconnected Google Drive (S4b-BL-293). The candidate is
+   * already back, so only its photos are asked for; the words and the Retry button are updated from the new result.
+   */
+  protected async retryPhotos(): Promise<void> {
+    const retry = this.retry();
+    if (!retry || this.busy()) return;
+    this.busy.set(true);
+    this.error.set(null);
+    try {
+      const result = await this.undo.retryPhotos(retry, Date.now(), this.drive);
+      this.note.set(this.words(result, retry.name));
+      this.retry.set(result.retry);
+      // Once the photos are back the Retry button is gone, and it held focus: land it on the heading.
+      if (!result.retry) setTimeout(() => this.heading().nativeElement.focus());
+    } catch (err: unknown) {
+      this.error.set({ key: 'delete.restoreFailed', params: { reason: errorMsg(err) } });
+    }
+    this.busy.set(false);
+  }
+
+  /** What the person is told about the photos: all back from Google Drive, some, or none and why; nothing special when no photo was lost. */
+  private words(r: Restored, name: string): Msg {
+    if (r.photosTotal === 0 || (r.reasons.length === 0 && r.photosFromDrive === 0)) return { key: 'delete.restored', params: { name } };
+    if (r.reasons.length === 0) return { key: 'delete.photosAllDrive', params: { name, n: this.i18n.number(r.photosTotal) } };
+    const why = this.i18n.list(r.reasons.map((reason) => this.i18n.t(WHY[reason])));
+    const rest = r.photosTotal - r.photosBack;
+    return r.photosBack === 0
+      ? { key: 'delete.photosNone', params: { name, n: this.i18n.number(r.photosTotal), why } }
+      : { key: 'delete.photosSome', params: { name, back: this.i18n.number(r.photosBack), n: this.i18n.number(r.photosTotal), rest: this.i18n.number(rest), why } };
   }
 
   /** The Restore button now at `index` (the entry after the restored one), else the last one, else the heading. */

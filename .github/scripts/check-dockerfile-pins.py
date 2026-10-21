@@ -19,6 +19,12 @@ digest, `image:tag@sha256:<64 hex>` (the tag stays for the reader; the digest is
 `FROM <stage>` that names an earlier `AS <stage>` of the same file need none. Dependabot's docker ecosystem keeps the
 digests current (`.github/dependabot.yml`).
 
+The images CI runs itself (Trivy, Semgrep, gitleaks, ZAP, MobSF: `docker run`, an `*_IMAGE:` value or an `image=` line
+in a workflow under `.github/workflows` or a script under a `ci` folder) follow the same rule (pentest of 2026-10-21,
+`docs/ops/pentest-2026-10-21.md` PT-3): a tag can be moved to other bytes, a digest cannot. Dependabot does not read
+those lines, so a version move there is done by hand, tag and digest together. The Gradle wrapper names the SHA-256 of
+the distribution it downloads (`distributionSha256Sum`, PT-4); Dependabot's gradle ecosystem moves it with the version.
+
 Usage: check-dockerfile-pins.py [repository root] (default the current directory). Exit 1 and a list when something is off.
 """
 
@@ -37,9 +43,10 @@ class Problem(NamedTuple):
     name: str
     line: int
     image: str
+    what: str = "has no @sha256:<64 hex> digest"
 
     def __str__(self) -> str:
-        return f"{self.name}:{self.line}: {self.image} has no @sha256:<64 hex> digest"
+        return f"{self.name}:{self.line}: {self.image} {self.what}"
 
 
 def problems_in(name: str, text: str) -> list[Problem]:
@@ -55,6 +62,59 @@ def problems_in(name: str, text: str) -> list[Problem]:
         if alias:
             stages.add(alias.lower())
     return found
+
+
+# A registry image named with a tag, `[registry/]namespace/name:tag[@...]`, as a word of its own (not part of a URL or a path).
+IMAGE_REF = re.compile(r"(?<![\w$/.@:{-])((?:[a-z0-9.-]+\.[a-z]+(?::\d+)?/)?[a-z0-9._-]+(?:/[a-z0-9._-]+)+:[A-Za-z0-9._-]+(?:@[^\s\"'}]*)?)")
+IMAGE_LINE = re.compile(r"docker\s+(?:run|pull|create)\b|_IMAGE\s*[:=]|\bimage\s*[:=]", re.I)
+
+
+def image_problems_in(name: str, text: str) -> list[Problem]:
+    """Tag-only images on the lines of a workflow or CI script that name an image to run; comment lines are skipped."""
+    found = []
+    lines = text.splitlines()
+    for number, line in enumerate(lines, 1):
+        if line.lstrip().startswith("#"):
+            continue
+        # A `docker run` spread over lines with `\`: the image is on a continuation line.
+        start = number - 1
+        while start > 0 and lines[start - 1].rstrip().endswith("\\"):
+            start -= 1
+        if not any(IMAGE_LINE.search(lines[i]) for i in range(start, number)):
+            continue
+        for image in IMAGE_REF.findall(line):
+            if not DIGEST.search(image):
+                found.append(Problem(name, number, image))
+    return found
+
+
+def ci_files(root: Path) -> list[Path]:
+    """The workflows, and the shell scripts in any `ci` folder (outside dependency and build folders)."""
+    paths = sorted((root / ".github" / "workflows").glob("*.y*ml"))
+    for directory, subdirectories, files in os.walk(root):
+        subdirectories[:] = [d for d in subdirectories if d not in SKIPPED_DIRECTORIES]
+        if Path(directory).name == "ci":
+            paths += sorted(Path(directory) / f for f in files if f.endswith(".sh"))
+    return paths
+
+
+WRAPPER_SUM = re.compile(r"^distributionSha256Sum=[0-9a-f]{64}\s*$", re.M)
+
+
+def wrapper_problems_in(name: str, text: str) -> list[Problem]:
+    """A Gradle wrapper must name the SHA-256 of the distribution it downloads (pentest of 2026-10-21, PT-4)."""
+    if WRAPPER_SUM.search(text):
+        return []
+    url = next((line.split("=", 1)[1] for line in text.splitlines() if line.startswith("distributionUrl=")), "the distribution")
+    return [Problem(name, 0, url.replace("\\:", ":"), "is downloaded with no distributionSha256Sum=<64 hex>")]
+
+
+def wrappers(root: Path) -> list[Path]:
+    paths = []
+    for directory, subdirectories, files in os.walk(root):
+        subdirectories[:] = [d for d in subdirectories if d not in SKIPPED_DIRECTORIES]
+        paths += [Path(directory) / f for f in files if f == "gradle-wrapper.properties"]
+    return sorted(paths)
 
 
 def dockerfiles(root: Path) -> list[Path]:
@@ -73,9 +133,15 @@ def main(argv: list[str]) -> int:
     files = dockerfiles(root)
     for path in files:
         problems += problems_in(path.relative_to(root).as_posix(), path.read_text(encoding="utf-8"))
+    scripts = ci_files(root)
+    for path in scripts:
+        problems += image_problems_in(path.relative_to(root).as_posix(), path.read_text(encoding="utf-8"))
+    gradle = wrappers(root)
+    for path in gradle:
+        problems += wrapper_problems_in(path.relative_to(root).as_posix(), path.read_text(encoding="utf-8"))
     for problem in problems:
         print(problem)
-    print(f"{len(files)} Dockerfiles checked, {len(problems)} problem(s).")
+    print(f"{len(files)} Dockerfiles, {len(scripts)} workflows and CI scripts and {len(gradle)} Gradle wrappers checked, {len(problems)} problem(s).")
     return 1 if problems else 0
 
 

@@ -264,15 +264,7 @@ export class DrivePhotos implements PhotoRefs {
       return null;
     }
     try {
-      let f: DriveFile;
-      try {
-        f = await this.drive.getFile(ref.driveFileId);
-      } catch (e) {
-        if (e instanceof DriveError && e.kind === 'NOT_FOUND') throw new Reject('UNREADABLE', 'NOT_FOUND');
-        throw e;
-      }
-      if (!this.isPhotoFile(f, folder.id)) throw new Reject('NOT_OURS');
-      return await this.readVerified(f, ref.sha256);
+      return await this.fetchRef(ref, folder.id);
     } catch (e) {
       if (!(e instanceof Reject)) throw e;
       const cur = await this.store.load();
@@ -281,6 +273,38 @@ export class DrivePhotos implements PhotoRefs {
       this.skip(photoId, e.reason, e.detail);
       return null;
     }
+  }
+
+  /**
+   * One photo's bytes for a restore from *Recently deleted* (S4b-BL-293): the file `ref` names, read and checked like any
+   * download (the folder pin, Drive's checksum, the keys, the plaintext SHA-256 of the row), without the "remembered as bad"
+   * bookkeeping of {@link download}, because the person asked for this one now. A photo that cannot be had is answered with
+   * its reason, never thrown; a network failure is thrown. Nothing is written to Drive or to the state.
+   */
+  async fetchForRestore(ref: PhotoRef): Promise<{ readonly kind: 'Bytes'; readonly bytes: Uint8Array } | { readonly kind: 'Gone'; readonly reason: PhotoSkipReason; readonly detail: string | null }> {
+    await this.requirePinned();
+    const st = await this.store.load();
+    const folder = await ensureFolder(this.drive, DRIVE_LAYOUT.photos, this.session.rootId, false, st.photosFolderId);
+    if (!folder) return { kind: 'Gone', reason: 'NO_FOLDER', detail: null };
+    try {
+      return { kind: 'Bytes', bytes: await this.fetchRef(ref, folder.id) };
+    } catch (e) {
+      if (!(e instanceof Reject)) throw e;
+      return { kind: 'Gone', reason: e.reason, detail: e.detail };
+    }
+  }
+
+  /** The bytes of the file `ref` names when it is a complete photo file of the `Photos` folder that checks out; {@link Reject} otherwise. */
+  private async fetchRef(ref: PhotoRef, folderId: string): Promise<Uint8Array> {
+    let f: DriveFile;
+    try {
+      f = await this.drive.getFile(ref.driveFileId);
+    } catch (e) {
+      if (e instanceof DriveError && e.kind === 'NOT_FOUND') throw new Reject('UNREADABLE', 'NOT_FOUND');
+      throw e;
+    }
+    if (!this.isPhotoFile(f, folderId)) throw new Reject('NOT_OURS');
+    return this.readVerified(f, ref.sha256);
   }
 
   // ---- Checks -----------------------------------------------------------------------------------------------------

@@ -196,106 +196,132 @@ object PdfExporter {
         sheet.labelled(s["col.createdAt"], ExportTime.dateTime(house.createdAt, o.utcOffsetMinutes), body)
         sheet.labelled(s["col.updatedAt"], ExportTime.dateTime(house.updatedAt, o.utcOffsetMinutes), body)
 
+        // The blocks after the details, each written when it runs: the kind's `copyOrder` says which comes first, the house's fixed order is the
+        // default (docs/03 section 18.29). The contact lines go with the notes, after the visits, as they always have.
+        val blocks = LinkedHashMap<String, () -> Unit>()
+
         // A kind's cost section (a school's Fees): its typed extras, under the heading of their own section (S4b-BL-266).
-        val fees = bundle.extrasOf(house).filter { it.section == "cost" }
-        if (fees.isNotEmpty()) {
-            sheet.section(s["section.cost"], heading)
-            for (e in fees) sheet.labelled(e.label, e.text, body, 2f)
+        blocks["cost"] = {
+            val fees = bundle.extrasOf(house).filter { it.section == "cost" }
+            if (fees.isNotEmpty()) {
+                sheet.section(s["section.cost"], heading)
+                for (e in fees) sheet.labelled(e.label, e.text, body, 2f)
+            }
         }
 
         // The questions asked (slice 3a), before the checklist, open ones first: "question: answer · status".
-        val answers = ExportRows.answerRows(house, bundle)
-        if (answers.isNotEmpty()) {
-            sheet.section(s["section.questions"], heading)
-            for ((question, answer, status) in answers) sheet.labelled(question, "$answer · $status", body, 2f)
+        blocks["questions"] = {
+            val answers = ExportRows.answerRows(house, bundle)
+            if (answers.isNotEmpty()) {
+                sheet.section(s["section.questions"], heading)
+                for ((question, answer, status) in answers) sheet.labelled(question, "$answer · $status", body, 2f)
+            }
         }
 
         // The viewings (slice 3b-1), after the questions: "when: kind · status · notes (· with whom)".
-        val viewings = ExportRows.viewingRows(house, bundle)
-        if (viewings.isNotEmpty()) {
-            sheet.section(s["section.viewings"], heading)
-            for (row in viewings) sheet.labelled(row[0], row.drop(1).joinToString(" · "), body, 2f)
+        blocks["viewings"] = {
+            val viewings = ExportRows.viewingRows(house, bundle)
+            if (viewings.isNotEmpty()) {
+                sheet.section(s["section.viewings"], heading)
+                for (row in viewings) sheet.labelled(row[0], row.drop(1).joinToString(" · "), body, 2f)
+            }
         }
 
         // The area notes that reach the house and its distances to my places (slice 4a): "from: note", "place: Distance (km): 8.6".
-        val notes = ExportRows.areaNoteRows(house, bundle)
-        if (notes.isNotEmpty()) {
-            sheet.section(s["section.areaNotes"], heading)
-            for ((text, source) in notes) sheet.labelled(source, text, body, 2f)
+        blocks["areaNotes"] = {
+            val notes = ExportRows.areaNoteRows(house, bundle)
+            if (notes.isNotEmpty()) {
+                sheet.section(s["section.areaNotes"], heading)
+                for ((text, source) in notes) sheet.labelled(source, text, body, 2f)
+            }
         }
-        val distances = ExportRows.distanceRows(house, bundle)
-        if (distances.isNotEmpty()) {
-            sheet.section(s["section.distances"], heading)
-            for ((place, km) in distances) sheet.labelled(place, "${s["col.km"]}: $km", body, 2f)
+        blocks["distances"] = {
+            val distances = ExportRows.distanceRows(house, bundle)
+            if (distances.isNotEmpty()) {
+                sheet.section(s["section.distances"], heading)
+                for ((place, km) in distances) sheet.labelled(place, "${s["col.km"]}: $km", body, 2f)
+            }
         }
 
         // Moving in (slice 5), after the distances and before the checklist: the date, the notes, the ticked list.
-        if (house.moveIn != null && shows("section.moveIn")) {
-            sheet.section(s["section.movingIn"], heading)
-            for ((term, value) in ExportRows.moveInLines(house, bundle)) sheet.labelled(term, value, body, 2f)
-            for (item in ExportRows.moveInItems(house)) sheet.paragraph(item, body, spaceAfter = 2f)
-        }
-
-        val keys = ExportRows.checklistKeys(house, bundle)
-        if (keys.isNotEmpty()) {
-            sheet.section(s["section.checklist"], heading)
-            for (key in keys) sheet.labelled(bundle.criterionLabel(key), "${house.checklist.getValue(key)}/5", body, 2f)
-        }
-
-        val visits = bundle.visitsOf(house)
-        if (visits.isNotEmpty()) {
-            sheet.section(s["section.visits"], heading)
-            for (visit in visits) {
-                val left = visit.leftAt?.let { ExportTime.dateTime(it, o.utcOffsetMinutes) } ?: s["none"]
-                val minutes = visit.minutes?.toString() ?: s["none"]
-                sheet.labelled(
-                    ExportTime.dateTime(visit.arrivedAt, o.utcOffsetMinutes),
-                    "$left · $minutes ${s["col.minutes"]} · ${s.source(visit.source)}",
-                    body,
-                    2f,
-                )
+        blocks["moveIn"] = {
+            if (house.moveIn != null && shows("section.moveIn")) {
+                sheet.section(s["section.movingIn"], heading)
+                for ((term, value) in ExportRows.moveInLines(house, bundle)) sheet.labelled(term, value, body, 2f)
+                for (item in ExportRows.moveInItems(house)) sheet.paragraph(item, body, spaceAfter = 2f)
             }
         }
 
-        val broker = bundle.brokerOf(house)
-        if (o.includeContacts &&
-            (!house.contactName.isNullOrEmpty() || !house.contactPhone.isNullOrEmpty() || broker != null)
-        ) {
-            sheet.section(s["section.contact"], heading)
-            house.contactName?.takeIf { it.isNotEmpty() }?.let { sheet.labelled(s["col.contactName"], it, body, 2f) }
-            house.contactPhone?.takeIf { it.isNotEmpty() }?.let { sheet.labelled(s["col.contactPhone"], it, body, 2f) }
-            broker?.let { sheet.labelled(s["col.broker"], it.label, body, 2f) }
+        blocks["checklist"] = {
+            val keys = ExportRows.checklistKeys(house, bundle)
+            if (keys.isNotEmpty()) {
+                sheet.section(s["section.checklist"], heading)
+                for (key in keys) sheet.labelled(bundle.criterionLabel(key), "${house.checklist.getValue(key)}/5", body, 2f)
+            }
         }
 
-        house.notes?.takeIf { it.isNotEmpty() }?.let {
-            sheet.section(s["section.notes"], heading)
-            sheet.paragraph(it, body, spaceAfter = 6f)
-        }
-
-        val photos = bundle.photosOf(house)
-        if (photos.isNotEmpty()) {
-            sheet.section(s["section.photos"], heading)
-            for (photo in photos) {
-                // 300 px into a 200 pt box is about 1.5x, so the photo is still sharp on paper.
-                val bitmap = PhotoBytes.bitmap(photoFile(photo.id), 300) ?: continue
-                try {
-                    val height = PHOTO_WIDTH * bitmap.height / bitmap.width.coerceAtLeast(1)
-                    sheet.ensure(height + 6f)
-                    val canvas = sheet.canvas ?: continue
-                    canvas.drawBitmap(
-                        bitmap,
-                        Rect(0, 0, bitmap.width, bitmap.height),
-                        RectF(MARGIN, sheet.y, MARGIN + PHOTO_WIDTH, sheet.y + height),
-                        null,
+        blocks["visits"] = {
+            val visits = bundle.visitsOf(house)
+            if (visits.isNotEmpty()) {
+                sheet.section(s["section.visits"], heading)
+                for (visit in visits) {
+                    val left = visit.leftAt?.let { ExportTime.dateTime(it, o.utcOffsetMinutes) } ?: s["none"]
+                    val minutes = visit.minutes?.toString() ?: s["none"]
+                    sheet.labelled(
+                        ExportTime.dateTime(visit.arrivedAt, o.utcOffsetMinutes),
+                        "$left · $minutes ${s["col.minutes"]} · ${s.source(visit.source)}",
+                        body,
+                        2f,
                     )
-                    sheet.advance(height + 6f)
-                } finally {
-                    bitmap.recycle()
                 }
-                // Its room, tags and caption (slice 5), those it has, under the photo.
-                ExportRows.photoLine(photo, bundle)?.let { sheet.paragraph(it, body, spaceAfter = 6f) }
             }
         }
+
+        blocks["notes"] = {
+            val broker = bundle.brokerOf(house)
+            if (o.includeContacts &&
+                (!house.contactName.isNullOrEmpty() || !house.contactPhone.isNullOrEmpty() || broker != null)
+            ) {
+                sheet.section(s["section.contact"], heading)
+                house.contactName?.takeIf { it.isNotEmpty() }?.let { sheet.labelled(s["col.contactName"], it, body, 2f) }
+                house.contactPhone?.takeIf { it.isNotEmpty() }?.let { sheet.labelled(s["col.contactPhone"], it, body, 2f) }
+                broker?.let { sheet.labelled(s["col.broker"], it.label, body, 2f) }
+            }
+
+            house.notes?.takeIf { it.isNotEmpty() }?.let {
+                sheet.section(s["section.notes"], heading)
+                sheet.paragraph(it, body, spaceAfter = 6f)
+            }
+        }
+
+        blocks["photos"] = {
+            val photos = bundle.photosOf(house)
+            if (photos.isNotEmpty()) {
+                sheet.section(s["section.photos"], heading)
+                for (photo in photos) {
+                    // 300 px into a 200 pt box is about 1.5x, so the photo is still sharp on paper.
+                    val bitmap = PhotoBytes.bitmap(photoFile(photo.id), 300) ?: continue
+                    try {
+                        val height = PHOTO_WIDTH * bitmap.height / bitmap.width.coerceAtLeast(1)
+                        sheet.ensure(height + 6f)
+                        val canvas = sheet.canvas ?: continue
+                        canvas.drawBitmap(
+                            bitmap,
+                            Rect(0, 0, bitmap.width, bitmap.height),
+                            RectF(MARGIN, sheet.y, MARGIN + PHOTO_WIDTH, sheet.y + height),
+                            null,
+                        )
+                        sheet.advance(height + 6f)
+                    } finally {
+                        bitmap.recycle()
+                    }
+                    // Its room, tags and caption (slice 5), those it has, under the photo.
+                    ExportRows.photoLine(photo, bundle)?.let { sheet.paragraph(it, body, spaceAfter = 6f) }
+                }
+            }
+        }
+
+        for (name in bundle.blockOrder(house)) blocks[name]?.invoke()
     }
 }
 

@@ -24,7 +24,9 @@
      Keys mirror the web's i18n keys where both apps show the same text. -->
 <resources>
     <string name="app_name">Doorprints</string>
-    <string name="app_tagline">देखा हुआ हर मकान याद रखें।</string>
+    <string name="app_tagline">देखी हुई हर जगह याद रखें।</string>
+    <!-- The empty house list's title: house-only words, kept when the tagline became kind-neutral (ADR-13b). -->
+    <string name="houses_first_run_title">देखा हुआ हर मकान याद रखें।</string>
     <string name="nav_map">नक्शा</string>
     <string name="nav_houses">मकान</string>
     <string name="nav_compare">तुलना</string>
@@ -1324,6 +1326,8 @@
     <string name="drive_sync_not_now">अभी नहीं</string>
     <string name="drive_sync_upload_now">मोबाइल डेटा पर अब फ़ोटो अपलोड करें (%1$s)</string>
     <string name="drive_sync_photo_error">फ़ोटो सेटिंग अपडेट नहीं कर सके</string>
+    <!-- S4b-BL-293 (2026-10-20): how long a deleted photo stays in Drive, the website's driveSync.photoRetention: under review. -->
+    <string name="drive_sync_photo_retention">आपके हटाए गए फ़ोटो 30 दिन बाद आपकी Google Drive से हट जाते हैं, और उसके बाद वे तभी रहते हैं जब आपका रखा कोई बैकअप अब भी उन्हें रखता हो।</string>
     <string name="drive_delete_heading">गूगल ड्राइव में डेटा हटाएँ</string>
     <string name="drive_delete_older_backups">पुराने बैकअप हटाएँ</string>
     <string name="drive_delete_all_backups">सभी बैकअप हटाएँ</string>
@@ -1720,7 +1724,7 @@
     <string name="kinds_heading">आप क्या ट्रैक करते हैं</string>
     <string name="kinds_body">चुनें कि Doorprints किसका हिसाब रखे। एक से ज़्यादा चालू होने पर Doorprints पहले पूछता है कि आप क्या ढूँढ रहे हैं।</string>
     <string name="kinds_switch">प्रायोगिक: मकानों के अलावा भी</string>
-    <string name="kinds_switch_hint">शुरू में बंद। वह दिखाता है जिसे अभी आज़माया जा रहा है, जैसे स्कूल। यह बदल सकता है। यह एक पूर्वावलोकन है।</string>
+    <string name="kinds_switch_hint">शुरू में बंद। वह दिखाता है जिसे अभी आज़माया जा रहा है। यह बदल सकता है।</string>
     <string name="kinds_show">%1$s दिखाएँ</string>
     <string name="kinds_default">डिफ़ॉल्ट</string>
     <string name="kinds_default_aria">%1$s को डिफ़ॉल्ट बनाएँ</string>
@@ -1736,8 +1740,8 @@
     <string name="school_region_desc">आपके स्कूलों का नक्शा। हर स्कूल ‘स्कूल’ टैब में भी है।</string>
     <string name="school_add_tip">सुझाव: स्कूल पर पहुँचकर ‘यहाँ स्कूल सहेजें’ दबाएँ, या कहीं भी स्कूल रखने के लिए नक्शे को दबाकर रखें।</string>
     <string name="school_add_tip_a11y">सुझाव: स्कूल पर रहते हुए ‘यहाँ स्कूल सहेजें’ दबाएँ।</string>
-    <string name="school_add_tip_listing">पूर्वावलोकन: यह स्कूल कहाँ है? वहाँ हों तो ‘यहाँ स्कूल सहेजें’ दबाएँ, या नक़्शे पर उस जगह देर तक दबाएँ; फिर लिस्टिंग फ़ॉर्म भर देगी।</string>
-    <string name="school_add_tip_listing_a11y">पूर्वावलोकन: यह स्कूल कहाँ है? वहाँ पहुँचकर ‘यहाँ स्कूल सहेजें’ दबाएँ; फिर लिस्टिंग फ़ॉर्म भर देगी।</string>
+    <string name="school_add_tip_listing">यह स्कूल कहाँ है? वहाँ हों तो ‘यहाँ स्कूल सहेजें’ दबाएँ, या नक़्शे पर उस जगह देर तक दबाएँ; फिर लिस्टिंग फ़ॉर्म भर देगी।</string>
+    <string name="school_add_tip_listing_a11y">यह स्कूल कहाँ है? वहाँ पहुँचकर ‘यहाँ स्कूल सहेजें’ दबाएँ; फिर लिस्टिंग फ़ॉर्म भर देगी।</string>
     <string name="school_unnamed">बिना नाम का स्कूल</string>
     <string name="school_compare_hint">4 स्कूल तक चुनें (चुने गए पहले दिखते हैं)। अस्वीकृत और नहीं चुने गए स्कूल शामिल नहीं किए जाते।</string>
     <string name="school_compare_pick_more">तुलना के लिए कम से कम दो स्कूल चुनें।</string>
@@ -1769,18 +1773,30 @@
     <!-- S4b-BL-285 (2026-10-14): deletion safeguards on the phones (PR 3): Delete all in this space, Recently deleted, Drive level 3 "all kinds"; the website's words (web i18n `delete.*`, `driveDelete.allKinds`). hi, ta and te are under review. -->
     <string name="delete_space_button">इस स्थान में सब हटाएँ</string>
     <string name="delete_space_button_aria">इस स्थान में सब हटाएँ: %1$s</string>
-    <string name="delete_space_confirm">%1$s में सहेजा सब कुछ हटा दें: %2$s? सिर्फ़ यही स्थान हटेगा, आपके दूसरे स्थानों को छुआ नहीं जाएगा। 10 सेकंड तक पूर्ववत कर सकते हैं, और 30 दिन तक हाल में हटाए गए से वापस ला सकते हैं। इनकी सहेजी गई सैरें वापस नहीं आ सकतीं।</string>
+    <string name="delete_space_confirm">%1$s में सहेजा सब कुछ हटा दें: %2$s? सिर्फ़ यही स्थान हटेगा, आपके दूसरे स्थानों को छुआ नहीं जाएगा। 10 सेकंड तक पूर्ववत कर सकते हैं, और 30 दिन तक हाल में हटाए गए से वापस ला सकते हैं (तस्वीरें भी, अगर Google Drive जुड़ी है और उसमें उनकी प्रति अब भी है)। इनकी सहेजी गई सैरें वापस नहीं आ सकतीं।</string>
     <string name="delete_space_do">सब हटाएँ</string>
     <string name="delete_deleted_many">%1$s से हटाए गए: %2$s</string>
     <string name="delete_restored_many">%1$s में वापस लाए गए: %2$s</string>
     <string name="delete_restored">%1$s वापस लाया गया</string>
     <string name="delete_bulk_wait">अभी एक साथ कई हटाने का काम हुआ है। %1$d सेकंड रुककर फिर कोशिश करें।</string>
     <string name="delete_recently_deleted">हाल में हटाए गए</string>
-    <string name="delete_bin_body">पिछले 30 दिनों में आपने जो हटाया, वह यहाँ रहता है और आप उसे वापस ला सकते हैं। सहेजी हुई सैरें नहीं रखी जातीं।</string>
+    <string name="delete_bin_body">पिछले 30 दिनों में आपने जो हटाया, वह यहाँ रहता है और आप उसे वापस ला सकते हैं। तस्वीरें भी तब तक वापस आती हैं जब तक उनकी एन्क्रिप्टेड प्रति आपकी अपनी Google Drive में है: वापस लाते समय Google Drive जुड़ी हो और आप ऑनलाइन हों। सहेजी हुई सैरें नहीं रखी जातीं।</string>
+    <!-- S4b-BL-293 (2026-10-16): photos of a restored entry come back from the person's own Google Drive. Under review (owner rule: hi/ta/te ship marked under review). -->
+    <string name="delete_photos_all_drive">%1$s वापस लाया गया। इसकी तस्वीरें आपकी Google Drive से वापस आ गईं (तस्वीरें: %2$s)।</string>
+    <string name="delete_photos_some">%1$s वापस लाया गया। वापस आई तस्वीरें: %3$s में से %2$s। बाकी वापस नहीं आ सकीं: %4$s।</string>
+    <string name="delete_photos_none">%1$s वापस लाया गया। इसकी तस्वीरें वापस नहीं आ सकीं: %2$s।</string>
+    <string name="delete_why_not_connected">इस डिवाइस पर Google Drive जुड़ी नहीं है</string>
+    <string name="delete_why_offline">Google Drive से कनेक्शन नहीं था</string>
+    <string name="delete_why_past_window">वे 30 दिन से पहले हटाई गई थीं</string>
+    <string name="delete_why_missing">आपकी Google Drive में उनकी प्रति नहीं बची</string>
+    <string name="delete_why_unreadable">आपकी Google Drive की प्रति खोली या जाँची नहीं जा सकी</string>
     <string name="delete_bin_empty">पिछले 30 दिनों में कुछ नहीं हटाया गया।</string>
     <string name="delete_bin_more">30 दिन तक %1$d और रखे गए हैं। अगला देखने के लिए एक वापस लाएँ।</string>
     <string name="delete_restore">वापस लाएँ</string>
     <string name="delete_restore_aria">%1$s वापस लाएँ</string>
+    <!-- S4b-BL-293 (2026-10-16): Retry photos under the result of a restore (the website's delete.retryPhotos, delete.retryAria). Under review (owner rule: hi/ta/te ship marked under review). -->
+    <string name="delete_retry_photos">तस्वीरें फिर से लाने की कोशिश करें</string>
+    <string name="delete_retry_aria">%1$s की तस्वीरें फिर से लाने की कोशिश करें</string>
     <string name="delete_deleted_on">हटाया गया: %1$s</string>
     <string name="drive_delete_all_kinds">यह सभी प्रकार हटाता है: मकान, स्कूल और हर दूसरा स्थान, सिर्फ़ वह नहीं जिसमें आप हैं।</string>
     <!-- S4b-BL-256, S4b-BL-259, S4b-BL-266, S4b-BL-277 (2026-10-14): under review (the website's school words where it has the key, else the house string with the school's noun). -->
@@ -1813,6 +1829,9 @@
 
     <!-- kinds PR 21 (S4b-BL-265, -291, -292, 2026-10-15): under review. -->
     <string name="list_filter_any">कोई भी</string>
+    <!-- docs/03 §18.29 (2026-10-20): a range for a number or an amount. Under review (owner rule: hi/ta/te ship marked under review). -->
+    <string name="list_filter_range_min">%1$s: कम से कम</string>
+    <string name="list_filter_range_max">%1$s: अधिकतम</string>
     <string name="export_copy_of">इसकी कॉपी सहेजें</string>
     <string name="export_scope_any">कौन-सी प्रविष्टियाँ</string>
     <string name="export_scope_all_any">सभी प्रविष्टियाँ</string>
@@ -1846,7 +1865,7 @@
     <!-- S4b-BL-222 (2026-10-15): under review: voice input. -->
     <string name="voice_switch">आवाज़ से लिखना (AI बॉक्स में माइक्रोफ़ोन बटन)</string>
     <string name="voice_switch_hint">जब तक आप चालू न करें, यह बंद रहता है। माइक्रोफ़ोन दबाएँ, बोलें, और शब्द बॉक्स में लिख दिए जाते हैं ताकि आप जाँचें और बदलें। बॉक्स का अपना बटन दबाने तक कुछ नहीं भेजा जाता। केवल आपकी अपनी AI कुंजी से काम करता है।</string>
-    <string name="voice_disclosure">ऑडियो इस फ़ोन से सीधे %1$s को जाता है, उनकी सूची-कीमत पर लगभग ₹%2$s प्रति मिनट। आप जो भी बोलते हैं, नंबर और नाम समेत, ऑडियो के रूप में भेजा जाता है, और बोला गया फ़ोन नंबर टाइप किए गए नंबर की तरह हटाया नहीं जा सकता। रिकॉर्डिंग इस फ़ोन पर सहेजी नहीं जाती।</string>
+    <string name="voice_disclosure">ऑडियो इस फ़ोन से सीधे %1$s को जाता है, उनकी सूची-कीमत पर लगभग ₹%2$s प्रति मिनट। आप जो भी बोलते हैं, नंबर और नाम समेत, ऑडियो के रूप में भेजा जाता है, और बोला गया फ़ोन नंबर टाइप किए गए नंबर की तरह हटाया नहीं जा सकता। रिकॉर्डिंग इस फ़ोन पर सहेजी नहीं जाती। आवाज़ से लिखना केवल सशुल्क योजना के साथ चलता है: मुफ़्त योजनाएँ अस्वीकार की जाती हैं।</string>
     <string name="voice_needs_own_key">आवाज़ से लिखने के लिए ऑडियो समझने वाली सेवा की आपकी अपनी AI कुंजी चाहिए: Gemini, OpenAI, Groq या OpenRouter। आपके सर्वर के AI, Anthropic या लोकल सर्वर के साथ यह उपलब्ध नहीं है।</string>
     <string name="voice_no_recorder">यह फ़ोन ऑडियो रिकॉर्ड नहीं कर सकता, इसलिए माइक्रोफ़ोन बटन नहीं दिखता।</string>
     <string name="voice_mic">बोलें</string>
@@ -1883,6 +1902,13 @@
     <string name="voice_rationale_body_short">Doorprints केवल “बोलें” दबाने के बाद, अधिकतम 30 सेकंड, आपकी बात लिखने के लिए रिकॉर्ड करता है। रिकॉर्डिंग आपकी अपनी कुंजी से %1$s को जाती है, मेमोरी में रहती है और कभी सहेजी नहीं जाती। आगे Android आपकी अनुमति माँगेगा।</string>
     <string name="voice_rationale_body_ios_short">Doorprints केवल “बोलें” दबाने के बाद, अधिकतम 30 सेकंड, आपकी बात लिखने के लिए रिकॉर्ड करता है। रिकॉर्डिंग आपकी अपनी कुंजी से %1$s को जाती है, मेमोरी में रहती है और कभी सहेजी नहीं जाती। आगे iOS आपकी अनुमति माँगेगा।</string>
     <string name="voice_status_done_limit_short">हो गया। रिकॉर्डिंग 30 सेकंड की सीमा पर रुक गई। शब्द बॉक्स में हैं। भेजने से पहले जाँच लें।</string>
+    <!-- Voice free-plan refusal (2026-10-19, ADR-37): under review. -->
+    <string name="voice_tier_checking">जाँच हो रही है कि आपकी योजना सशुल्क है…</string>
+    <string name="voice_tier_free">मुफ़्त %1$s योजना पर आवाज़ से लिखना उपलब्ध नहीं है: मुफ़्त योजना में %1$s आपकी बोली को अपने उत्पाद बेहतर बनाने में इस्तेमाल कर सकता है। सशुल्क कुंजी इस्तेमाल करें, या टाइप करें।</string>
+    <string name="voice_tier_unknown">Doorprints यह नहीं जाँच सकता कि आपकी %1$s योजना सशुल्क है या नहीं, और मुफ़्त योजना में %1$s आपकी बोली इस्तेमाल कर सकता है। सेटिंग्स में पुष्टि करें कि योजना सशुल्क है, या टाइप करें।</string>
+    <string name="voice_tier_ack">मेरी %1$s योजना सशुल्क है; मुझे पता है कि मुफ़्त योजना में %1$s मेरी आवाज़ इस्तेमाल कर सकता है</string>
+    <string name="voice_tier_ack_hint">Doorprints %1$s के लिए इसे जाँच नहीं सकता। आपकी पुष्टि सिर्फ़ इसी कुंजी के लिए याद रहती है; नई कुंजी पर फिर पूछा जाएगा।</string>
+    <string name="voice_tier_hint">सिर्फ़ सशुल्क योजना के साथ काम करता है</string>
     <string name="settings_ai_service_sarvam">Sarvam (भारत)</string>
     <string name="voice_provider">शब्द लिखने के लिए</string>
     <string name="voice_provider_own">मेरा AI प्रदाता (Gemini, OpenAI, Groq या OpenRouter)</string>
@@ -1893,7 +1919,7 @@
     <string name="voice_sarvam_save">Sarvam कुंजी सहेजें</string>
     <string name="voice_sarvam_remove">Sarvam कुंजी हटाएँ</string>
     <string name="voice_switch_hint_sarvam">जब तक आप चालू न करें, यह बंद रहता है। माइक्रोफ़ोन दबाएँ, 30 सेकंड तक बोलें, और शब्द बॉक्स में लिख दिए जाते हैं ताकि आप जाँचें और बदलें। बॉक्स का अपना बटन दबाने तक कुछ नहीं भेजा जाता।</string>
-    <string name="voice_disclosure_sarvam">ऑडियो इस फ़ोन से सीधे %1$s (Sarvam AI, भारत) को आपकी अपनी Sarvam कुंजी से जाता है, उनकी सूची-कीमत पर लगभग ₹%2$s प्रति मिनट, एक बार में 30 सेकंड तक। आप जो भी बोलते हैं, नंबर और नाम समेत, ऑडियो के रूप में भेजा जाता है, और बोला गया फ़ोन नंबर टाइप किए गए नंबर की तरह हटाया नहीं जा सकता। रिकॉर्डिंग इस फ़ोन पर सहेजी नहीं जाती।</string>
+    <string name="voice_disclosure_sarvam">ऑडियो इस फ़ोन से सीधे %1$s (Sarvam AI, भारत) को आपकी अपनी Sarvam कुंजी से जाता है, उनकी सूची-कीमत पर लगभग ₹%2$s प्रति मिनट, एक बार में 30 सेकंड तक। आप जो भी बोलते हैं, नंबर और नाम समेत, ऑडियो के रूप में भेजा जाता है, और बोला गया फ़ोन नंबर टाइप किए गए नंबर की तरह हटाया नहीं जा सकता। रिकॉर्डिंग इस फ़ोन पर सहेजी नहीं जाती। आवाज़ से लिखना केवल सशुल्क योजना के साथ चलता है: मुफ़्त योजनाएँ अस्वीकार की जाती हैं।</string>
     <string name="voice_needs_sarvam_key">आवाज़ से लिखने के लिए Sarvam इस्तेमाल करने हेतु ऊपर अपनी Sarvam कुंजी सहेजें।</string>
     <!-- Kinds PR 26, Hunt as a capability (docs/03 §18.20, 2026-10-15): the Hunt words of the kind files. The house's three are the :app
          notification strings (same text, kept equal by KindWordVectorsTest); the school's are under review. -->
@@ -1968,4 +1994,151 @@
     <!-- Kinds PR 31 (docs/03 section 18.25, 2026-10-15): under review. -->
     <string name="school_houses_empty_ios">अभी कोई स्कूल नहीं। iPhone पर अभी स्कूल जोड़े नहीं जा सकते। अगर आपका Doorprints सर्वर है, तो उसे सेटिंग्स में जोड़ें, फिर आपके स्कूल यहाँ दिखने लगेंगे।</string>
     <string name="school_map_not_on_this_phone">नक्शा अभी iPhone पर नहीं है। आपके सभी स्कूल ‘स्कूल’ टैब में हैं।</string>
+    <!-- Kinds a person adds: the neutral words of their space (docs/03 ADR-39, 2026-10-21): under review. -->
+    <string name="ukind_regionLabel">आपकी प्रविष्टियों का नक्शा। हर प्रविष्टि सूची में भी है।</string>
+    <string name="ukind_addHint">सुझाव: जगह पर पहुँचकर ‘यहाँ प्रविष्टि सहेजें’ दबाएँ, या कहीं भी प्रविष्टि रखने के लिए नक्शे को दबाकर रखें।</string>
+    <string name="ukind_addHintShort">सुझाव: जगह पर रहते हुए ‘यहाँ प्रविष्टि सहेजें’ दबाएँ।</string>
+    <string name="ukind_search">इस सूची में खोजें</string>
+    <string name="ukind_shown">दिखाई गईं: %2$d में से %1$d</string>
+    <string name="ukind_emptyBody">यहाँ अभी कुछ सहेजा नहीं गया। जगह पर हों तो नक्शा टैब में ‘यहाँ प्रविष्टि सहेजें’ दबाएँ, या नक्शे को दबाकर रखें।</string>
+    <string name="ukind_noMatch">आपकी खोज या फ़िल्टर से कुछ मेल नहीं खाता।</string>
+    <string name="ukind_create">यहाँ प्रविष्टि सहेजें</string>
+    <string name="ukind_areaNotesNone">अभी इलाक़े का कोई नोट इस प्रविष्टि तक नहीं पहुँचता।</string>
+    <string name="ukind_areaInReach">%1$s (यह प्रविष्टि इसमें है)</string>
+    <string name="ukind_unnamed">बिना नाम की प्रविष्टि</string>
+    <string name="ukind_addHintListing">यह प्रविष्टि कहाँ है? वहाँ हों तो ‘यहाँ प्रविष्टि सहेजें’ दबाएँ, या नक़्शे पर उस जगह देर तक दबाएँ; फिर लिस्टिंग फ़ॉर्म भर देगी।</string>
+    <string name="ukind_addHintListingShort">यह प्रविष्टि कहाँ है? वहाँ पहुँचकर ‘यहाँ प्रविष्टि सहेजें’ दबाएँ; फिर लिस्टिंग फ़ॉर्म भर देगी।</string>
+    <string name="ukind_compareHint">4 प्रविष्टियाँ तक चुनें (चुनी गई पहले दिखती हैं)। अस्वीकृत और नहीं चुनी गई प्रविष्टियाँ शामिल नहीं की जातीं।</string>
+    <string name="ukind_comparePickMore">तुलना के लिए कम से कम दो प्रविष्टियाँ चुनें।</string>
+    <string name="ukind_compareChoose">प्रविष्टियाँ चुनें (%2$d में से %1$d)</string>
+    <string name="ukind_compareEmpty">तुलना के लिए कम से कम दो प्रविष्टियाँ जोड़ें।</string>
+    <string name="ukind_compareEmptyBody">अस्वीकृत और नहीं चुनी गई प्रविष्टियाँ शामिल नहीं की जातीं।</string>
+    <string name="ukind_compareFootnote">खोलने के लिए नाम दबाएँ।</string>
+    <string name="ukind_askLabel">इस सूची के बारे में पूछें</string>
+    <string name="ukind_askHint">जैसे सबसे पास कौन-सी है?</string>
+    <string name="ukind_askNotGrounded">यह जवाब आपकी सहेजी प्रविष्टियों पर आधारित नहीं है।</string>
+    <string name="ukind_askSources">यह जवाब इन प्रविष्टियों पर आधारित है</string>
+    <string name="ukind_planHint">जैसे आज दोपहर चुनी गई प्रविष्टियाँ</string>
+    <string name="ukind_exportEmpty">अभी सहेजने के लिए कुछ नहीं है। पहले एक प्रविष्टि जोड़ें।</string>
+    <string name="ukind_exportScope">कौन-सी प्रविष्टियाँ</string>
+    <string name="ukind_exportScopeAll">सभी प्रविष्टियाँ</string>
+    <string name="ukind_exportIncludeRejected">अस्वीकृत प्रविष्टियाँ भी शामिल करें</string>
+    <string name="ukind_exportPhotosShortlisted">चुनी गई प्रविष्टियों की तस्वीरें</string>
+    <string name="ukind_locationOff">Doorprints के लिए जगह की अनुमति बंद है। हंट मोड और ‘यहाँ प्रविष्टि सहेजें’ को इसकी ज़रूरत है।</string>
+    <string name="ukind_needsPrecise">हंट मोड और ‘यहाँ प्रविष्टि सहेजें’ को सटीक जगह चाहिए।</string>
+    <string name="ukind_locationOffNoHunt">Doorprints के लिए जगह की अनुमति बंद है। ‘यहाँ प्रविष्टि सहेजें’ को इसकी ज़रूरत है।</string>
+    <string name="ukind_needsPreciseNoHunt">‘यहाँ प्रविष्टि सहेजें’ को सटीक जगह चाहिए।</string>
+    <string name="ukind_saveNeedsLocation">‘यहाँ प्रविष्टि सहेजें’ के लिए आपकी जगह चाहिए। जगह की अनुमति दें, फिर उस जगह पर इसे दोबारा दबाएँ।</string>
+    <string name="ukind_detailsTitle">विवरण</string>
+    <string name="ukind_notFoundTitle">प्रविष्टि नहीं मिली</string>
+    <string name="ukind_notFound">यह प्रविष्टि अब इस फ़ोन पर नहीं है।</string>
+    <string name="ukind_defaultLabel">नई प्रविष्टि</string>
+    <string name="ukind_defaultLabelStreet">%1$s पर प्रविष्टि</string>
+    <string name="ukind_discardNew">यह नई प्रविष्टि छोड़ दें?</string>
+    <string name="ukind_deleteTitle">यह प्रविष्टि हटाएँ?</string>
+    <string name="ukind_pageNeedsPrecise">इस प्रविष्टि की जगह तय करने के लिए सटीक जगह चाहिए, या अक्षांश और देशांतर लिखें।</string>
+    <string name="ukind_savePhotosFirst">तस्वीरें जोड़ने के लिए पहले प्रविष्टि सहेजें।</string>
+    <string name="ukind_walkButton">क्या मैं इस जगह के पास से गुज़रा था?</string>
+    <string name="ukind_walkPlace">इस जगह</string>
+    <string name="ukind_walkLabel">यह जगह</string>
+    <string name="ukind_walkApprox">इस प्रविष्टि की अभी कोई सटीक जगह नहीं है, केवल एक इलाक़ा है। पहले इसे नक्शे पर रखें, फिर जाँचें।</string>
+    <string name="ukind_walksEmpty">कोई सहेजी सैर नहीं। सैर पूरी करने पर आप उसे इस प्रविष्टि से जोड़ सकते हैं।</string>
+    <string name="ukind_aiDisclosure">आपका सवाल और मिलते-जुलते नोट आपके सर्वर पर सेट AI सेवा को भेजे जाते हैं।</string>
+    <string name="ukind_aiDisclosureOwnKey">यह टेक्स्ट, मिलते-जुलते नोट के साथ, आपकी अपनी कुंजी से इस फ़ोन से सीधे %1$s को भेजा जाता है।</string>
+    <string name="ukind_placeFound">नक्शा “%1$s” दिखा रहा है। प्रविष्टि वहाँ जोड़ने के लिए उस जगह को देर तक दबाएँ।</string>
+    <string name="ukind_placeNotFound">भारत में “%1$s” नाम की कोई जगह नहीं मिली। नक्शे को ख़ुद उस जगह तक ले जाएँ।</string>
+    <string name="ukind_openDetails">विवरण खोलें</string>
+    <string name="ukind_areasEmptyBody">जिन इलाक़ों में आप ढूँढ रहे हैं, उन्हें जोड़ें। किसी इलाक़े का नोट उसके अंदर की हर प्रविष्टि पर दिखता है।</string>
+    <string name="ukind_notesEmpty">अभी कोई नोट नहीं। किसी प्रविष्टि से जोड़ें।</string>
+    <string name="ukind_areaDeleteBody">इसके नोट रहेंगे, पर अब किसी प्रविष्टि पर नहीं दिखेंगे।</string>
+    <string name="ukind_placeDeleteBody">प्रविष्टियाँ अब यह नहीं दिखाएँगी कि यह कितनी दूर है।</string>
+    <string name="ukind_placesEmptyBody">दफ़्तर, स्कूल या परिवार जोड़ें। फिर हर प्रविष्टि दिखाएगी कि वह हर एक से कितनी दूर है।</string>
+    <string name="ukind_huntSeen">यह आप देख चुके हैं: %1$s</string>
+    <string name="ukind_huntStreetText">सहेजी प्रविष्टियाँ: %1$d, दौरे: %2$d</string>
+    <string name="ukind_huntStreetTextSince">सहेजी प्रविष्टियाँ: %1$d, दौरे: %2$d, पहली बार %3$s</string>
+    <string name="ukind_huntStreetSeen">%1$s · यहाँ आ चुके हैं: प्रविष्टियाँ %2$d, दौरे %3$d</string>
+    <string name="ukind_huntStayTitle">क्या आप ऐसी जगह पर हैं जिसे सहेजना है?</string>
+    <string name="ukind_huntNotifyRationale">जब आप किसी देखी हुई प्रविष्टि के पास से गुज़रते हैं, तो हंट मोड सूचना देकर बताता है।</string>
+    <string name="ukind_huntLeftSpace">हंट मोड रुक गया। यह केवल उसी स्थान में चलता है जहाँ शुरू किया गया था।</string>
+    <string name="ukind_huntNeedsKind">हंट मोड केवल इस श्रेणी के स्थान में चलता है, और आप क्या ट्रैक करते हैं में यह बंद है।</string>
+    <string name="ukind_huntOngoingText">आपकी देखी प्रविष्टियों और सड़कों पर नज़र रखी जा रही है</string>
+    <string name="ukind_huntChannelAlerts">प्रविष्टि और सड़क की सूचनाएँ</string>
+    <string name="ukind_huntChannelAlertsDesc">जब आप पहले देखी प्रविष्टि या सड़क से गुज़रें</string>
+    <string name="ukind_huntNotificationsOff">सूचनाएँ बंद हैं, इसलिए हंट मोड आपको नहीं बता सकता कि आप किसी प्रविष्टि के पास से गुज़रे।</string>
+    <string name="ukind_viewingPlan">दौरा तय करें</string>
+    <string name="ukind_viewingNone">कोई दौरा तय नहीं</string>
+    <string name="ukind_viewingAll">इस प्रविष्टि के सभी दौरे</string>
+    <string name="ukind_viewingsIntro">आप कब जाने की योजना बनाते हैं, और वह कैसा रहा।</string>
+    <string name="ukind_viewingsEmpty">अभी कोई दौरा नहीं। किसी प्रविष्टि से एक तय करें।</string>
+    <string name="ukind_viewingsDataBody">दौरा तय करें, और आने वाले तथा हो चुके दौरे देखें।</string>
+    <string name="ukind_questionsDataBody">दौरे पर आप जो सवाल पूछना चाहते हैं।</string>
+    <string name="ukind_viewingChannel">दौरे की याद दिलाने वाली सूचनाएँ</string>
+    <string name="ukind_viewingChannelDesc">आपके तय किए दौरे से पहले</string>
+    <string name="ukind_viewingSoon">%1$s का दौरा %2$d मिनट में</string>
+    <string name="ukind_viewingTitle">%1$s का दौरा</string>
+    <string name="ukind_viewingOpen">प्रविष्टि खोलें</string>
+    <string name="ukind_viewingGone">हटाई जा चुकी प्रविष्टि</string>
+    <string name="ukind_viewingDirections">उस जगह का रास्ता</string>
+    <string name="ukind_questionsIntro">दौरे पर आप जो सवाल पूछना चाहते हैं। किसी प्रविष्टि पर “आम सवाल जोड़ें” वे सवाल जोड़ता है जो “हमेशा पूछें” पर हैं।</string>
+    <string name="ukind_questionsEmpty">अभी कोई सवाल नहीं। दौरे पर ले जाने के लिए आम सवाल जोड़ें।</string>
+    <string name="ukind_questionsNoneToPick">आपकी सूची का हर सवाल इस प्रविष्टि पर पहले से है।</string>
+    <string name="ukind_viewingBody">%1$s का दौरा, %2$s बजे</string>
+    <string name="ukind_traceEndBody">इसे रखने के लिए किसी प्रविष्टि से जोड़ें। नहीं तो यह 30 दिन रहेगी, फिर मिट जाएगी। यह इसी फ़ोन पर रहती है, किसी बैकअप या कॉपी में नहीं जाती।</string>
+    <string name="ukind_traceEndSave">प्रविष्टि के साथ सहेजें</string>
+    <string name="ukind_tracePickTitle">यह सैर किस प्रविष्टि तक थी?</string>
+    <string name="ukind_tracePickSearch">अपनी प्रविष्टियाँ खोजें</string>
+    <string name="ukind_tracePickNone">आपकी अभी कोई प्रविष्टि सहेजी नहीं है। पहले एक जोड़ें, या सैर को 30 दिन रखें।</string>
+    <string name="ukind_traceSaveFull">इस प्रविष्टि की %1$d सैर पहले से सहेजी हैं। पहले एक मिटाएँ।</string>
+    <string name="ukind_listEmptyIos">यहाँ अभी कुछ सहेजा नहीं गया। iPhone पर अभी प्रविष्टियाँ जोड़ी नहीं जा सकतीं। अगर आपका Doorprints सर्वर है, तो उसे सेटिंग्स में जोड़ें, फिर आपकी प्रविष्टियाँ यहाँ दिखने लगेंगी।</string>
+    <string name="ukind_mapNotHere">नक्शा अभी iPhone पर नहीं है। आपकी सभी प्रविष्टियाँ सूची में हैं।</string>
+    <!-- Kinds a person adds: Settings > What you track (docs/03 ADR-39, 2026-10-21): under review. -->
+    <string name="userkinds_heading">आपकी जोड़ी श्रेणियाँ</string>
+    <string name="userkinds_switch">आपकी जोड़ी श्रेणियाँ (प्रायोगिक)</string>
+    <string name="userkinds_switch_hint">किसी काइंड फ़ाइल से अपनी श्रेणी जोड़ें, जैसे जिम, कैफ़े या दफ़्तर। आपकी श्रेणियाँ यहाँ और चुनने वाली सूची में तभी दिखती हैं जब यह चालू हो; बंद करने से कुछ नहीं हटता।</string>
+    <string name="userkinds_import">काइंड फ़ाइल इम्पोर्ट करें</string>
+    <string name="userkinds_import_hint">काइंड फ़ाइल एक छोटी JSON फ़ाइल (अधिकतम 64 KB) है जो श्रेणी के फ़ील्ड और शब्द बताती है। इसमें से कुछ भी चलाया या डाउनलोड नहीं किया जाता, और इसके शब्द हर भाषा में वैसे ही दिखते हैं जैसे आपने लिखे।</string>
+    <string name="userkinds_reading">फ़ाइल पढ़ी जा रही है…</string>
+    <string name="userkinds_preview_title">जोड़ने से पहले इस श्रेणी को जाँचें</string>
+    <string name="userkinds_preview_name">नाम: %1$s</string>
+    <string name="userkinds_preview_fields">इसके अपने फ़ील्ड: %1$s</string>
+    <string name="userkinds_preview_no_fields">नाम, जगह और नोट के अलावा इसके अपने कोई फ़ील्ड नहीं।</string>
+    <string name="userkinds_preview_checklist">चेकलिस्ट: %1$s</string>
+    <string name="userkinds_preview_replaces">यह श्रेणी (%1$s) आपके पास पहले से है। जोड़ने पर इसके फ़ील्ड और शब्द बदल जाएँगे; इसकी प्रविष्टियाँ बनी रहेंगी।</string>
+    <string name="userkinds_add">यह श्रेणी जोड़ें</string>
+    <string name="userkinds_replace">श्रेणी बदलें</string>
+    <string name="userkinds_added">%1$s जोड़ी गई। इस्तेमाल के लिए नीचे इसे चालू करें।</string>
+    <string name="userkinds_replaced">%1$s अपडेट हुई। इसकी प्रविष्टियाँ बनी रहीं।</string>
+    <string name="userkinds_full">यह फ़ोन पहले से आपकी जोड़ी %1$d श्रेणियाँ रखता है, जितनी अधिकतम रख सकता है। पहले एक हटाएँ।</string>
+    <string name="userkinds_refused">यह फ़ाइल नहीं जोड़ी गई: %1$s</string>
+    <string name="userkinds_where">फ़ाइल में कहाँ: %1$s</string>
+    <string name="userkinds_yours">आपकी जोड़ी हुई</string>
+    <string name="userkinds_remove">श्रेणी हटाएँ</string>
+    <string name="userkinds_remove_aria">श्रेणी %1$s हटाएँ</string>
+    <string name="userkinds_remove_confirm">श्रेणी %1$s हटाएँ? इसकी %2$d सहेजी प्रविष्टियाँ बनी रहेंगी: श्रेणी दोबारा इम्पोर्ट करने तक वे आपके डिफ़ॉल्ट स्पेस में रहेंगी। उन्हें भी हटाने के लिए पहले “इस स्पेस में सब हटाएँ” इस्तेमाल करें।</string>
+    <string name="userkinds_remove_do">श्रेणी हटाएँ</string>
+    <string name="userkinds_removed">%1$s हटाई गई। इसकी प्रविष्टियाँ बनी रहीं।</string>
+    <string name="userkinds_err_tooBig">फ़ाइल 64 KB से बड़ी है।</string>
+    <string name="userkinds_err_notJson">यह काइंड फ़ाइल नहीं है (एक JSON दस्तावेज़ नहीं)।</string>
+    <string name="userkinds_err_duplicateKey">एक ही जगह एक नाम दो बार है।</string>
+    <string name="userkinds_err_tooDeep">यह बहुत गहराई तक नेस्टेड है।</string>
+    <string name="userkinds_err_tooMany">इसमें बहुत ज़्यादा मान हैं।</string>
+    <string name="userkinds_err_tooLong">इसका एक टेक्स्ट 2,000 अक्षरों से लंबा है।</string>
+    <string name="userkinds_err_prototypeKey">इसमें ऐसा नाम है जिसकी अनुमति नहीं (__proto__, constructor या prototype)।</string>
+    <string name="userkinds_err_mapKey">यह नक्शा सेट करने की कोशिश करती है। काइंड फ़ाइल नक्शा या उसकी सीमाएँ नहीं बदल सकती।</string>
+    <string name="userkinds_err_unknownKey">इसमें ऐसा हिस्सा है जो काइंड फ़ॉर्मैट में नहीं है।</string>
+    <string name="userkinds_err_notAllowed">इसमें ऐसा हिस्सा है जो आपकी जोड़ी श्रेणी में नहीं हो सकता (की लेबल, AI शब्द या स्लॉट, बने-बनाए शब्द या बैकअप की जगहें)।</string>
+    <string name="userkinds_err_required">एक ज़रूरी हिस्सा नहीं है।</string>
+    <string name="userkinds_err_type">एक मान गलत प्रकार का है।</string>
+    <string name="userkinds_err_format">यह doorprints-kind/1 फ़ाइल नहीं है।</string>
+    <string name="userkinds_err_id">इसकी id u_ से शुरू होनी चाहिए, फिर छोटे अक्षर, अंक या _ (4 से 32 अक्षर)।</string>
+    <string name="userkinds_err_reserved">इसमें ऐसी id या फ़ील्ड का नाम है जो ऐप अपने लिए रखता है।</string>
+    <string name="userkinds_err_textLength">कोई नाम या लेबल खाली है या 60 अक्षरों से लंबा है (नोट: 500)।</string>
+    <string name="userkinds_err_textChars">कोई नाम या लेबल स्पेस से शुरू या खत्म होता है, या उसमें ऐसा अक्षर है जिसकी अनुमति नहीं (&lt; &gt; { }, कंट्रोल, अदृश्य या दिशा चिह्न)।</string>
+    <string name="userkinds_err_range">एक संख्या अपनी सीमा से बाहर है।</string>
+    <string name="userkinds_err_limit">किसी सूची में बहुत कम या बहुत ज़्यादा चीज़ें हैं।</string>
+    <string name="userkinds_err_repeated">एक id दो बार है।</string>
+    <string name="userkinds_err_value">एक मान ऐसा है जिसकी फ़ॉर्मैट अनुमति नहीं देता।</string>
+    <string name="userkinds_err_ref">इसमें ऐसे फ़ील्ड का नाम है जो इस श्रेणी में नहीं है।</string>
+    <string name="userkinds_err_capabilities">इसकी क्षमताएँ ऐप में नहीं हैं, या अपनी सीमा से बाहर हैं।</string>
+    <string name="userkinds_read_failed">फ़ाइल पढ़ी नहीं जा सकी। फिर से कोशिश करें, या कोई और फ़ाइल चुनें।</string>
 </resources>

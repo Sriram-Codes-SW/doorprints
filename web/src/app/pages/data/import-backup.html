@@ -133,6 +133,9 @@
         <p class="error" role="alert">{{ f.key | t: f.params }}</p>
       } @else if (outcome(); as o) {
         <p class="success">{{ w('imp.done') | t: { houses: o.houses, visits: o.visits, photos: o.photos } }}</p>
+        @if (kindsAdded().length) {
+          <p id="import-kinds-added">{{ 'userKinds.fromBackup' | t: { kinds: i18n.list(kindsAdded()) } }}</p>
+        }
         @if (o.removedHouses > 0) {
           <p>{{ w('imp.doneRemoved') | t: { n: o.removedHouses } }}</p>
         }

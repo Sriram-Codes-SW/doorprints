@@ -1,0 +1,508 @@
+{
+ "format": "doorprints-voice-tier-vectors/1",
+ "status": "proposed",
+ "statusNote": "Written with the voice free-tier refusal (owner decision 2026-10-19, ADR-37, docs/02 RR-33). Both implementations (web core/voice/voice-tier.ts, :shared voice/VoiceTier.kt) run every case. A later disagreement is corrected in a documented change to docs/03 ADR-37 and this file, never by editing an expected value to make a test pass. No case holds a real key or a real response.",
+ "constants": {
+  "allowTtlMs": 604800000,
+  "refuseFreeTtlMs": 86400000,
+  "fingerprintHexLength": 16,
+  "geminiProbeModel": "gemini-3.1-pro-preview",
+  "geminiProbePrompt": "Hi",
+  "geminiProbeMaxOutputTokens": 1
+ },
+ "verdicts": [
+  "ALLOW",
+  "REFUSE_FREE",
+  "REFUSE_UNKNOWN",
+  "CHECKING"
+ ],
+ "rule": [
+  {
+   "note": "Ollama is on the device: nothing leaves it",
+   "provider": "ollama",
+   "model": "",
+   "probe": "none",
+   "cached": null,
+   "acknowledged": false,
+   "expect": "ALLOW"
+  },
+  {
+   "note": "LM Studio is on the device",
+   "provider": "lmstudio",
+   "model": "",
+   "probe": "none",
+   "cached": null,
+   "acknowledged": false,
+   "expect": "ALLOW"
+  },
+  {
+   "note": "a custom address is the person's own choice",
+   "provider": "custom",
+   "model": "",
+   "probe": "none",
+   "cached": null,
+   "acknowledged": false,
+   "expect": "ALLOW"
+  },
+  {
+   "note": "a local server is allowed even with a :free model name",
+   "provider": "ollama",
+   "model": "llama:free",
+   "probe": "none",
+   "cached": null,
+   "acknowledged": false,
+   "expect": "ALLOW"
+  },
+  {
+   "note": "a :free model is free whatever the key",
+   "provider": "openrouter",
+   "model": "openai/whisper:free",
+   "probe": "paid",
+   "cached": null,
+   "acknowledged": false,
+   "expect": "REFUSE_FREE"
+  },
+  {
+   "note": "a :free model is free, upper case too",
+   "provider": "openrouter",
+   "model": "Some/Model:FREE",
+   "probe": "none",
+   "cached": null,
+   "acknowledged": false,
+   "expect": "REFUSE_FREE"
+  },
+  {
+   "note": "a model that only contains free is not a :free model",
+   "provider": "openrouter",
+   "model": "free/model",
+   "probe": "paid",
+   "cached": null,
+   "acknowledged": false,
+   "expect": "ALLOW"
+  },
+  {
+   "note": "a free signal from the probe is final",
+   "provider": "gemini",
+   "model": "gemini-3.5-flash",
+   "probe": "free",
+   "cached": null,
+   "acknowledged": false,
+   "expect": "REFUSE_FREE"
+  },
+  {
+   "note": "acknowledging does not open a free plan",
+   "provider": "gemini",
+   "model": "gemini-3.5-flash",
+   "probe": "free",
+   "cached": null,
+   "acknowledged": true,
+   "expect": "REFUSE_FREE"
+  },
+  {
+   "note": "a cached free verdict, fresh, refuses",
+   "provider": "gemini",
+   "model": "",
+   "probe": "none",
+   "cached": {
+    "verdict": "REFUSE_FREE",
+    "ageMs": 86399999
+   },
+   "acknowledged": false,
+   "expect": "REFUSE_FREE"
+  },
+  {
+   "note": "a cached free verdict beats an acknowledgement",
+   "provider": "groq",
+   "model": "",
+   "probe": "none",
+   "cached": {
+    "verdict": "REFUSE_FREE",
+    "ageMs": 1000
+   },
+   "acknowledged": true,
+   "expect": "REFUSE_FREE"
+  },
+  {
+   "note": "a cached free verdict older than 24 h is asked again",
+   "provider": "gemini",
+   "model": "",
+   "probe": "none",
+   "cached": {
+    "verdict": "REFUSE_FREE",
+    "ageMs": 86400000
+   },
+   "acknowledged": false,
+   "expect": "CHECKING"
+  },
+  {
+   "note": "a fresh cached free verdict beats a paid probe",
+   "provider": "gemini",
+   "model": "",
+   "probe": "paid",
+   "cached": {
+    "verdict": "REFUSE_FREE",
+    "ageMs": 1000
+   },
+   "acknowledged": false,
+   "expect": "REFUSE_FREE"
+  },
+  {
+   "note": "a paid probe allows",
+   "provider": "gemini",
+   "model": "",
+   "probe": "paid",
+   "cached": null,
+   "acknowledged": false,
+   "expect": "ALLOW"
+  },
+  {
+   "note": "a cached paid verdict, fresh, allows",
+   "provider": "gemini",
+   "model": "",
+   "probe": "none",
+   "cached": {
+    "verdict": "ALLOW",
+    "ageMs": 604799999
+   },
+   "acknowledged": false,
+   "expect": "ALLOW"
+  },
+  {
+   "note": "a cached paid verdict older than 7 days is asked again",
+   "provider": "gemini",
+   "model": "",
+   "probe": "none",
+   "cached": {
+    "verdict": "ALLOW",
+    "ageMs": 604800000
+   },
+   "acknowledged": false,
+   "expect": "CHECKING"
+  },
+  {
+   "note": "OpenRouter paid by its key info",
+   "provider": "openrouter",
+   "model": "openai/gpt-4o-mini-transcribe",
+   "probe": "paid",
+   "cached": null,
+   "acknowledged": false,
+   "expect": "ALLOW"
+  },
+  {
+   "note": "OpenRouter free by its key info",
+   "provider": "openrouter",
+   "model": "openai/gpt-4o-mini-transcribe",
+   "probe": "free",
+   "cached": null,
+   "acknowledged": false,
+   "expect": "REFUSE_FREE"
+  },
+  {
+   "note": "a probe under way is checking",
+   "provider": "gemini",
+   "model": "",
+   "probe": "running",
+   "cached": null,
+   "acknowledged": false,
+   "expect": "CHECKING"
+  },
+  {
+   "note": "Gemini before the probe has run is checking",
+   "provider": "gemini",
+   "model": "",
+   "probe": "none",
+   "cached": null,
+   "acknowledged": false,
+   "expect": "CHECKING"
+  },
+  {
+   "note": "OpenRouter before the key info is read is checking",
+   "provider": "openrouter",
+   "model": "openai/gpt-4o-mini-transcribe",
+   "probe": "none",
+   "cached": null,
+   "acknowledged": false,
+   "expect": "CHECKING"
+  },
+  {
+   "note": "a cached paid verdict wins over a probe still running",
+   "provider": "gemini",
+   "model": "",
+   "probe": "running",
+   "cached": {
+    "verdict": "ALLOW",
+    "ageMs": 1000
+   },
+   "acknowledged": false,
+   "expect": "ALLOW"
+  },
+  {
+   "note": "Gemini whose probe could not tell is refused as unknown",
+   "provider": "gemini",
+   "model": "",
+   "probe": "unknown",
+   "cached": null,
+   "acknowledged": false,
+   "expect": "REFUSE_UNKNOWN"
+  },
+  {
+   "note": "Gemini whose probe could not tell, acknowledged, is allowed",
+   "provider": "gemini",
+   "model": "",
+   "probe": "unknown",
+   "cached": null,
+   "acknowledged": true,
+   "expect": "ALLOW"
+  },
+  {
+   "note": "OpenRouter whose key info could not tell is refused as unknown",
+   "provider": "openrouter",
+   "model": "openai/gpt-4o-mini-transcribe",
+   "probe": "unknown",
+   "cached": null,
+   "acknowledged": false,
+   "expect": "REFUSE_UNKNOWN"
+  },
+  {
+   "note": "OpenAI has no free API tier: paid by policy",
+   "provider": "openai",
+   "model": "gpt-4o-mini-transcribe",
+   "probe": "none",
+   "cached": null,
+   "acknowledged": false,
+   "expect": "ALLOW"
+  },
+  {
+   "note": "OpenAI with a free signal is refused",
+   "provider": "openai",
+   "model": "gpt-4o-mini-transcribe",
+   "probe": "free",
+   "cached": null,
+   "acknowledged": false,
+   "expect": "REFUSE_FREE"
+  },
+  {
+   "note": "Groq's tier cannot be read: refused until acknowledged",
+   "provider": "groq",
+   "model": "whisper-large-v3-turbo",
+   "probe": "none",
+   "cached": null,
+   "acknowledged": false,
+   "expect": "REFUSE_UNKNOWN"
+  },
+  {
+   "note": "Groq acknowledged is allowed",
+   "provider": "groq",
+   "model": "whisper-large-v3-turbo",
+   "probe": "none",
+   "cached": null,
+   "acknowledged": true,
+   "expect": "ALLOW"
+  },
+  {
+   "note": "Sarvam's tier cannot be read: refused until acknowledged",
+   "provider": "sarvam",
+   "model": "",
+   "probe": "none",
+   "cached": null,
+   "acknowledged": false,
+   "expect": "REFUSE_UNKNOWN"
+  },
+  {
+   "note": "Sarvam acknowledged is allowed",
+   "provider": "sarvam",
+   "model": "",
+   "probe": "none",
+   "cached": null,
+   "acknowledged": true,
+   "expect": "ALLOW"
+  },
+  {
+   "note": "a provider the rule does not know is refused as unknown",
+   "provider": "somewhere-new",
+   "model": "",
+   "probe": "none",
+   "cached": null,
+   "acknowledged": false,
+   "expect": "REFUSE_UNKNOWN"
+  },
+  {
+   "note": "a provider the rule does not know, acknowledged, is allowed",
+   "provider": "somewhere-new",
+   "model": "",
+   "probe": "none",
+   "cached": null,
+   "acknowledged": true,
+   "expect": "ALLOW"
+  },
+  {
+   "note": "Groq does not need a probe: a probe that never ran is not checking",
+   "provider": "groq",
+   "model": "",
+   "probe": "none",
+   "cached": null,
+   "acknowledged": false,
+   "expect": "REFUSE_UNKNOWN"
+  }
+ ],
+ "geminiProbe": [
+  {
+   "note": "200 on a model without a free tier: paid",
+   "status": 200,
+   "body": "{\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"ok\"}]},\"finishReason\":\"MAX_TOKENS\"}]}",
+   "expect": "paid"
+  },
+  {
+   "note": "200 with an empty candidate list is still an answer: paid",
+   "status": 200,
+   "body": "{}",
+   "expect": "paid"
+  },
+  {
+   "note": "429 with a per-day free-tier quota id: free",
+   "status": 429,
+   "body": "{\"error\":{\"code\":429,\"message\":\"You exceeded your current quota\",\"status\":\"RESOURCE_EXHAUSTED\",\"details\":[{\"@type\":\"type.googleapis.com/google.rpc.QuotaFailure\",\"violations\":[{\"quotaMetric\":\"generativelanguage.googleapis.com/generate_content_free_tier_requests\",\"quotaId\":\"GenerateRequestsPerDayPerProjectPerModel-FreeTier\",\"quotaDimensions\":{\"model\":\"a-model\"},\"quotaValue\":\"0\"}]}]}}",
+   "expect": "free"
+  },
+  {
+   "note": "429 with a per-minute free-tier quota id: free",
+   "status": 429,
+   "body": "{\"error\":{\"code\":429,\"message\":\"You exceeded your current quota\",\"status\":\"RESOURCE_EXHAUSTED\",\"details\":[{\"@type\":\"type.googleapis.com/google.rpc.QuotaFailure\",\"violations\":[{\"quotaMetric\":\"generativelanguage.googleapis.com/generate_content_free_tier_requests\",\"quotaId\":\"GenerateRequestsPerMinutePerProjectPerModel-FreeTier\",\"quotaDimensions\":{\"model\":\"a-model\"},\"quotaValue\":\"0\"}]}]}}",
+   "expect": "free"
+  },
+  {
+   "note": "429 with a free-tier token quota id: free",
+   "status": 429,
+   "body": "{\"error\":{\"code\":429,\"message\":\"You exceeded your current quota\",\"status\":\"RESOURCE_EXHAUSTED\",\"details\":[{\"@type\":\"type.googleapis.com/google.rpc.QuotaFailure\",\"violations\":[{\"quotaMetric\":\"generativelanguage.googleapis.com/generate_content_free_tier_requests\",\"quotaId\":\"GenerateContentInputTokensPerModelPerMinute-FreeTier\",\"quotaDimensions\":{\"model\":\"a-model\"},\"quotaValue\":\"0\"}]}]}}",
+   "expect": "free"
+  },
+  {
+   "note": "429 whose quota ids name a paid-tier quota: paid",
+   "status": 429,
+   "body": "{\"error\":{\"code\":429,\"message\":\"You exceeded your current quota\",\"status\":\"RESOURCE_EXHAUSTED\",\"details\":[{\"@type\":\"type.googleapis.com/google.rpc.QuotaFailure\",\"violations\":[{\"quotaMetric\":\"generativelanguage.googleapis.com/generate_content_free_tier_requests\",\"quotaId\":\"GenerateContentPaidTierInputTokensPerModelPerMinute\",\"quotaDimensions\":{\"model\":\"a-model\"},\"quotaValue\":\"0\"}]}]}}",
+   "expect": "paid"
+  },
+  {
+   "note": "429 with several violations, one of them free-tier: free",
+   "status": 429,
+   "body": "{\"error\":{\"code\":429,\"message\":\"You exceeded your current quota\",\"status\":\"RESOURCE_EXHAUSTED\",\"details\":[{\"@type\":\"type.googleapis.com/google.rpc.QuotaFailure\",\"violations\":[{\"quotaId\":\"SomethingElsePerMinute\"},{\"quotaMetric\":\"generativelanguage.googleapis.com/generate_content_free_tier_requests\",\"quotaId\":\"GenerateRequestsPerDayPerProjectPerModel-FreeTier\",\"quotaDimensions\":{\"model\":\"a-model\"},\"quotaValue\":\"0\"}]}]}}",
+   "expect": "free"
+  },
+  {
+   "note": "429 with no quota id: unknown",
+   "status": 429,
+   "body": "{\"error\":{\"code\":429,\"message\":\"You exceeded your current quota\",\"status\":\"RESOURCE_EXHAUSTED\",\"details\":[{\"@type\":\"type.googleapis.com/google.rpc.QuotaFailure\",\"violations\":[]}]}}",
+   "expect": "unknown"
+  },
+  {
+   "note": "429 with a body that is not JSON: unknown",
+   "status": 429,
+   "body": "slow down",
+   "expect": "unknown"
+  },
+  {
+   "note": "403 key refused: unknown",
+   "status": 403,
+   "body": "{\"error\":{\"code\":403,\"status\":\"PERMISSION_DENIED\"}}",
+   "expect": "unknown"
+  },
+  {
+   "note": "404 model not found: unknown",
+   "status": 404,
+   "body": "{\"error\":{\"code\":404,\"status\":\"NOT_FOUND\"}}",
+   "expect": "unknown"
+  },
+  {
+   "note": "400 bad request: unknown",
+   "status": 400,
+   "body": "{\"error\":{\"code\":400,\"status\":\"INVALID_ARGUMENT\"}}",
+   "expect": "unknown"
+  },
+  {
+   "note": "503 unavailable: unknown",
+   "status": 503,
+   "body": "{}",
+   "expect": "unknown"
+  },
+  {
+   "note": "no answer (status 0): unknown",
+   "status": 0,
+   "body": "",
+   "expect": "unknown"
+  },
+  {
+   "note": "the free-tier words only in the message, not in a quota id: unknown",
+   "status": 429,
+   "body": "{\"error\": {\"code\": 429, \"message\": \"FreeTier quota exceeded\", \"status\": \"RESOURCE_EXHAUSTED\"}}",
+   "expect": "unknown"
+  }
+ ],
+ "openRouterKeyInfo": [
+  {
+   "note": "is_free_tier true: free",
+   "status": 200,
+   "body": "{\"data\":{\"label\":\"k\",\"is_free_tier\":true,\"usage\":0}}",
+   "expect": "free"
+  },
+  {
+   "note": "is_free_tier false: paid",
+   "status": 200,
+   "body": "{\"data\":{\"label\":\"k\",\"is_free_tier\":false,\"usage\":3}}",
+   "expect": "paid"
+  },
+  {
+   "note": "no is_free_tier field: unknown",
+   "status": 200,
+   "body": "{\"data\":{\"label\":\"k\"}}",
+   "expect": "unknown"
+  },
+  {
+   "note": "is_free_tier as a string: unknown",
+   "status": 200,
+   "body": "{\"data\":{\"is_free_tier\":\"false\"}}",
+   "expect": "unknown"
+  },
+  {
+   "note": "is_free_tier outside data: unknown",
+   "status": 200,
+   "body": "{\"is_free_tier\":false}",
+   "expect": "unknown"
+  },
+  {
+   "note": "not JSON: unknown",
+   "status": 200,
+   "body": "ok",
+   "expect": "unknown"
+  },
+  {
+   "note": "401 key refused: unknown",
+   "status": 401,
+   "body": "{\"error\":{\"code\":401}}",
+   "expect": "unknown"
+  },
+  {
+   "note": "no answer (status 0): unknown",
+   "status": 0,
+   "body": "",
+   "expect": "unknown"
+  }
+ ],
+ "fingerprint": [
+  {
+   "input": "",
+   "expect": "e3b0c44298fc1c14"
+  },
+  {
+   "input": "abc",
+   "expect": "ba7816bf8f01cfea"
+  },
+  {
+   "input": "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq",
+   "expect": "248d6a61d20638b8"
+  },
+  {
+   "input": "a placeholder, not a key",
+   "expect": "ba3d45f8c61dfe66"
+  }
+ ]
+}

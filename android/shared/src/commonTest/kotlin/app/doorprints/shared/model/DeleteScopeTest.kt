@@ -45,6 +45,19 @@ class DeleteScopeTest {
     }
 
     @Test
+    fun theHousesDeleteAndCountLeaveASchoolAloneWhileTheSchoolIsReleasedButNotShown() {
+        // The release: the school is offered (available) and the house alone is enabled. What you track scopes each kind's row by
+        // its own kind (multi = true), so a school that arrived by sync or import is neither counted under Houses nor deleted by it.
+        val available = listOf("house", "school")
+        val rows = listOf(ScopedCandidate("h1", null), ScopedCandidate("h2", "house"), ScopedCandidate("s1", "school"))
+        assertEquals(listOf("h1", "h2"), DeleteScope.liveIdsOf(rows, SpaceScope.holdsFor("house", true, "house", available)))
+        assertEquals(listOf("s1"), DeleteScope.liveIdsOf(rows, SpaceScope.holdsFor("school", true, "house", available)))
+        val counts = spaceCountsOf(listOf(KindTally("house", 2, 0L), KindTally("school", 1, 0L)), "house", available)
+        assertEquals(2, counts["house"])
+        assertEquals(1, counts["school"])
+    }
+
+    @Test
     fun theListHoldsThisSpacesTombstonesUnder30DaysNewestFirstTiesById() {
         val now = 100L * 24 * 3600 * 1000
         val day = 24L * 3600 * 1000

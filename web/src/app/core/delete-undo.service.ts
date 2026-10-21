@@ -23,8 +23,13 @@ import { SyncService } from '../data/sync.service';
 import { Announcer } from './announcer.service';
 import { LocalDataService } from './local-data.service';
 import { SpaceService } from './space.service';
-import { binRows, parseNotes, withNote } from '../data/house-bin';
+import { binRows, parseNotes, restoredPhoto, withNote } from '../data/house-bin';
 import type { RestoreResult } from '../data/house-bin';
+import { notConnectedReport } from '../data/drive/photo-restorer';
+import type { PhotoRestoreReport, PhotoRestoreRequest } from '../data/drive/photo-restorer';
+import { summarize } from '../data/drive/photo-restore-rules';
+import type { GonePhoto, PhotoRestoreReason, RestoreConnection } from '../data/drive/photo-restore-rules';
+import { isoNow } from '../data/records';
 import { SETTING_KEYS, type HouseRecord, type PhotoRecord } from '../data/records';
 
 /** How long *Undo* is offered after a delete, in milliseconds (the phones' snackbar is shown as long: DeletedHouseUndo.kt). */
@@ -50,11 +55,50 @@ export interface BinEntry {
   readonly photos: number;
 }
 
+/** Where a restore gets photos back from besides this device: the person's own Google Drive (the Data page provides it). */
+export interface PhotoRestorer {
+  restorePhotos(req: PhotoRestoreRequest): Promise<PhotoRestoreReport>;
+}
+
 /** What a restore from the list did, for the words after it. */
 export interface Restored {
   readonly name: string;
-  /** Photos that could not come back (their bytes are gone), 0 when none was lost. */
-  readonly photosGone: number;
+  /** How many photos the candidate had (0 when none, or when nobody recorded any). */
+  readonly photosTotal: number;
+  /** How many are back, from the copies on this device or from the person's Google Drive. */
+  readonly photosBack: number;
+  /** Of those, how many came from Google Drive. */
+  readonly photosFromDrive: number;
+  /** Why the others did not come back, each reason once. */
+  readonly reasons: readonly PhotoRestoreReason[];
+  /** What a second attempt needs while one can help, or null; held in memory by the card only (S4b-BL-293). */
+  readonly retry: PhotoRetry | null;
+}
+
+/**
+ * What retrying a restored candidate's photos needs (S4b-BL-293): everything the restore already had in hand, so a retry
+ * asks Drive again without re-reading the store. Held in memory by {@link DeleteUndoService} while the person is on
+ * *Recently deleted*; it is not stored, so a reload forgets it (the candidate is already back; only its photos wait).
+ */
+export interface PhotoRetry {
+  readonly name: string;
+  readonly houseId: string;
+  readonly houseDeletedAt: number;
+  /** How many photos the candidate had when it was deleted here (0 when unknown). */
+  readonly noted: number;
+  /** The photos with no bytes here that failed for a reason a second try can fix (Drive not connected, or offline). */
+  readonly known: readonly GonePhoto[];
+  /** The old photo ids already stored here or failed for good: a retry never takes them again, so none is stored twice. */
+  readonly settled: ReadonlySet<string>;
+  /** How many photos came back from Drive so far, so the words after a retry add up. */
+  readonly back: number;
+  /**
+   * How many photos the candidate's restore brought back from this device's own copies (bytes still stored here). The
+   * phone twin has no equivalent: its `restoreHouse` reports only whether it happened, so it counts Drive's copies alone.
+   */
+  readonly deviceBack: number;
+  /** Why the settled ones that did not come back did not. */
+  readonly settledReasons: readonly PhotoRestoreReason[];
 }
 
 /** The name a candidate goes by in the words around a delete: its label, else its address, else ''. */
@@ -161,14 +205,94 @@ export class DeleteUndoService {
     return binRows(rows, space, now).map((r) => ({ id: r.id, name: nameOfRow(r), deletedAt: r.updatedAt ?? '', photos: notes[r.id] ?? 0 }));
   }
 
-  /** Restores one entry of the list. Undefined when it is no longer a tombstone (restored on another device meanwhile). */
-  async restore(entry: BinEntry, now: number = Date.now()): Promise<Restored | undefined> {
+  /**
+   * Restores one entry of the list. Undefined when it is no longer a tombstone (restored on another device meanwhile).
+   * The candidate comes back first and whatever happens to its photos cannot undo that: the photos with no bytes left here
+   * are asked of `restorer` (the person's own Google Drive, which keeps the encrypted copy of a deleted photo for 30 days,
+   * docs/15 §1.4) and put back one by one; each that cannot come back is counted with its reason (S4b-BL-293).
+   */
+  async restore(entry: BinEntry, now: number = Date.now(), restorer: PhotoRestorer | null = null): Promise<Restored | undefined> {
     const result: RestoreResult | undefined = await this.store.restoreHouse(entry.id, now);
     if (!result) return undefined;
     await this.note(entry.id, 0);
+    const noted = Math.max(entry.photos, result.photosBack + result.photosGone);
+    const ctx: PhotoRetry = { name: entry.name, houseId: entry.id, houseDeletedAt: result.deletedAt, noted, known: result.gone, settled: new Set(), back: 0, deviceBack: result.photosBack, settledReasons: [] };
+    return this.photosBackFor(ctx, now, restorer);
+  }
+
+  /**
+   * Tries the photos of an already-restored candidate again, when the person presses *Retry* in *Recently deleted* after
+   * reconnecting Google Drive (S4b-BL-293). The candidate is already back, so this touches only its photos: it asks Drive
+   * for the same files the restore did and puts back each that answers, exactly like {@link restore}. Nothing is deleted.
+   */
+  async retryPhotos(retry: PhotoRetry, now: number = Date.now(), restorer: PhotoRestorer | null = null): Promise<Restored> {
+    return this.photosBackFor(retry, now, restorer);
+  }
+
+  /**
+   * One attempt: asks Drive through {@link bringPhotosBack}, adds the words up across attempts, and decides whether another
+   * attempt can still help. Shared by {@link restore} and {@link retryPhotos} so the two cannot drift (S4b-BL-293).
+   */
+  private async photosBackFor(ctx: PhotoRetry, now: number, restorer: PhotoRestorer | null): Promise<Restored> {
+    const brought = await this.bringPhotosBack(ctx, now, restorer);
     this.sync.syncSoon();
-    const had = Math.max(entry.photos, result.photosBack + result.photosGone);
-    return { name: entry.name, photosGone: had - result.photosBack };
+    const back = ctx.back + brought.fromDrive;
+    // `photosBack` counts everything back, this device's own copies included; `photosFromDrive` only Drive's.
+    const summary = summarize(ctx.noted, ctx.deviceBack + back, [...ctx.settledReasons, ...brought.failed], brought.connection);
+    // A second try can help only for the reasons Drive being reached again fixes. The next attempt carries just the photos
+    // that still have no bytes and failed for one of those, and never the ones settled, so none is stored twice.
+    const canHelp = summary.reasons.some((r) => r === 'OFFLINE' || r === 'NOT_CONNECTED');
+    const next: PhotoRetry | null = canHelp
+      ? {
+          name: ctx.name, houseId: ctx.houseId, houseDeletedAt: ctx.houseDeletedAt, noted: ctx.noted,
+          known: brought.stillGone, settled: brought.settled, back, deviceBack: ctx.deviceBack,
+          settledReasons: [...ctx.settledReasons, ...brought.failed.filter((r) => r !== 'OFFLINE' && r !== 'NOT_CONNECTED')],
+        }
+      : null;
+    return { name: ctx.name, photosTotal: summary.total, photosBack: summary.restored, photosFromDrive: back, reasons: summary.reasons, retry: next };
+  }
+
+  /**
+   * Asks the person's own Google Drive for the photos of one candidate that have no bytes here, and puts each that answers
+   * back under a new photo id; every failure becomes a reason for a photo, none is thrown. Drive is always asked: a
+   * candidate deleted on another device leaves no note or tombstone here, only its sync file.
+   */
+  private async bringPhotosBack(
+    ctx: PhotoRetry,
+    now: number,
+    restorer: PhotoRestorer | null,
+  ): Promise<{ fromDrive: number; failed: PhotoRestoreReason[]; connection: RestoreConnection; stillGone: GonePhoto[]; settled: ReadonlySet<string> }> {
+    if (!restorer) {
+      const failedNow = ctx.known.filter((p) => !ctx.settled.has(p.id));
+      return { fromDrive: 0, failed: failedNow.map(() => 'NOT_CONNECTED'), connection: 'NOT_CONNECTED', stillGone: [...failedNow], settled: new Set(ctx.settled) };
+    }
+    let report: PhotoRestoreReport;
+    try {
+      report = await restorer.restorePhotos({ houseId: ctx.houseId, houseDeletedAt: ctx.houseDeletedAt, known: ctx.known });
+    } catch {
+      report = notConnectedReport(ctx.known);
+    }
+    // A photo an earlier attempt settled is left out of the count and never stored again: the sync file lists every photo of
+    // the candidate on every read, so without this a retry would put a second copy of an already-restored photo back.
+    const failedNow = report.failed.filter((f) => !ctx.settled.has(f.photo.id));
+    const failed: PhotoRestoreReason[] = failedNow.map((f) => f.reason);
+    const settled = new Set(ctx.settled);
+    for (const f of failedNow) if (f.reason !== 'OFFLINE' && f.reason !== 'NOT_CONNECTED') settled.add(f.photo.id);
+    let fromDrive = 0;
+    const stamp = isoNow(now);
+    for (const got of report.fetched) {
+      if (ctx.settled.has(got.photo.id)) continue;
+      try {
+        await this.store.photos.put(restoredPhoto(got.photo, ctx.houseId, got.bytes, stamp));
+        fromDrive++;
+        settled.add(got.photo.id);
+      } catch {
+        failed.push('UNREADABLE');
+        settled.add(got.photo.id);
+      }
+    }
+    const stillGone = failedNow.filter((f) => f.reason === 'OFFLINE' || f.reason === 'NOT_CONNECTED').map((f) => f.photo);
+    return { fromDrive, failed, connection: report.connection, stillGone, settled };
   }
 
   /** {@link note} for many at once: one read and one write of the notes. */

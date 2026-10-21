@@ -94,6 +94,23 @@ describe('the backup family (kinds step 3)', () => {
     expect(Object.keys(written['extras'] as Obj)).toEqual(['bedrooms', 'fromNewerApp', 'zLast']);
   });
 
+  it('reads an extra named like a member of every object as an unknown extra, as the phones do (pentest PT-1)', () => {
+    // `constructor` or `toString` was found on the money extras' prototype, so the file read as "from a newer app".
+    for (const id of ['constructor', 'toString', 'valueOf', 'hasOwnProperty', 'isPrototypeOf']) {
+      const file = { ...sample, candidates: [{ ...(sample['candidates'] as Obj[])[1], extras: { [id]: 'x', bedrooms: 1 } }] };
+      const checked = checkData(file);
+      expect(checked.ok, id).toBe(true);
+      const row = checked.ok ? (checked.data.houses[0] as unknown as Obj) : {};
+      expect(Object.entries(row['extrasOther'] as Obj), id).toEqual([[id, 'x']]);
+    }
+    // A key no extra id can be is refused as broken, never a prototype.
+    const marked = { ...sample, candidates: [{ ...(sample['candidates'] as Obj[])[1], extras: { zMark: 1 } }] };
+    const proto = JSON.parse(JSON.stringify(marked).replace('"zMark":1', '"__proto__":{"amount":1,"cadence":"once"}'));
+    expect(Object.keys((proto['candidates'] as Obj[])[0]['extras'] as Obj)).toEqual(['__proto__']);
+    expect(checkData(proto)).toEqual({ ok: false, problem: 'BROKEN_DATA' });
+    expect(({} as Obj)['amount']).toBeUndefined();
+  });
+
   it('reads a newer number of the new family as newer, so the reader asks to update the app', () => {
     expect(legacyOf({ ...sample, format: 'doorprints-backup/2' })['format']).toBe(NEWER_FORMAT);
     expect(checkData({ ...sample, format: 'doorprints-backup/2' })).toEqual({ ok: false, problem: 'UNSUPPORTED_VERSION' });

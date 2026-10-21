@@ -411,11 +411,11 @@ async function flows(browser) {
     // so Your data shows the switch, off, and `/` is the map. A build of the house alone has no such section. Turned on
     // with the school shown, `/` is the chooser and a card opens that space; turned back, the house app is as it was.
     const kindSwitch = page.locator('#kinds-experimental');
-    if ((await kindSwitch.count()) === 0) {
-      check('flow', `${vp}: no What you track section in a build of houses only`, (await page.locator('#kinds-heading').count()) === 0);
+    // The school is released on the website (ADR-13b): no switch, a Schools row, off. A build of the house alone has no section.
+    if ((await page.locator('#kinds-heading').count()) === 0) {
+      check('flow', `${vp}: no What you track section in a build of houses only`, true);
     } else {
-      check('flow', `${vp}: the switch for more than houses is off`, !(await kindSwitch.isChecked()) && (await page.locator('#kind-rows').count()) === 0);
-      await kindSwitch.check().catch(() => {});
+      check('flow', `${vp}: Your data has a Schools row, off, and no Experimental switch`, (await kindSwitch.count()) === 0 && !(await page.locator('#kind-on-school').isChecked()) && (await page.locator('#kind-on-house').isChecked()));
       await page.locator('#kind-on-school').check().catch(() => {});
       await gotoRetry(page, `${BASE}/`); await settle(page);
       check('flow', `${vp}: with two shown, / is the chooser with two cards`, (await page.locator('#chooser-heading').count()) === 1 && (await page.locator('button.space-card').count()) === 2);
@@ -424,7 +424,6 @@ async function flows(browser) {
       check('flow', `${vp}: the school card opens the school space`, /\/k\/school$/.test(page.url()) && (await page.locator('.space-chip').count()) === 1, page.url());
       await gotoRetry(page, `${BASE}/data`); await settle(page);
       await page.locator('#kind-on-school').uncheck().catch(() => {});
-      await kindSwitch.uncheck().catch(() => {});
       await gotoRetry(page, `${BASE}/`); await settle(page);
       check('flow', `${vp}: turned back, / is the map again`, (await page.locator('#chooser-heading').count()) === 0 && (await page.locator('#houses-heading').count()) === 1);
     }

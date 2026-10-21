@@ -19,6 +19,8 @@
 package app.doorprints.shared.model
 
 import app.doorprints.data.AppSettings
+import app.doorprints.shared.export.ExportTable
+import app.doorprints.shared.export.TableOrder
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -75,6 +77,7 @@ class KindCapabilitiesVectorsTest {
             "identity" to (identity?.let { JsonObject(mapOf("icon" to JsonPrimitive(it.icon), "colour" to JsonPrimitive(it.colour))) } ?: JsonNull),
             "baseline" to JsonPrimitive(baseline),
             "filters" to JsonArray(filters.map(::JsonPrimitive)),
+            "copyOrder" to JsonArray(copyOrder.map(::JsonPrimitive)),
         ),
     )
 
@@ -90,6 +93,48 @@ class KindCapabilitiesVectorsTest {
             assertEquals(id, declared, KindCapabilities.of(id))
             assertEquals(id, vectors.getValue("kinds").jsonObject.getValue(id), KindCapabilities.of(id).toJson())
         }
+    }
+
+    /** The synthetic kind of the conformance suite resolves to the set the vectors pin, and its copy order is the vectors' (docs/03 section 18.26, 18.29). */
+    @Test
+    @OptIn(TestOnlyKinds::class)
+    fun theSyntheticKindResolvesToTheSetTheVectorsPinAndTheCopyOrderIsTheirs() {
+        val file = json("docs/schemas/kinds/test-all.json")
+        val parsed = KindCapabilities.parse(file["capabilities"])
+        assertNotNull(parsed)
+        assertEquals(vectors.getValue("synthetic").jsonObject.getValue("zz_all"), parsed!!.copy(baseline = false).toJson())
+        assertEquals(listOf("board", "includesMeals", "seats", "fees"), parsed.filters)
+        val order = vectors.getValue("copyOrder").jsonObject
+        assertEquals(order.getValue("blocks").strings(), KindCapabilities.COPY_BLOCKS)
+        for (case in order.getValue("effective").jsonArray.map { it.jsonObject }) {
+            val caps = KindCapabilities.parse(JsonObject(mapOf("copyOrder" to case.getValue("copyOrder"))))
+            assertNotNull(caps)
+            val undo = KindCapabilities.registerForTest("zz_order", caps!!)
+            try {
+                assertEquals(case.toString(), case.getValue("order").strings(), KindCapabilities.copyBlockOrder("zz_order"))
+            } finally {
+                undo()
+            }
+        }
+        for (id in listOf("house", "school", "nothing", null)) assertEquals(id, KindCapabilities.COPY_BLOCKS, KindCapabilities.copyBlockOrder(id))
+        // The CSV files and the XLSX sheets (the web's `table-order.ts` reads the same vectors).
+        val tables = order.getValue("tables").jsonObject
+        assertEquals(tables.getValue("block").jsonObject.mapValues { it.value.jsonPrimitive.content }, TableOrder.TABLE_BLOCK)
+        val fixed = tables.getValue("fixed").strings()
+        val given = fixed.map { ExportTable(it, it, emptyList(), emptyList()) }
+        for (case in tables.getValue("effective").jsonArray.map { it.jsonObject }) {
+            val caps = KindCapabilities.parse(JsonObject(mapOf("copyOrder" to case.getValue("copyOrder"))))
+            assertNotNull(caps)
+            val undo = KindCapabilities.registerForTest("zz_order", caps!!)
+            try {
+                assertEquals(case.toString(), case.getValue("order").strings(), TableOrder.inCopyOrder(given, "zz_order").map { it.name })
+            } finally {
+                undo()
+            }
+        }
+        for (id in listOf("house", "school", "nothing", null)) assertEquals(id, fixed, TableOrder.inCopyOrder(given, id).map { it.name })
+        // Nothing stays registered: a kind a test made up is unknown again.
+        assertEquals(KindCapabilities.DEFAULT, KindCapabilities.of("zz_order"))
     }
 
     @Test

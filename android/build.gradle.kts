@@ -16,6 +16,25 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 
+// Build-tooling security pins (Dependabot alerts of 2026-10-21, docs/ops/dependabot-triage-2026-10-21.md). AGP 9.4.1 brings
+// Bouncy Castle 1.80.2 (signing), jose4j 0.9.5 and jdom2 2.0.6 onto the Gradle plugin classpath, and its lint tool brings
+// Bouncy Castle 1.80.2 too. None of them reaches the APK; the pins lift the tooling to the patched versions.
+// Re-check on every AGP bump: remove a pin once AGP's own version is at or above it.
+buildscript {
+    dependencies {
+        constraints {
+            classpath("org.bouncycastle:bcprov-jdk18on:1.85") { because("GHSA-9pwp-9qqc-pr26, GHSA-qp49-qgx5-5m26") }
+            classpath("org.bouncycastle:bcpkix-jdk18on:1.85") { because("GHSA-wg6q-6289-32hp") }
+            classpath("org.bouncycastle:bcutil-jdk18on:1.85") { because("same release train as bcprov and bcpkix") }
+            classpath("org.bitbucket.b_c:jose4j:0.9.6") { because("GHSA-3677-xxcr-wjqv") }
+            classpath("org.jdom:jdom2:2.0.6.1") { because("GHSA-2363-cqg2-863c") }
+            classpath("org.apache.httpcomponents:httpclient:4.5.14") { because("GHSA-7r82-7xv7-xcpj") }
+            classpath("org.apache.commons:commons-lang3:3.18.0") { because("GHSA-j288-q9x7-2f5v") }
+            classpath("io.opentelemetry:opentelemetry-api:1.62.0") { because("GHSA-rcgg-9c38-7xpx") }
+        }
+    }
+}
+
 // Versions live in gradle/libs.versions.toml. Every plugin is declared here (apply false) so :app and :shared load
 // AGP and the Kotlin Gradle plugin in the same classloader, which AGP's KMP library plugin requires.
 plugins {
@@ -30,4 +49,26 @@ plugins {
     alias(libs.plugins.androidx.room) apply false
     alias(libs.plugins.roborazzi) apply false
     alias(libs.plugins.compose.multiplatform) apply false
+}
+
+// The same pins for the lint tool (androidLintTool), which every Android module resolves on its own.
+subprojects {
+    configurations.configureEach {
+        // Not on any APK or test classpath here (checked); if a tool configuration brings it in, it gets the patched API.
+        resolutionStrategy.eachDependency {
+            if (requested.group == "io.opentelemetry" && requested.name == "opentelemetry-api") useVersion("1.62.0")
+        }
+        if (name == "androidLintTool") {
+            resolutionStrategy.eachDependency {
+                when ("${requested.group}:${requested.name}") {
+                    "org.apache.httpcomponents:httpclient" -> useVersion("4.5.14")
+                    "org.apache.commons:commons-lang3" -> useVersion("3.18.0")
+                    "org.bouncycastle:bcprov-jdk18on", "org.bouncycastle:bcpkix-jdk18on", "org.bouncycastle:bcutil-jdk18on" ->
+                        useVersion("1.85")
+                    "org.bitbucket.b_c:jose4j" -> useVersion("0.9.6")
+                    "org.jdom:jdom2" -> useVersion("2.0.6.1")
+                }
+            }
+        }
+    }
 }

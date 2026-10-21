@@ -32,6 +32,7 @@ import app.doorprints.shared.voice.OwnKeyTranscription
 import app.doorprints.shared.voice.PcmVoiceRecorder
 import app.doorprints.shared.voice.RecordedClip
 import app.doorprints.shared.voice.VoiceRecorder
+import app.doorprints.shared.voice.VoiceTierGate
 import app.doorprints.ui.VoiceServices
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.Dispatchers
@@ -48,7 +49,8 @@ class AndroidVoiceServices(
     settings: SettingsStore,
     http: () -> HttpClient,
 ) : VoiceServices {
-    private val transcription by lazy { OwnKeyTranscription(settings, http()) }
+    override val tierGate: VoiceTierGate by lazy { VoiceTierGate(settings, http()) }
+    private val transcription by lazy { OwnKeyTranscription(settings, http(), tierGate) }
 
     override val supported: Boolean get() = true
 

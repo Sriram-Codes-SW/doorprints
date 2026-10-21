@@ -57,27 +57,31 @@ fun kindStringResource(key: String): StringResource =
  * (`section.<id>`), as the form and its sections read them (kinds PR 4, S4b-BL-255). A place the kind gives no text
  * fails at once: a screen asks only for the places it draws.
  */
-fun kindField(id: String, cadence: String? = null): StringResource = KindLabels.HOUSE.fieldText(id, cadence)
+fun kindField(id: String, cadence: String? = null): StringResource =
+    kindStringResource(checkNotNull(KindLabels.HOUSE.field(id, cadence)?.key) { "house has no text for field.$id" })
 
-fun kindSection(id: String): StringResource = KindLabels.HOUSE.sectionText(id)
+fun kindSection(id: String): StringResource = kindStringResource(checkNotNull(KindLabels.HOUSE.section(id)?.key) { "house has no text for section.$id" })
 
 /** A section's heading in the given kind's labels (the viewings card and list are headed by the kind's own, kinds PR 29). */
-fun kindSection(labels: KindLabels, id: String): StringResource = labels.sectionText(id)
+fun kindSection(labels: KindLabels, id: String): UiWord = labels.sectionText(id)
 
-fun kindRef(ref: String): StringResource = KindLabels.HOUSE.refText(ref)
+fun kindRef(ref: String): StringResource = kindStringResource(checkNotNull(KindLabels.HOUSE.resolve(ref)?.key) { "house has no text for $ref" })
 
-/** The same for any kind (the form draws the candidate's own kind since kinds PR 5, S4b-BL-209). */
-fun KindLabels.fieldText(id: String, cadence: String? = null): StringResource =
-    kindStringResource(checkNotNull(field(id, cadence)?.key) { "$kind has no text for field.$id" })
+/**
+ * The same for any kind (the form draws the candidate's own kind since kinds PR 5, S4b-BL-209): a [UiWord], since a kind a person
+ * added (docs/03 ADR-39) labels its places with their own words.
+ */
+fun KindLabels.fieldText(id: String, cadence: String? = null): UiWord =
+    kindWord(checkNotNull(field(id, cadence)?.key) { "$kind has no text for field.$id" })
 
-fun KindLabels.sectionText(id: String): StringResource =
-    kindStringResource(checkNotNull(section(id)?.key) { "$kind has no text for section.$id" })
+fun KindLabels.sectionText(id: String): UiWord =
+    kindWord(checkNotNull(section(id)?.key) { "$kind has no text for section.$id" })
 
-fun KindLabels.refText(ref: String): StringResource =
-    kindStringResource(checkNotNull(resolve(ref)?.key) { "$kind has no text for $ref" })
+fun KindLabels.refText(ref: String): UiWord =
+    kindWord(checkNotNull(resolve(ref)?.key) { "$kind has no text for $ref" })
 
 /** A status's name in this kind's words (every kind labels the five fixed names): the screens that list statuses read it (S4b-BL-256). */
-fun KindLabels.statusText(status: HouseStatus): StringResource = kindStringResource(status(status))
+fun KindLabels.statusText(status: HouseStatus): UiWord = kindWord(status(status))
 
 /**
  * The developer flag of the hidden schools kind (kinds PR 5, S4b-BL-209; `DevKinds` in `:shared`): false unless the app
@@ -223,7 +227,7 @@ fun Criterion.displayName(): String = ChecklistResources.items[key]?.let { strin
  */
 @Composable
 fun Criterion.displayName(kind: BuiltInKind): String =
-    if (CompareCriteria.usesPersonScoring(kind)) displayName() else kind.labels.check(key)?.let { stringResource(kindStringResource(it)) } ?: displayName()
+    if (CompareCriteria.usesPersonScoring(kind)) displayName() else kind.labels.check(key)?.let { stringResource(kindWord(it)) } ?: displayName()
 
 /** First viewing, Second viewing, Follow-up (`viewings_kind_*`, slice 3b-1). */
 val ViewingKind.labelResource: StringResource

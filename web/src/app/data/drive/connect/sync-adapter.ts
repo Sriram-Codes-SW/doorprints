@@ -20,6 +20,10 @@ import { WebCryptoProvider } from '../../crypto/crypto-provider';
 import { DriveSyncEngine } from '../drive-sync-engine';
 import { DriveSyncBackend } from '../drive-sync-backend';
 import { DrivePhotos } from '../drive-photos';
+import { DrivePhotoRestorer, notConnectedReport } from '../photo-restorer';
+import type { PhotoRestoreReport, PhotoRestoreRequest } from '../photo-restorer';
+import { goneOfRow } from '../photo-restore-rules';
+import type { GonePhoto } from '../photo-restore-rules';
 import {
   DEFAULT_PHOTO_CONFIG,
   EMPTY_PHOTO_STATE,
@@ -121,6 +125,21 @@ export class DriveSyncAdapter {
       this.clock,
       true, // webUnknownAllowed: on web, UNKNOWN is treated as unmetered
     );
+  }
+
+  /**
+   * The photo tombstones of this device's own sync file, for the 30-day clean-up (docs/15 §5.1, S4b-BL-293): the photos
+   * whose bytes are gone here but whose Drive file may still hold them. Empty before a session exists, or if the file
+   * cannot be read — a clean-up that cannot see its tombstones simply sweeps nothing.
+   */
+  async photoTombstones(): Promise<readonly GonePhoto[]> {
+    this.ensureInitialized();
+    if (!this.engine) return [];
+    try {
+      return (await this.engine.ownPhotoRows()).map(goneOfRow).filter((p): p is GonePhoto => p != null);
+    } catch {
+      return [];
+    }
   }
 
   /** Lazy initialize engine, backend and photos (deferred until session is available). */
@@ -276,6 +295,24 @@ export class DriveSyncAdapter {
   }
 
   /**
+   * Gets the photos of a restored candidate back from the person's own Google Drive (S4b-BL-293, *Recently deleted*): the
+   * photos it can find are fetched, checked and decrypted, nothing is uploaded or deleted. Under the same lock as a sync
+   * pass. Before the folder is open (not connected on this page) every known photo answers *not connected*. Never throws.
+   */
+  async restorePhotos(req: PhotoRestoreRequest): Promise<PhotoRestoreReport> {
+    if (!this.session) return notConnectedReport(req.known);
+    try {
+      return await this.locks.request(DRIVE_SYNC_LOCK, async () => {
+        this.ensureInitialized();
+        if (!this.engine || !this.photos) return notConnectedReport(req.known);
+        return new DrivePhotoRestorer(this.engine, this.photos, this.clock).restore(req);
+      });
+    } catch {
+      return notConnectedReport(req.known);
+    }
+  }
+
+  /**
    * Check if this device is behind peers: unread files from other devices, or a difference in generation.
    * Before backup connect, returns false (not behind; sync will fail with 'not connected').
    */
@@ -378,4 +415,5 @@ export interface IDriveSyncAdapter {
   uploadPhotosNowOverMobile(): OneOffGrant;
   pendingPhotoBytes(): Promise<number | null>;
   decideBackup(force?: boolean): boolean;
+  restorePhotos(req: PhotoRestoreRequest): Promise<PhotoRestoreReport>;
 }

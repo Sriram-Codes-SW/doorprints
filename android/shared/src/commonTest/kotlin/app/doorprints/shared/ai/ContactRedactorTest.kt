@@ -63,6 +63,19 @@ class ContactRedactorTest {
     }
 
     @Test
+    fun aPhoneInFullWidthDigitsOrSplitByAnInvisibleCharacterIsRemoved() {
+        // Pentest of 2026-10-21, PT-5; the website's and the server's tests have the same lines.
+        assertEquals("call [phone] now", ContactRedactor.redactGeneric("call ９８４００１１１１１ now"))
+        assertEquals("call [phone] now", ContactRedactor.redactGeneric("call 98400​11111 now"))
+        assertEquals(
+            "call [phone], [phone] or [phone]",
+            ContactRedactor.redactGeneric("call 98400⁠11111, 98400﻿11111 or 984­0011111"),
+        )
+        assertEquals("ring [phone]", ContactRedactor.forContact(null, "+91 98400 11111").freeText("ring 9​8400​11111"))
+        assertEquals("क्‍ष flat 2​3", ContactRedactor.redactGeneric("क्‍ष flat 2​3"))
+    }
+
+    @Test
     fun anAtSignThatIsNotAnEmailAddressIsKept() {
         val text = "Rent 28k @ month, ask x@y or a@b."
         assertEquals(text, ContactRedactor.forContact(null, null).freeText(text))

@@ -1,0 +1,56 @@
+{
+  "spec": [
+    "web/src/app/export/backup-limits.spec.ts",
+    "web/src/app/export/backup-import.spec.ts"
+  ],
+  "mutations": [
+    {
+      "file": "web/src/app/export/zip-read.ts",
+      "find": "if (count > maxEntries) return",
+      "replace": "if (count > maxEntries * 2) return",
+      "expect": "refuses more than 5 000 entries"
+    },
+    {
+      "file": "web/src/app/export/backup-reader.ts",
+      "find": "if (declared > BACKUP_LIMITS.maxUncompressedBytes) return",
+      "replace": "if (declared > BACKUP_LIMITS.maxUncompressedBytes * 1000) return",
+      "expect": "refuses claims that add up to more than 1 GiB"
+    },
+    {
+      "file": "web/src/app/export/backup-reader.ts",
+      "find": "Math.floor(entry.size / entry.compressedSize) > BACKUP_LIMITS.maxCompressionRatio",
+      "replace": "Math.floor(entry.size / entry.compressedSize) > BACKUP_LIMITS.maxCompressionRatio * 1e9",
+      "expect": "refuses a claimed compression ratio above 100 to 1"
+    },
+    {
+      "file": "web/src/app/export/backup-reader.ts",
+      "find": "const dataBytes = await zip.readAtMost(dataEntry, BACKUP_LIMITS.maxDataJsonBytes);",
+      "replace": "const dataBytes = await zip.readAtMost(dataEntry, Infinity);",
+      "expect": "cuts a data.json that lies about its size"
+    },
+    {
+      "file": "web/src/app/export/backup-reader.ts",
+      "find": "const MAX_MANIFEST_BYTES = 8 * 1024 * 1024;",
+      "replace": "const MAX_MANIFEST_BYTES = 8 * 1024 * 1024 * 1024;",
+      "expect": "cuts a manifest that lies about its size"
+    },
+    {
+      "file": "web/src/app/export/zip-read.ts",
+      "find": "if (total > max) {",
+      "replace": "if (total > max * 1000) {",
+      "expect": "stops inflating at the limit"
+    },
+    {
+      "file": "web/src/app/export/zip-read.ts",
+      "find": "if (entry.compressedSize > limit + limit / 64 + 1024) return null;",
+      "replace": "if (entry.compressedSize < 0) return null;",
+      "expect": "refuses a deflated entry whose packed bytes are far beyond"
+    },
+    {
+      "file": "web/src/app/export/zip-read.ts",
+      "find": "if (entry.size > limit) return null;",
+      "replace": "if (entry.size < 0) return null;",
+      "expect": "refuses a stored entry that claims more than the limit"
+    }
+  ]
+}

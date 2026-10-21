@@ -151,6 +151,15 @@ function countersUnderBar() {
   return bottom > barTop + 1 ? `the list's heading and counters end ${Math.round(bottom - barTop)}px under the bottom bar before scrolling` : null;
 }
 
+/**
+ * Until Angular has replaced index.html's static text inside <app-root> (the shell's <main id="main"> is there). `load` and a fixed
+ * wait do not say so: on a busy machine the lazy page chunks came later than that and the audit measured the unstyled static text
+ * (793px of 615px at 384px wide in Tamil at 130%, 2026-10-20).
+ */
+async function appStarted(page) {
+  await page.waitForSelector('app-root #main', { timeout: 20000 }).catch(() => null); // not there: layoutAudit says so
+}
+
 /** Everything but the local server is answered here: the style and its TileJSON with a small copy of the real ones (credits included), the rest not at all. */
 async function offline(ctx, base) {
   const origin = new URL(base).origin;
@@ -178,17 +187,18 @@ function switchOff() {
   localStorage.setItem('doorprints.tour', 'skipped');
 }
 
-/** One route of the switch-off run: the map with no chooser, and Your data with the switch off and no kind rows. */
+/** One route of the school-off run: the map with no chooser, and Your data with no Experimental switch and a Schools row, off (the school is released, ADR-13b). */
 async function offRoute(page, route, tag, check) {
   try {
     const resp = await page.goto(`${BASE_FOR_KINDS}${route}`, { waitUntil: 'load', timeout: 30000 });
     check(`${tag}: loads`, !!resp && resp.status() < 400, resp && resp.status());
-    if (route === '/data') await page.waitForSelector('#kinds-experimental', { timeout: 15000 }).catch(() => null);
+    await appStarted(page);
+    if (route === '/data') await page.waitForSelector('#kind-rows', { timeout: 15000 }).catch(() => null);
     await page.waitForTimeout(route === '/' ? 1500 : 400);
-    check(`${tag}: no chooser, no space chip`, (await page.locator('#chooser-heading, .space-chip').count()) === 0, 'a chooser or a chip with the switch off');
+    check(`${tag}: no chooser, no space chip`, (await page.locator('#chooser-heading, .space-chip').count()) === 0, 'a chooser or a chip with the school not shown');
     if (route === '/data') {
-      check(`${tag}: the switch is off`, (await page.locator('#kinds-experimental:not(:checked)').count()) === 1, 'no unchecked Experimental switch');
-      check(`${tag}: no kind rows`, (await page.locator('#kind-rows').count()) === 0, 'kind rows with the switch off');
+      check(`${tag}: no Experimental switch`, (await page.locator('#kinds-experimental').count()) === 0, 'an Experimental switch while no listed kind is unreleased');
+      check(`${tag}: a Schools row, off`, (await page.locator('#kind-on-school:not(:checked)').count()) === 1 && (await page.locator('#kind-on-house:checked').count()) === 1, 'no Houses row on and Schools row off');
     }
     const found = await page.evaluate(layoutAudit);
     check(`${tag}: layout`, found.length === 0, found.join(' ; '));
@@ -200,6 +210,7 @@ async function kindsRoute(page, route, tag, check) {
   try {
     const resp = await page.goto(`${BASE_FOR_KINDS}${route}`, { waitUntil: 'load', timeout: 30000 });
     check(`${tag}: loads`, !!resp && resp.status() < 400, resp && resp.status());
+    await appStarted(page);
     const ready = { '/': '#chooser-heading', '/k/school': '.space-chip', '/data': '#kind-rows' }[route];
     if (ready) await page.waitForSelector(ready, { timeout: 15000 }).catch(() => null);
     await page.waitForTimeout(route === '/k/school' ? 2000 : 400);
@@ -244,6 +255,7 @@ async function run() {
       try {
         const resp = await page.goto(base + route, { waitUntil: 'load', timeout: 30000 });
         check(`${tag}: loads`, !!resp && (resp.status() < 400 || route === '/does-not-exist'), resp && resp.status());
+        await appStarted(page);
         await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => null); // offline, so it goes quiet at once
         if (route === '/') {
           const drawn = await page.waitForSelector('.maplibregl-map canvas', { timeout: 15000 }).then(() => true, () => false);

@@ -204,7 +204,7 @@ private fun ExtraField(
     modifier: Modifier,
     update: ((HouseEntity) -> HouseEntity) -> Unit,
 ) {
-    val label = kindStringResource(fields.label(f))
+    val label = kindWord(fields.label(f))
     when (f.control) {
         ExtraControl.LEVEL -> FloorField(d.id, d.extraValue(f).number()?.toInt(), label) { floor ->
             update { it.withExtra(f, floor?.let(::JsonPrimitive)) }
@@ -242,12 +242,12 @@ private fun ExtraField(
  * reads as not set.
  */
 @Composable
-private fun OptionField(f: KindExtra, label: StringResource, d: HouseEntity, modifier: Modifier, onPick: (String?) -> Unit) {
+private fun OptionField(f: KindExtra, label: UiWord, d: HouseEntity, modifier: Modifier, onPick: (String?) -> Unit) {
     val stored = (d.extraValue(f) as? JsonPrimitive)?.takeIf { it.isString }?.content
     val current = f.options.firstOrNull { it.id == stored }
     val none = stringResource(Res.string.kind_option_not_set)
     val name = stringResource(label)
-    val currentText = current?.let { stringResource(kindStringResource(it.label)) } ?: none
+    val currentText = current?.let { stringResource(kindWord(it.label)) } ?: none
     var open by remember { mutableStateOf(false) }
     Column(modifier) {
         Text(name, style = MaterialTheme.typography.bodySmall)
@@ -267,7 +267,7 @@ private fun OptionField(f: KindExtra, label: StringResource, d: HouseEntity, mod
                 (listOf(null) + f.options).forEach { option ->
                     val isCurrent = option?.id == current?.id
                     DropdownMenuItem(
-                        text = { Text(option?.let { stringResource(kindStringResource(it.label)) } ?: none) },
+                        text = { Text(option?.let { stringResource(kindWord(it.label)) } ?: none) },
                         onClick = {
                             open = false
                             if (!isCurrent) onPick(option?.id)
@@ -330,7 +330,7 @@ internal fun floorOf(text: String, basement: Boolean): Int? {
  * [floor] when it changes elsewhere; text that is not a floor (or a basement level 1 to 5) says so and leaves it unknown.
  */
 @Composable
-private fun FloorField(houseId: String, floor: Int?, label: StringResource, onChange: (Int?) -> Unit) {
+private fun FloorField(houseId: String, floor: Int?, label: UiWord, onChange: (Int?) -> Unit) {
     var basement by rememberSaveable(houseId) { mutableStateOf(floor != null && floor < 0) }
     var text by rememberSaveable(houseId) { mutableStateOf(floor?.let { abs(it).toString() } ?: "") }
     LaunchedEffect(floor) {
@@ -383,7 +383,7 @@ private fun FloorField(houseId: String, floor: Int?, label: StringResource, onCh
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DateField(value: String?, label: StringResource, onChange: (String?) -> Unit) {
+private fun DateField(value: String?, label: UiWord, onChange: (String?) -> Unit) {
     var text by rememberSaveable(value) { mutableStateOf(value ?: "") }
     var showPicker by rememberSaveable { mutableStateOf(false) }
     val invalid = text.isNotBlank() && !CalendarDate.isValid(text.trim())

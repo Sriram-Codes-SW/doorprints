@@ -31,6 +31,7 @@ import { hi } from './i18n/hi';
 import { ta } from './i18n/ta';
 import { te } from './i18n/te';
 import { SITE_URL } from './i18n/i18n-title.strategy';
+import { creatableKinds } from './core/dev-kinds';
 import { RELEASED_KINDS } from './core/kind-setting';
 
 /**
@@ -142,23 +143,68 @@ describe('index.html', () => {
   });
 });
 
-// S4b-BL-282: the product's public words say houses until the owner opens a second kind's release gate. This fails the day
-// a second kind is released, so the page descriptions, the cards, the JSON-LD, the manifest and the guide's home page are
-// decided then (the owner's decision), not left behind.
-describe('the public words stay the house’s until a second kind ships (S4b-BL-282)', () => {
+// ADR-13b (2026-10-19, S4b-BL-282): the tagline names no single kind, and the descriptions name every released kind and no
+// other. The invariant is tied to RELEASED_KINDS, not to a list in this file: when the owner releases another kind (or
+// takes one back), this fails until the public words are decided again, so the page descriptions, the cards, the JSON-LD,
+// the manifest and the guide's home page are not left behind.
+describe('the public words name the released kinds and no other (ADR-13b)', () => {
   const doc = pages['index.html'];
+  const about = pages['about.html'];
   const manifest = JSON.parse(manifestText);
+  const ld = JSON.parse(doc.querySelector('script[type="application/ld+json"]')!.textContent!);
+  /** The English word of each built-in kind; a kind this table does not know fails the test below, on purpose. */
+  const WORD: Record<string, RegExp> = { house: /\bhouses?\b/i, school: /\bschools?\b/i };
+  const kinds = creatableKinds(true).map((k) => k.id).filter((id) => id !== 'zz_all');
+  const unreleased = kinds.filter((id) => !RELEASED_KINDS.includes(id));
+  const descriptions = {
+    'index meta': meta(doc, 'name="description"')!, 'index og': meta(doc, 'property="og:description"')!,
+    'index twitter': meta(doc, 'name="twitter:description"')!, 'index JSON-LD': ld.description as string,
+    manifest: manifest.description as string, 'app.description': en['app.description'],
+    'about meta': meta(about, 'name="description"')!, 'about og': meta(about, 'property="og:description"')!,
+  };
+  const everyWord = [
+    ...Object.values(descriptions), doc.querySelector('h1')!.textContent!, doc.body.querySelector('app-root')!.textContent!,
+    meta(doc, 'property="og:title"')!, meta(doc, 'name="twitter:title"')!, en['app.tagline'], en['title.map'],
+    ...[...about.body.querySelectorAll('section[lang="en"]')].map((s) => s.textContent!),
+  ];
 
-  it('only the house is released, so the descriptions, cards, JSON-LD and manifest are about houses', () => {
-    expect(RELEASED_KINDS, 'a second kind is released: the owner decides the public words (docs/10 S4b-BL-282)').toEqual(['house']);
-    const ld = JSON.parse(doc.querySelector('script[type="application/ld+json"]')!.textContent!);
-    const words = [
-      meta(doc, 'name="description"'), meta(doc, 'property="og:description"'), meta(doc, 'name="twitter:description"'),
-      ld.description, manifest.description, doc.querySelector('h1')!.textContent!, en['app.description'],
-    ];
-    for (const w of words) {
-      expect(w).toMatch(/house/i);
-      expect(w).not.toMatch(/school/i);
+  it('knows a word for every built-in kind (a new kind is a decision for the owner, not a silent pass)', () => {
+    expect(Object.keys(WORD).sort()).toEqual(kinds.slice().sort());
+  });
+
+  it('releases the house and the school, so the descriptions name houses and schools', () => {
+    expect(RELEASED_KINDS).toEqual(['house', 'school']);
+    for (const [name, w] of Object.entries(descriptions)) {
+      for (const id of RELEASED_KINDS) expect(w, `${name} names ${id}`).toMatch(WORD[id]);
+    }
+  });
+
+  it('names no kind that is not released, anywhere a visitor or a crawler reads', () => {
+    for (const id of unreleased) {
+      for (const w of everyWord) expect(w, `a public word names the unreleased ${id}`).not.toMatch(WORD[id]);
+    }
+  });
+
+  it('keeps the tagline and the landing title kind-neutral: they name no single kind', () => {
+    expect(en['app.tagline']).toBe("Remember every place you've seen.");
+    for (const dict of [en, hi, ta, te]) {
+      for (const w of [dict['app.tagline'], dict['title.map']]) {
+        for (const id of kinds) expect(w, `${w} names ${id}`).not.toMatch(WORD[id]);
+      }
+    }
+    expect(en['title.map']).toBe("Doorprints: remember every place you've seen");
+    expect(meta(doc, 'property="og:title"')).toBe(en['title.map']);
+    expect(meta(doc, 'name="twitter:title"')).toBe(en['title.map']);
+    expect(doc.querySelector('h1')!.textContent).toBe(en['title.map']);
+    expect((ld.description as string).startsWith(en['app.tagline'])).toBe(true);
+    expect((manifest.description as string).startsWith(en['app.tagline'])).toBe(true);
+  });
+
+  it('says the same in all four languages: every language’s description keeps the brand and is not the English', () => {
+    for (const dict of [hi, ta, te]) {
+      expect(dict['app.description']).toMatch(/^Doorprints/);
+      expect(dict['app.description']).not.toBe(en['app.description']);
+      expect(dict['app.description']).toContain(dict['app.tagline']);
     }
   });
 });
@@ -237,6 +283,35 @@ describe('privacy.html', () => {
     expect(doc.body.querySelector('time[datetime]')?.getAttribute('datetime')).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 
+  it("states children's-data handling in every language (docs/13 G5): a school entry, where it goes, the redactor's limit, voice audio", () => {
+    const sections = [...doc.body.querySelectorAll('section[lang]')];
+    const en = text(sections[0]);
+    for (const phrase of [
+      'A school entry may hold details about a child',
+      'the school, the fees and the commute',
+      'no accounts and no tracking',
+      'with a key of your own',
+      'do not write a child',
+      'does not remove a child',
+      'kept in the device\'s memory only while it is sent',
+      'only to the provider you chose',
+    ]) {
+      expect(en, phrase).toContain(phrase);
+    }
+    expect(en).not.toContain('collects no one');
+    // hi, ta and te each carry a Children paragraph (under review, English governs) that names the redactor's limit and
+    // the voice-audio sentence, so a translation cannot silently lose either.
+    for (const s of sections.slice(1)) {
+      const lang = s.getAttribute('lang')!;
+      const paragraphs = [...s.querySelectorAll('p')].map((p) => text(p));
+      const kids = paragraphs.filter((p) => /^(बच्चे|குழந்தைகள்|పిల్లలు):/.test(p));
+      expect(kids, lang).toHaveLength(1);
+      expect(kids[0], lang).toMatch(/redactor|रिडैक्टर|redactor|రెడాక్టర్/);
+      expect(kids[0], lang).toMatch(/Google Drive/);
+      expect(paragraphs.some((p) => /^(आवाज़|குரல்|వాయిస్):/.test(p)), lang).toBe(true);
+    }
+  });
+
   it('names no email address: the contact is the public issues page (no personal address on a public page)', () => {
     expect(privacyHtml).not.toMatch(/[\w.+-]+@[\w-]+\.[\w.]+/);
     expect(privacyHtml).not.toMatch(/mailto:/i);
@@ -255,6 +330,19 @@ describe('privacy.html', () => {
   it('keeps the brand words (never "Restore")', () => {
     expect(text(doc.body)).not.toMatch(/\brestore\b/i);
     expect(text(doc.body)).toContain('Import a backup');
+  });
+
+  it('the short-version bullets name schools as well as houses in every language, as the English does', () => {
+    const phrases: Record<string, string> = {
+      en: 'We never receive your houses, schools, notes',
+      hi: 'आपके मकान, स्कूल, नोट्स',
+      ta: 'உங்கள் வீடுகள், பள்ளிகள், குறிப்புகள்',
+      te: 'మీ ఇళ్లు, పాఠశాలలు, నోట్స్',
+    };
+    for (const [lang, phrase] of Object.entries(phrases)) {
+      const first = doc.body.querySelector(`section[lang="${lang}"] ul li`);
+      expect(text(first), lang).toContain(phrase);
+    }
   });
 });
 

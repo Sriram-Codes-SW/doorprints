@@ -28,6 +28,7 @@ import { ExportStrings } from './export-strings';
 import type { ExportExtra } from './kind-copy';
 import { copyShows } from './kind-copy';
 import { photoFileName } from './photo-names';
+import { inCopyOrder } from './table-order';
 import { brokerLine } from '../shared/broker';
 import { isBuiltInKey } from '../shared/scoring';
 import { costSummary } from '../shared/house-cost';
@@ -144,7 +145,8 @@ export function exportTables(bundle: ExportBundle): ExportTable[] {
   if (bundle.houses.some((h) => h.answers.length > 0) && shows('section.questions')) tables.push(answersTable(bundle));
   // Slice 3b-1: the viewings of the copy (a viewing of a house that is gone included in a copy of every house).
   if (bundle.viewings.length > 0 && shows('section.viewings')) tables.push(viewingsTable(bundle));
-  return tables;
+  // The kind's `copyOrder` brings its blocks' tables forward (docs/03 §18.29); a kind with none keeps this order.
+  return inCopyOrder(tables, bundle.voice?.kind);
 }
 
 /** Translated words for this export's language, independent of the language the app is being used in. */

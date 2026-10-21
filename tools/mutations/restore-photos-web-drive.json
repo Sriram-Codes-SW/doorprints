@@ -1,0 +1,116 @@
+{
+  "spec": [
+    "web/src/app/data/drive/photo-restore-rules.spec.ts",
+    "web/src/app/data/drive/photo-restorer.spec.ts"
+  ],
+  "mutations": [
+    {
+      "file": "web/src/app/data/drive/photo-restore-rules.ts",
+      "find": "export const RESTORE_WINDOW_DAYS = 30;",
+      "replace": "export const RESTORE_WINDOW_DAYS = 31;",
+      "expect": "uses the vectors' window and tolerance"
+    },
+    {
+      "file": "web/src/app/data/drive/photo-restore-rules.ts",
+      "find": "return photoDeletedAt >= candidateDeletedAt - WITH_CANDIDATE_MS;",
+      "replace": "return photoDeletedAt > candidateDeletedAt - WITH_CANDIDATE_MS;",
+      "expect": "a photo deleted a minute before its candidate"
+    },
+    {
+      "file": "web/src/app/data/drive/photo-restore-rules.ts",
+      "find": "input.now - photo.deletedAt > RESTORE_WINDOW_DAYS * DAY_MS",
+      "replace": "input.now - photo.deletedAt >= RESTORE_WINDOW_DAYS * DAY_MS",
+      "expect": "a tombstone exactly 30 days old is fetched"
+    },
+    {
+      "file": "web/src/app/data/drive/photo-restore-rules.ts",
+      "find": "byId.set(p.id, had ? { ...had, ref: had.ref ?? p.ref } : p);",
+      "replace": "byId.set(p.id, had ?? p);",
+      "expect": "one photo known both here and in the file is listed once"
+    },
+    {
+      "file": "web/src/app/data/drive/photo-restore-rules.ts",
+      "find": "const photo = { ...p, ref: p.ref ?? input.refs[p.id] ?? null };",
+      "replace": "const photo = { ...p, ref: p.ref };",
+      "expect": "a photo with a Drive file named by the device's own bookkeeping is fetched"
+    },
+    {
+      "file": "web/src/app/data/drive/photo-restore-rules.ts",
+      "find": "if (p && houseOfRow(row) === input.houseId) consider(p);",
+      "replace": "if (p) consider(p);",
+      "expect": "another candidate's tombstones"
+    },
+    {
+      "file": "web/src/app/data/drive/photo-restore-rules.ts",
+      "find": "if (row.kind !== 'photos' || !row.stamp.deleted) return null;",
+      "replace": "if (row.kind !== 'photos') return null;",
+      "expect": "another candidate's tombstones and live photo rows"
+    },
+    {
+      "file": "web/src/app/data/drive/photo-restore-rules.ts",
+      "find": "if (total > accounted) reasons.add(connection === 'OK' ? 'MISSING' : connection);",
+      "replace": "if (total > accounted) reasons.add('MISSING');",
+      "expect": "photos nobody recorded when Drive is not connected"
+    },
+    {
+      "file": "web/src/app/data/drive/photo-restore-rules.ts",
+      "find": "const total = Math.max(noted, accounted);",
+      "replace": "const total = accounted;",
+      "expect": "photos nobody recorded are missing"
+    },
+    {
+      "file": "web/src/app/data/drive/photo-restore-rules.ts",
+      "find": "reasons: RESTORE_REASONS.filter((r) => reasons.has(r))",
+      "replace": "reasons: [...reasons]",
+      "expect": "the reasons come in the fixed order"
+    },
+    {
+      "file": "web/src/app/data/drive/photo-restorer.ts",
+      "find": "if (e.kind === 'UNAUTHORIZED' || e.kind === 'CANCELLED') return 'NOT_CONNECTED';",
+      "replace": "if (e.kind === 'UNAUTHORIZED') return 'NOT_CONNECTED';",
+      "expect": "while sync is paused"
+    },
+    {
+      "file": "web/src/app/data/drive/photo-restorer.ts",
+      "find": "return detail === 'NOT_FOUND' || detail === 'FORBIDDEN' ? 'MISSING' : 'UNREADABLE';",
+      "replace": "return 'UNREADABLE';",
+      "expect": "only the photos whose files are still there"
+    },
+    {
+      "file": "web/src/app/data/drive/photo-restorer.ts",
+      "find": "    case 'NOT_OURS':\n      return 'MISSING';",
+      "replace": "      return 'MISSING';",
+      "expect": "a file in the bin is not read"
+    },
+    {
+      "file": "web/src/app/data/drive/photo-restorer.ts",
+      "find": "        failed.push({ photo: item.photo, reason: 'UNREADABLE' });",
+      "replace": "        failed.push({ photo: item.photo, reason: 'MISSING' });",
+      "expect": "reported as unreadable"
+    },
+    {
+      "file": "web/src/app/data/drive/drive-photos.ts",
+      "find": "if (!folder) return { kind: 'Gone', reason: 'NO_FOLDER', detail: null };",
+      "replace": "if (!folder) return { kind: 'Gone', reason: 'EMPTY', detail: null };",
+      "expect": "after Delete everything"
+    },
+    {
+      "file": "web/src/app/data/drive/drive-sync-engine.ts",
+      "find": "if (await this.paused()) throw new DriveError('CANCELLED', 0, null, 'paused');",
+      "replace": "if (false) throw new DriveError('CANCELLED', 0, null, 'paused');",
+      "expect": "while sync is paused"
+    },
+    {
+      "file": "web/src/app/data/drive/drive-sync-engine.ts",
+      "find": "for (const r of this.staged.values()) if (r.kind === 'photos') putIfNewer(rows, r);",
+      "replace": "",
+      "expect": "a tombstone staged for the next pass"
+    },
+    {
+      "file": "web/src/app/data/drive/drive-sync-engine.ts",
+      "find": "file = this.ownCache.verified.file;",
+      "replace": "file = null;",
+      "expect": "the sync file is not downloaded again"
+    }
+  ]
+}

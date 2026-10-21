@@ -18,6 +18,7 @@
 
 package app.doorprints.shared.export
 
+import app.doorprints.shared.country.Country
 import app.doorprints.shared.model.CostSummary
 import app.doorprints.shared.model.HouseAnswers
 import app.doorprints.shared.model.HouseRoom
@@ -79,7 +80,11 @@ object ExportRows {
      * when a house of it has a room (slice 1c), `criteria` when it has a criterion record (slice 2) and `answers` when a
      * house of it has a question asked (slice 3a), then `viewings` when it has a viewing (slice 3b-1).
      */
-    fun tables(bundle: ExportBundle): List<ExportTable> {
+    fun tables(bundle: ExportBundle): List<ExportTable> =
+        // The kind's `copyOrder` brings its blocks' tables forward (docs/03 section 18.29); a kind with none keeps the fixed order.
+        TableOrder.inCopyOrder(fixedTables(bundle), bundle.voice?.kind)
+
+    private fun fixedTables(bundle: ExportBundle): List<ExportTable> {
         // A copy in a kind's voice (S4b-BL-266) leaves out the tables of what its kind hides: a school has no Scores table,
         // whose rows would all be empty, and no Brokers, Rooms, Criteria, Answers or Viewings. A copy without a voice has them all.
         fun shows(ref: String) = bundle.shows(null, ref)
@@ -704,28 +709,15 @@ object ExportRows {
         else -> plain(cell, bundle.options)
     }
 
-    /** `₹12,50,000` — Indian digit grouping (last three, then pairs), the same as the app screens show. */
+    /** `₹12,50,000`: the country pack's sign and digit grouping (India's: last three, then pairs), the same as the app screens show. */
     fun rupees(amount: Long): String {
         val negative = amount < 0
         val digits = (if (negative) -amount else amount).toString()
-        return (if (negative) "-₹" else "₹") + indianGroups(digits)
+        return (if (negative) "-" else "") + Country.pack.money.symbol + indianGroups(digits)
     }
 
-    internal fun indianGroups(digits: String): String {
-        if (digits.length <= 3) return digits
-        val head = digits.substring(0, digits.length - 3)
-        val tail = digits.substring(digits.length - 3)
-        // The head is grouped in pairs from the right: "1250" -> "12,50", so 1250000 reads 12,50,000.
-        val groups = ArrayList<String>()
-        var end = head.length
-        while (end > 2) {
-            groups.add(head.substring(end - 2, end))
-            end -= 2
-        }
-        groups.add(head.substring(0, end))
-        groups.reverse()
-        return groups.joinToString(",") + "," + tail
-    }
+    /** The pack's grouping of [digits] (0-9 only): India's `1250000` gives `12,50,000`, the head grouped in pairs from the right. */
+    internal fun indianGroups(digits: String): String = Country.pack.money.group(digits)
 
     /**
      * Fixed-decimal formatting without a platform formatter: always a dot, always [decimals] digits, ties away

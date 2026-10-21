@@ -64,6 +64,7 @@ import app.doorprints.ui.drive.ShownKey
 import app.doorprints.ui.drive.SyncUi
 import app.doorprints.ui.res.Res
 import app.doorprints.ui.res.drive_connect_heading
+import app.doorprints.ui.res.drive_sync_photo_retention
 import com.github.takahirom.roborazzi.captureRoboImage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -157,6 +158,18 @@ class DriveScreenshotTest(private val lang: String, private val dark: Boolean) {
     private fun onlyEnglishLight(block: () -> Unit) {
         org.junit.Assume.assumeTrue(lang == "en" && !dark)
         block()
+    }
+
+    /** docs/15 5.1: the connected card says how long a deleted photo stays in Drive, in the shot's language. */
+    @Test fun connectedCardSaysHowLongADeletedPhotoStays() {
+        var sentence = ""
+        compose.setContent {
+            sentence = stringResource(Res.string.drive_sync_photo_retention)
+            DoorprintsTheme(dark = dark) { Column(Modifier.padding(16.dp)) { DriveSettingsContent(DriveUiState(connect = ConnectState.READY), holder) } }
+        }
+        compose.waitUntil(10_000) { sentence.isNotEmpty() && compose.onAllNodesWithText(sentence).fetchSemanticsNodes().isNotEmpty() }
+        org.junit.Assert.assertTrue(sentence.contains("30"))
+        org.junit.Assert.assertTrue(sentence.contains("Google Drive"))
     }
 
     @Test fun driveDisconnected() = shoot("drive_disconnected", DriveUiState())

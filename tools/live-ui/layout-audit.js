@@ -101,6 +101,9 @@ function layoutAudit() {
   }
   // The app fits the screen: header, banners and page no taller than the viewport.
   const root = document.querySelector('app-root');
+  // Angular replaces index.html's static text inside <app-root> when it starts; until then <app-root> is an unstyled inline
+  // box as tall as that text (793px at 384px wide in Tamil at 130%, 949px at 320px; 2026-10-20), not a layout fault.
+  if (root && !root.querySelector('main#main')) { out.push('the app had not started: index.html\'s static text is still showing'); return out; }
   if (root && root.getBoundingClientRect().height > H + 1) out.push(`app taller than the screen: ${Math.round(root.getBoundingClientRect().height)}px of ${H}px`);
   return out;
 }

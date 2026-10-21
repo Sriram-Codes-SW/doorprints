@@ -60,7 +60,7 @@
     },
     {
       "file": "web/src/app/shared/question.ts",
-      "find": "const CUSTOM_ID_PATTERN = /^q_(?:[a-z]{2,12}_)?[0-9a-f]{8}$/;",
+      "find": "const CUSTOM_ID_PATTERN = /^q_(?:(?:[a-z]{2,12}|u_[a-z][a-z0-9_]{1,29})_)?[0-9a-f]{8}$/;",
       "replace": "const CUSTOM_ID_PATTERN = /^q_[0-9a-f]{8}$/;",
       "expect": "a school’s own question is custom"
     },

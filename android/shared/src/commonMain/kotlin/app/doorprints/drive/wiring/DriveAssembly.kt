@@ -42,6 +42,7 @@ import app.doorprints.drive.device.DeviceLockActions
 import app.doorprints.drive.device.DeviceLockDetectors
 import app.doorprints.drive.device.KeystoreDeviceIdentity
 import app.doorprints.drive.photo.NetworkState
+import app.doorprints.drive.photo.PhotoTombstoneSource
 import app.doorprints.drive.store.DriveFileStores
 import app.doorprints.drive.store.stateFileAt
 import app.doorprints.drive.sync.DriveSyncBackend
@@ -142,7 +143,10 @@ object DriveAssembly {
             DeviceLockActions(discardKey = identity::discard, store = lockStore), d.clock,
         )
         val authorizer = PhoneDeletionAuthorizer(gate, d.deviceAuth, d.clock)
-        val backup = DriveBackupService(d.drive, p, identity, stores.driveState, stores.trust, d.clock, d.utcOffsetMinutes, d.scratch)
+        // The 30-day clean-up of deleted photos' Drive files reads this device's own tombstones through the controller (below):
+        // the backup service is built first and the folder session only exists once the person has connected.
+        val tombstones = PhotoTombstoneSource()
+        val backup = DriveBackupService(d.drive, p, identity, stores.driveState, stores.trust, d.clock, d.utcOffsetMinutes, d.scratch, tombstones::read)
         val deletion = DriveDeletionService(d.drive, authorizer, stores.deletion, { d.network.current().online }, d.clock)
         val prefs = FileDrivePrefs(stateFileAt("${d.dir}/$PREFS_FILE"))
         val deviceId = { SyncDeviceIds.of(kidOf(p, identity.key.publicKey)) }
@@ -156,6 +160,7 @@ object DriveAssembly {
             rigs, d.network, prefs, d.clock, d.configured, d.backupSource, d.signIn,
             syncDriver = d.syncPass?.let { pass -> { backend -> pass(backend, controller.photosAllowed()) } },
         )
+        tombstones.bind(controller::ownPhotoTombstones)
         watchEngagement(controller, prefs, lockStore, gate, d.scope, d.handBack)
         return DriveGraph(controller, controller.folderGone, p, identity, gate, authorizer, backup, deletion, prefs, lockStore, detector)
     }

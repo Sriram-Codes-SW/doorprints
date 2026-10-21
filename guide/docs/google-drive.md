@@ -40,6 +40,10 @@ the same eight digits). A new browser can also show a QR code; the connected bro
 
 ![The deletion levels: Delete older backups (1), Delete all backups (2) and Delete everything Doorprints keeps in Google Drive (3)](images/web-drive-delete.png)
 
+## Photos you delete {#deleted-photos}
+
+Deleting a photo, or a house with photos, drops it from your device at once. Its encrypted copy stays in **your own Google Drive for 30 days**, so that **Recently deleted** > **Restore** can bring the photos back, and for longer only while a backup you kept still holds it (**Your data** on the website, **Settings** on the phones). Restore reads the copy from your Drive, checks and decrypts it on your device, and uploads and deletes nothing; it needs Google Drive connected on that device and a connection, and it tells you how many photos came back and why the others did not. **Delete everything Doorprints keeps in Google Drive** removes these copies too, and then nothing can be brought back.
+
 ## Privacy
 
 The website's [privacy page](https://doorprints.web.app/privacy.html) says what Google Drive is used for. Your houses stay encrypted. Disconnect

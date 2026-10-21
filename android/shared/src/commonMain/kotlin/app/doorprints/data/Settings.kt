@@ -45,6 +45,9 @@ import app.doorprints.shared.api.IsoTime
 import app.doorprints.shared.model.HuntReminders
 import app.doorprints.shared.model.KindSetting
 import app.doorprints.shared.model.KindSettingRules
+import app.doorprints.shared.model.UserKindFile
+import app.doorprints.shared.model.UserKinds
+import kotlinx.serialization.json.JsonElement
 import app.doorprints.shared.model.LengthUnit
 import app.doorprints.shared.sync.SyncOutcome
 import app.doorprints.export.decodeGrants
@@ -232,6 +235,7 @@ class SettingsStore(
      * copy, sync or share file (TC-U-170 pattern); null where a platform has none (tests).
      */
     private val sarvamSecrets: SecretStore? = null,
+    private val releasedKinds: List<String> = KindSettingRules.RELEASED,
     private val now: () -> Long = { IsoTime.nowMillis() },
 ) {
     companion object {
@@ -311,10 +315,6 @@ class SettingsStore(
         val areaWakeupOffNotice = booleanPreferencesKey("areas.wakeupOffNotice")
         /** How the guided tour ended, `done` or `skipped` ([TourEnd.wire]): this device's own choice, never exported, synced or backed up. */
         val tour = stringPreferencesKey("tour")
-        /** What this device tracks (kinds PR C, S4b-BL-274): the website's `doorprints.kinds.*`, the same values; device-local, never synced. */
-        val kindsExperimental = stringPreferencesKey("kinds.experimental")
-        val kindsEnabled = stringPreferencesKey("kinds.enabled")
-        val kindsDefault = stringPreferencesKey("kinds.default")
         /** The chooser's one hint has been dismissed (`done`): the website's `doorprints.chooser.hint`. */
         val chooserHint = stringPreferencesKey("chooser.hint")
         /** *Voice input* (S4b-BL-222, the website's `doorprints.voice`): this phone's own switch, off by default, never exported, synced or backed up. */
@@ -465,14 +465,11 @@ class SettingsStore(
     /** Remembers how the tour ended; the offer does not come again. */
     suspend fun setTourEnd(end: TourEnd) = dataStore.edit { it[Keys.tour] = end.wire }
 
-    /**
-     * What this device tracks (*Settings > What you track*): the kinds the build ships ([availableKinds]) with the stored
-     * switch, list and default. Reads no secret; a file that cannot be read counts as the house alone, as every doubt does.
-     */
-    fun kindSetting(): Flow<KindSetting> = dataStore.data
-        .map { p -> KindSetting(availableKinds, p[Keys.kindsExperimental], p[Keys.kindsEnabled], p[Keys.kindsDefault]) }
-        .catch { emit(KindSetting(availableKinds)) }
-        .distinctUntilChanged()
+    /** The kinds part of this store ([KindSettingStore]): the switches, the list, the default and the kinds a person added. */
+    private val kindStore = KindSettingStore(dataStore, availableKinds, releasedKinds)
+
+    /** What this device tracks (*Settings > What you track*): the build's kinds ([availableKinds], [releasedKinds] for a test of an unreleased one), the kinds a person added, the stored switches, list and default. */
+    fun kindSetting(): Flow<KindSetting> = kindStore.setting()
 
     /**
      * Whether a candidate of a kind other than the house is read as that kind (its typed extras in the AI and in a readable
@@ -483,15 +480,16 @@ class SettingsStore(
     suspend fun kindsOn(devKinds: Boolean = false): Boolean = devKinds || kindSetting().first().offered.size > 1
 
     /** Applies [change] to what is stored and stores the result (a null value removing its key): one atomic edit, so two taps never undo each other. */
-    suspend fun editKindSetting(change: (KindSetting) -> KindSetting) = dataStore.edit {
-        val next = change(KindSetting(availableKinds, it[Keys.kindsExperimental], it[Keys.kindsEnabled], it[Keys.kindsDefault]))
-        fun put(key: Preferences.Key<String>, value: String?) {
-            if (value == null) it.remove(key) else it[key] = value
-        }
-        put(Keys.kindsExperimental, next.experimental)
-        put(Keys.kindsEnabled, next.enabledText)
-        put(Keys.kindsDefault, next.defaultText)
-    }
+    suspend fun editKindSetting(change: (KindSetting) -> KindSetting) = kindStore.edit(change)
+
+    /** Stores a checked kind file a person chose (docs/03 ADR-39); see [KindSettingStore.addUserKind]. */
+    suspend fun addUserKind(file: UserKindFile): UserKinds.Added = kindStore.addUserKind(file)
+
+    /** Takes an added kind away, its file only; see [KindSettingStore.removeUserKind]. */
+    suspend fun removeUserKind(id: String): Boolean = kindStore.removeUserKind(id)
+
+    /** Adds the kinds a backup carries that this phone does not have; see [KindSettingStore.adoptUserKinds]. */
+    suspend fun adoptUserKinds(raws: List<JsonElement>): List<String> = kindStore.adoptUserKinds(raws)
 
     /** Whether the chooser still shows its one hint (*Tap a card to switch*): until it is dismissed, once. A file that cannot be read shows none. */
     fun chooserHintShown(): Flow<Boolean> = dataStore.data
@@ -506,18 +504,7 @@ class SettingsStore(
      * hint, never applied over a choice (S4b-BL-212), and only the built-in kinds are kept (`KindSettingRules.knownSpaces`,
      * S4b-BL-307). Returns whether it was taken.
      */
-    suspend fun adoptKinds(kinds: List<String>, default: String): Boolean {
-        val (known, chosen) = KindSettingRules.knownSpaces(kinds, default) ?: return false
-        var taken = false
-        dataStore.edit {
-            if (it[Keys.kindsEnabled] == null && it[Keys.kindsDefault] == null) {
-                it[Keys.kindsEnabled] = KindSettingRules.listText(known)
-                it[Keys.kindsDefault] = chosen
-                taken = true
-            }
-        }
-        return taken
-    }
+    suspend fun adoptKinds(kinds: List<String>, default: String): Boolean = kindStore.adopt(kinds, default)
 
     /** Whether My areas still has to say once why the wake-up switched itself off. */
     fun areaWakeupOffNotice(): Flow<Boolean> = dataStore.data
@@ -676,6 +663,7 @@ class SettingsStore(
         }
     }
 
+    val voiceTier = VoiceTierStore(dataStore) // voice input's kept plan verdicts (ADR-37), device-only
     /** Chooses which service writes out the words. */
     suspend fun saveVoiceProvider(provider: VoiceProvider) =
         dataStore.edit { if (provider == VoiceProvider.SARVAM) it[Keys.voiceProvider] = provider.wire else it.remove(Keys.voiceProvider) }

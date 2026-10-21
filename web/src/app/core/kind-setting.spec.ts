@@ -19,7 +19,7 @@
 // Spaces (kinds PR 8, S4b-BL-212; docs/03 §18.12) against docs/schemas/kinds/search-kind-vectors.json: what the
 // resolver answers for the build's kinds and the stored settings, the setters' rules, the backup's `search` bytes, and
 // the `search` values every reader reads past without refusing the file or changing a candidate. docs/06 TC-U-214.
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import vectorsJson from '../../../../docs/schemas/kinds/search-kind-vectors.json';
 import sampleJson from '../../../../docs/schemas/backup-sample.json';
 import { checkData } from '../export/backup-check';
@@ -33,6 +33,7 @@ import {
   spacesOn, unreleasedKinds,
 } from './kind-setting';
 import { newHouse } from './models';
+import { pinReleased, unpinReleased } from '../shared/testing/released-kinds';
 
 type Obj = Record<string, unknown>;
 interface Setting {
@@ -58,7 +59,15 @@ function store(values: Record<string, string | null> = {}) {
 }
 const blocked = { getItem: () => { throw new Error('blocked'); }, setItem: () => { throw new Error('full'); }, removeItem: () => { throw new Error('blocked'); } };
 
-afterEach(() => localStorage.clear());
+// The shared vectors (search-kind-vectors.json) are the rule of every stack, and the phones still release the house alone
+// (the school is a preview there, behind Experimental: more than houses). So the cases below run with the website's
+// released set pinned to the house, as the vectors say; the website's own set (house and school, ADR-13b) is the last
+// describe, which puts it back, and release-kinds.spec.ts pins it too.
+beforeEach(() => void pinReleased());
+afterEach(() => {
+  unpinReleased();
+  localStorage.clear();
+});
 
 describe('the kinds this build offers (S4b-BL-212)', () => {
   it('a production build lists only the house, a development build every built-in kind, a build flag the kinds it names', () => {
@@ -228,5 +237,30 @@ describe('the backup’s search object (search-kind-vectors.json `write` and `re
     }
     // A value that is no list at all, handed straight to the adopter, is no hint.
     expect(knownSpaces({ kinds: 'school' as never, defaultKind: 'school' })).toBeNull();
+  });
+});
+
+describe('the website releases the school (ADR-13b): offered with no switch, enabled only when shown', () => {
+  beforeEach(() => void unpinReleased());
+
+  it('offers the house and the school with nothing stored, and enables the house alone', () => {
+    expect(RELEASED_KINDS).toEqual(['house', 'school']);
+    expect(unreleasedKinds(BOTH)).toEqual([]);
+    const s = store();
+    expect([offeredKinds(BOTH, s), enabledKinds(BOTH, s), defaultKind(BOTH, s), spacesOn(BOTH, s)]).toEqual([BOTH, ['house'], 'house', false]);
+  });
+
+  it('shows the school with no switch, and hides it again without losing anything', () => {
+    const s = store();
+    setKindEnabled('school', true, BOTH, s);
+    expect([enabledKinds(BOTH, s), spacesOn(BOTH, s), s.m.get(ENABLED_KINDS_KEY)]).toEqual([BOTH, true, '["house","school"]']);
+    setKindEnabled('school', false, BOTH, s);
+    expect([enabledKinds(BOTH, s), spacesOn(BOTH, s), s.m.has(ENABLED_KINDS_KEY)]).toEqual([['house'], false, false]);
+  });
+
+  it('turns the AI’s kinds on for everyone, and a browser that stored the old switch still reads the same', () => {
+    expect(kindsOn()).toBe(true);
+    localStorage.setItem(EXPERIMENTAL_KINDS_KEY, '1');
+    expect([offeredKinds(BOTH), kindsOn()]).toEqual([BOTH, true]);
   });
 });

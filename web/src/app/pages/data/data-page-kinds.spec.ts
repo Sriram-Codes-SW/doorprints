@@ -19,10 +19,11 @@
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { of } from 'rxjs';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { routes } from '../../app.routes';
 import { DEFAULT_KIND_KEY, ENABLED_KINDS_KEY, EXPERIMENTAL_KINDS_KEY, defaultKind, enabledKinds } from '../../core/kind-setting';
 import { LocalDataService } from '../../core/local-data.service';
+import { pinReleased, unpinReleased } from '../../shared/testing/released-kinds';
 import type { HouseDto } from '../../core/models';
 import type { Lang } from '../../i18n/languages';
 import { TranslationService } from '../../i18n/translation.service';
@@ -37,8 +38,13 @@ const house = { id: 'h1', label: 'Green View', lat: 26, lon: 91, status: 'NEW', 
  * switch *Experimental: other kinds*, off by default; on, one row per offered kind with *Show*, *Default* and its count;
  * the last shown kind cannot be turned off; the router gets the spaces at once. A production build has no card at all
  * (`a11y-sweep`, the layout gate and the live UI test hold it). docs/06 TC-U-214.
+ *
+ * Since the school's release on the website (ADR-13b, 2026-10-19) the switch is shown only while a listed kind is not
+ * released, and none is. These cases are the switch's mechanism, kept for the next kind: the school stands in for it, with the
+ * released set pinned to the house. The released shape (a Schools row, off, no switch) is in experimental-off.spec.ts.
  */
 describe('Your data: What you track (Settings > Kinds)', () => {
+  beforeEach(() => void pinReleased());
   async function open(lang: Lang = 'en') {
     TestBed.configureTestingModule({
       imports: [KindsSettings],
@@ -58,6 +64,7 @@ describe('Your data: What you track (Settings > Kinds)', () => {
   const click = async (f: { detectChanges(): void }, el: HTMLInputElement | null) => { el!.click(); f.detectChanges(); };
 
   afterEach(() => {
+    unpinReleased();
     localStorage.clear();
     TestBed.resetTestingModule();
   });

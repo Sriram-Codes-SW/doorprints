@@ -33,6 +33,7 @@ import app.doorprints.export.CopyRecord
 import app.doorprints.export.CopyUndoOutcome
 import app.doorprints.location.HuntState
 import app.doorprints.location.Place
+import app.doorprints.drive.photo.PhotoRestoreReport
 import app.doorprints.drive.wiring.DriveSyncChoice
 import app.doorprints.drive.wiring.FileDrivePrefs
 import app.doorprints.drive.wiring.DriveSyncRoute
@@ -221,6 +222,11 @@ internal class IosAppServices(
 
     override val settingsScreen: SettingsServices = IosSettingsServices(drive)
 
+    /** *Recently deleted* getting photos back from Google Drive (S4b-BL-293): only when Drive is in use on this phone. */
+    override val photoRestore: PhotoRestoreServices = PhotoRestoreServices { req ->
+        if (drive.engaged) drive.controller.restorePhotos(req, connectIfClosed = true) else PhotoRestoreReport.noConnection(req.known)
+    }
+
     override val houseForm: HouseFormServices = IosHouseFormServices(repository)
 
     /** *Save a copy* and *Import a backup* (S4b-BL-81): the common ZIP code with the Files app and the share sheet. */
@@ -275,6 +281,10 @@ private class IosSettingsServices(private val drive: IosDriveServices) : Setting
 
     @Composable
     override fun rememberBackupFolderPicker(onPicked: (folder: String?) -> Unit): () -> Unit = remember { {} }
+
+    /** *Import a kind file* (docs/03 ADR-39): the Files app's picker, a copy of one JSON file read and removed ([IosKindFile]). */
+    @Composable
+    override fun rememberKindFilePicker(onPicked: (KindFilePick) -> Unit): () -> Unit = IosKindFile.rememberPicker(onPicked)
 
     override suspend fun backupFolderLabel(folder: String): String? = null
     override val backingUpNow: Flow<Boolean> = flowOf(false)

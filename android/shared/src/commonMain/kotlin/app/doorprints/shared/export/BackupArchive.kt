@@ -18,6 +18,8 @@
 
 package app.doorprints.shared.export
 
+import app.doorprints.shared.model.UserKinds
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
@@ -49,6 +51,8 @@ class BackupArchive private constructor(
      * what it tracks ([app.doorprints.export.ArchiveImports.adoptKinds]), never a reason to refuse a file or change a candidate.
      */
     val spaces: Pair<List<String>, String>? = null,
+    /** The kind files the file's `search` carries (`userKinds`, docs/03 ADR-39), unchecked: the import checks each one. */
+    val userKinds: List<JsonElement> = emptyList(),
 ) {
     private val hashes: Map<String, String> = manifest?.files.orEmpty().associate { it.path to it.sha256.lowercase() }
 
@@ -132,7 +136,10 @@ class BackupArchive private constructor(
             BackupValidation.checkData(data)?.let { return ArchiveOpen.Failed(it) }
             val photos = zip.entries.map { it.name }.filter { BackupValidation.isPhotoEntry(it) }.toSet()
             return ArchiveOpen.Ok(
-                BackupArchive(zip, tools, manifest, data, photos, (dataBytes.size + manifestBytes.size).toLong(), BackupWire.spacesOf(root)),
+                BackupArchive(
+                    zip, tools, manifest, data, photos, (dataBytes.size + manifestBytes.size).toLong(), BackupWire.spacesOf(root),
+                    UserKinds.ofSearch(root["search"]),
+                ),
             )
         }
 
@@ -155,7 +162,7 @@ class BackupArchive private constructor(
             val data = runCatching { BackupWire.decodeData(root) }
                 .getOrElse { return ArchiveOpen.Failed(BackupProblem.BROKEN_DATA) }
             BackupValidation.checkData(data)?.let { return ArchiveOpen.Failed(it) }
-            return ArchiveOpen.Ok(BackupArchive(null, tools, null, data, emptySet(), size, BackupWire.spacesOf(root)))
+            return ArchiveOpen.Ok(BackupArchive(null, tools, null, data, emptySet(), size, BackupWire.spacesOf(root), UserKinds.ofSearch(root["search"])))
         }
 
         /** A local file header, or the end record of an empty ZIP. */

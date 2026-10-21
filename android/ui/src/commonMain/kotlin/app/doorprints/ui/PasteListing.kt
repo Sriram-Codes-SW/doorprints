@@ -68,7 +68,7 @@ internal fun pasteKind(kind: BuiltInKind): String? = kind.id.takeIf { !KindCapab
  * fields, by the kind's own labels ([fields]); a house's fill has none, so its line is as it was.
  */
 suspend fun pasteResultText(merge: ListingMerge, warnings: List<String>, fields: KindFields = BuiltInKind.HOUSE.fields): String {
-    suspend fun extras(ids: List<String>) = fields.others().filter { it.id in ids }.map { getString(kindStringResource(fields.label(it))) }
+    suspend fun extras(ids: List<String>) = fields.others().filter { it.id in ids }.map { getString(kindWord(fields.label(it))) }
     suspend fun names(f: List<ListingField>, ids: List<String>) = joinedListText(f.map { getString(it.nameRes) } + extras(ids))
     val parts = mutableListOf<String>()
     parts += if (merge.filled.isEmpty() && merge.extrasFilled.isEmpty()) {

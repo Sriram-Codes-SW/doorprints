@@ -22,6 +22,7 @@ import { TKey, en } from './en';
 import { LANGUAGES, Lang, LanguageInfo, dictionary, isLang, loadDictionary } from './languages';
 import { joinList } from './list-join';
 import { LANG_KEY } from '../core/storage-keys';
+import { country } from '../shared/country/country-pack';
 
 /** A translatable message: a key plus its placeholder values. Params may themselves be messages. */
 export interface Msg {
@@ -141,7 +142,8 @@ export class TranslationService {
   /** ₹ with Indian grouping (₹1,25,000), plus "/month" for rent. */
   price(price: number | null | undefined, type?: PriceType | null): string {
     if (price === null || price === undefined) return '–';
-    const base = this.numberFormat('inr', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(price);
+    const code = country().money.code;
+    const base = this.numberFormat(`money:${code}`, { style: 'currency', currency: code, maximumFractionDigits: 0 }).format(price);
     return type === 'RENT' ? this.t('price.perMonth', { price: base }) : base;
   }
 

@@ -33,7 +33,7 @@ import kotlin.test.assertTrue
  * explains the microphone in all four languages; and no copy, backup, sync or Drive code can reach the recorder or a
  * clip. The behaviour of the shared parts (every exit lets the microphone go, the limits, the setting off) is the
  * common tests (`VoiceSessionTest`, `PcmVoiceRecorderTest`, `IosCapturePipelineTest`); the real microphone, the prompt and
- * an interruption are MT-82..MT-87 on a phone.
+ * an interruption are MT-127..MT-132 on a phone.
  */
 class IosVoiceSafetyTest {
     private val repo: File by lazy {
@@ -223,7 +223,7 @@ class IosVoiceSafetyTest {
         val sarvam = Regex("""\b(SarvamTranscriber|sarvamKey|saveSarvamKey|removeSarvamKey|VoiceProvider|sarvamSecrets|sarvam_key)\b""")
         val allowed = setOf(
             "SarvamTranscriber.kt", "VoiceInput.kt", "VoiceRecorder.kt", "OwnKeyTranscription.kt", "Settings.kt", "SettingsIos.kt",
-            "VoiceInputSetting.kt", "VoiceMicButton.kt", "KeystoreSecretStore.kt", "SettingsStoreFactory.kt",
+            "VoiceInputSetting.kt", "VoiceMicButton.kt", "KeystoreSecretStore.kt", "SettingsStoreFactory.kt", "VoiceTierGate.kt",
         )
         for (root in listOf("android/shared/src", "android/ui/src", "android/app/src")) {
             file(root).walkTopDown()
@@ -232,6 +232,32 @@ class IosVoiceSafetyTest {
         }
         for (name in listOf("IosCopies.kt", "IosDriveServices.kt", "IosDriveSection.kt")) {
             assertFalse(code(file("$ios/$name")).contains("Sarvam", ignoreCase = true), "$name must not mention Sarvam")
+        }
+    }
+
+    @Test
+    fun theFreePlanRuleIsWiredIntoTheIphoneAndNoCopyBackupSyncExportOrDriveCodeMentionsIt() {
+        // TC-S-53 (owner decision 2026-10-19, ADR-37): the iPhone asks the same rule before every request, with the same gate.
+        val services = code(file("$ios/IosVoiceServices.kt"))
+        assertTrue(services.contains("override val tierGate: VoiceTierGate by lazy { VoiceTierGate(settings, http()) }"), "the iPhone has a gate")
+        assertTrue(services.contains("OwnKeyTranscription(settings, http(), tierGate)"), "and the transcription asks the same gate before the request")
+        val tier = Regex("""\b(VoiceTier|VoiceTierGate|TierSubject|VoiceTierRefused|VoiceVerdict|voiceTier\w*|saveVoiceTier\w*|forgetVoiceTier)\b|voice\.tier""")
+        val allowed = setOf(
+            "VoiceTier.kt", "VoiceTierGate.kt", "VoiceSession.kt", "OwnKeyTranscription.kt", "Settings.kt", "AiStore.kt", "VoiceServices.kt",
+            "VoiceTierStore.kt", "VoiceTierUi.kt", "VoiceMicButton.kt", "VoiceInputSetting.kt", "AndroidVoiceServices.kt", "IosVoiceServices.kt",
+        )
+        var scanned = 0
+        for (root in listOf("android/shared/src", "android/ui/src", "android/app/src")) {
+            file(root).walkTopDown()
+                .filter { it.isFile && it.extension == "kt" && "/build/" !in it.path && !isTest(it) }
+                .forEach { f ->
+                    scanned++
+                    if (f.name !in allowed) assertFalse(tier.containsMatchIn(code(f)), "${f.relativeTo(repo)} reaches the free-plan rule")
+                }
+        }
+        assertTrue(scanned > 400, "the scan must read the sources ($scanned)")
+        for (name in listOf("IosCopies.kt", "IosDriveServices.kt", "IosDriveSection.kt")) {
+            assertFalse(tier.containsMatchIn(code(file("$ios/$name"))), "$name must not mention the free-plan rule")
         }
     }
 }

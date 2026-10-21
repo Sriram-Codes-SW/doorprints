@@ -224,6 +224,15 @@ describe('SCHOOL_QUESTIONS', () => {
     expect(newQuestionId()).toMatch(/^q_[0-9a-f]{8}$/);
   });
 
+  it('takes a question of a kind a person added as custom, so its own bank can be saved (docs/03 ADR-39)', () => {
+    const id = newQuestionId('u_office_space');
+    expect(id).toMatch(/^q_u_office_space_[0-9a-f]{8}$/);
+    expect(isCustomQuestionId(id)).toBe(true);
+    expect(isCustomQuestionId('q_u_gym_0123abcd')).toBe(true);
+    expect(isCustomQuestionId('q_u_0123abcd')).toBe(false);
+    expect(isCustomQuestionId('q_U_gym_0123abcd')).toBe(false);
+  });
+
   it('keeps one kind’s questions when a bank is filtered', () => {
     const all = [...DEFAULT_QUESTIONS.slice(0, 2), ...SCHOOL_QUESTIONS.slice(0, 2)];
     expect(questionsOfKind(all, 'school').map((q) => q.id)).toEqual(SCHOOL_QUESTIONS.slice(0, 2).map((q) => q.id));

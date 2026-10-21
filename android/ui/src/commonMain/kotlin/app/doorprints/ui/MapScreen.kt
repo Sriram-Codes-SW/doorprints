@@ -1449,8 +1449,8 @@ private fun MapLegend(oneLineWidthDp: Float, modifier: Modifier = Modifier) {
 private fun legendTextStyle(): TextStyle = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold)
 
 /** The status name for a [LegendDot.status], in the words of the kind on screen's labels (S4b-BL-256). */
-private fun statusLabel(status: String, labels: KindLabels): StringResource =
-    if (status == "APPROX") Res.string.legend_approx else labels.statusText(HouseStatus.entries.firstOrNull { it.name == status } ?: HouseStatus.NEW)
+private fun statusLabel(status: String, labels: KindLabels): UiWord =
+    if (status == "APPROX") UiWord.Res(Res.string.legend_approx) else labels.statusText(HouseStatus.entries.firstOrNull { it.name == status } ?: HouseStatus.NEW)
 
 /** One legend dot: the web's `.dot` (map-page.css), a fill inside a white ring, a dark hairline outside it. */
 @Composable

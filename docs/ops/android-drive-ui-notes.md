@@ -153,6 +153,7 @@ web driveSync.applyShrink driveSync.applyShrink
 web driveSync.notNow driveSync.notNow
 web driveSync.uploadNow driveSync.uploadNow
 web driveSync.photoError driveSync.photoError
+web driveSync.photoRetention driveSync.photoRetention
 web driveDelete.heading driveDelete.heading
 web driveDelete.olderBackups driveDelete.olderBackups
 web driveDelete.allBackups driveDelete.allBackups

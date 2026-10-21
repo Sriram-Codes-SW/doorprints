@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | 05 UX, accessibility and i18n |
-| Version | 0.34 |
-| Date | 2026-10-13 |
+| Version | 0.40 |
+| Date | 2026-10-21 |
 | Author | Claude (Cowork) – Design team |
 | Status | Draft |
 | Scope | Web app (`web/`) and Android app (`android/`), both implemented |
@@ -47,6 +47,12 @@
 | 0.32 | 2026-10-10 | Claude (Code), engineer | Component inventory: the *AI speed and cost* group in the phones' Settings > AI features (S4b-BL-198 step 2; [10](10-sprint-log.md) v0.228): a radio group under a heading, hidden unless AI is on, the own AI answers and the service is Gemini. |
 | 0.33 | 2026-10-10 | Claude (Code), engineer | Component inventory: the three sentences and the guide link under the AI features switch, on the Connect page and in the phones' Settings (S4b-BL-215; [10](10-sprint-log.md) v0.241). |
 | 0.34 | 2026-10-13 | Claude (Code), engineer | Size to what is visible (S4b-BL-49): the phone map region is sized in CSS (`100cqh` less the counters' rem height, a 212 px floor for the map row), the actions sit under the map and the legend in its corner; nothing is measured by a script. |
+| 0.35 | 2026-10-20 | Claude (Code), engineer | Glossary: `app.tagline` on the website is the kind-neutral "Remember every place you've seen." in four languages ([03](03-design.md) ADR-13b; `feat/school-release-web`, #389); the phones' `app_tagline` is unchanged for now. |
+| 0.36 | 2026-10-20 | Claude (Code), engineer | Glossary: the phones' `app_tagline` follows the website ("Remember every place you've seen.", Settings > About only) and the empty house list keeps the old words under a new Android key `houses_first_run_title` ([03](03-design.md) ADR-13b; `feat/school-release-phones`); the switch hint and the school listing tips lose their preview marks. |
+| 0.37 | 2026-10-20 | Claude (Code), engineer | §8: the language and the country are two things ([03](03-design.md) ADR-38, §21): the app language decides the words and the `Intl` locale of the screens; the **country pack** decides the currency, the digit grouping of exported files, the phone shapes and the geocoder's country. New §8.4. No string changed; hi, ta and te untouched. |
+| 0.38 | 2026-10-20 | Claude (Code), engineer | **Kinds you add** ([03](03-design.md) ADR-39, `feat/user-authored-kinds-web`): the settings, the preview and the refusals, in four languages; the neutral words of such a space. |
+| 0.39 | 2026-10-20 | Claude (Code), engineer | Glossary: `driveSync.photoRetention` (phones `drive_sync_photo_retention`), the one sentence under the Drive photo switch on how long a deleted photo stays in the person's Google Drive ([15](15-google-drive-backup-and-sharing.md) §5.1; `fix/flakes-and-retention-text`); hi, ta and te under review. |
+| 0.40 | 2026-10-21 | Claude (Code), engineer | **Kinds you add on the phones** ([03](03-design.md) ADR-39, `feat/user-authored-kinds-phones`): the settings, the preview, the refusals and the removal, in four languages; the neutral words of such a space. |
 
 ---
 
@@ -610,7 +616,8 @@ Changing the English meaning of an existing key: rename the key instead of editi
 | Term (key) | English | हिन्दी (hi) | தமிழ் (ta) | తెలుగు (te) | Notes |
 |---|---|---|---|---|---|
 | app.name | Doorprints | Doorprints | Doorprints | Doorprints | Brand, never translated (was "House Hunt" until 2026-09-22). |
-| app.tagline | Remember every house you've seen. | देखा हुआ हर मकान याद रखें। | நீங்கள் பார்த்த ஒவ்வொரு வீட்டையும் நினைவில் வையுங்கள். | మీరు చూసిన ప్రతి ఇంటినీ గుర్తుంచుకోండి. | Web `app.tagline`, Android `app_tagline` (same wording on both). |
+| app.tagline | Remember every place you've seen. | देखी हुई हर जगह याद रखें। | நீங்கள் பார்த்த ஒவ்வொரு இடத்தையும் நினைவில் வையுங்கள். | మీరు చూసిన ప్రతి ప్రదేశాన్నీ గుర్తుంచుకోండి. | Web `app.tagline` and Android `app_tagline` (Settings > About only): kind-neutral since ADR-13b, on the phones since the school's release there (hi, ta, te under review). |
+| houses_first_run_title (Android only) | Remember every house you've seen. | देखा हुआ हर मकान याद रखें। | நீங்கள் பார்த்த ஒவ்வொரு வீட்டையும் நினைவில் வையுங்கள். | మీరు చూసిన ప్రతి ఇంటినీ గుర్తుంచుకోండి. | Android `houses_first_run_title`: the empty house list's title, the house-only words the tagline had before it became kind-neutral. |
 | house | House | मकान | வீடு | ఇల్లు | Hindi "घर" means home; "मकान" is the building being rented or bought. |
 | map | Map | नक्शा | வரைபடம் | మ్యాప్ | Telugu loanword is more common in apps than "పటం". |
 | compare | Compare | तुलना | ஒப்பிடு | పోల్చండి | – |
@@ -644,6 +651,7 @@ Changing the English meaning of an existing key: rename the key instead of editi
 | check.commute | Commute | आने-जाने की सुविधा | போக்குவரத்து வசதி | రాకపోకల సౌలభ్యం | – |
 | API key | API key | API कुंजी | API விசை | API కీ | "API" kept. |
 | choose (a spot, an option) | Choose | चुनें | தேர்ந்தெடுக்கவும் | ఎంచుకోండి | Device-neutral: web hints never say "tap" or "click" (a keyboard, mouse or switch user cannot tap). Used by `map.addHint`, `house.mapHint` and, since the final Sprint 4a round, `map.addHintShort`, `plan.startHint` and `plan.startRequired`. Android keeps "tap" and "long-press" in its own hints (`houses_empty`, `map_add_tip`), since it is used by touch. |
+| driveSync.photoRetention (phones: drive_sync_photo_retention) | Photos you delete leave your Google Drive after 30 days, and later only if a backup you kept still holds them. | आपके हटाए गए फ़ोटो 30 दिन बाद आपकी Google Drive से हट जाते हैं, और उसके बाद वे तभी रहते हैं जब आपका रखा कोई बैकअप अब भी उन्हें रखता हो। | நீங்கள் நீக்கும் புகைப்படங்கள் 30 நாட்களுக்குப் பிறகு உங்கள் Google Drive-இலிருந்து நீங்கிவிடும்; அதன் பிறகு, நீங்கள் வைத்திருக்கும் ஒரு காப்புப்பிரதி அவற்றை இன்னும் கொண்டிருந்தால் மட்டுமே அவை இருக்கும். | మీరు తొలగించిన ఫోటోలు 30 రోజుల తర్వాత మీ Google Drive నుండి వెళ్లిపోతాయి, ఆ తర్వాత మీరు ఉంచిన బ్యాకప్ ఇంకా వాటిని కలిగి ఉంటేనే అవి ఉంటాయి. | Under the photo upload switch in the Drive section (website Your data, phones' Settings). The same words as the privacy page's "30 days, and for longer only while a backup you kept still holds it" (#383). hi, ta, te under review. |
 
 ## 11. Accessibility test plan
 
@@ -1073,6 +1081,11 @@ planned for Sprint 4b ([11](11-feature-parity-and-export-spec.md) §10, Android 
 
 ---
 
+
+**Kinds you add (website, [03](03-design.md) ADR-39).** In Your data > What you track: the switch *Kinds you add (experimental)* with its hint; while on, *Import a kind file* (a labelled native file input, its limits in the hint), a preview region with a heading that takes focus (name, fields, checklist, whether it replaces one), *Add this kind* and *Cancel*, a refusal as `role="alert"` with the reason in plain words and where in the file, a `role="status"` notice; each added kind's row says *Added by you* and has *Remove kind* (named for the kind). The person's own words are shown as written in every language (no translation, no markup); the app's words are in en, hi, ta and te (hi, ta, te under review); the space's words name no house (`ukind.*`).
+
+**Kinds you add (phones, [03](03-design.md) ADR-39).** Settings > What you track: the switch *Kinds you add (experimental)* with its hint (a `SwitchRow`, one TalkBack node); while on, a heading, the hint with the limits, *Import a kind file* (an outlined button, 48 dp), the refusal in an assertive live region (the reason in plain words, then *Where in the file*), the preview as a card whose heading takes focus (name, fields, checklist, whether it replaces one) with *Add this kind* or *Replace the kind* and *Cancel*, and a polite live region for *added* or *updated*; each added kind's row says *Added by you* and has *Remove kind* (its content description names the kind), which asks in a dialog with focus on *Cancel*, *Save a copy first* and the danger button, then says *removed* in a snackbar. The person's words are drawn as Compose `Text` in every language; the app's words are in en, hi, ta and te (hi, ta, te under review); the space's words name no house (`ukind_*`, `UserKindStringsTest`).
+
 ## 15. Appendix: Design and UX self-check
 
 Published here on 2026-09-23 (v0.10) at the delivery coordinator's request, from the design systems playbook of the same day; the owner adopted self-checks and the review rules below as Sprint 4b efficiency measures ([10](10-sprint-log.md) §12.5). The **Definition of Ready (15.1) is verbatim** and is the checklist every Android and Web hand-off to the Design Director or the UX lead carries; the families, rules and review changes are as written, with the real examples ("Seen") shortened. Inside the Definition of Ready, "§3" means 15.4 of this appendix. Its security counterpart is [07](07-secure-build-and-deploy.md) Appendix A. A rule added or corrected by a reviewer is changed here, with a change-log row.
@@ -1348,3 +1361,11 @@ problems: Pages headers, CSP and frame protection (`docs/02` F-31, `web/public/_
 `backup.golden.ts`). 1 was a sync-cursor internal. 3 were Android code-quality notes (the `PdfExporter.kt` memory risk and
 two KDoc problems). 2 were workflow-input errors (the DD round 1 got an empty change list, and one task did not match
 what the user asked).
+
+### 8.4 The country pack: where the money and the numbers come from (ADR-38)
+
+The app language (en, hi, ta, te) and the country are separate. The language picks the words of the screens and the `Intl` locale of the number and date formats (`en-IN`, `hi-IN`, `ta-IN`, `te-IN`, from `i18n/languages.ts` and the Android resources); the **country pack** ([03](03-design.md) §21) picks what no translation can: the currency (sign `₹`, code `INR`), the digit grouping of the files and documents that must not depend on ICU data (`1250000` gives `12,50,000`), the amount words a pasted listing or an AI draft may use (`lakh`, `crore`), the phone shapes, and the geocoder's country. A new country is a new pack plus its languages' dictionaries; a new language of India is only a dictionary ([9.2](#92-add-a-language-web)).
+
+- The dictionaries keep their money labels (`Price (₹)`, `Maximum price (₹)`); they are language work and on the tripwire's allow-list with that reason. A pack for another currency changes them in its own dictionaries.
+- The screens' amounts still come from `Intl` with the pack's currency code on the website (`TranslationService.price`) and from `Formats.rupees` on the phones, which now takes the sign and the grouping from the pack; the four languages write them as before (TC-U-8, `FormatsParityTest`).
+- A string that carries a number the pack formats is built from the pack's output, never from a literal sign.

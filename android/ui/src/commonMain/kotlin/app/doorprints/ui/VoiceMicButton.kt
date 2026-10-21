@@ -28,6 +28,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -41,7 +42,9 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.addPathNodes
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -57,6 +60,7 @@ import app.doorprints.shared.voice.VoicePhase
 import app.doorprints.shared.voice.VoiceProblem
 import app.doorprints.shared.voice.VoiceSession
 import app.doorprints.shared.voice.VoiceStatus
+import app.doorprints.shared.voice.VoiceVerdict
 import app.doorprints.shared.voice.appendTranscript
 import app.doorprints.ui.res.*
 import org.jetbrains.compose.resources.stringResource
@@ -70,8 +74,11 @@ internal fun voiceHost(config: AiProviderConfig): String = when (config.kind) {
     else -> (BaseUrlValidator.check(config.baseUrl) as? BaseUrlCheck.Valid)?.host.orEmpty()
 }
 
+/** Tag of the line under the microphone: the usual hint, or the plan rule's reason when the microphone cannot be used; for tests. */
+const val VOICE_TIER_REASON_TAG = "voice-tier-reason"
+
 /** The microphone is offered, where the audio would go, and the hard stop of a recording (Sarvam's is the short one, 30 s). */
-internal class VoiceOffer(val host: String, val price: String?, val maxMs: Long, val short: Boolean)
+internal class VoiceOffer(val host: String, val price: String?, val maxMs: Long, val short: Boolean, val tier: VoiceTierState)
 
 /**
  * Whether the microphone is offered now (docs/03 ADR-37): the *Voice input* switch is on, *AI features* are on with the
@@ -87,9 +94,11 @@ internal fun rememberVoiceOffer(): VoiceOffer? {
     val aiOn by repo.aiEnabled.collectAsStateWithLifecycle()
     val ownKey by repo.aiOwnKey.collectAsStateWithLifecycle()
     if (!VoiceInput.available(choice, aiOn, ownKey, services.voice.recordable)) return null
+    // The plan rule (ADR-37): the microphone is drawn, but not usable, until it says ALLOW. Nothing records before that.
+    val tier = rememberVoiceTier(choice, ownKey)
     return VoiceOffer(
         VoiceInput.host(choice, voiceHost(choice.config)), VoiceInput.price(choice), VoiceInput.maxDurationMs(choice),
-        short = choice.provider == VoiceProvider.SARVAM,
+        short = choice.provider == VoiceProvider.SARVAM, tier = tier,
     )
 }
 
@@ -146,6 +155,8 @@ private fun VoiceMic(offer: VoiceOffer, value: String, onValue: (String) -> Unit
     // Foreground only (T-I47): pausing the screen (home, another app, the lock screen, a call, a rotation) and leaving it
     // both let the microphone go, with nothing kept. The permission prompt pauses the screen too, before anything records.
     LifecycleResumeEffect(session) { onPauseOrDispose { session.release() } }
+    // The plan turned out to be a free one (or could not be read) while a recording is on: it ends, with nothing kept.
+    LaunchedEffect(offer.tier.allowed) { if (!offer.tier.allowed) session.release() }
     val request = voice.rememberMicrophoneRequest { session.start() }
     val ui by session.ui.collectAsStateWithLifecycle()
 
@@ -167,6 +178,14 @@ private fun VoiceMic(offer: VoiceOffer, value: String, onValue: (String) -> Unit
     val recording = ui.phase == VoicePhase.RECORDING
     val cancelLabel = stringResource(Res.string.voice_cancel_desc)
     val errorText = aiErrorText(if (offer.host == AiProviderForm.GEMINI_HOST) "" else offer.host)
+    val tier = offer.tier
+    val allowed = tier.allowed
+    val tierReason = when (tier.verdict) {
+        VoiceVerdict.ALLOW -> null
+        VoiceVerdict.CHECKING -> stringResource(Res.string.voice_tier_checking)
+        VoiceVerdict.REFUSE_FREE -> stringResource(Res.string.voice_tier_free, tier.providerName)
+        VoiceVerdict.REFUSE_UNKNOWN -> stringResource(Res.string.voice_tier_unknown, tier.providerName)
+    }
 
     Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
         FlowRow(
@@ -179,15 +198,20 @@ private fun VoiceMic(offer: VoiceOffer, value: String, onValue: (String) -> Unit
                 text = word,
                 onClick = {
                     when (ui.phase) {
-                        VoicePhase.IDLE -> if (voice.microphoneGranted()) session.start() else rationale = true
+                        // The plan rule first: no rationale, no permission prompt, no microphone until it says ALLOW.
+                        VoicePhase.IDLE -> if (!allowed) {} else if (voice.microphoneGranted()) session.start() else rationale = true
                         VoicePhase.RECORDING -> session.stop()
                         else -> {}
                     }
                 },
                 style = BarButtonStyle.OUTLINED,
-                enabled = !busy,
+                enabled = !busy && (allowed || recording),
                 icon = if (recording) StopIcon else MicIcon,
-                modifier = Modifier.semantics { contentDescription = label },
+                modifier = Modifier.semantics {
+                    contentDescription = label
+                    // A refused microphone names its reason as its description (the website's aria-describedby).
+                    tierReason?.let { stateDescription = it }
+                },
             )
             if (recording || busy) {
                 TextButton(
@@ -205,7 +229,7 @@ private fun VoiceMic(offer: VoiceOffer, value: String, onValue: (String) -> Unit
             }
         }
         Text(
-            stringResource(
+            tierReason ?: stringResource(
                 when {
                     offer.short -> if (voice.iphoneWording) Res.string.voice_hint_ios_short else Res.string.voice_hint_short
                     else -> if (voice.iphoneWording) Res.string.voice_hint_ios else Res.string.voice_hint
@@ -214,6 +238,7 @@ private fun VoiceMic(offer: VoiceOffer, value: String, onValue: (String) -> Unit
             ),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.testTag(VOICE_TIER_REASON_TAG),
         )
         val statusText = ui.status?.let { stringResource(it.res(offer.short)) }
         LiveMessage {
@@ -221,7 +246,12 @@ private fun VoiceMic(offer: VoiceOffer, value: String, onValue: (String) -> Unit
         }
         LiveMessage(assertive = true) {
             ui.problem?.let { problem ->
-                val message = if (problem == VoiceProblem.PROVIDER) errorText(ui.error ?: IllegalStateException()) else stringResource(problem.res())
+                val message = when (problem) {
+                    VoiceProblem.PROVIDER -> errorText(ui.error ?: IllegalStateException())
+                    VoiceProblem.PLAN_FREE -> stringResource(Res.string.voice_tier_free, tier.providerName)
+                    VoiceProblem.PLAN_UNKNOWN -> stringResource(Res.string.voice_tier_unknown, tier.providerName)
+                    else -> stringResource(problem.res())
+                }
                 ResultCard(ResultTone.ERROR, message) {
                     if (problem == VoiceProblem.DENIED) {
                         TextButton(
@@ -270,7 +300,7 @@ private fun VoiceStatus.res(short: Boolean) = when (this) {
 private fun VoiceProblem.res() = when (this) {
     VoiceProblem.DENIED -> Res.string.voice_denied
     VoiceProblem.NO_DEVICE -> Res.string.voice_no_device
-    VoiceProblem.FAILED, VoiceProblem.PROVIDER -> Res.string.voice_failed
+    VoiceProblem.FAILED, VoiceProblem.PROVIDER, VoiceProblem.PLAN_FREE, VoiceProblem.PLAN_UNKNOWN -> Res.string.voice_failed
     VoiceProblem.NOTHING_HEARD -> Res.string.voice_nothing_heard
     VoiceProblem.TOO_LONG -> Res.string.voice_too_long
 }

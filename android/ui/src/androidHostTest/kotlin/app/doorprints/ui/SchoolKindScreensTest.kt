@@ -72,7 +72,7 @@ class SchoolKindScreensTest {
         }
         assertNotNull(Res.allStringResources["kind_option_not_set"])
         assertNotNull(Res.allStringResources["kind_picker"])
-        assertEquals(Res.allStringResources["school_name"], school.labels.fieldText("label"))
+        assertEquals<UiWord?>(Res.allStringResources["school_name"]?.let(UiWord::Res), school.labels.fieldText("label"))
         assertFailsWith<IllegalStateException> { school.labels.fieldText("money") }
         assertFailsWith<IllegalStateException> { school.labels.sectionText("rooms") }
     }

@@ -20,6 +20,7 @@ import type { Lang } from '../i18n/languages';
 import { isDevMode } from '@angular/core';
 import { baselineKindId } from '../core/candidate';
 import { isBaselineKind } from '../core/kind-capabilities';
+import { userKindFacts, userKindIds } from '../core/user-kinds/user-kind-ids';
 import { SCHOOL_CATEGORY_LABELS, SCHOOL_QUESTIONS } from './school-questions';
 
 /**
@@ -42,8 +43,8 @@ export type QuestionScope = 'RENT' | 'SALE' | 'BOTH';
 export const QUESTION_CATEGORIES: readonly QuestionCategory[] = ['MONEY', 'WATER_POWER', 'RULES', 'BUILDING', 'LEGAL', 'OTHER'];
 export const QUESTION_SCOPES: readonly QuestionScope[] = ['RENT', 'SALE', 'BOTH'];
 
-/** A custom question's id: `q_` and 8 lowercase hex characters; a kind's own adds its id first (`q_school_`, kinds PR 29). */
-const CUSTOM_ID_PATTERN = /^q_(?:[a-z]{2,12}_)?[0-9a-f]{8}$/;
+/** A custom question's id: `q_` and 8 lowercase hex characters; a kind's own adds its id first (`q_school_`, kinds PR 29; `q_u_gym_` for a kind a person added, docs/03 ADR-39). */
+const CUSTOM_ID_PATTERN = /^q_(?:(?:[a-z]{2,12}|u_[a-z][a-z0-9_]{1,29})_)?[0-9a-f]{8}$/;
 /** A record id: the pattern the records store accepts. */
 const ID_PATTERN = /^[A-Za-z0-9._-]{1,64}$/;
 
@@ -314,7 +315,8 @@ export function questionCategoryLabel(kind: string, category: QuestionCategory, 
 }
 
 export function questionScopesOf(kind: string): readonly QuestionScope[] {
-  return OWN_BANKS.get(kind)?.scopes ?? QUESTION_SCOPES;
+  // A kind a person added has a bank of its own with no seed and its file's one scope, `BOTH` (docs/03 ADR-39).
+  return OWN_BANKS.get(kind)?.scopes ?? (userKindFacts(kind)?.scopes as readonly QuestionScope[] | undefined) ?? QUESTION_SCOPES;
 }
 
 /** The seed of a kind's bank: the baseline kind's `default-questions.json`, the school's `school-questions.json`; none for another kind. */
@@ -332,7 +334,9 @@ export function isDefaultQuestionId(id: string): boolean {
  * school's, every other id is the house's, as every question was before kinds PR 29.
  */
 export function questionKindOf(id: string): string {
-  for (const kind of OWN_BANKS.keys()) if (id.startsWith(`qd_${kind}_`) || id.startsWith(`q_${kind}_`)) return kind;
+  // The longest id first: a kind a person added may be `u_gym_hall` beside `u_gym` (docs/03 ADR-39).
+  const kinds = [...OWN_BANKS.keys(), ...userKindIds()].sort((a, b) => b.length - a.length);
+  for (const kind of kinds) if (id.startsWith(`qd_${kind}_`) || id.startsWith(`q_${kind}_`)) return kind;
   return baselineKindId();
 }
 
