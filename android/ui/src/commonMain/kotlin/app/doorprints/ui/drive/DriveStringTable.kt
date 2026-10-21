@@ -115,6 +115,7 @@ import app.doorprints.ui.res.drive_sync_apply_shrink
 import app.doorprints.ui.res.drive_sync_not_now
 import app.doorprints.ui.res.drive_sync_upload_now
 import app.doorprints.ui.res.drive_sync_photo_error
+import app.doorprints.ui.res.drive_sync_photo_retention
 import app.doorprints.ui.res.drive_delete_heading
 import app.doorprints.ui.res.drive_delete_older_backups
 import app.doorprints.ui.res.drive_delete_all_backups
@@ -343,6 +344,7 @@ internal val DRIVE_STRINGS: Map<String, StringResource> = mapOf(
     "driveSync.notNow" to Res.string.drive_sync_not_now,
     "driveSync.uploadNow" to Res.string.drive_sync_upload_now,
     "driveSync.photoError" to Res.string.drive_sync_photo_error,
+    "driveSync.photoRetention" to Res.string.drive_sync_photo_retention,
     "driveDelete.heading" to Res.string.drive_delete_heading,
     "driveDelete.olderBackups" to Res.string.drive_delete_older_backups,
     "driveDelete.allBackups" to Res.string.drive_delete_all_backups,

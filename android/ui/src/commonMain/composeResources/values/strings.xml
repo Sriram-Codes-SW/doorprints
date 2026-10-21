@@ -1321,6 +1321,7 @@
     <string name="drive_sync_not_now">Not now</string>
     <string name="drive_sync_upload_now">Upload photos now over mobile data (%1$s)</string>
     <string name="drive_sync_photo_error">Could not update photo settings</string>
+    <string name="drive_sync_photo_retention">Photos you delete leave your Google Drive after 30 days, and later only if a backup you kept still holds them.</string>
     <string name="drive_delete_heading">Delete data in Google Drive</string>
     <string name="drive_delete_older_backups">Delete older backups</string>
     <string name="drive_delete_all_backups">Delete all backups</string>

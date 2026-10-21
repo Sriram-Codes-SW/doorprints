@@ -1511,6 +1511,8 @@ export const ta: Dict = {
   'driveDelete.nothingDeleted': 'எதுவும் நீக்கப்படவில்லை.',
   'driveSync.websitePhotos': 'வலைத்தளத்தில், உலாவி தரவைச் சேமிக்கவில்லை அல்லது இணைப்பு செல்லுலார் இல்லையெனில் புகைப்படங்கள் தானாக பதிவேற்றப்படும்.',
   'driveSync.afterChange': 'இந்த உலாவியில் ஒரு மாற்றம், Doorprints திறந்திருக்கும்போது சுமார் இரண்டு நிமிடங்களுக்குப் பிறகு ஒத்திசைக்கும்.',
+  // S4b-BL-293 (2026-10-20): how long a deleted photo stays in Drive (docs/15 5.1). Under review (owner rule: hi/ta/te ship marked under review).
+  'driveSync.photoRetention': 'நீங்கள் நீக்கும் புகைப்படங்கள் 30 நாட்களுக்குப் பிறகு உங்கள் Google Drive-இலிருந்து நீங்கிவிடும்; அதன் பிறகு, நீங்கள் வைத்திருக்கும் ஒரு காப்புப்பிரதி அவற்றை இன்னும் கொண்டிருந்தால் மட்டுமே அவை இருக்கும்.',
   // Path trace on the website (S4b-FR-15, S4b-FR-17, docs/11 5.27.9): the Map card. Under review (owner rule: hi/ta/te ship marked under review).
   'trace.card.title': 'என் பாதையைப் பதிவுசெய்',
   'trace.card.switch': 'வரைபடத்தில் என் பாதையைப் பதிவுசெய்',

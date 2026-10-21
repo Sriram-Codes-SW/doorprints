@@ -1514,6 +1514,7 @@ export const en = {
   'driveDelete.nothingDeleted': 'Nothing was deleted.',
   'driveSync.websitePhotos': 'On the website, photos upload automatically unless the browser is saving data or the connection is cellular.',
   'driveSync.afterChange': 'A change on this browser syncs about two minutes later, while Doorprints is open.',
+  'driveSync.photoRetention': 'Photos you delete leave your Google Drive after 30 days, and later only if a backup you kept still holds them.',
   // Path trace on the website (S4b-FR-15, S4b-FR-17, docs/11 5.27.9): the Map card.
   'trace.card.title': 'Trace my path',
   'trace.card.switch': 'Trace my path on the map',

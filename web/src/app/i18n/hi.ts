@@ -1511,6 +1511,8 @@ export const hi: Dict = {
   'driveDelete.nothingDeleted': 'कुछ नहीं मिटा।',
   'driveSync.websitePhotos': 'वेबसाइट पर फ़ोटो अपने आप अपलोड होते हैं, जब तक ब्राउज़र डेटा बचा नहीं रहा या कनेक्शन सेल्युलर नहीं है।',
   'driveSync.afterChange': 'इस ब्राउज़र पर बदलाव लगभग दो मिनट बाद सिंक होता है, जब Doorprints खुला हो।',
+  // S4b-BL-293 (2026-10-20): how long a deleted photo stays in Drive (docs/15 5.1). Under review (owner rule: hi/ta/te ship marked under review).
+  'driveSync.photoRetention': 'आपके हटाए गए फ़ोटो 30 दिन बाद आपकी Google Drive से हट जाते हैं, और उसके बाद वे तभी रहते हैं जब आपका रखा कोई बैकअप अब भी उन्हें रखता हो।',
   // Path trace on the website (S4b-FR-15, S4b-FR-17, docs/11 5.27.9): the Map card. Under review (owner rule: hi/ta/te ship marked under review).
   'trace.card.title': 'मेरा रास्ता दर्ज करें',
   'trace.card.switch': 'नक्शे पर मेरा रास्ता दर्ज करें',
