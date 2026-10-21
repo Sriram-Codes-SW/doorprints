@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Threat model (STRIDE) |
-| Version | 0.102 |
+| Version | 0.103 |
 | Date | 2026-10-21 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -112,7 +112,8 @@
 | 0.99 | 2026-10-19 | Claude (Code), docs | **Children's data in notes** (`docs/privacy-children-data`, draft for the owner's approval): new **T-I55** (a child's name or other identifying detail typed into a school entry's notes is not removed by `ContactRedactor`) and **RR-35** (proposed, **not** owner-accepted), with the privacy page's Children section ([13](13-release-security-checklist.md) G5) as the mitigation. |
 | 0.100 | 2026-10-20 | Claude (Code), engineer | **New T-T23, hostile kind files** ([03](03-design.md) ADR-39, `feat/user-authored-kinds-web`): sizes, nesting, prototype keys, slow patterns, id collisions, huge option lists, markup, map keys, AI words; tests TC-U-292 to TC-U-294. |
 | 0.101 | 2026-10-21 | Claude (Code), engineer | **T-T23 on the phones** ([03](03-design.md) ADR-39, `feat/user-authored-kinds-phones`): the reader, the registry and the store in `:shared`, the pickers, the person's words drawn as text; tests TC-U-295 to TC-U-297. |
-| 0.102 | 2026-10-21 | Claude (Code), engineer | Voice manual-check ids in T-I45..T-I48 renumbered MT-127..MT-132 (the old MT-82..MT-87 were also used by the QR scanner and iPhone Drive rows; [ops/manual-test-checklist](ops/manual-test-checklist.md) v0.34). |
+| 0.102 | 2026-10-21 | Claude (Code), engineer | **Section 12 new, the self-run pentest's sandbox part** ([ops/pentest-2026-10-21.md](ops/pentest-2026-10-21.md), `fix/pentest-2026-10-21`): every High threat and boundary tried on local copies; no Critical, High or Medium; four Low findings fixed with tests (PT-1 an extra named like an object member read as a newer backup, T-T8/T-T21; PT-3 CI tool images by tag, PT-4 the Gradle wrapper without its checksum, T-T5; PT-5 full-width digits and invisible characters inside a phone passed the redactor, T-I7); new **T-T24**, the map style's credit text from the tile provider. No RR- row and no acceptance. |
+| 0.103 | 2026-10-21 | Claude (Code), engineer | Voice manual-check ids in T-I45..T-I48 renumbered MT-127..MT-132 (the old MT-82..MT-87 were also used by the QR scanner and iPhone Drive rows; [ops/manual-test-checklist](ops/manual-test-checklist.md) v0.34). |
 
 Related: [Requirements](01-requirements.md) · [DFDs](04-data-flow-diagrams.md) · [Design](03-design.md) · [Test plan](06-test-plan.md) · [AI docs](ai/)
 
@@ -619,3 +620,26 @@ Added by voice pull request 1 (S4b-BL-218) from [ai/voice-input](ai/voice-input.
 | RR-33 | A phone number, name or address spoken aloud reaches the person's transcription provider as audio before it can be redacted (T-I46), and the provider hears the voice itself | Medium-Low | **Accepted by the owner ("I accept this", 2026-10-19; confirmed 2026-10-20), conditional on the plan rule (T-I54, ADR-37 §19) staying in the release; if the rule is removed or weakened the acceptance lapses and the risk returns to Proposed.** Rated Medium-Low, mitigated with residual, by the plan rule (owner decision 2026-10-19, [03](03-design.md) ADR-37 §19, T-I54). The website's side (S4b-BL-221), Android's (S4b-BL-222) and the iPhone's (S4b-BL-223) are built. Voice is opt-in, off by default, the person chooses the provider, the disclosure says it in plain words, **a free plan is refused** (so the provider cannot use the audio to improve its products through a free tier), and the keyboard's own dictation or typing remains; spoken numbers cannot be redacted before transcription, because redaction needs text. **The residual:** (1) invisible opt-in programmes, OpenAI's complimentary tokens and OpenRouter's account-level logging, which no API call shows; (2) provider policy drift; (3) *unknown plan + a stated paid plan* trust: for Groq, Sarvam and an unreadable probe the person's own statement is believed. **The standing control** is the per-release re-check of the provider facts and quota ids ([13](13-release-security-checklist.md) F11). |
 | RR-34 | A deleted photo's encrypted copy remains in the person's own Google Drive for 30 days, and longer while a kept backup holds it (S4b-BL-293) | Low | The point of the feature, said plainly in the privacy page, the guide and [15](15-google-drive-backup-and-sharing.md) §1.4 item 11. The copy is encrypted (`dpx/1`) and in a folder only the person's enrolled devices and recovery key can open. The 30-day clean-up of [15](15-google-drive-backup-and-sharing.md) §5.1 is built (the website since #377, the phones since #378): in the backup tidy it moves a deleted photo's file to Drive's bin once its tombstone is older than 30 days and no kept backup could still hold the photo, so the file stays longer only while a kept backup made before the delete exists (with 6 monthly backups, up to about 7 months), and it runs only while backups run (a device that never backs up again never sweeps); the wording says *30 days, and longer only while a backup you kept still holds it*. The residual is that window and Google's own 30 days in the bin. Someone who needs a photo gone sooner uses *Delete everything* (all of Doorprints' files in Drive). |
 | RR-35 | A child's name or identifying detail that the person types or says into a school entry's notes is not redacted, and travels with the entry to a backup, Drive, the person's server, a shared listing or the chosen AI provider (T-I55) | Medium | **Proposed; not owner-accepted.** Detecting a name in free text is not reliable (any word can be a name, in eleven scripts), so the redactor is not extended and the limit is stated instead: the privacy page's *Children* section in four languages says so and advises not writing a child's name or identifying details in notes. What stays is the person's choice and mistake: the text is theirs, goes only to places they chose, and is encrypted in Drive. Open for the owner: whether this wording is enough now that the school kind is released, or whether an in-app reminder next to the school's notes is also wanted. The owner records the decision here; until then it stays Proposed. |
+
+## 12. The self-run pentest, sandbox part (2026-10-21)
+
+The part of [13](13-release-security-checklist.md) section 5 that a cloud sandbox can run on local copies: the web
+build served with `web/firebase.json`'s headers, the readers and exporters at unit level, the merged release manifest,
+the workflows and the repository; nothing against `https://doorprints.web.app`, Google, Firebase or the tile providers.
+How each threat was tried, and the owner's steps for what was not run (the server, the APK on a rooted emulator, MobSF
+dynamic, the real OAuth flows and Drive, ZAP active on a test host), are in
+[ops/pentest-2026-10-21.md](ops/pentest-2026-10-21.md).
+
+**Result:** no Critical, High or Medium. Four Low findings, each fixed on `fix/pentest-2026-10-21` with a regression test:
+
+| Id | Threat | Finding | Status |
+|---|---|---|---|
+| PT-1 | T-T8, T-T21 | The website's backup reader looked money extras up with `in`, which also finds `constructor`, `toString` and the other members of every object, so a file with an extra of such a name read as from a newer app (no pollution: `Object.prototype` is untouched) | Fixed (own keys; `backup-family.spec.ts`) |
+| PT-3 | T-T5 | Trivy, Semgrep and the secret scanner ran from a moving tag | Fixed (pinned by digest; `check-dockerfile-pins.py` reads the workflows and `ci/` scripts) |
+| PT-4 | T-T5 | The Gradle wrapper had no `distributionSha256Sum` | Fixed (the sum; the same checker) |
+| PT-5 | T-I7, T-E2 | A phone in full-width digits, or with a zero-width space, word joiner, BOM or soft hyphen inside it, passed the contact redactor on all three stacks | Fixed (the phone patterns read them as digits and spaces on the website, the phones and the server; the same test lines) |
+
+| ID | STRIDE | Element | Threat | L | I | Risk | Mitigations | Status |
+|---|---|---|---|---|---|---|---|---|
+| T-T24 | Tampering | TB6: the map style fetched from `tiles.openfreemap.org` at run time | **A changed style puts its own credit text in the page**: MapLibre writes a source's attribution into the map's credits, so whoever controls the style chooses that text and its links | 1 | 1 | 1 Low | MapLibre's `DOM.sanitize` on every attribution (maplibre-gl 6.14, past GHSA-jrc7-96c5-q579, F-27); the CSP leaves it no script, no image from another host and no form (`script-src 'self'`, `img-src` limited, `form-action 'self'`); the links are credits the person opens on purpose. Tile hosts stay out of the pentest's scope | Mitigated |
+

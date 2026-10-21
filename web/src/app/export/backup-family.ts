@@ -177,7 +177,7 @@ function extrasOf(h: Obj, ownCadence: Cadence): Obj | null {
   for (const id of HOUSE_EXTRAS) {
     const value = VALUES.includes(id) ? h[id] : cost[id];
     if (value === null || value === undefined) continue;
-    if (id in MONEY_EXTRAS) out[id] = { amount: value, cadence: MONEY_EXTRAS[id] ?? ownCadence };
+    if (Object.prototype.hasOwnProperty.call(MONEY_EXTRAS, id)) out[id] = { amount: value, cadence: MONEY_EXTRAS[id] ?? ownCadence };
     else out[id] = value;
   }
   const other = isObj(h['extrasOther']) ? (h['extrasOther'] as Obj) : {};
@@ -282,7 +282,8 @@ function legacyExtras(value: unknown): Obj {
   const other: Obj = {};
   for (const [id, v] of Object.entries(value)) {
     if (VALUES.includes(id)) out[id] = v;
-    else if (id in MONEY_EXTRAS) {
+    // An own key only: `in` also finds `constructor` or `toString` on every object's prototype (pentest PT-1).
+    else if (Object.prototype.hasOwnProperty.call(MONEY_EXTRAS, id)) {
       if (v == null) continue;
       const m = moneyValue(v, true, true);
       const fixed = MONEY_EXTRAS[id];

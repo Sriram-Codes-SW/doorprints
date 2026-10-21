@@ -62,9 +62,30 @@ object ContactRedactor {
         return out.toString()
     }
 
+    /**
+     * What the phone patterns read: [asciiDigits], then full-width digits (U+FF10..FF19) as 0-9 and the invisible characters
+     * that can sit inside a pasted number (zero-width space, word joiner, zero-width no-break space, soft hyphen) as a space,
+     * one character for one character (pentest of 2026-10-21, PT-5). Zero-width joiner and non-joiner are left alone:
+     * Indic scripts use them inside words. The website's `replaceInDigits` and the server's `phoneView` read the same.
+     */
+    private fun phoneView(s: String): String {
+        val digits = asciiDigits(s)
+        val out = StringBuilder(digits.length)
+        for (c in digits) {
+            out.append(
+                when (c) {
+                    in '０'..'９' -> '0' + (c - '０')
+                    '​', '⁠', '﻿', '­' -> ' '
+                    else -> c
+                },
+            )
+        }
+        return out.toString()
+    }
+
     /** [s] with every match of [regex] replaced by [PHONE]; the matching reads native digits as 0-9, the rest of [s] is kept. */
     private fun replaceInDigits(regex: Regex, s: String): String {
-        val matches = regex.findAll(asciiDigits(s)).toList()
+        val matches = regex.findAll(phoneView(s)).toList()
         if (matches.isEmpty()) return s
         val out = StringBuilder()
         var last = 0

@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | SSDLC document index |
-| Version | 0.143 |
+| Version | 0.144 |
 | Date | 2026-10-21 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -40,7 +40,8 @@
 | 0.140 | 2026-10-20 | Claude (Code), engineer | Three test flakes fixed at their cause and the Drive photo-retention sentence built in Settings (`fix/flakes-and-retention-text`): 05 v0.39 (glossary), 15 v0.42 (§5.1: Settings now says it). |
 | 0.141 | 2026-10-20 | Claude (Code), engineer | The kinds leftovers ([03](03-design.md) §18.29; `feat/kinds-leftovers`): versions 03 v0.180, 06 v0.299, 10 v0.362, 14 v0.207. |
 | 0.142 | 2026-10-21 | Claude (Code), engineer | **Kinds a person adds, the phones** ([03](03-design.md) ADR-39; `feat/user-authored-kinds-phones`): versions 01 v0.55, 02 v0.101, 03 v0.181, 04 v0.32, 05 v0.40, 06 v0.300, 10 v0.363, 13 v0.31, 14 v0.208, 16 v0.9. |
-| 0.143 | 2026-10-21 | Claude (Code), engineer | Versions: 02 v0.102, 03 v0.182, 06 v0.301, 10 v0.364, 13 v0.32, 14 v0.209, ops/manual-test-checklist v0.34 (`chore/close-open-items`; the checklist now runs to MT-132). |
+| 0.143 | 2026-10-21 | Claude (Code), engineer | The self-run pentest's sandbox part (`fix/pentest-2026-10-21`): new session record [ops/pentest-2026-10-21.md](ops/pentest-2026-10-21.md); 02 v0.102 (section 12, T-T24), 06 v0.301 (TC-S-50, TC-S-54), 07 v0.80, 10 v0.364 (§12.5a). |
+| 0.144 | 2026-10-21 | Claude (Code), engineer | Versions: 02 v0.103, 03 v0.182, 06 v0.302, 10 v0.365, 13 v0.32, 14 v0.209, ops/manual-test-checklist v0.34 (`chore/close-open-items`; the checklist now runs to MT-132). |
 | 0.112 | 2026-10-06 | Claude | The review backlog: docs/01 v0.41, 06 v0.131 (section 10.1), 07 v0.60, 14 v0.89. |
 | 0.111 | 2026-10-06 | Claude | Full-system review fixes and the manual test checklist (`docs/ops/manual-test-checklist.md`): docs/07 v0.59, docs/14 v0.88. |
 | 0.110 | 2026-10-06 | Claude | Review fixes on PR #139: docs/10 v0.149, 06 v0.130, 15 v0.27. |
@@ -192,6 +193,7 @@ Everything must run on free tiers. These documents follow a Secure Software Deve
 | – | [ops/path-trace-check-review.md](ops/path-trace-check-review.md) | Session record: the senior review of the place check, *Have I been here?*, and the website integration plan (2026-10-06); the decisions are in [11](11-feature-parity-and-export-spec.md) 5.27.13 and [03](03-design.md) §6.2b |
 | – | [ops/path-trace-web-notes.md](ops/path-trace-web-notes.md) | Session record: the website's trace and place check logic, hand-over notes for the UI change (S4b-FR-17, S4b-FR-24); the UI is built since (PR #146) |
 | – | [ops/release-run-2026-10-19.md](ops/release-run-2026-10-19.md) | Session record: the release security checklist ([13](13-release-security-checklist.md)) run on the v0.1.0 candidate `11072090` and the live site, row by row: status, evidence, findings and the owner's list before the draft is published |
+| – | [ops/pentest-2026-10-21.md](ops/pentest-2026-10-21.md) | Session record: the deep self-run pentest of [13](13-release-security-checklist.md) section 5, the part a sandbox can run on local copies: every High threat and trust boundary with how it was tried, the findings (PT-1, PT-3, PT-4, PT-5, all Low and fixed) and the owner's steps for the rest |
 | – | [Shared schemas](schemas/) | `doorprints-backup/1`: the one backup format the server, Android and web all implement, plus the canonical `backup-sample.json` and the kind files of `kinds/` (ADR-36): the server and Android tests read it, and the web writer's golden copy is checked against it by the backend's `BackupParityTest` (S4-00, [03](03-design.md) ADR-20, [06](06-test-plan.md) TC-I-34). Section 0, "What an import is" (the approved definition, Sprint 4b S4b-00), is maintained by the Docs team | Backend (section 0: Docs team) |
 | – | [CHANGELOG](../CHANGELOG.md) (repo root) | Release notes in Keep a Changelog format: Unreleased + released versions | Docs team |
 | – | [SECURITY.md](../SECURITY.md) (repo root) | How to report a vulnerability privately | Owner |
