@@ -80,7 +80,11 @@ object ExportRows {
      * when a house of it has a room (slice 1c), `criteria` when it has a criterion record (slice 2) and `answers` when a
      * house of it has a question asked (slice 3a), then `viewings` when it has a viewing (slice 3b-1).
      */
-    fun tables(bundle: ExportBundle): List<ExportTable> {
+    fun tables(bundle: ExportBundle): List<ExportTable> =
+        // The kind's `copyOrder` brings its blocks' tables forward (docs/03 section 18.29); a kind with none keeps the fixed order.
+        TableOrder.inCopyOrder(fixedTables(bundle), bundle.voice?.kind)
+
+    private fun fixedTables(bundle: ExportBundle): List<ExportTable> {
         // A copy in a kind's voice (S4b-BL-266) leaves out the tables of what its kind hides: a school has no Scores table,
         // whose rows would all be empty, and no Brokers, Rooms, Criteria, Answers or Viewings. A copy without a voice has them all.
         fun shows(ref: String) = bundle.shows(null, ref)

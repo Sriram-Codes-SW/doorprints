@@ -1007,6 +1007,134 @@
      "notes"
     ]
    }
-  ]
+  ],
+  "tables": {
+   "note": "CSV files and XLSX sheets: the houses table stays first; the tables of the blocks `copyOrder` names come next, in that order (a block with two tables, the checklist, brings both, in the fixed order); the rest follow in the fixed order. A block with no table (cost, areaNotes, distances, moveIn, notes) changes nothing; brokers belong to no block. The Android PDF writes the house's blocks in the order of `blocks` above.",
+   "fixed": [
+    "houses",
+    "scores",
+    "visits",
+    "photos",
+    "brokers",
+    "rooms",
+    "criteria",
+    "answers",
+    "viewings"
+   ],
+   "block": {
+    "scores": "checklist",
+    "criteria": "checklist",
+    "visits": "visits",
+    "photos": "photos",
+    "rooms": "rooms",
+    "answers": "questions",
+    "viewings": "viewings"
+   },
+   "effective": [
+    {
+     "copyOrder": [],
+     "order": [
+      "houses",
+      "scores",
+      "visits",
+      "photos",
+      "brokers",
+      "rooms",
+      "criteria",
+      "answers",
+      "viewings"
+     ]
+    },
+    {
+     "copyOrder": [
+      "visits",
+      "notes",
+      "cost"
+     ],
+     "order": [
+      "houses",
+      "visits",
+      "scores",
+      "photos",
+      "brokers",
+      "rooms",
+      "criteria",
+      "answers",
+      "viewings"
+     ]
+    },
+    {
+     "copyOrder": [
+      "viewings",
+      "questions",
+      "rooms"
+     ],
+     "order": [
+      "houses",
+      "viewings",
+      "answers",
+      "rooms",
+      "scores",
+      "visits",
+      "photos",
+      "brokers",
+      "criteria"
+     ]
+    },
+    {
+     "copyOrder": [
+      "checklist"
+     ],
+     "order": [
+      "houses",
+      "scores",
+      "criteria",
+      "visits",
+      "photos",
+      "brokers",
+      "rooms",
+      "answers",
+      "viewings"
+     ]
+    },
+    {
+     "copyOrder": [
+      "photos",
+      "checklist"
+     ],
+     "order": [
+      "houses",
+      "photos",
+      "scores",
+      "criteria",
+      "visits",
+      "brokers",
+      "rooms",
+      "answers",
+      "viewings"
+     ]
+    },
+    {
+     "copyOrder": [
+      "notes",
+      "areaNotes",
+      "distances",
+      "moveIn",
+      "cost"
+     ],
+     "order": [
+      "houses",
+      "scores",
+      "visits",
+      "photos",
+      "brokers",
+      "rooms",
+      "criteria",
+      "answers",
+      "viewings"
+     ]
+    }
+   ]
+  }
  }
 }

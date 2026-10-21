@@ -19,6 +19,8 @@
 package app.doorprints.shared.model
 
 import app.doorprints.data.AppSettings
+import app.doorprints.shared.export.ExportTable
+import app.doorprints.shared.export.TableOrder
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -115,6 +117,22 @@ class KindCapabilitiesVectorsTest {
             }
         }
         for (id in listOf("house", "school", "nothing", null)) assertEquals(id, KindCapabilities.COPY_BLOCKS, KindCapabilities.copyBlockOrder(id))
+        // The CSV files and the XLSX sheets (the web's `table-order.ts` reads the same vectors).
+        val tables = order.getValue("tables").jsonObject
+        assertEquals(tables.getValue("block").jsonObject.mapValues { it.value.jsonPrimitive.content }, TableOrder.TABLE_BLOCK)
+        val fixed = tables.getValue("fixed").strings()
+        val given = fixed.map { ExportTable(it, it, emptyList(), emptyList()) }
+        for (case in tables.getValue("effective").jsonArray.map { it.jsonObject }) {
+            val caps = KindCapabilities.parse(JsonObject(mapOf("copyOrder" to case.getValue("copyOrder"))))
+            assertNotNull(caps)
+            val undo = KindCapabilities.registerForTest("zz_order", caps!!)
+            try {
+                assertEquals(case.toString(), case.getValue("order").strings(), TableOrder.inCopyOrder(given, "zz_order").map { it.name })
+            } finally {
+                undo()
+            }
+        }
+        for (id in listOf("house", "school", "nothing", null)) assertEquals(id, fixed, TableOrder.inCopyOrder(given, id).map { it.name })
         // Nothing stays registered: a kind a test made up is unknown again.
         assertEquals(KindCapabilities.DEFAULT, KindCapabilities.of("zz_order"))
     }

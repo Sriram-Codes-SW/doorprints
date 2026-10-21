@@ -102,9 +102,35 @@ class KindCopyOrderTest {
     }
 
     @Test
+    fun theCsvFilesAndTheXlsxSheetsFollowTheKindsOrderToo() {
+        val undo = KindFileKinds.register(file)
+        try {
+            val tables = ExportRows.tables(bundle())
+            assertEquals(listOf("houses", "visits"), tables.map { it.name }.take(2))
+            assertEquals(tables.map { it.title }, XlsxWriter.sheetNames(tables))
+            val sheets = XlsxWriter.parts(bundle()).filter { it.path.startsWith("xl/worksheets/") }.size
+            assertEquals(tables.size, sheets)
+        } finally {
+            undo()
+        }
+        val plain = KindFileKinds.register(file)
+        val fixed = KindCapabilities.registerForTest("zz_all", KindCapabilities.of("zz_all").copy(copyOrder = emptyList()))
+        try {
+            val names = ExportRows.tables(bundle()).map { it.name }
+            assertEquals("houses", names.first())
+            assertEquals(listOf("visits", "photos"), names.filter { it == "visits" || it == "photos" })
+        } finally {
+            fixed()
+            plain()
+        }
+    }
+
+    @Test
     fun aHousesCopyKeepsTheFixedOrder() {
         val b = ExportBundle.build(ExportOptions(language = "en", exportedAtMillis = 1_790_072_130_000), listOf(ExportFixture.house1), emptyList(), emptyList())
         assertEquals(KindCapabilities.COPY_BLOCKS, b.blockOrder(ExportFixture.house1))
+        // ... and so do its tables (the golden files pin their rows).
+        assertEquals(listOf("houses", "scores", "visits", "photos"), ExportRows.tables(b).map { it.name }.take(4))
     }
 
     @Test
