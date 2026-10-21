@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Threat model (STRIDE) |
-| Version | 0.101 |
+| Version | 0.102 |
 | Date | 2026-10-21 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -112,6 +112,7 @@
 | 0.99 | 2026-10-19 | Claude (Code), docs | **Children's data in notes** (`docs/privacy-children-data`, draft for the owner's approval): new **T-I55** (a child's name or other identifying detail typed into a school entry's notes is not removed by `ContactRedactor`) and **RR-35** (proposed, **not** owner-accepted), with the privacy page's Children section ([13](13-release-security-checklist.md) G5) as the mitigation. |
 | 0.100 | 2026-10-20 | Claude (Code), engineer | **New T-T23, hostile kind files** ([03](03-design.md) ADR-39, `feat/user-authored-kinds-web`): sizes, nesting, prototype keys, slow patterns, id collisions, huge option lists, markup, map keys, AI words; tests TC-U-292 to TC-U-294. |
 | 0.101 | 2026-10-21 | Claude (Code), engineer | **T-T23 on the phones** ([03](03-design.md) ADR-39, `feat/user-authored-kinds-phones`): the reader, the registry and the store in `:shared`, the pickers, the person's words drawn as text; tests TC-U-295 to TC-U-297. |
+| 0.102 | 2026-10-21 | Claude (Code), engineer | Voice manual-check ids in T-I45..T-I48 renumbered MT-127..MT-132 (the old MT-82..MT-87 were also used by the QR scanner and iPhone Drive rows; [ops/manual-test-checklist](ops/manual-test-checklist.md) v0.34). |
 
 Related: [Requirements](01-requirements.md) · [DFDs](04-data-flow-diagrams.md) · [Design](03-design.md) · [Test plan](06-test-plan.md) · [AI docs](ai/)
 

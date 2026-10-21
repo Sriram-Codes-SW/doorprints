@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.208 |
+| Version | 0.209 |
 | Date | 2026-10-21 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..183); this file lists the lead-level items and points to the rest. |
@@ -216,6 +216,7 @@
 | 0.206 | 2026-10-20 | Claude (Code), engineer | **§1 and §2: kinds a person adds, the website** ([03](03-design.md) ADR-39, `feat/user-authored-kinds-web`; the phones next, `feat/user-authored-kinds-phones`). |
 | 0.207 | 2026-10-20 | Claude (Code), engineer | **§1 and §2: the kinds leftovers are built, In review** (`feat/kinds-leftovers`; [03](03-design.md) §18.29): the *Not built* list of N21 and the *Planned* list lose the `zz_all` space on the phones (in tests only), filters on number and amount extras and reordering the copy blocks; user-authored kinds by JSON import stay Planned. |
 | 0.208 | 2026-10-21 | Claude (Code), engineer | **§1 and §2: kinds a person adds, the phones** ([03](03-design.md) ADR-39, `feat/user-authored-kinds-phones`). |
+| 0.209 | 2026-10-21 | Claude (Code), engineer | **§1 and §2:** AI over user-authored kinds recorded as decided, a deliberate non-goal; the #395 screenshot flake fix recorded as a hypothesis (no recurrence in the seven `android.yml` runs since); `copyOrder` covers every format; the voice checks are MT-127..MT-132. |
 
 ## 1. Where things stand (2026-10-16, everything built is merged to `main`)
 
@@ -256,6 +257,7 @@ today's state. No pull request is open apart from a docs one.
     (this branch, §18.23). The school is still compiled in but off.
   - **Kinds a person adds, by importing a kind file: the website built, the phones in review** ([03](03-design.md) ADR-39, §18.28; `feat/user-authored-kinds-web`): *Kinds you add (experimental)* in What you track, the import with its preview and refusals, removal that keeps the entries, `search.userKinds` in a full backup, the shared `user-kind-vectors.json` (website, phones and server); the phones in `feat/user-authored-kinds-phones` (the same rules in `:shared`, the words as `UiWord`, the Android and iPhone pickers). Not in the Drive sync file or on the server (their entries are).
   - **Built after #373, In review** (`feat/kinds-leftovers`, [03](03-design.md) §18.29): filters on number and amount extras (a range), the order of a copy's blocks from the kind file (`copyOrder`; Markdown, readable, CSV, XLSX and the Android PDF since `chore/close-open-items`), a `zz_all` space on the phones **in tests only** (`@TestOnlyKinds`; its Compose screens are not rendered).
+  - **A hypothesis, not a proof (#395).** The fix for the `ScreensScreenshotTest areas[hi-dark=false]` flake (#395) is a hypothesis about its cause. If the flake recurs, do not re-run and move on: root-cause it from the recorded CI logs of the failing run. Checked 2026-10-21 (`android.yml` runs on `main` and on pull requests since #395 merged at 2026-10-21 00:33 UTC): seven runs finished, all green, one cancelled by a newer push; no recurrence yet, which is too few runs to call it fixed.
   - **Docs and CI.** Architecture overview (#357), the README around the kinds model (#358), the gitleaks fingerprint for the
     made-up key of the Voice 7 test (#365), the Compose tests' main-thread flake fixed at its root (#368). The release
     workflow `release.yml` and the `release` environment are verified (a `v0.1.0` **draft** release exists, built from an old commit, `7095fc7b`; it is not published). **The first release is v0.1.1, not v0.1.0** (owner, 2026-10-19): `release.yml` requires the tag to equal `versionName`, so `android/app/build.gradle.kts` (and `ios/project.yml`) say `0.1.1` and the tag is `v0.1.1`. The owner deletes the draft release and tag `v0.1.0` once `v0.1.1` is cut (a session cannot delete releases or tags and must not).
@@ -292,7 +294,7 @@ today's state. No pull request is open apart from a docs one.
    school's space) are the owner's and not run. Optional at
    any time: `SARVAM_EVAL_API_KEY` for the voice eval suite.
 5. **Kinds a person adds** ([03](03-design.md) ADR-39): the website built (`feat/user-authored-kinds-web`), the phones in review (`feat/user-authored-kinds-phones`); on the iPhone the picker is compiled but not yet run on a device; the owner's check is [13](13-release-security-checklist.md) J9. **Planned, when the owner asks** (not built): a `zz_all`
-   (A `zz_all` space on the phones in tests, filters on number and amount extras and the copy-block order are built, In review: [03](03-design.md) §18.29.)
+   (A `zz_all` space on the phones in tests, filters on number and amount extras and the copy-block order are built, In review: [03](03-design.md) §18.29.) **Decided, not planned (owner, 2026-10-21):** AI over a kind a person adds is a deliberate non-goal: a user kind never reaches an AI prompt, because the house's and the school's prompts are pinned by hash and the redaction of personal data is tuned to them; reversible only by a future ADR ([03](03-design.md) ADR-39).
 6. **Voice input refuses a free-plan provider key: built, In review** (owner request 2026-10-16, decision 2026-10-19; branch `feat/voice-refuse-free-tier`; no new backlog row). A rule `ALLOW | REFUSE_FREE | REFUSE_UNKNOWN | CHECKING` on a shared vector file, on the website and both phones: a free Gemini key (a `FreeTier` quota id), an OpenRouter free key or a `:free` model is refused with no way round; Groq, Sarvam and a probe that said nothing are refused until the person confirms "my plan is paid" for that key (the fail-closed design with an acknowledgement; **the owner can choose *never allow unknown* by deleting that switch**); the microphone is disabled before any audio and the check is made again before the request ([03](03-design.md) ADR-37 §19, [ai/voice-input](ai/voice-input.md) §8). **RR-33 is accepted by the owner** ("I accept this", 2026-10-19; confirmed 2026-10-20) at Medium-Low, mitigated with residual, conditional on this control staying in the release (removed or weakened, it lapses and RR-33 returns to Proposed). The per-release re-check of the provider facts is [13](13-release-security-checklist.md) F11. Owner-only left: the real-key rows TC-M-92..TC-M-94 (MT-124..MT-126), not run.
 
 The numbered items below keep their ids because other documents link them; their text is history unless it says *open*. N13's

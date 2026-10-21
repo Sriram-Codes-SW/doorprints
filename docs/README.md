@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | SSDLC document index |
-| Version | 0.142 |
+| Version | 0.143 |
 | Date | 2026-10-21 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -40,6 +40,7 @@
 | 0.140 | 2026-10-20 | Claude (Code), engineer | Three test flakes fixed at their cause and the Drive photo-retention sentence built in Settings (`fix/flakes-and-retention-text`): 05 v0.39 (glossary), 15 v0.42 (§5.1: Settings now says it). |
 | 0.141 | 2026-10-20 | Claude (Code), engineer | The kinds leftovers ([03](03-design.md) §18.29; `feat/kinds-leftovers`): versions 03 v0.180, 06 v0.299, 10 v0.362, 14 v0.207. |
 | 0.142 | 2026-10-21 | Claude (Code), engineer | **Kinds a person adds, the phones** ([03](03-design.md) ADR-39; `feat/user-authored-kinds-phones`): versions 01 v0.55, 02 v0.101, 03 v0.181, 04 v0.32, 05 v0.40, 06 v0.300, 10 v0.363, 13 v0.31, 14 v0.208, 16 v0.9. |
+| 0.143 | 2026-10-21 | Claude (Code), engineer | Versions: 02 v0.102, 03 v0.182, 06 v0.301, 10 v0.364, 13 v0.32, 14 v0.209, ops/manual-test-checklist v0.34 (`chore/close-open-items`; the checklist now runs to MT-132). |
 | 0.112 | 2026-10-06 | Claude | The review backlog: docs/01 v0.41, 06 v0.131 (section 10.1), 07 v0.60, 14 v0.89. |
 | 0.111 | 2026-10-06 | Claude | Full-system review fixes and the manual test checklist (`docs/ops/manual-test-checklist.md`): docs/07 v0.59, docs/14 v0.88. |
 | 0.110 | 2026-10-06 | Claude | Review fixes on PR #139: docs/10 v0.149, 06 v0.130, 15 v0.27. |

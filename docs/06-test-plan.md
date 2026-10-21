@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Test plan (functional, security, accessibility, i18n, AI) |
-| Version | 0.300 |
+| Version | 0.301 |
 | Date | 2026-10-21 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -308,6 +308,7 @@
 | 0.298 | 2026-10-20 | Claude (Code), engineer | **TC-U-292 to TC-U-294**, kinds a person adds ([03](03-design.md) ADR-39, `feat/user-authored-kinds-web`). |
 | 0.299 | 2026-10-20 | Claude (Code), engineer | **TC-U-282** (`feat/kinds-leftovers`, [03](03-design.md) §18.29): `extra-filter-ranges.spec.ts`, `KindFilterVectorsTest` (the `ranges` vectors), `copy-order.spec.ts`, `KindCopyOrderTest`, `kind-capabilities.spec.ts` and `KindCapabilitiesVectorsTest` (`synthetic`, `copyOrder`), the server's `KindConformanceFileTest`, `SyntheticKindScreensTest`, and the switch's accessibility with a synthetic unreleased kind (`kinds-switch-a11y.spec.ts`, `KindsSwitchSyntheticA11yTest`, four languages). |
 | 0.300 | 2026-10-21 | Claude (Code), engineer | **TC-U-295 to TC-U-297**, kinds a person adds on the phones ([03](03-design.md) ADR-39, `feat/user-authored-kinds-phones`). |
+| 0.301 | 2026-10-21 | Claude (Code), engineer | TC-U-282 extended: `copy-order.spec.ts` and `KindCopyOrderTest`/`KindCapabilitiesVectorsTest` hold the table order of CSV and XLSX to `capabilities-vectors.json` `copyOrder.tables`; voice manual rows renumbered MT-127..MT-132. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [Design](03-design.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 

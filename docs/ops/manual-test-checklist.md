@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | The complete manual test list for Doorprints before real-system testing starts and before Android/iOS development continues: every check a person redoes on real devices, whether or not an automated suite or a review session already covered it |
-| Version | 0.33 |
-| Date | 2026-10-20 |
+| Version | 0.34 |
+| Date | 2026-10-21 |
 | Author | Claude, senior reviewer |
 | Status | Draft |
 
@@ -45,6 +45,7 @@
 | 0.31 | 2026-10-16 | Claude (Code), engineer | **MT-123** (TC-M-91; S4b-BL-293, [15](../15-google-drive-backup-and-sharing.md) §5.1): the 30-day clean-up and *Retry photos* against the real Drive on the phone. Not run. |
 | 0.32 | 2026-10-19 | Claude (Code), engineer | **MT-124..MT-126** (TC-M-92..TC-M-94; voice refuses a free plan, owner decision 2026-10-19, [03](../03-design.md) ADR-37 §19, [02](../02-threat-model.md) T-I54, RR-33): a real free and a real paid Gemini key, an OpenRouter key, and the confirmation for Groq and Sarvam. Nothing is run. |
 | 0.33 | 2026-10-20 | Claude (Code), engineer | **§19, MT-96, MT-112 and MT-113 for the school released on the phones** (owner approved going ahead, 2026-10-20; `feat/school-release-phones`; TC-M-81): a *Schools* row, off, and no *Experimental* switch; no preview marks; the location prompt says *places you save*. Not run. |
+| 0.34 | 2026-10-21 | Claude (Code), engineer | **Renumbered:** the voice rows of §16 are now MT-127..MT-132 (they were MT-82..MT-87, ids the QR scanner and iPhone Drive rows of §14 also hold; those keep MT-82..MT-87). Every reference in the docs, the code comments and [06](../06-test-plan.md) was moved with them. |
 
 ## 1. How to use this list
 
