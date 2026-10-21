@@ -18,6 +18,7 @@
 package app.doorprints.shared.model
 
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
@@ -86,6 +87,57 @@ class KindFilterVectorsTest {
         assertEquals(house.getValue("keeps").jsonArray.map { it.jsonPrimitive.content }, kept)
         assertEquals(0, KindFilter.active(filter, KindFields.HOUSE))
     }
+
+    /**
+     * A number and an amount are range rows (docs/03 section 18.29) of the synthetic kind of the conformance suite, registered for the
+     * run: the rows, which candidates a set of ranges keeps, how a range text is read and what two typed ends make of it.
+     */
+    @Test
+    @OptIn(TestOnlyKinds::class)
+    fun aNumberAndAnAmountAreRangeRowsAndKeepWhatTheVectorsKeep() {
+        val ranges = vectors.getValue("ranges").jsonObject
+        val undo = KindFileKinds.register(repoFile("docs/schemas/kinds/test-all.json").readText())
+        try {
+            val fields = DevKinds.of(ranges.getValue("kind").jsonPrimitive.content, on = true).fields
+            assertEquals("zz_all", fields.kind)
+            val want = ranges.getValue("rows").jsonArray.map { it.jsonObject }
+            assertEquals(want.map { it.getValue("id").jsonPrimitive.content }, KindFilter.rows(fields).map { it.id })
+            for ((w, r) in want.zip(KindFilter.rows(fields))) {
+                assertEquals(w.getValue("type").jsonPrimitive.content, r.type)
+                assertEquals(r.id, w.getValue("choices").jsonArray.map { it.jsonPrimitive.content }, KindFilter.choices(r))
+                assertEquals(r.id, r.type == "number" || r.type == "money", KindFilter.isRange(r))
+            }
+            val people = ranges.getValue("candidates").jsonObject
+            for (m in ranges.getValue("matches").jsonArray.map { it.jsonObject }) {
+                val filter = filterOf(m.getValue("filter").jsonObject)
+                val kept = people.filter { (_, c) -> KindFilter.matches(filter, fields, c.jsonObject) }.keys.toList()
+                assertEquals("$filter", m.getValue("keeps").jsonArray.map { it.jsonPrimitive.content }, kept)
+            }
+            assertEquals(2, KindFilter.active(mapOf("seats" to "1:", "fees" to ":5", "board" to "NOPE", "x" to "1:2"), fields))
+            assertEquals(0, KindFilter.active(mapOf("seats" to "5:2", "fees" to ":"), fields))
+        } finally {
+            undo()
+        }
+        assertEquals("the kind is gone again", BuiltInKind.HOUSE, DevKinds.of("zz_all", on = true))
+    }
+
+    @Test
+    fun aRangeTextIsReadAndMadeAsTheVectorsSay() {
+        val ranges = vectors.getValue("ranges").jsonObject
+        for (p in ranges.getValue("parse").jsonArray.map { it.jsonObject }) {
+            val text = p.getValue("text").jsonPrimitive.content
+            val valid = p["valid"]?.jsonPrimitive?.content != "false"
+            val got = KindFilter.parseRange(text)
+            if (!valid) assertEquals(text, null, got)
+            else assertEquals(text, KindFilter.Range(p["min"].number(), p["max"].number()), got)
+        }
+        for (e in ranges.getValue("ends").jsonArray.map { it.jsonObject }) {
+            val expected = e.getValue("text").let { if (it is JsonNull) null else it.jsonPrimitive.content }
+            assertEquals("$e", expected, KindFilter.rangeText(e.getValue("min").jsonPrimitive.content, e.getValue("max").jsonPrimitive.content))
+        }
+    }
+
+    private fun JsonElement?.number(): Double? = if (this == null || this is JsonNull) null else jsonPrimitive.content.toDouble()
 
     @Test
     fun onlyASetRowTheKindOffersCountsAsActive() {

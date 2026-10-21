@@ -544,6 +544,9 @@ data class ExportBundle(
     private fun kindOf(house: ExportHouse?): KindFields? =
         house?.let { KindCopy.fieldsOfKind(it.kind, options) }?.takeIf { !KindCapabilities.of(it.kind).baseline } ?: voice
 
+    /** The order the blocks of [house]'s section are written in (docs/03 section 18.29): its kind's `copyOrder` first, the rest in the fixed order. */
+    fun blockOrder(house: ExportHouse): List<String> = KindCapabilities.copyBlockOrder(kindOf(house)?.kind)
+
     /**
      * Whether the copy writes the place [ref] (`field.money`, `section.checklist`, ...) of [house], or of the copy when [house]
      * is null: every place of a house, and only the places its kind shows for another kind (S4b-BL-266). A copy writes the checklist,

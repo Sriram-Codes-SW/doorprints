@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Software Design Document (SDD) |
-| Version | 0.179 |
+| Version | 0.180 |
 | Date | 2026-10-20 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -190,6 +190,7 @@
 | 0.177 | 2026-10-20 | Claude (Code), engineer | **ADR-13b: the phones follow the website** (owner approved going ahead, 2026-10-20; `feat/school-release-phones`; no Play release exists): `KindSettingRules.RELEASED` is the house and the school, `KindSetting.released` is the seam a test of an unreleased kind pins, *Experimental: more than houses* hides itself, the preview marks and the phones' tagline follow, the iPhone's location strings say *places you save*; the ADR's *Not changed* and *Consequences* and §18.14's iPhone paragraph say so. |
 | 0.178 | 2026-10-20 | Claude (Code), engineer | **ADR-38 and §21: the country pack** (owner-approved, WP-C1 and WP-C2 of the country-agnostic work; branch `refactor/country-pack`, no behaviour change). Everything the code assumed about India that a feature could ask instead (the rupee and its lakh grouping and amount words, the Indian phone shapes, the geocoder's country and box, the starting map view, the speech locale, the AI prompts' currency words) is one object per stack, `web/src/app/shared/country/india-pack.ts` and `android/shared/.../country/IndiaPack.kt`, read at the call site; the boundary lines stay ADR-22's and the pack only points at the border test; the shared vectors `schemas/country-pack-vectors.json`, a synthetic second pack in tests only, and the country tripwire `tools/check-country-literals.mjs`. The server keeps its own copies until a later work package (§21.6). |
 | 0.179 | 2026-10-20 | Claude (Code), engineer | **ADR-39 and new §18.28: kinds a person adds by importing a kind file** (`feat/user-authored-kinds-web`; [06](06-test-plan.md) TC-U-292 to TC-U-294, [02](02-threat-model.md) T-T23): the user profile `user-kind.schema.json`, `textLabel` in `kind.schema.json` (additive), the shared `user-kind-vectors.json`, the website's reader, registry, settings and backup. The phones follow. |
+| 0.180 | 2026-10-20 | Claude (Code), engineer | **New §18.29, the kinds leftovers** (owner-approved 2026-10-20; `feat/kinds-leftovers`, no new backlog row): `capabilities.filters` may name a number or an amount (a range `min:max`), new `capabilities.copyOrder` (the order of a copy's blocks in the Markdown and the readable copy), the phones' test-only synthetic-kind seam (`@TestOnlyKinds`), the server's vectors test of `zz_all`, and the Experimental switch covered again with a synthetic unreleased kind; §18.24 and §18.26 point to it. |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [DFDs](04-data-flow-diagrams.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 
@@ -3477,7 +3478,7 @@ diff in every house baseline**.
 **Filters.** The rows of the list's filter were *every* enum and switch of a kind that is not a house field (S4b-BL-265, §18.10); they are
 now the kind file's `filters`, in its order (`filterableExtras` on the website, `KindFilter.rows` in `:shared`). For the two built-in kinds
 the rows are the same as before (the school's board, medium and bus), so `kind-filter-vectors.json` and the baselines are unchanged; a new
-kind chooses its rows in its file. A filter on a number or an amount is not built (the rows are choices).
+kind chooses its rows in its file. A filter on a number or an amount was not built here; §18.29 adds it as a range.
 
 **The baseline kind.** The house's addresses (`/houses/:id`, `/compare`, `/ask`, `/plan`), the AI calls that name no kind, the copies'
 file names that are not renamed by the kind's plural word (`Doorprints-schools-2026-09-22-...` is a school's, §18.13) and the house's
@@ -3492,7 +3493,7 @@ what they were.
 them (the cost block headed *Fees*, §18.10) and, since §18.23, its visits and questions are named in the school's words in every writer:
 `kind-export-words.ts` and `KindExportWords` gain `section.viewings`, `table.viewings` and `section.questions` (*School visits*,
 *Questions for a visit*, in four languages, hi, ta and te under review), held to each other by `SchoolCopyVoiceTest`. The order of a
-copy's blocks stays the house's fixed order for every kind (reordering every writer by the kind file is not built); the house's
+copy's blocks stays the house's fixed order unless the kind file gives a `copyOrder` (§18.29); the house's
 headings are untouched.
 
 **Tests** ([06](06-test-plan.md) TC-U-279): `kind-capabilities.spec.ts`, `baseline-literals.spec.ts`, `extra-filter.spec.ts`,
@@ -3584,7 +3585,7 @@ capability. A kind is a file; this pull request makes that a tested claim.
 - The generic AI document (website `kind-ai.ts`, phones `KindAi.kt`) wrote no `money`, `checklist` or `date` line and took the number bounds as 0 to 0
   when a file named none; they now do what the server's `KindDocuments` does (the bound defaults to 10^15, an amount from 0).
 
-**Not built** (named, so nobody reads them as done). The phones have no host-test registry for a synthetic kind (their `DevKinds`, `KindLabels`
+**Not built** (named, so nobody reads them as done; the first sentence is answered in part by §18.29). The phones had no host-test registry for a synthetic kind (their `DevKinds`, `KindLabels`
 and `DefaultQuestions` are hand copies), so the Compose screens of `zz_all`, its Hunt rules and its copies are covered by the kind-file tests and
 the house and school screens, not by a `zz_all` Space; the TC-M-25 pass with the live map for a school and `zz_all` (zoom 5 to 8 over Kashmir
 and Arunachal Pradesh) is a manual step, not run; the house-known cost and rooms ids in the devices' AI documents; a user-authored kind
@@ -3614,6 +3615,15 @@ On the website, `core/kind-setting.ts` decides what a person is offered: `availa
 **No AI** reads a kind a person adds: its space has no assistant (`aiShownIn`), its page no listing fill (`extracts` false), and the on-device AI leaves its entries out of every document. A self-hosted server reads an entry of a kind it does not know as it always did (as a house), only for a request that names no kind (T-T23).
 
 **Tests** ([06](06-test-plan.md) TC-U-292 to TC-U-294); mutation list `tools/mutations/user-kinds-web.json`.
+### 18.29 The kinds leftovers: ranges, the order of a copy, the phones' synthetic kind (owner-approved 2026-10-20; `feat/kinds-leftovers`)
+
+Four of the items §18.24 and §18.26 named as not built, with no new backlog row. The kind file stays `format: doorprints-kind/1`, `version: 1`; both changes are additive.
+
+- **Filters on a number or an amount.** `capabilities.filters` may now name a `number` or `money` extra as well as an enum or a switch (still at most six, no repeats). Its row is a range, a minimum and a maximum, either left blank. The value is the text `min:max` (`2:`, `:5`, `2:5`; each end `-?\d{1,12}(\.\d{1,6})?`; a minimum above the maximum is no range); the address writes `x.<id>=2:5` and only while it is set. A candidate passes while its number, or its amount whatever its cadence, is inside the range, ends included; a candidate with no number there (unset, or another type) passes no set range. The two fields swap the ends when the minimum is above the maximum. Website `shared/extra-filter.ts` (`parseRange`, `rangeText`, `isRangeExtra`) and `pages/map/extra-filters.ts`; phones `KindFilter` and `ExtraFilterRows`; words `map.extraMin/Max`, `list_filter_range_min/max` (hi, ta, te under review). The built-in kinds name no range, so their lists, screenshots and addresses are unchanged; the synthetic kind names `seats` and `fees`. Vectors: `kind-filter-vectors.json` `ranges`. The server does not filter lists, so the Java reader (`KindFiles.capabilities`) needed no new rule for it.
+- **The order of a copy's blocks.** New `capabilities.copyOrder`: some of `cost, rooms, questions, viewings, areaNotes, distances, moveIn, checklist, visits, notes, photos`, no repeats; those listed come first after the details, the rest follow in that fixed order (the house's order before this change, so the house and the school, which list none, are byte for byte as they were). Written by the Markdown and the readable (HTML) copy on the website and the phones (`copyBlockOrder`, `ExportBundle.blockOrder`); on the phones the contact block stays with the notes. **Not reordered:** the spreadsheet and CSV tables (sheets, not a sequence of blocks), and the Android PDF (it prints the readable copy's layout of its own, `PdfExporter`). A copy of a non-house kind writes no checklist (§18.24), so `checklist` in a list has an effect in the house's copy only. Schema, `KindFiles.capabilities` (Java), `parseCapabilities` and `KindCapabilities.parse` refuse a repeat, an unknown block and a non-list alike; vectors: `capabilities-vectors.json` (`valid`, `invalid`, `copyOrder`).
+- **`zz_all` on the phones, in tests only.** `@TestOnlyKinds` (opt-in, an error without it) guards `KindFileKinds.register(kindFileText)`, `DevKinds.registerForTest` and `KindCapabilities.registerForTest`, the twins of the website's `registerTestKind`/`registerTestCapabilities`; a registration lives in memory and its call returns the undo. No main source set may use the seam (`KindCopyOrderTest` scans for it) and the tripwire still fails any source that names `zz_all`. Tests: `SyntheticKindScreensTest` (`:ui`), `KindFilterVectorsTest`, `KindCapabilitiesVectorsTest`, `KindCopyOrderTest`. Not done: the synthetic kind's Compose screens are not rendered (the host tests use no Compose test rule in `:shared`/`:ui`), its AI slots and its question bank on the phones.
+- **The server's vectors test.** `KindConformanceFileTest.theResolverAgreesWithTheVectorsOnTheSyntheticKind` resolves `test-all.json`'s capabilities and compares them with `capabilities-vectors.json` `synthetic.zz_all`, the set the website and the phones resolve too.
+- **The Experimental switch, again covered.** With the school released nothing real is left unreleased, so `kinds-switch-a11y.spec.ts` (website; `forKind('zz_all')` with `pinReleased`) and `KindsSwitchSyntheticA11yTest` (phones; `KindSetting.released` through `SettingsStore.releasedKinds`) render the switch with the synthetic kind unreleased and hold its role, state, label, hint and the rows it reveals in all four languages.
 
 ## 19. Voice input (ADR-37)
 

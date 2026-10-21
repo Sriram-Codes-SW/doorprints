@@ -1111,6 +1111,9 @@ export const te: Dict = {
   'map.costClear': 'ఖర్చు ఫిల్టర్లను తీసివేయండి',
   // S4b-BL-265 (2026-10-15): the filter chips of a kind's extras. Under review (owner rule: hi/ta/te ship marked under review).
   'map.extraAny': 'ఏదైనా',
+  // docs/03 §18.29 (2026-10-20): a range for a number or an amount. Under review (owner rule: hi/ta/te ship marked under review).
+  'map.extraMin': '{name}: కనీసం',
+  'map.extraMax': '{name}: గరిష్ఠం',
   // S4b-BL-75, S4b-BL-83 (2026-10-01): Import a backup on the website, and the locality lookup. Under review (owner rule: hi/ta/te ship marked under review).
   'imp.heading': 'బ్యాకప్ దిగుమతి చేయండి',
   'imp.intro': 'Doorprints పూర్తి బ్యాకప్ నుండి, లేదా ఎవరో పంచుకున్న అప్‌డేట్ నుండి, ఇళ్లు, సందర్శనలు, ఫోటోలను ఈ బ్రౌజర్‌లోకి తీసుకురండి. Doorprints బ్యాకప్‌ను మాత్రమే తిరిగి చదవగలం: Doorprints తయారుచేసే ZIP, లేదా Doorprints సర్వర్ .json బ్యాకప్ ఫైల్ (అందులో ఫోటోలు ఉండవు). మీరు దిగుమతి ఎంచుకునే వరకు ఏదీ రాయబడదు.',

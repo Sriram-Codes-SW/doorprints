@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Test plan (functional, security, accessibility, i18n, AI) |
-| Version | 0.298 |
+| Version | 0.299 |
 | Date | 2026-10-20 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -306,6 +306,7 @@
 | 0.296 | 2026-10-20 | Claude (Code), engineer | **TC-U-264, TC-U-226 and TC-M-81 amended for the school released on the phones** (`feat/school-release-phones`; [03](03-design.md) ADR-13b, [13](13-release-security-checklist.md) J8): the unreleased-kind cases pin the released list, new cases for the real list, the preview marks are asserted absent; no test id changes. |
 | 0.297 | 2026-10-20 | Claude (Code), engineer | **TC-U-289, TC-U-290 and TC-U-291** (the country pack, [03](03-design.md) ADR-38 and §21): the characterization vectors, the synthetic second pack and the country tripwire. |
 | 0.298 | 2026-10-20 | Claude (Code), engineer | **TC-U-292 to TC-U-294**, kinds a person adds ([03](03-design.md) ADR-39, `feat/user-authored-kinds-web`). |
+| 0.299 | 2026-10-20 | Claude (Code), engineer | **TC-U-282** (`feat/kinds-leftovers`, [03](03-design.md) §18.29): `extra-filter-ranges.spec.ts`, `KindFilterVectorsTest` (the `ranges` vectors), `copy-order.spec.ts`, `KindCopyOrderTest`, `kind-capabilities.spec.ts` and `KindCapabilitiesVectorsTest` (`synthetic`, `copyOrder`), the server's `KindConformanceFileTest`, `SyntheticKindScreensTest`, and the switch's accessibility with a synthetic unreleased kind (`kinds-switch-a11y.spec.ts`, `KindsSwitchSyntheticA11yTest`, four languages). |
 
 Related: [Requirements](01-requirements.md) · [Threat model](02-threat-model.md) · [Design](03-design.md) · [UX/a11y/i18n](05-ux-accessibility-i18n.md) · [Build and deploy](07-secure-build-and-deploy.md) · [AI docs](ai/)
 

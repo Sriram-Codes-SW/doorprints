@@ -1,6 +1,6 @@
 {
  "format": "doorprints-capabilities-vectors/1",
- "note": "What a kind file's `capabilities` block resolves to (docs/03 ADR-36 §18.19; the kinds-25 capabilities layer, schema and resolver only: no screen reads it yet). `kinds` pins the resolved set of each built-in kind, and `today` names the hard-coded behaviour that the house's set equals, so a later change that moves one must change this file knowingly: the web `kind-capabilities.spec.ts` and the phones' `KindCapabilitiesVectorsTest` read both and assert them against house.json, school.json, the code's constants (Hunt's 30 m default, Compare's ten checklist keys, the sections each kind shows, the broker rule) and the resolver. `defaults` is what a kind with no `capabilities`, and a kind the build does not know (`unknown`), resolves to. `valid` cases give a `capabilities` object and what it resolves to (a feature left out is null, a missing switch takes its default); `invalid` cases give the object as JSON text (so a `__proto__` key stays an own key) and must be refused by the schema and by both stacks' strict readers. `icons` and `colours` are the schema's lists. `forbiddenMapKeys` (owner constraint, India's boundaries apply to every kind: ADR-22, docs/03 §11.1): a kind file has no map configuration, so `capabilities.map` is a boolean only and none of these keys is accepted at the root, in a section, in `capabilities` or in `identity`; the schema and the readers refuse them (the invalid cases cover `capabilities` and `identity`; the website's spec also tries the root and a section against the schema; the phones' and the server's tests check that the schema keeps `additionalProperties: false` there and names none of them).",
+ "note": "What a kind file's `capabilities` block resolves to (docs/03 ADR-36 §18.19; the kinds-25 capabilities layer, schema and resolver only: no screen reads it yet). `kinds` pins the resolved set of each built-in kind, and `today` names the hard-coded behaviour that the house's set equals, so a later change that moves one must change this file knowingly: the web `kind-capabilities.spec.ts` and the phones' `KindCapabilitiesVectorsTest` read both and assert them against house.json, school.json, the code's constants (Hunt's 30 m default, Compare's ten checklist keys, the sections each kind shows, the broker rule) and the resolver. `defaults` is what a kind with no `capabilities`, and a kind the build does not know (`unknown`), resolves to. `valid` cases give a `capabilities` object and what it resolves to (a feature left out is null, a missing switch takes its default); `invalid` cases give the object as JSON text (so a `__proto__` key stays an own key) and must be refused by the schema and by both stacks' strict readers. `icons` and `colours` are the schema's lists. `forbiddenMapKeys` (owner constraint, India's boundaries apply to every kind: ADR-22, docs/03 §11.1): a kind file has no map configuration, so `capabilities.map` is a boolean only and none of these keys is accepted at the root, in a section, in `capabilities` or in `identity`; the schema and the readers refuse them (the invalid cases cover `capabilities` and `identity`; the website's spec also tries the root and a section against the schema; the phones' and the server's tests check that the schema keeps `additionalProperties: false` there and names none of them). `synthetic` pins the resolved set of the conformance suite's kind (`test-all.json`, docs/03 18.26): the website, the phones and the server each resolve that file's `capabilities` and compare it with this. `copyOrder` (docs/03 18.29) holds the blocks of a copy and the order a kind's `copyOrder` makes of them (the listed blocks first, the rest in the fixed order).",
  "defaults": {
   "map": true,
   "hunt": null,
@@ -12,7 +12,8 @@
   "paths": true,
   "identity": null,
   "baseline": false,
-  "filters": []
+  "filters": [],
+  "copyOrder": []
  },
  "today": {
   "huntAlertRadiusM": 30,
@@ -62,7 +63,8 @@
    "paths": true,
    "identity": null,
    "baseline": true,
-   "filters": []
+   "filters": [],
+   "copyOrder": []
   },
   "school": {
    "map": true,
@@ -102,7 +104,8 @@
     "board",
     "medium",
     "busService"
-   ]
+   ],
+   "copyOrder": []
   }
  },
  "unknown": [
@@ -130,7 +133,8 @@
     "paths": true,
     "identity": null,
     "baseline": false,
-    "filters": []
+    "filters": [],
+    "copyOrder": []
    }
   },
   {
@@ -153,7 +157,8 @@
     "paths": true,
     "identity": null,
     "baseline": false,
-    "filters": []
+    "filters": [],
+    "copyOrder": []
    }
   },
   {
@@ -182,7 +187,8 @@
     "paths": true,
     "identity": null,
     "baseline": false,
-    "filters": []
+    "filters": [],
+    "copyOrder": []
    }
   },
   {
@@ -211,7 +217,8 @@
     "paths": true,
     "identity": null,
     "baseline": false,
-    "filters": []
+    "filters": [],
+    "copyOrder": []
    }
   },
   {
@@ -240,7 +247,8 @@
     "paths": true,
     "identity": null,
     "baseline": false,
-    "filters": []
+    "filters": [],
+    "copyOrder": []
    }
   },
   {
@@ -262,7 +270,8 @@
     "paths": false,
     "identity": null,
     "baseline": false,
-    "filters": []
+    "filters": [],
+    "copyOrder": []
    }
   },
   {
@@ -287,7 +296,8 @@
     "paths": true,
     "identity": null,
     "baseline": false,
-    "filters": []
+    "filters": [],
+    "copyOrder": []
    }
   },
   {
@@ -332,7 +342,8 @@
     "paths": true,
     "identity": null,
     "baseline": false,
-    "filters": []
+    "filters": [],
+    "copyOrder": []
    }
   },
   {
@@ -357,7 +368,8 @@
      "colour": "plum"
     },
     "baseline": false,
-    "filters": []
+    "filters": [],
+    "copyOrder": []
    }
   },
   {
@@ -376,7 +388,8 @@
     "paths": true,
     "identity": null,
     "baseline": true,
-    "filters": []
+    "filters": [],
+    "copyOrder": []
    }
   },
   {
@@ -401,7 +414,126 @@
     "filters": [
      "board",
      "busService"
+    ],
+    "copyOrder": []
+   }
+  },
+  {
+   "name": "copyOrder lists some blocks, the rest follow in the fixed order",
+   "capabilities": {
+    "copyOrder": [
+     "checklist",
+     "cost"
     ]
+   },
+   "resolved": {
+    "map": true,
+    "hunt": null,
+    "rooms": false,
+    "moveIn": false,
+    "contacts": null,
+    "viewings": null,
+    "compare": null,
+    "paths": true,
+    "identity": null,
+    "baseline": false,
+    "filters": [],
+    "copyOrder": [
+     "checklist",
+     "cost"
+    ]
+   }
+  },
+  {
+   "name": "copyOrder may list every block",
+   "capabilities": {
+    "copyOrder": [
+     "photos",
+     "notes",
+     "visits",
+     "checklist",
+     "moveIn",
+     "distances",
+     "areaNotes",
+     "viewings",
+     "questions",
+     "rooms",
+     "cost"
+    ]
+   },
+   "resolved": {
+    "map": true,
+    "hunt": null,
+    "rooms": false,
+    "moveIn": false,
+    "contacts": null,
+    "viewings": null,
+    "compare": null,
+    "paths": true,
+    "identity": null,
+    "baseline": false,
+    "filters": [],
+    "copyOrder": [
+     "photos",
+     "notes",
+     "visits",
+     "checklist",
+     "moveIn",
+     "distances",
+     "areaNotes",
+     "viewings",
+     "questions",
+     "rooms",
+     "cost"
+    ]
+   }
+  },
+  {
+   "name": "copyOrder empty is the fixed order",
+   "capabilities": {
+    "copyOrder": []
+   },
+   "resolved": {
+    "map": true,
+    "hunt": null,
+    "rooms": false,
+    "moveIn": false,
+    "contacts": null,
+    "viewings": null,
+    "compare": null,
+    "paths": true,
+    "identity": null,
+    "baseline": false,
+    "filters": [],
+    "copyOrder": []
+   }
+  },
+  {
+   "name": "filters may name a number or an amount extra (a range, docs/03 18.29)",
+   "capabilities": {
+    "filters": [
+     "seats",
+     "fees",
+     "board"
+    ]
+   },
+   "resolved": {
+    "map": true,
+    "hunt": null,
+    "rooms": false,
+    "moveIn": false,
+    "contacts": null,
+    "viewings": null,
+    "compare": null,
+    "paths": true,
+    "identity": null,
+    "baseline": false,
+    "filters": [
+     "seats",
+     "fees",
+     "board"
+    ],
+    "copyOrder": []
    }
   }
  ],
@@ -685,6 +817,26 @@
   {
    "name": "filters that are not a list",
    "json": "{\"filters\":\"board\"}"
+  },
+  {
+   "name": "copyOrder not an array",
+   "json": "{\"copyOrder\":\"cost\"}"
+  },
+  {
+   "name": "copyOrder names a block that is not one",
+   "json": "{\"copyOrder\":[\"cost\",\"details\"]}"
+  },
+  {
+   "name": "copyOrder repeats a block",
+   "json": "{\"copyOrder\":[\"cost\",\"rooms\",\"cost\"]}"
+  },
+  {
+   "name": "copyOrder has a non-string",
+   "json": "{\"copyOrder\":[\"cost\",3]}"
+  },
+  {
+   "name": "copyOrder is longer than the blocks",
+   "json": "{\"copyOrder\":[\"cost\",\"rooms\",\"questions\",\"viewings\",\"areaNotes\",\"distances\",\"moveIn\",\"checklist\",\"visits\",\"notes\",\"photos\",\"cost\"]}"
   }
  ],
  "icons": [
@@ -738,5 +890,123 @@
   "center",
   "mapStyleUrl",
   "geo"
- ]
+ ],
+ "synthetic": {
+  "zz_all": {
+   "map": true,
+   "hunt": {
+    "alertRadiusM": 60,
+    "stayCreates": true,
+    "streetMemory": true,
+    "areas": true
+   },
+   "rooms": true,
+   "moveIn": true,
+   "contacts": {
+    "role": "broker",
+    "autoCreateFromPhone": true
+   },
+   "viewings": {
+    "questionsSeed": "house"
+   },
+   "compare": {
+    "criteria": [
+     "water",
+     "power",
+     "parking",
+     "advance",
+     "upkeep",
+     "fees"
+    ]
+   },
+   "paths": true,
+   "identity": {
+    "icon": "star",
+    "colour": "plum"
+   },
+   "baseline": false,
+   "filters": [
+    "board",
+    "includesMeals",
+    "seats",
+    "fees"
+   ],
+   "copyOrder": [
+    "visits",
+    "notes",
+    "cost"
+   ]
+  }
+ },
+ "copyOrder": {
+  "blocks": [
+   "cost",
+   "rooms",
+   "questions",
+   "viewings",
+   "areaNotes",
+   "distances",
+   "moveIn",
+   "checklist",
+   "visits",
+   "notes",
+   "photos"
+  ],
+  "effective": [
+   {
+    "copyOrder": [],
+    "order": [
+     "cost",
+     "rooms",
+     "questions",
+     "viewings",
+     "areaNotes",
+     "distances",
+     "moveIn",
+     "checklist",
+     "visits",
+     "notes",
+     "photos"
+    ]
+   },
+   {
+    "copyOrder": [
+     "visits",
+     "notes",
+     "cost"
+    ],
+    "order": [
+     "visits",
+     "notes",
+     "cost",
+     "rooms",
+     "questions",
+     "viewings",
+     "areaNotes",
+     "distances",
+     "moveIn",
+     "checklist",
+     "photos"
+    ]
+   },
+   {
+    "copyOrder": [
+     "photos"
+    ],
+    "order": [
+     "photos",
+     "cost",
+     "rooms",
+     "questions",
+     "viewings",
+     "areaNotes",
+     "distances",
+     "moveIn",
+     "checklist",
+     "visits",
+     "notes"
+    ]
+   }
+  ]
+ }
 }

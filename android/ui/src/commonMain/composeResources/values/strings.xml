@@ -1823,6 +1823,9 @@
 
     <!-- kinds PR 21 (S4b-BL-265, -291, -292, 2026-10-15). -->
     <string name="list_filter_any">Any</string>
+    <!-- docs/03 §18.29 (2026-10-20): a range for a number or an amount. -->
+    <string name="list_filter_range_min">%1$s: at least</string>
+    <string name="list_filter_range_max">%1$s: at most</string>
     <string name="export_copy_of">Save a copy of</string>
     <string name="export_scope_any">Which entries</string>
     <string name="export_scope_all_any">All entries</string>

@@ -1826,6 +1826,9 @@
 
     <!-- kinds PR 21 (S4b-BL-265, -291, -292, 2026-10-15): under review. -->
     <string name="list_filter_any">ஏதேனும்</string>
+    <!-- docs/03 §18.29 (2026-10-20): a range for a number or an amount. Under review (owner rule: hi/ta/te ship marked under review). -->
+    <string name="list_filter_range_min">%1$s: குறைந்தபட்சம்</string>
+    <string name="list_filter_range_max">%1$s: அதிகபட்சம்</string>
     <string name="export_copy_of">இதன் நகலைச் சேமிக்கவும்</string>
     <string name="export_scope_any">எந்தப் பதிவுகள்</string>
     <string name="export_scope_all_any">அனைத்துப் பதிவுகளும்</string>

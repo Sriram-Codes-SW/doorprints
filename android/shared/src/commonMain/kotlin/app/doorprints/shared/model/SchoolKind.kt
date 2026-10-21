@@ -40,8 +40,19 @@ object DevKinds {
     // The listing extract fills a school since kinds PR 7 (S4b-BL-211): its kind file's `ai.extract` is not empty.
     private val SCHOOL = BuiltInKind(SchoolKind.LABELS, SchoolKind.FIELDS, extracts = true)
 
-    /** The kinds a new candidate may be: the house, and the school while the flag is on. */
-    fun creatable(on: Boolean): List<BuiltInKind> = if (on) listOf(BuiltInKind.HOUSE, SCHOOL) else listOf(BuiltInKind.HOUSE)
+    /** The kinds a test registered (the conformance suite's synthetic kind, [KindFileKinds]): empty in every build. */
+    private val TEST_ONLY = ArrayList<BuiltInKind>()
+
+    /** Adds a kind of a test to the kinds the flag allows; returns the call that removes it. Only a test may ([TestOnlyKinds]). */
+    @TestOnlyKinds
+    fun registerForTest(kind: BuiltInKind): () -> Unit {
+        TEST_ONLY.removeAll { it.id == kind.id }
+        TEST_ONLY.add(kind)
+        return { TEST_ONLY.remove(kind) }
+    }
+
+    /** The kinds a new candidate may be: the house, and the school while the flag is on (and, in a test, the kinds it registered). */
+    fun creatable(on: Boolean): List<BuiltInKind> = if (on) listOf(BuiltInKind.HOUSE, SCHOOL) + TEST_ONLY else listOf(BuiltInKind.HOUSE)
 
     /** The kind a candidate is drawn as: its own when the flag allows it, else the house (as today). */
     fun of(id: String?, on: Boolean): BuiltInKind = creatable(on).firstOrNull { it.id == id } ?: BuiltInKind.HOUSE

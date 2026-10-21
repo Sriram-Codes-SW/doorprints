@@ -1,6 +1,6 @@
 {
  "format": "doorprints-kind-filter-vectors/1",
- "note": "The list's filter by a kind's typed extra (S4b-BL-265; docs/03 §18.10): the rows a kind offers and which candidates a set of rows keeps. The website reads it in shared/extra-filter.spec.ts; the phones read it in KindFilter's test (their half, the website's twin). A row is the extra's id and a choice: an enum's option id, `yes` or `no` for a switch, null for Any. A choice the kind does not offer is no row. A candidate with no value (unset, or not one the kind offers) passes no set row.",
+ "note": "The list's filter by a kind's typed extra (S4b-BL-265; docs/03 §18.10): the rows a kind offers and which candidates a set of rows keeps. The website reads it in shared/extra-filter.spec.ts; the phones read it in KindFilter's test (their half, the website's twin). A row is the extra's id and a choice: an enum's option id, `yes` or `no` for a switch, null for Any. A choice the kind does not offer is no row. A candidate with no value (unset, or not one the kind offers) passes no set row. `ranges` (docs/03 §18.29) is the same for a number or an amount extra of the synthetic kind `zz_all` (`test-all.json`: `seats`, a number, and `fees`, an amount): its row is a range text `min:max` (either end may be left out), a candidate passes while its number, or its amount whatever its cadence, is within the range ends included, and a candidate with no number there (unset, or a value of another type) passes no set range. `parse` pins the text, `ends` what two typed ends make of it (swapped when the minimum is above the maximum), `address` the website's `x.<id>` parameters. The website's `extra-filter.spec.ts` and the phones' `KindFilterVectorsTest` read it with the synthetic kind registered.",
  "rows": {
   "house": [],
   "school": [
@@ -189,5 +189,372 @@
    "school": {},
    "house": {}
   }
- ]
+ ],
+ "ranges": {
+  "kind": "zz_all",
+  "rows": [
+   {
+    "id": "board",
+    "type": "enum",
+    "choices": [
+     "CBSE",
+     "ICSE",
+     "STATE",
+     "IB",
+     "IGCSE",
+     "OTHER"
+    ]
+   },
+   {
+    "id": "includesMeals",
+    "type": "bool",
+    "choices": [
+     "yes",
+     "no"
+    ]
+   },
+   {
+    "id": "seats",
+    "type": "number",
+    "choices": []
+   },
+   {
+    "id": "fees",
+    "type": "money",
+    "choices": []
+   }
+  ],
+  "candidates": {
+   "a": {
+    "seats": 10,
+    "fees": {
+     "amount": 12000,
+     "cadence": "year"
+    }
+   },
+   "b": {
+    "seats": 40,
+    "fees": {
+     "amount": 60000,
+     "cadence": "year"
+    }
+   },
+   "c": {
+    "seats": 40
+   },
+   "d": {
+    "seats": "40",
+    "fees": "x"
+   },
+   "e": {},
+   "f": {
+    "seats": 0,
+    "fees": {
+     "amount": 0,
+     "cadence": "year"
+    }
+   }
+  },
+  "matches": [
+   {
+    "filter": {},
+    "keeps": [
+     "a",
+     "b",
+     "c",
+     "d",
+     "e",
+     "f"
+    ]
+   },
+   {
+    "filter": {
+     "seats": null,
+     "fees": null
+    },
+    "keeps": [
+     "a",
+     "b",
+     "c",
+     "d",
+     "e",
+     "f"
+    ]
+   },
+   {
+    "filter": {
+     "seats": "10:"
+    },
+    "keeps": [
+     "a",
+     "b",
+     "c"
+    ]
+   },
+   {
+    "filter": {
+     "seats": ":10"
+    },
+    "keeps": [
+     "a",
+     "f"
+    ]
+   },
+   {
+    "filter": {
+     "seats": "10:40"
+    },
+    "keeps": [
+     "a",
+     "b",
+     "c"
+    ]
+   },
+   {
+    "filter": {
+     "seats": "11:39"
+    },
+    "keeps": []
+   },
+   {
+    "filter": {
+     "seats": "0:0"
+    },
+    "keeps": [
+     "f"
+    ]
+   },
+   {
+    "filter": {
+     "seats": "40:40"
+    },
+    "keeps": [
+     "b",
+     "c"
+    ]
+   },
+   {
+    "filter": {
+     "fees": "50000:"
+    },
+    "keeps": [
+     "b"
+    ]
+   },
+   {
+    "filter": {
+     "fees": ":12000"
+    },
+    "keeps": [
+     "a",
+     "f"
+    ]
+   },
+   {
+    "filter": {
+     "fees": "12000:60000",
+     "seats": "40:"
+    },
+    "keeps": [
+     "b"
+    ]
+   },
+   {
+    "filter": {
+     "fees": "5:3"
+    },
+    "keeps": [
+     "a",
+     "b",
+     "c",
+     "d",
+     "e",
+     "f"
+    ]
+   },
+   {
+    "filter": {
+     "seats": "x:"
+    },
+    "keeps": [
+     "a",
+     "b",
+     "c",
+     "d",
+     "e",
+     "f"
+    ]
+   },
+   {
+    "filter": {
+     "seats": ":"
+    },
+    "keeps": [
+     "a",
+     "b",
+     "c",
+     "d",
+     "e",
+     "f"
+    ]
+   },
+   {
+    "filter": {
+     "nope": "1:2"
+    },
+    "keeps": [
+     "a",
+     "b",
+     "c",
+     "d",
+     "e",
+     "f"
+    ]
+   }
+  ],
+  "parse": [
+   {
+    "text": "2:5",
+    "min": 2,
+    "max": 5
+   },
+   {
+    "text": "2:",
+    "min": 2,
+    "max": null
+   },
+   {
+    "text": ":5",
+    "min": null,
+    "max": 5
+   },
+   {
+    "text": "-3.5:4",
+    "min": -3.5,
+    "max": 4
+   },
+   {
+    "text": "5:5",
+    "min": 5,
+    "max": 5
+   },
+   {
+    "text": "0.25:0.5",
+    "min": 0.25,
+    "max": 0.5
+   },
+   {
+    "text": ":",
+    "min": null,
+    "max": null,
+    "valid": false
+   },
+   {
+    "text": "",
+    "min": null,
+    "max": null,
+    "valid": false
+   },
+   {
+    "text": "5",
+    "min": null,
+    "max": null,
+    "valid": false
+   },
+   {
+    "text": "5:2",
+    "min": null,
+    "max": null,
+    "valid": false
+   },
+   {
+    "text": "a:b",
+    "min": null,
+    "max": null,
+    "valid": false
+   },
+   {
+    "text": "1e3:",
+    "min": null,
+    "max": null,
+    "valid": false
+   },
+   {
+    "text": "1:2:3",
+    "min": null,
+    "max": null,
+    "valid": false
+   },
+   {
+    "text": " 1:2",
+    "min": null,
+    "max": null,
+    "valid": false
+   },
+   {
+    "text": "1234567890123:",
+    "min": null,
+    "max": null,
+    "valid": false
+   },
+   {
+    "text": "1.1234567:",
+    "min": null,
+    "max": null,
+    "valid": false
+   }
+  ],
+  "ends": [
+   {
+    "min": "2",
+    "max": "5",
+    "text": "2:5"
+   },
+   {
+    "min": "5",
+    "max": "2",
+    "text": "2:5"
+   },
+   {
+    "min": "",
+    "max": "",
+    "text": null
+   },
+   {
+    "min": " 3 ",
+    "max": "",
+    "text": "3:"
+   },
+   {
+    "min": "",
+    "max": "7",
+    "text": ":7"
+   },
+   {
+    "min": "x",
+    "max": "1",
+    "text": null
+   }
+  ],
+  "address": [
+   {
+    "query": "x.seats=10:40&x.fees=:5000&x.board=NOPE&x.includesMeals=yes&x.nope=1",
+    "zz_all": {
+     "seats": "10:40",
+     "fees": ":5000",
+     "includesMeals": "yes"
+    }
+   },
+   {
+    "query": "x.seats=5:2&x.fees=abc&x.board=IB",
+    "zz_all": {
+     "board": "IB"
+    }
+   },
+   {
+    "query": "",
+    "zz_all": {}
+   }
+  ]
+ }
 }

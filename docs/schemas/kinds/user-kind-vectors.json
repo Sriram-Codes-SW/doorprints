@@ -516,6 +516,7 @@
       "icon": "gym",
       "colour": "teal"
      },
+     "copyOrder": [],
      "baseline": false,
      "filters": [
       "focus",
@@ -642,6 +643,7 @@
      "compare": null,
      "paths": true,
      "identity": null,
+     "copyOrder": [],
      "baseline": false,
      "filters": []
     }
@@ -921,6 +923,7 @@
      "compare": null,
      "paths": true,
      "identity": null,
+     "copyOrder": [],
      "baseline": false,
      "filters": [
       "parking"
@@ -1390,6 +1393,7 @@
       "icon": "gym",
       "colour": "teal"
      },
+     "copyOrder": [],
      "baseline": false,
      "filters": [
       "focus",

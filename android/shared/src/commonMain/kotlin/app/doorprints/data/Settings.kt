@@ -232,6 +232,7 @@ class SettingsStore(
      * copy, sync or share file (TC-U-170 pattern); null where a platform has none (tests).
      */
     private val sarvamSecrets: SecretStore? = null,
+    private val releasedKinds: List<String> = KindSettingRules.RELEASED,
     private val now: () -> Long = { IsoTime.nowMillis() },
 ) {
     companion object {
@@ -465,13 +466,10 @@ class SettingsStore(
     /** Remembers how the tour ended; the offer does not come again. */
     suspend fun setTourEnd(end: TourEnd) = dataStore.edit { it[Keys.tour] = end.wire }
 
-    /**
-     * What this device tracks (*Settings > What you track*): the kinds the build ships ([availableKinds]) with the stored
-     * switch, list and default. Reads no secret; a file that cannot be read counts as the house alone, as every doubt does.
-     */
+    /** What this device tracks (*Settings > What you track*): the build's kinds ([availableKinds], [releasedKinds] for a test of an unreleased one) with the stored switch, list and default. Reads no secret; an unreadable file counts as the house alone. */
     fun kindSetting(): Flow<KindSetting> = dataStore.data
-        .map { p -> KindSetting(availableKinds, p[Keys.kindsExperimental], p[Keys.kindsEnabled], p[Keys.kindsDefault]) }
-        .catch { emit(KindSetting(availableKinds)) }
+        .map { p -> KindSetting(availableKinds, p[Keys.kindsExperimental], p[Keys.kindsEnabled], p[Keys.kindsDefault], releasedKinds) }
+        .catch { emit(KindSetting(availableKinds, released = releasedKinds)) }
         .distinctUntilChanged()
 
     /**
@@ -484,7 +482,7 @@ class SettingsStore(
 
     /** Applies [change] to what is stored and stores the result (a null value removing its key): one atomic edit, so two taps never undo each other. */
     suspend fun editKindSetting(change: (KindSetting) -> KindSetting) = dataStore.edit {
-        val next = change(KindSetting(availableKinds, it[Keys.kindsExperimental], it[Keys.kindsEnabled], it[Keys.kindsDefault]))
+        val next = change(KindSetting(availableKinds, it[Keys.kindsExperimental], it[Keys.kindsEnabled], it[Keys.kindsDefault], releasedKinds))
         fun put(key: Preferences.Key<String>, value: String?) {
             if (value == null) it.remove(key) else it[key] = value
         }

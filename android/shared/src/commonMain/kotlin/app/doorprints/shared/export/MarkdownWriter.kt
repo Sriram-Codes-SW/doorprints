@@ -77,110 +77,135 @@ object MarkdownWriter {
             val details = listOf(s["col.status"] to s.status(h.status)) + ExportRows.detailLines(h, bundle)
             table(out, listOf("", ""), details.map { listOf(it.first, it.second) })
 
-            val cost = ExportRows.costBlock(h, bundle)
-            if (cost.isNotEmpty()) {
-                out.append("\n### ").append(text(s["section.cost"])).append("\n\n")
-                table(out, listOf("", ""), cost.map { listOf(it.first, it.second) })
-            }
-
-            // The rooms (slice 1c), after the cost and before the checklist.
-            val rooms = ExportRows.roomRows(h, bundle)
-            if (rooms.isNotEmpty()) {
-                out.append("\n### ").append(text(s["table.rooms"])).append("\n\n")
-                table(out, ExportRows.roomColumns(bundle), rooms)
-            }
-
-            // The questions asked (slice 3a), after the rooms and before the checklist.
-            val answers = ExportRows.answerRows(h, bundle)
-            if (answers.isNotEmpty()) {
-                out.append("\n### ").append(text(s["section.questions"])).append("\n\n")
-                table(out, ExportRows.answerColumns(bundle), answers)
-            }
-
-            // The viewings (slice 3b-1), after the questions and before the checklist.
-            val viewings = ExportRows.viewingRows(h, bundle)
-            if (viewings.isNotEmpty()) {
-                out.append("\n### ").append(text(s["section.viewings"])).append("\n\n")
-                table(out, ExportRows.viewingColumns(bundle), viewings)
-            }
-
-            // The area notes that reach the house and its distances to my places (slice 4a), after the viewings.
-            for ((title, columns, rows) in listOf(
-                Triple(s["section.areaNotes"], ExportRows.areaNoteColumns(bundle), ExportRows.areaNoteRows(h, bundle)),
-                Triple(s["section.distances"], ExportRows.distanceColumns(bundle), ExportRows.distanceRows(h, bundle)),
-            )) {
-                if (rows.isEmpty()) continue
-                out.append("\n### ").append(text(title)).append("\n\n")
-                table(out, columns, rows)
-            }
-
-            // Moving in (slice 5), after the distances and before the checklist: the date, the notes, the ticked list.
-            if (h.moveIn != null && bundle.shows(h, "section.moveIn")) {
-                out.append("\n### ").append(text(s["section.movingIn"])).append("\n\n")
-                val lines = ExportRows.moveInLines(h, bundle)
-                if (lines.isNotEmpty()) table(out, listOf("", ""), lines.map { listOf(it.first, it.second) })
-                val items = ExportRows.moveInItems(h)
-                if (items.isNotEmpty()) {
-                    if (lines.isNotEmpty()) out.append('\n')
-                    for (item in items) out.append("- ").append(text(item).replace("\n", " ")).append('\n')
+            // The blocks after the details, each its own text; the kind's `copyOrder` says which comes first (docs/03 section 18.29), the house's fixed order is the default.
+            val costBlock = StringBuilder().also { b ->
+                val cost = ExportRows.costBlock(h, bundle)
+                if (cost.isNotEmpty()) {
+                    b.append("\n### ").append(text(s["section.cost"])).append("\n\n")
+                    table(b, listOf("", ""), cost.map { listOf(it.first, it.second) })
                 }
             }
 
-            val keys = ExportRows.checklistKeys(h, bundle)
-            if (keys.isNotEmpty()) {
-                out.append("\n### ").append(text(s["section.checklist"])).append("\n\n")
-                table(
-                    out,
-                    listOf(s["col.itemLabel"], s["col.score"]),
-                    keys.map { listOf(bundle.criterionLabel(it), h.checklist.getValue(it).toString() + "/5") },
-                )
-            }
-
-            val visits = bundle.visitsOf(h)
-            if (visits.isNotEmpty()) {
-                out.append("\n### ").append(text(s["section.visits"])).append("\n\n")
-                table(
-                    out,
-                    listOf(s["col.arrivedAt"], s["col.leftAt"], s["col.minutes"], s["col.source"]),
-                    visits.map { v ->
-                        listOf(
-                            ExportTime.dateTime(v.arrivedAt, o.utcOffsetMinutes),
-                            v.leftAt?.let { ExportTime.dateTime(it, o.utcOffsetMinutes) } ?: s["none"],
-                            v.minutes?.toString() ?: s["none"],
-                            s.source(v.source),
-                        )
-                    },
-                )
-            }
-
-            val broker = bundle.brokerOf(h)
-            if (o.includeContacts &&
-                (!h.contactName.isNullOrEmpty() || !h.contactPhone.isNullOrEmpty() || broker != null)
-            ) {
-                out.append("\n### ").append(text(s["section.contact"])).append("\n\n")
-                if (!h.contactName.isNullOrEmpty()) out.append("- ").append(text(h.contactName)).append('\n')
-                if (!h.contactPhone.isNullOrEmpty()) out.append("- ").append(text(h.contactPhone)).append('\n')
-                if (broker != null) {
-                    out.append("- ").append(text(s["col.broker"])).append(": ").append(text(broker.label)).append('\n')
+            val roomsBlock = StringBuilder().also { b ->
+                // The rooms (slice 1c), after the cost and before the checklist.
+                val rooms = ExportRows.roomRows(h, bundle)
+                if (rooms.isNotEmpty()) {
+                    b.append("\n### ").append(text(s["table.rooms"])).append("\n\n")
+                    table(b, ExportRows.roomColumns(bundle), rooms)
                 }
             }
 
-            if (!h.notes.isNullOrEmpty()) {
-                out.append("\n### ").append(text(s["section.notes"])).append("\n\n")
-                out.append(text(h.notes)).append('\n')
+            val questionsBlock = StringBuilder().also { b ->
+                // The questions asked (slice 3a), after the rooms and before the checklist.
+                val answers = ExportRows.answerRows(h, bundle)
+                if (answers.isNotEmpty()) {
+                    b.append("\n### ").append(text(s["section.questions"])).append("\n\n")
+                    table(b, ExportRows.answerColumns(bundle), answers)
+                }
             }
 
-            val photos = bundle.photosOf(h)
-            if (photos.isNotEmpty()) {
-                out.append("\n### ").append(text(s["section.photos"])).append("\n\n")
-                for (p in photos) {
-                    out.append("- `").append(p.fileName.replace('`', '\'')).append('`')
-                    // Its room, tags and caption (slice 5), those it has.
-                    ExportRows.photoLine(p, bundle)?.let { out.append(": ").append(text(it).replace('\n', ' ')) }
-                    out.append('\n')
+            val viewingsBlock = StringBuilder().also { b ->
+                // The viewings (slice 3b-1), after the questions and before the checklist.
+                val viewings = ExportRows.viewingRows(h, bundle)
+                if (viewings.isNotEmpty()) {
+                    b.append("\n### ").append(text(s["section.viewings"])).append("\n\n")
+                    table(b, ExportRows.viewingColumns(bundle), viewings)
                 }
-                out.append('\n').append(text(s["photos.inBackup"])).append('\n')
             }
+
+            // The area notes that reach the house and its distances to my places (slice 4a).
+            val areaNotesBlock = StringBuilder().also { b ->
+                areaTable(b, s["section.areaNotes"], ExportRows.areaNoteColumns(bundle), ExportRows.areaNoteRows(h, bundle))
+            }
+
+            val distancesBlock = StringBuilder().also { b ->
+                areaTable(b, s["section.distances"], ExportRows.distanceColumns(bundle), ExportRows.distanceRows(h, bundle))
+            }
+
+            val moveInBlock = StringBuilder().also { b ->
+                // Moving in (slice 5), after the distances and before the checklist: the date, the notes, the ticked list.
+                if (h.moveIn != null && bundle.shows(h, "section.moveIn")) {
+                    b.append("\n### ").append(text(s["section.movingIn"])).append("\n\n")
+                    val lines = ExportRows.moveInLines(h, bundle)
+                    if (lines.isNotEmpty()) table(b, listOf("", ""), lines.map { listOf(it.first, it.second) })
+                    val items = ExportRows.moveInItems(h)
+                    if (items.isNotEmpty()) {
+                        if (lines.isNotEmpty()) b.append('\n')
+                        for (item in items) b.append("- ").append(text(item).replace("\n", " ")).append('\n')
+                    }
+                }
+            }
+
+            val checklistBlock = StringBuilder().also { b ->
+                val keys = ExportRows.checklistKeys(h, bundle)
+                if (keys.isNotEmpty()) {
+                    b.append("\n### ").append(text(s["section.checklist"])).append("\n\n")
+                    table(
+                        b,
+                        listOf(s["col.itemLabel"], s["col.score"]),
+                        keys.map { listOf(bundle.criterionLabel(it), h.checklist.getValue(it).toString() + "/5") },
+                    )
+                }
+            }
+
+            val visitsBlock = StringBuilder().also { b ->
+                val visits = bundle.visitsOf(h)
+                if (visits.isNotEmpty()) {
+                    b.append("\n### ").append(text(s["section.visits"])).append("\n\n")
+                    table(
+                        b,
+                        listOf(s["col.arrivedAt"], s["col.leftAt"], s["col.minutes"], s["col.source"]),
+                        visits.map { v ->
+                            listOf(
+                                ExportTime.dateTime(v.arrivedAt, o.utcOffsetMinutes),
+                                v.leftAt?.let { ExportTime.dateTime(it, o.utcOffsetMinutes) } ?: s["none"],
+                                v.minutes?.toString() ?: s["none"],
+                                s.source(v.source),
+                            )
+                        },
+                    )
+                }
+            }
+
+            val notesBlock = StringBuilder().also { b ->
+                val broker = bundle.brokerOf(h)
+                if (o.includeContacts &&
+                    (!h.contactName.isNullOrEmpty() || !h.contactPhone.isNullOrEmpty() || broker != null)
+                ) {
+                    b.append("\n### ").append(text(s["section.contact"])).append("\n\n")
+                    if (!h.contactName.isNullOrEmpty()) b.append("- ").append(text(h.contactName)).append('\n')
+                    if (!h.contactPhone.isNullOrEmpty()) b.append("- ").append(text(h.contactPhone)).append('\n')
+                    if (broker != null) {
+                        b.append("- ").append(text(s["col.broker"])).append(": ").append(text(broker.label)).append('\n')
+                    }
+                }
+
+                if (!h.notes.isNullOrEmpty()) {
+                    b.append("\n### ").append(text(s["section.notes"])).append("\n\n")
+                    b.append(text(h.notes)).append('\n')
+                }
+            }
+
+            val photosBlock = StringBuilder().also { b ->
+                val photos = bundle.photosOf(h)
+                if (photos.isNotEmpty()) {
+                    b.append("\n### ").append(text(s["section.photos"])).append("\n\n")
+                    for (p in photos) {
+                        b.append("- `").append(p.fileName.replace('`', '\'')).append('`')
+                        // Its room, tags and caption (slice 5), those it has.
+                        ExportRows.photoLine(p, bundle)?.let { b.append(": ").append(text(it).replace('\n', ' ')) }
+                        b.append('\n')
+                    }
+                    b.append('\n').append(text(s["photos.inBackup"])).append('\n')
+                }
+            }
+
+            val blocks = mapOf(
+                "cost" to costBlock, "rooms" to roomsBlock, "questions" to questionsBlock, "viewings" to viewingsBlock,
+                "areaNotes" to areaNotesBlock, "distances" to distancesBlock, "moveIn" to moveInBlock, "checklist" to checklistBlock,
+                "visits" to visitsBlock, "notes" to notesBlock, "photos" to photosBlock,
+            )
+            for (name in bundle.blockOrder(h)) out.append(blocks.getValue(name))
         }
 
         // The brokers (slice 1b), after the houses.
@@ -192,6 +217,12 @@ object MarkdownWriter {
             }
         }
         return out.toString()
+    }
+
+    private fun areaTable(b: StringBuilder, title: String, columns: List<String>, rows: List<List<String>>) {
+        if (rows.isEmpty()) return
+        b.append("\n### ").append(text(title)).append("\n\n")
+        table(b, columns, rows)
     }
 
     private fun table(out: StringBuilder, header: List<String>, rows: List<List<String>>) {
