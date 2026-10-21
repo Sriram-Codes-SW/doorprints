@@ -66,13 +66,33 @@ export function spacesOf(search: unknown): SearchSpaces | null {
   return 'kinds' in s ? { kinds: s['kinds'] as string[], defaultKind: s['defaultKind'] as string } : null;
 }
 
-/** The `search` object for `spaces`: the house's when there are none or they are not well formed. */
-export function searchOf(spaces?: SearchSpaces | null): Obj {
+/**
+ * The `search` object for `spaces`: the house's when there are none or they are not well formed. With `userKinds` (the kind
+ * files this browser added, docs/03 ADR-39) it also carries them as `userKinds`, last: an optional field of the data set's
+ * object within `/1` (docs/schemas/README.md §1.1), which every older reader ignores (they read only `kinds` and
+ * `defaultKind`, the server none of it), so a file without them is byte for byte what it was.
+ */
+export function searchOf(spaces?: SearchSpaces | null, userKinds?: readonly object[] | null): Obj {
+  const out = spacesSearch(spaces);
+  return userKinds?.length ? { ...out, userKinds: [...userKinds] } : out;
+}
+
+function spacesSearch(spaces?: SearchSpaces | null): Obj {
   if (!spaces) return { ...SEARCH };
   const kinds = spaces.kinds;
   const ok = kinds.length > 0 && kinds.every((k) => KIND_ID.test(k)) && new Set(kinds).size === kinds.length && kinds.includes(spaces.defaultKind);
   if (!ok || (kinds.length === 1 && kinds[0] === 'house')) return { ...SEARCH };
   return { kinds: [...kinds], defaultKind: spaces.defaultKind };
+}
+
+/**
+ * The kind files a backup's `search` carries (`userKinds`), unchecked: at most eight items of an array, else none. Each one is
+ * checked as an imported kind file is before it is kept (`adoptUserKinds`); a file that has none, or anything else there, has none.
+ */
+export function userKindsOf(search: unknown): unknown[] {
+  if (!isObj(search) || !Object.prototype.hasOwnProperty.call(search, 'userKinds')) return [];
+  const list = search['userKinds'];
+  return Array.isArray(list) ? list.slice(0, 8) : [];
 }
 
 type Obj = Record<string, unknown>;
@@ -108,13 +128,13 @@ const MAX_AMOUNT = 1_000_000_000_000;
 // ---- Writing: the family before, as every writer builds it, to the new family ----
 
 /** A `data.json` of the family before as the new family writes it: `/1`, `search` (the data set's `kind`), `candidates`, `candidateId`. */
-export function currentOf(legacy: Obj, spaces?: SearchSpaces | null): Obj {
+export function currentOf(legacy: Obj, spaces?: SearchSpaces | null, userKinds?: readonly object[] | null): Obj {
   const out: Obj = {};
   for (const [key, value] of Object.entries(legacy)) {
     if (key === 'format') out['format'] = CURRENT_FORMAT;
     else if (key === 'exportedAt') {
       out['exportedAt'] = value;
-      out['search'] = searchOf(spaces);
+      out['search'] = searchOf(spaces, userKinds);
     } else if (key === 'houses') out['candidates'] = rows(value).map(candidateOfHouse);
     else if (key === 'visits' || key === 'photos' || key === 'viewings') out[key] = rows(value).map((r) => rename(r, 'houseId', 'candidateId'));
     else if (key === 'deleted') out[key] = rows(value).map((d) => (d['kind'] === 'house' ? { ...d, kind: 'candidate' } : d));

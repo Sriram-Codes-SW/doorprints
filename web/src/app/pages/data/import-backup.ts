@@ -34,7 +34,8 @@ import { TranslationService } from '../../i18n/translation.service';
 import type { Msg } from '../../i18n/translation.service';
 import { TPipe } from '../../i18n/t.pipe';
 import { routesFor } from '../../app.routes';
-import { adoptSpaces } from '../../core/kind-setting';
+import { adoptSpaces, kindById } from '../../core/kind-setting';
+import { adoptUserKinds } from '../../core/user-kinds/user-kinds';
 import { SpaceService } from '../../core/space.service';
 import { toolWord } from '../../core/space-tool-words';
 
@@ -109,6 +110,8 @@ export class ImportBackupCard {
   protected readonly restore = signal(false);
   protected readonly keepMine = signal(false);
   protected readonly outcome = signal<ImportOutcome | null>(null);
+  /** The names of the kinds a person added that came with the file (`search.userKinds`, docs/03 ADR-39) and were new here. */
+  protected readonly kindsAdded = signal<string[]>([]);
   protected readonly failure = signal<Msg | null>(null);
   protected readonly undoState = signal<'none' | 'running' | 'done'>('none');
   protected readonly undone = signal<Msg | null>(null);
@@ -223,6 +226,11 @@ export class ImportBackupCard {
       const done = await this.importer.apply(archive, this.flags());
       // The file's kinds and default, for a browser that never chose (S4b-BL-212); the router follows.
       if (adoptSpaces(archive.spaces)) this.space.refresh(routesFor);
+      // The kinds a person added that the file carries and this browser does not have yet, each checked as an imported kind file
+      // is (docs/03 ADR-39). They are available, not shown: *Kinds you add* in What you track shows them.
+      const added = adoptUserKinds(archive.userKinds);
+      this.kindsAdded.set(added.map((id) => this.i18n.t(kindById(id).keys.ref('kind.many'))));
+      if (added.length) this.space.refresh(routesFor);
       this.outcome.set(done);
       this.undo = done.undo && done.undo.houses.size + done.undo.visits.size + done.undo.records.size > 0 ? done.undo : null;
       this.announcer.announce({ key: this.w('imp.done'), params: { houses: done.houses, visits: done.visits, photos: done.photos } });

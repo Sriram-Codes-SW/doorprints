@@ -21,6 +21,7 @@ import { LocalStore } from '../data/local-store.service';
 import { LocalDataError } from '../core/local-error';
 import { loadDictionary } from '../i18n/languages';
 import { availableKinds, defaultKind, drawnKind, enabledKinds, spacesOn } from '../core/kind-setting';
+import { userKindFiles } from '../core/user-kinds/user-kinds';
 import { holdsFor, spaceFileName } from '../core/space-scope';
 import { en } from '../i18n/en';
 import { resizeImage } from '../core/image-resize';
@@ -107,6 +108,8 @@ export class ExportService {
       kinds: { fieldsOf: (kind) => drawnKind(kind).fields, dict: await loadDictionary(options.lang) },
       // The backup's `search` says the kinds enabled and the default (Settings > Kinds, S4b-BL-212); the house alone as before.
       spaces: { kinds: enabledKinds(), defaultKind: defaultKind() },
+      // The kind files this browser added go with a backup as `search.userKinds` (docs/03 ADR-39), whether shown or not.
+      userKinds: userKindFiles(),
       // A copy of one space holds that space's candidates only (S4b-BL-279); with one space enabled there is only one.
       ...(options.space && spacesOn() ? { inSpace: holdsFor(options.space, true, defaultKind(), availableKinds()) } : {}),
       exportedAt,

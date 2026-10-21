@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | 05 UX, accessibility and i18n |
-| Version | 0.38 |
+| Version | 0.39 |
 | Date | 2026-10-20 |
 | Author | Claude (Cowork) – Design team |
 | Status | Draft |
@@ -50,7 +50,8 @@
 | 0.35 | 2026-10-20 | Claude (Code), engineer | Glossary: `app.tagline` on the website is the kind-neutral "Remember every place you've seen." in four languages ([03](03-design.md) ADR-13b; `feat/school-release-web`, #389); the phones' `app_tagline` is unchanged for now. |
 | 0.36 | 2026-10-20 | Claude (Code), engineer | Glossary: the phones' `app_tagline` follows the website ("Remember every place you've seen.", Settings > About only) and the empty house list keeps the old words under a new Android key `houses_first_run_title` ([03](03-design.md) ADR-13b; `feat/school-release-phones`); the switch hint and the school listing tips lose their preview marks. |
 | 0.37 | 2026-10-20 | Claude (Code), engineer | §8: the language and the country are two things ([03](03-design.md) ADR-38, §21): the app language decides the words and the `Intl` locale of the screens; the **country pack** decides the currency, the digit grouping of exported files, the phone shapes and the geocoder's country. New §8.4. No string changed; hi, ta and te untouched. |
-| 0.38 | 2026-10-20 | Claude (Code), engineer | Glossary: `driveSync.photoRetention` (phones `drive_sync_photo_retention`), the one sentence under the Drive photo switch on how long a deleted photo stays in the person's Google Drive ([15](15-google-drive-backup-and-sharing.md) §5.1; `fix/flakes-and-retention-text`); hi, ta and te under review. |
+| 0.38 | 2026-10-20 | Claude (Code), engineer | **Kinds you add** ([03](03-design.md) ADR-39, `feat/user-authored-kinds-web`): the settings, the preview and the refusals, in four languages; the neutral words of such a space. |
+| 0.39 | 2026-10-20 | Claude (Code), engineer | Glossary: `driveSync.photoRetention` (phones `drive_sync_photo_retention`), the one sentence under the Drive photo switch on how long a deleted photo stays in the person's Google Drive ([15](15-google-drive-backup-and-sharing.md) §5.1; `fix/flakes-and-retention-text`); hi, ta and te under review. |
 
 ---
 
@@ -1078,6 +1079,9 @@ web's add mode, an accessible **pick-a-spot mode** (a centre crosshair and a 48 
 planned for Sprint 4b ([11](11-feature-parity-and-export-spec.md) §10, Android handover 22).
 
 ---
+
+
+**Kinds you add (website, [03](03-design.md) ADR-39).** In Your data > What you track: the switch *Kinds you add (experimental)* with its hint; while on, *Import a kind file* (a labelled native file input, its limits in the hint), a preview region with a heading that takes focus (name, fields, checklist, whether it replaces one), *Add this kind* and *Cancel*, a refusal as `role="alert"` with the reason in plain words and where in the file, a `role="status"` notice; each added kind's row says *Added by you* and has *Remove kind* (named for the kind). The person's own words are shown as written in every language (no translation, no markup); the app's words are in en, hi, ta and te (hi, ta, te under review); the space's words name no house (`ukind.*`).
 
 ## 15. Appendix: Design and UX self-check
 
