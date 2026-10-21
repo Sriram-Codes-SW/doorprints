@@ -217,7 +217,7 @@
 | 0.207 | 2026-10-20 | Claude (Code), engineer | **§1 and §2: the kinds leftovers are built, In review** (`feat/kinds-leftovers`; [03](03-design.md) §18.29): the *Not built* list of N21 and the *Planned* list lose the `zz_all` space on the phones (in tests only), filters on number and amount extras and reordering the copy blocks; user-authored kinds by JSON import stay Planned. |
 | 0.208 | 2026-10-21 | Claude (Code), engineer | **§1 and §2: kinds a person adds, the phones** ([03](03-design.md) ADR-39, `feat/user-authored-kinds-phones`). |
 | 0.209 | 2026-10-21 | Claude (Code), engineer | **§1 and §2:** AI over user-authored kinds recorded as decided, a deliberate non-goal; the #395 screenshot flake fix recorded as a hypothesis (no recurrence in the seven `android.yml` runs since); `copyOrder` covers every format; the voice checks are MT-127..MT-132. |
-| 0.210 | 2026-10-21 | Claude (Code), docs | **§1 and §2 brought to `main`:** the school on the phones (#391), the voice free-plan refusal (#388), kinds a person adds on the phones (#397) and the kinds leftovers (#396) are merged, no longer *in review*; the one open pull request is the old draft #375; the owner's ordered steps are the new [ops/owner-release-runbook.md](ops/owner-release-runbook.md). No sign-off is recorded. |
+| 0.210 | 2026-10-21 | Claude (Code), docs | **§1 and §2 brought to `main`:** the school on the phones (#391), the voice free-plan refusal (#388), kinds a person adds on the phones (#397) and the kinds leftovers (#396) are merged, no longer *in review*; the one open pull request is the old draft #375; the owner's ordered steps are the new [ops/owner-release-runbook.md](ops/owner-release-runbook.md); the phones-with-the-school manual row is now TC-M-95 (it shared TC-M-81 with the Sarvam row). No sign-off is recorded. |
 
 ## 1. Where things stand (2026-10-21, everything built is merged to `main`)
 
@@ -266,7 +266,7 @@ today's state. No pull request of work is open: the only open one is the old dra
   release candidate; it has not yet. The Survey of India boundary data is adopted (N16, ADR-22).
 - **Open and the owner's alone (nothing for a session to build).**
   - Real-device checks, none run: the kinds rows MT-104..MT-121 (MT-112 and MT-113, the phones with the school released,
-    and the Voice rows MT-104..MT-111 and MT-114 among them), MT-122 and MT-123 (photos coming back from the real Drive and the 30-day clean-up, TC-M-90, TC-M-91), MT-124..MT-126 (the free-plan refusal with real keys, TC-M-92..TC-M-94) and TC-M-81, TC-M-82, TC-M-83, TC-M-84 and TC-M-89; Google sign-in on
+    and the Voice rows MT-104..MT-111 and MT-114 among them), MT-122 and MT-123 (photos coming back from the real Drive and the 30-day clean-up, TC-M-90, TC-M-91), MT-124..MT-126 (the free-plan refusal with real keys, TC-M-92..TC-M-94) and TC-M-81, TC-M-82, TC-M-83, TC-M-84, TC-M-89 and TC-M-95; Google sign-in on
     a phone (the Drive real-phone run, N19); the school's wording read by eye; MT-127..MT-132; J9 of [13](13-release-security-checklist.md) (kinds a person adds, on the website and both phones).
   - Native-speaker review of Hindi, Tamil and Telugu, the school's words and the Sarvam words included; they ship *under review*.
     **The owner's review of the drafts:** the school's checklist and Compare criteria, its question bank and headings, and its
@@ -284,7 +284,7 @@ today's state. No pull request of work is open: the only open one is the old dra
 ## 2. Next, in order
 
 **Now (2026-10-21).** The kinds refactor is built and merged (#373), and so are the school on the phones (#391), the voice free-plan refusal (#388) and kinds a person adds on the website and the phones (#394, #397). The owner's step-by-step for everything below, in order and with tick-lists, is [ops/owner-release-runbook.md](ops/owner-release-runbook.md). Nothing is left that a session must build before the owner's checks; what follows is the owner's, in this order.
-1. **Real-device checks** (§1): MT-104..MT-123 and TC-M-81..TC-M-84, TC-M-89, TC-M-90, TC-M-91 and TC-M-92..TC-M-94 (none run); Google sign-in on a
+1. **Real-device checks** (§1): MT-104..MT-123 and TC-M-81..TC-M-84, TC-M-89, TC-M-95, TC-M-90, TC-M-91 and TC-M-92..TC-M-94 (none run); Google sign-in on a
    phone; the school's wording by eye; MT-127..MT-132; J9 of [13](13-release-security-checklist.md) for kinds a person adds. A failure becomes a fix branch, as §7 says.
 2. **Native-speaker review** of Hindi, Tamil and Telugu (the school's and Sarvam's words included), **and the owner's review of
    the draft school checklist and criteria, the school question bank and the school viewings words**, and the India outline

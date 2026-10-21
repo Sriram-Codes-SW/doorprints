@@ -63,12 +63,11 @@ Tick-lists. Time is an estimate per row in minutes. **Result** is `☐ pass ☐ 
 [docs/06](../06-test-plan.md) §16. *Pass / Fail record:* the row's own `Pass / Fail / Date` line. *On failure:* part 6.
 
 **Notes that apply to many rows.**
-- Rows written before the school's release (MT-93, MT-94, MT-100..MT-103, MT-115, MT-116, MT-118..MT-120) say *turn on Experimental:
-  more than houses*. **The release build has no such switch**: use *What you track* in Your data (website) or Settings (phones) and
-  *Show Schools*. A step that cannot be done as written because the row is stale is a note for the session, not an app failure.
+- The release has no *Experimental: more than houses* switch: the school is a *Schools* row (off) under Your data (website) or Settings
+  (phones) > *What you track*; *Show Schools* turns it on and Doorprints then opens on the chooser with two cards. The rows say so.
 - Hindi, Tamil and Telugu strings are *under review*: read them for sense and fit here, and send wording problems to the
   review of part 4.
-- Two rows in docs/06 carry the id TC-M-81: the Sarvam one (MT-109..MT-111) and the phones-with-the-school one (MT-112, MT-113).
+- Ids renumbered on 2026-10-21: the phones-with-the-school row of docs/06 is now **TC-M-95** (TC-M-81 is the Sarvam one, MT-109..MT-111), and the AI-declines-a-text row is **MT-133** (MT-88 is the iPhone Drive enrolment row).
 - Light and dark theme, the largest text size and, where named, a screen reader belong to the row; do them while you are on the screen.
 
 ### Session A: computer and browsers (about 3 hours)
@@ -82,7 +81,7 @@ the live site, and Safari on a Mac for MT-129. Do A-1 before A-2.
 | MT-94 | Web | A school space: add one, make it the default, deep link, *Save a copy* backup, turn Show Schools off, import into a fresh profile (§18) | `data.json` has `search.kinds`; nothing lost; old backups still import | 25 | ☐ pass ☐ fail | |
 | MT-100 / TC-M-75 | Web | Walk a school's pages and the four copies (web page, Markdown, CSV, spreadsheet) by eye (§20) | No house word (price, score, BHK, broker) in any school page or copy | 20 | ☐ pass ☐ fail | |
 | MT-102 / TC-M-77 | Web | Schools list chips (Board, Medium, Bus), *Save a copy of* select, Compare's best marks, backup and import words (§20) | The kind's words with two kinds on; the house list unchanged | 20 | ☐ pass ☐ fail | |
-| MT-115 / TC-M-83 | Web | School as the default; turn Houses off; delete and *Restore* the house; turn the experimental/kinds settings off and on (§20) | Nothing lost or hidden; no house can be added while Houses is off | 15 | ☐ pass ☐ fail | |
+| MT-115 / TC-M-83 | Web | School as the default; turn Houses off; delete and *Restore* the house; turn Show Houses on again and Show Schools off, then on (§20) | Nothing lost or hidden; no house can be added while Houses is off | 15 | ☐ pass ☐ fail | |
 | MT-117 / TC-M-85 | Web | A school's *Checklist* (8 items) and Compare of three schools (§19) | Checklist score row, best marks on score, lower fees and commute; admission fee unmarked; the house's Compare as before | 20 | ☐ pass ☐ fail | |
 | MT-118 / TC-M-86 | Web | School Questions (6) and *School visits*; plan a visit (§19) | School's own words; house viewings and questions as before; no broker from a school phone | 15 | ☐ pass ☐ fail | |
 | MT-119 / TC-M-87 | Web | Filter by Board and Bus; *Save a copy* of the Schools space (§19) | File named `Doorprints-schools-...`; headings *School visits*, *Questions for a visit* | 10 | ☐ pass ☐ fail | |
@@ -125,7 +124,7 @@ a walk (MT-116) need a place outside.
 
 | Id | Device | What to do, in one line | Expected | Min | Result | Notes |
 |---|---|---|---|---|---|---|
-| MT-112 / TC-M-81 | Android | Fresh install: Map first, Settings > *What you track* with *Houses* on, *Schools* off, no *Experimental* switch; import a backup with a school; Show Schools; TalkBack; largest text; hi, ta, te tip has no *preview* mark; About says "Remember every place you've seen." (§19) | House app until Show Schools; nothing cut at 200 % | 20 | ☐ pass ☐ fail | |
+| MT-112 / TC-M-95 | Android | Fresh install: Map first, Settings > *What you track* with *Houses* on, *Schools* off, no *Experimental* switch; import a backup with a school; Show Schools; TalkBack; largest text; hi, ta, te tip has no *preview* mark; About says "Remember every place you've seen." (§19) | House app until Show Schools; nothing cut at 200 % | 20 | ☐ pass ☐ fail | |
 | MT-96 / TC-M-72 | Android | Release then debug build: the chooser, the chip, Back, a school space's words; hi, ta, te; TalkBack (§19) | As the row; hint shows once; the last shown row cannot be turned off | 25 | ☐ pass ☐ fail | |
 | MT-97 / TC-M-72 | Android | School space: save a school, Compare, copy and backup names, a shared listing into *Schools*, a link, import on a second phone (§19) | Names `Doorprints-schools-...-csv.zip` and `Doorprints-backup-...zip`; a school phone makes no broker | 25 | ☐ pass ☐ fail | |
 | MT-101 / TC-M-76 | Android | A school's list, page, Compare, areas, places, five copy formats by eye (§20) | No house word | 20 | ☐ pass ☐ fail | |
@@ -165,7 +164,7 @@ An iPhone with the app from 2.4, the Mac with Xcode (Window > Devices and Simula
 | MT-106 | iPhone | A real recording in four languages; 5 s silence; past 1:00; permission off mid-way; airplane mode (§16.2) | Transcript first, editable; `audio/wav`; errors leave the box as it was | 20 | ☐ pass ☐ fail | |
 | MT-107 | iPhone | Download the app container in Xcode and read the console while recording (§16.2) | No audio file, no base64, no words in the log | 15 | ☐ pass ☐ fail | |
 | MT-108 | iPhone | VoiceOver on the button, the largest text, four languages, both themes (§16.2) | Announced once per state; no overlap | 15 | ☐ pass ☐ fail | |
-| MT-113 / TC-M-81 | iPhone | Install: Map first; Settings > *What you track* with *Schools* off and no switch; VoiceOver; Show Schools; the location prompt says *places you save* (§19) | As MT-112 on the iPhone | 20 | ☐ pass ☐ fail | |
+| MT-113 / TC-M-95 | iPhone | Install: Map first; Settings > *What you track* with *Schools* off and no switch; VoiceOver; Show Schools; the location prompt says *places you save* (§19) | As MT-112 on the iPhone | 20 | ☐ pass ☐ fail | |
 | MT-114 | iPhone | Say a sentence, then ring the phone or change headphones; nothing said; Cancel (§19) | As the web row | 10 | ☐ pass ☐ fail | |
 | MT-118 / TC-M-86 | iPhone | Plan a school visit with a reminder (§19) | Body says *Visit to <school> at <time>* | 10 | ☐ pass ☐ fail | |
 | MT-116 / TC-M-84 | iPhone | Step 5 of the row: the Hunt card as one switch with VoiceOver and the alert text (§20) | Read as one switch in both spaces | 10 | ☐ pass ☐ fail | Outside, with the Android walk |
@@ -313,7 +312,7 @@ accepted and is fixed first. A session records only what you write; it never rec
 3. **The session works the loop** ([14](../14-lead-backlog-and-handoff.md) §7): a backlog row when it is a defect, a branch `fix/<topic>` made from the latest `main` (never your device), a test that fails first, the fix, the local checks, one pull request, a merge when green. It never marks your row *pass*.
 4. **You re-run the failed row** on the new build (install the new debug APK or hard-reload the site), and only the rows the fix can touch: a map or boundary change re-runs TC-M-25; a change to words re-checks the screen in each language; a change to a web page is followed by the live UI run of part 7.
 5. **A change after the gate changes the candidate.** The gate is run on the exact commit. Rows tied to the changed code are re-run on the new commit; a new tag is needed. **If `v0.1.1` was only a draft**, ask the session to guide you through deleting that draft and its tag and tagging the new commit (`release.yml` allows only a tag equal to `versionName` on a commit from `main`, as `v0.1.0` showed on 2026-10-19; if you prefer, bump to `0.1.2` in a pull request). **Never move or reuse a tag that has been published.**
-6. **Not a failure:** a row that cannot be run as written (stale words about the Experimental switch, a Play-only row); a record of a limit the row names as expected (TC-M-25's listed minors). Tell the session so the row is corrected in the checklist.
+6. **Not a failure:** a row that cannot be run as written (a Play-only row); a record of a limit the row names as expected (TC-M-25's listed minors). Tell the session so the row is corrected in the checklist.
 
 ## 7. After the release
 
