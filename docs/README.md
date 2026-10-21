@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | SSDLC document index |
-| Version | 0.146 |
+| Version | 0.147 |
 | Date | 2026-10-21 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -44,6 +44,7 @@
 | 0.144 | 2026-10-21 | Claude (Code), engineer | Versions: 02 v0.103, 03 v0.182, 06 v0.302, 10 v0.365, 13 v0.32, 14 v0.209, ops/manual-test-checklist v0.34 (`chore/close-open-items`; the checklist now runs to MT-132). |
 | 0.145 | 2026-10-21 | Claude (Code), docs | New [ops/owner-release-runbook.md](ops/owner-release-runbook.md) (the owner's manual-testing and release runbook, a plan and not a record); status words brought to `main`: 03 v0.183, 04 v0.33, 06 v0.303, 10 v0.366, 14 v0.210, ops/manual-test-checklist v0.35 (the manual checklist's reworded school rows and renumbered ids, TC-M-95 and MT-133; the school on the phones #391, the voice free-plan refusal #388, kinds a person adds on the phones #397 and the kinds leftovers #396 are merged). No sign-off recorded. |
 | 0.146 | 2026-10-21 | Claude (Code), engineer | The Dependabot triage (`fix/dependabot-alerts-2026-10-21`): new session record [ops/dependabot-triage-2026-10-21.md](ops/dependabot-triage-2026-10-21.md); 13 v0.33 (A6). |
+| 0.147 | 2026-10-21 | Claude (Code), docs | The Dependabot triage records the outcome (all 14 alerts closed after the graph re-submit; secret scanning on); 13 v0.34 (A6). |
 | 0.112 | 2026-10-06 | Claude | The review backlog: docs/01 v0.41, 06 v0.131 (section 10.1), 07 v0.60, 14 v0.89. |
 | 0.111 | 2026-10-06 | Claude | Full-system review fixes and the manual test checklist (`docs/ops/manual-test-checklist.md`): docs/07 v0.59, docs/14 v0.88. |
 | 0.110 | 2026-10-06 | Claude | Review fixes on PR #139: docs/10 v0.149, 06 v0.130, 15 v0.27. |
