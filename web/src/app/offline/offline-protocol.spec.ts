@@ -50,6 +50,7 @@ describe('rewriteForOffline (the map asks only for what a saved area can serve)'
   it('leaves everything alone with no area saved, and every other host always (India boundaries file included)', () => {
     expect(rewriteForOffline(TILE, 'Tile', false)).toBeUndefined();
     expect(rewriteForOffline('https://doorprints.web.app/geo/in-boundaries.geojson', 'Unknown', true)).toBeUndefined();
+    expect(rewriteForOffline('https://doorprints.web.app/geo/in-boundaries-soi.json', 'Unknown', true)).toBeUndefined();
     expect(rewriteForOffline('https://tiles.openfreemap.org.evil.example/x', 'Tile', true)).toBeUndefined();
     expect(rewriteForOffline('https://example.org/tiles.openfreemap.org/x', 'Tile', true)).toBeUndefined();
   });

@@ -99,6 +99,13 @@ class MapLibreStyleOps(private val style: Style, private val assets: AssetManage
 
     override fun addGeoJsonSource(id: String, uri: String) = style.addSource(GeoJsonSource(id, URI(uri)))
 
+    /**
+     * MapLibre Android's GeoJsonSource has no attribution (GeoJsonOptions sets none), so [attribution] is shown by the
+     * map's attribution dialog instead (SoiAttributionDialogManager, PlatformMap.android.kt).
+     */
+    override fun addGeoJsonSourceText(id: String, geoJson: String, attribution: String) =
+        style.addSource(GeoJsonSource(id, geoJson))
+
     override fun linePaint(layerId: String, paint: LinePaint): PaintValue? {
         val layer = layer(layerId) as? LineLayer ?: return null
         val copied: PropertyValue<*>? = when (paint) {
