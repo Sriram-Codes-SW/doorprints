@@ -45,7 +45,7 @@ import org.junit.runner.RunWith
  * grant (given from the shell, which does not kill the app) the recorder either records or fails cleanly and lets the
  * microphone go. One test, in this order, because a runtime grant cannot be taken back without ending the process. The
  * emulator may have no audio input: then the grant leg accepts a clean `NO_DEVICE` or `FAILED`, never a crash and never
- * `DENIED`. The rationale and the permission dialog themselves (UI) are MT-82 by hand.
+ * `DENIED`. The rationale and the permission dialog themselves (UI) are MT-127 by hand.
  */
 @RunWith(AndroidJUnit4::class)
 class VoicePermissionEmulatorTest {

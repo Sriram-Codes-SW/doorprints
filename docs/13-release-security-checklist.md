@@ -121,7 +121,7 @@ On the release APK.
 | C2 | Signature (MASVS-RESILIENCE) | `apksigner verify --print-certs app-release.apk` | Verifies; the SHA-256 matches the published fingerprint (TC-S-15). *n/a* for an unsigned candidate |
 | C3 | Logs (MASVS-STORAGE) | `adb logcat` while adding, syncing and exporting the test houses | No contact name, phone, note text or exact location in the log |
 | C4 | Deep links (MASVS-PLATFORM) | The TC-S-12 `adb shell am start` commands | No crash; bad input ignored |
-| C5 | Permissions at use | Fresh install; walk to Hunt mode; turn on *Voice input* and tap the microphone | Location asked only when needed, with the rationale; *Only this time* and *Deny* both handled; **the microphone is not asked at install or start-up, only after the tap and the rationale; *Not now* and *Deny* leave the field working** (MT-82; on the iPhone iOS asks once, MT-104) |
+| C5 | Permissions at use | Fresh install; walk to Hunt mode; turn on *Voice input* and tap the microphone | Location asked only when needed, with the rationale; *Only this time* and *Deny* both handled; **the microphone is not asked at install or start-up, only after the tap and the rationale; *Not now* and *Deny* leave the field working** (MT-127; on the iPhone iOS asks once, MT-104) |
 | C6 | Files the user saves | *Save a copy* and the weekly backup | Written only where the user chose (the system picker), never to shared storage unasked |
 | C7 | Captive portal (TC-S-13) | Only when sync changed | As TC-S-13 |
 

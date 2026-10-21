@@ -264,7 +264,7 @@ today's state. No pull request is open apart from a docs one.
 - **Open and the owner's alone (nothing for a session to build).**
   - Real-device checks, none run: the kinds rows MT-104..MT-121 (MT-112 and MT-113, the phones with the school released,
     and the Voice rows MT-104..MT-111 and MT-114 among them), MT-122 (photos coming back from the real Drive, TC-M-90) and TC-M-81, TC-M-82, TC-M-83, TC-M-84 and TC-M-89; Google sign-in on
-    a phone (the Drive real-phone run, N19); the school's wording read by eye; MT-82..MT-87.
+    a phone (the Drive real-phone run, N19); the school's wording read by eye; MT-127..MT-132.
   - Native-speaker review of Hindi, Tamil and Telugu, the school's words and the Sarvam words included; they ship *under review*.
     **The owner's review of the drafts:** the school's checklist and Compare criteria, its question bank and headings, and its
     viewings words (visits and open days).
@@ -282,7 +282,7 @@ today's state. No pull request is open apart from a docs one.
 
 **Now (2026-10-16).** The kinds refactor is built and merged (#373). Nothing is left that a session must build before the owner's checks; what follows is the owner's, in this order.
 1. **Real-device checks** (§1): MT-104..MT-122 and TC-M-81, TC-M-82, TC-M-83, TC-M-84, TC-M-89 and TC-M-90 (none run); Google sign-in on a
-   phone; the school's wording by eye; MT-82..MT-87. A failure becomes a fix branch, as §7 says.
+   phone; the school's wording by eye; MT-127..MT-132. A failure becomes a fix branch, as §7 says.
 2. **Native-speaker review** of Hindi, Tamil and Telugu (the school's and Sarvam's words included), **and the owner's review of
    the draft school checklist and criteria, the school question bank and the school viewings words**, and the India outline
    geometry.

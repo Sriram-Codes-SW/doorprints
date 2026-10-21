@@ -39,7 +39,7 @@ import kotlin.test.assertEquals
  * The iPhone's voice input pieces that need Apple's own constants (S4b-BL-223, TC-U-256): the microphone permission
  * mapping, the raw values [CaptureEndRules] copies from AVFoundation's headers so that its logic can be tested on every
  * machine, and the source's behaviour before any microphone is opened. Runs on the simulator in CI (the macOS job); the
- * real microphone, the prompt and an interruption are MT-82..MT-87 on a phone.
+ * real microphone, the prompt and an interruption are MT-127..MT-132 on a phone.
  */
 class IosVoiceTest {
     @Test
