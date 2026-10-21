@@ -137,7 +137,7 @@ function houseSection(entry: ExportHouse, position: number, bundle: ExportBundle
     b.push(`### ${escapeMarkdown(stringsOf(bundle).get('table.rooms'))}`, '');
     b.push(row(roomDisplayColumns(bundle)));
     b.push(separator(7));
-    for (const r of rooms) b.push(row(r.map(escapeMarkdown)));
+    for (const r of rooms) b.push(row(r));
     b.push('');
   }
 
@@ -148,7 +148,7 @@ function houseSection(entry: ExportHouse, position: number, bundle: ExportBundle
     b.push(`### ${escapeMarkdown(stringsOf(bundle).get('section.questions'))}`, '');
     b.push(row(answerDisplayColumns(bundle)));
     b.push(separator(3));
-    for (const r of questions) b.push(row(r.map(escapeMarkdown)));
+    for (const r of questions) b.push(row(r));
     b.push('');
   }
 
@@ -160,7 +160,7 @@ function houseSection(entry: ExportHouse, position: number, bundle: ExportBundle
     const columns = viewingDisplayColumns(bundle);
     b.push(row(columns));
     b.push(separator(columns.length));
-    for (const r of viewings) b.push(row(r.map(escapeMarkdown)));
+    for (const r of viewings) b.push(row(r));
     b.push('');
   }
 
@@ -174,7 +174,7 @@ function houseSection(entry: ExportHouse, position: number, bundle: ExportBundle
     b.push(`### ${escapeMarkdown(heading)}`, '');
     b.push(row([...columns]));
     b.push(separator(columns.length));
-    for (const r of list) b.push(row(r.map(escapeMarkdown)));
+    for (const r of list) b.push(row(r));
     b.push('');
   }
 
