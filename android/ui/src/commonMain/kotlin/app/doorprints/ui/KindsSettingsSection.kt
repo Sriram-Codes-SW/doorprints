@@ -54,14 +54,19 @@ import app.doorprints.shared.model.KindSetting
 import app.doorprints.shared.model.ScopedCandidate
 import app.doorprints.shared.model.SpaceScope
 import app.doorprints.shared.model.KindTally
+import app.doorprints.shared.model.UserKindFiles
 import app.doorprints.shared.model.spaceCountsOf
 import app.doorprints.ui.res.*
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
 
 /** A *Delete all in this space* waiting for its answer: the kind's name in words and the ids it would take. */
 private class DeleteAsk(val name: String, val ids: List<String>)
+
+/** A *Remove kind* of a kind the person added, waiting for its answer (docs/03 ADR-39). */
+private class RemoveAsk(val kind: String, val name: String)
 
 /**
  * Settings > *What you track* (kinds PR C, S4b-BL-274; docs/03 §18.12), the twin of the website's *Your data* section:
@@ -96,6 +101,7 @@ fun KindsSettingsSection(
         .collectAsStateWithLifecycle(emptyList())
     val snackbar = LocalRootSnackbar.current ?: remember { SnackbarHostState() }
     var ask by remember { mutableStateOf<DeleteAsk?>(null) }
+    var removing by remember { mutableStateOf<RemoveAsk?>(null) }
     // Seconds the bulk pause still has to run, shown as a line (a snackbar would queue behind the Undo of the delete that started it).
     var pause by remember { mutableIntStateOf(0) }
     fun askDelete(kind: String, name: String) {
@@ -140,6 +146,24 @@ fun KindsSettingsSection(
                 checked = current.experimentalOn, horizontalPadding = 0.dp,
             ) { on -> change { it.withExperimental(on) } }
         }
+        // *Kinds you add (experimental)* and, while it is on, *Import a kind file* (docs/03 ADR-39).
+        UserKindsSection(current, ::change)
+        removing?.let { r ->
+            RemoveUserKindDialog(
+                r.name, saved[r.kind] ?: 0,
+                onCancel = { removing = null },
+                onSaveCopy = {
+                    removing = null
+                    onSaveCopy()
+                },
+                onConfirm = {
+                    removing = null
+                    scope.launch {
+                        if (repo.settings.removeUserKind(r.kind)) snackbar.showSnackbar(getString(Res.string.userkinds_removed, r.name))
+                    }
+                },
+            )
+        }
         // Rows only while a second kind is offered; a lone house row would have nothing to choose.
         if (current.offered.size > 1) {
             val enabled = current.enabled
@@ -165,6 +189,8 @@ fun KindsSettingsSection(
                         Checkbox(checked = on, onCheckedChange = null, enabled = !last)
                         Text(show, Modifier.padding(start = 12.dp), color = if (last) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface)
                     }
+                    // A kind the person added: *Added by you* and *Remove kind*, which asks first and deletes no entry (docs/03 ADR-39).
+                    if (UserKindFiles.isUserKindId(kind)) UserKindRowActions(name) { removing = RemoveAsk(kind, name) }
                     val savedHere = saved[kind] ?: 0
                     if (savedHere > 0) {
                         val deleteLabel = stringResource(Res.string.delete_space_button_aria, name)

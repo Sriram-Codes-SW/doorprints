@@ -95,7 +95,8 @@ class IosKindsGateTest {
         // And the two tests are the settings', which the build's list, the released list and the switch decide.
         val kindSetting = code(file("android/shared/src/commonMain/kotlin/app/doorprints/shared/model/KindSetting.kt"))
         assertTrue(kindSetting.contains("val spaces: Boolean get() = enabled.size > 1"))
-        assertTrue(kindSetting.contains("val offered: List<String> get() = available.filter { it in released || experimentalOn }"))
+        // A kind a person added (docs/03 ADR-39) is offered only through its own switch, *Kinds you add*, which is common code too.
+        assertTrue(kindSetting.contains("get() = available.filter { if (UserKindFiles.isUserKindId(it)) customOn else it in released || experimentalOn }"))
     }
 
     @Test

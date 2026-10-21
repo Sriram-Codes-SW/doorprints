@@ -175,8 +175,8 @@ class SchoolPageWordsTest {
     fun aStatusIsNamedThroughTheKindsLabels() {
         val school = app.doorprints.shared.model.DevKinds.of("school", on = true).labels
         for (s in HouseStatus.entries) {
-            assertEquals(Res.allStringResources["status_${s.name}"], school.statusText(s), s.name)
-            assertEquals(s.labelResource, KindLabels.HOUSE.statusText(s), s.name)
+            assertEquals<UiWord?>(Res.allStringResources["status_${s.name}"]?.let(UiWord::Res), school.statusText(s), s.name)
+            assertEquals<UiWord>(UiWord.Res(s.labelResource), KindLabels.HOUSE.statusText(s), s.name)
         }
         assertFalse(school.kind == KindLabels.HOUSE.kind)
     }

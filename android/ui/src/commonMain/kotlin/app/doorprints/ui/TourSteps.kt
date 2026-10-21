@@ -101,13 +101,18 @@ sealed interface KindText {
     data object Generic : KindText
     class Many(val res: StringResource) : KindText
     class Word(val pick: (SpaceUi) -> StringResource) : KindText
+
+    /** A word the space has that a kind a person added gives in its own words (the Add button's, docs/03 ADR-39). */
+    class Own(val pick: (SpaceUi) -> UiWord) : KindText
 }
 
 /** The parts of a step a kind words itself; a part left null stays the house's. */
 data class KindTour(val title: KindText? = null, val body: KindText? = null, val action: KindText? = null)
 
 /** One resolved part: the string and whether it names the kind's plural (`%1$s`). */
-class TourPart(val res: StringResource, val many: Boolean = false)
+class TourPart(val res: UiWord, val many: Boolean = false) {
+    constructor(res: StringResource, many: Boolean = false) : this(UiWord.Res(res), many)
+}
 
 /** What a step says in a space. */
 class TourText(val title: TourPart, val body: TourPart, val action: TourPart)
@@ -132,6 +137,7 @@ fun TourStep.textIn(space: SpaceUi): TourText {
         KindText.Generic -> if (part == "title") fallback else generic(part)
         is KindText.Many -> TourPart(text.res, true)
         is KindText.Word -> TourPart(text.pick(space))
+        is KindText.Own -> TourPart(text.pick(space))
     }
     return TourText(resolve(k.title, "title", own.title), resolve(k.body, "body", own.body), resolve(k.action, "action", own.action))
 }
@@ -149,7 +155,7 @@ object TourSteps {
 
     val ALL: List<TourStep> = listOf(
         TourStep("welcome", null, emptyList(), Res.string.tour_welcome_title, Res.string.tour_welcome_body, Res.string.tour_welcome_action, kind = KindTour(body = KindText.Generic)),
-        TourStep("add", MAP, listOf(TourTargets.MAP_SAVE), Res.string.tour_add_title, Res.string.tour_add_body, Res.string.tour_add_action, setOf(TourNeed.MAP), kind = KindTour(KindText.Word { it.words.addOnMap }, KindText.Word { it.words.addTip }, KindText.Word { it.words.saveHere })),
+        TourStep("add", MAP, listOf(TourTargets.MAP_SAVE), Res.string.tour_add_title, Res.string.tour_add_body, Res.string.tour_add_action, setOf(TourNeed.MAP), kind = KindTour(KindText.Own { it.words.addOnMap }, KindText.Word { it.words.addTip }, KindText.Word { it.words.saveHere })),
         TourStep("hunt", MAP, listOf(TourTargets.MAP_HUNT), Res.string.tour_hunt_title, Res.string.tour_hunt_body, Res.string.tour_hunt_action, setOf(TourNeed.MAP, TourNeed.HUNT), kind = KindTour(body = KindText.Generic)),
         TourStep("check", MAP, listOf(TourTargets.MAP_CHECK), Res.string.tour_check_title, Res.string.tour_check_body, Res.string.tour_check_action, setOf(TourNeed.MAP)),
         TourStep("offline", MAP, listOf(TourTargets.MAP_OFFLINE), Res.string.tour_offline_title, Res.string.tour_offline_body, Res.string.tour_offline_action, setOf(TourNeed.OFFLINE_MAPS)),

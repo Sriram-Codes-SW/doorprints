@@ -67,7 +67,7 @@ internal fun ExtraFilterRows(fields: KindFields, filter: Map<String, String?>, o
     val yesNo = ExportStrings.of(uiLanguage())
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         for (row in rows) {
-            val name = stringResource(kindStringResource(fields.label(row)))
+            val name = stringResource(kindWord(fields.label(row)))
             Text(name, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.semantics { heading() })
             if (KindFilter.isRange(row)) {
                 RangeRow(row, name, filter[row.id]) { text -> onChange(rows.associate { it.id to if (it.id == row.id) text else filter[it.id] }) }
@@ -121,4 +121,4 @@ private fun RangeRow(row: KindExtra, name: String, value: String?, onChange: (St
 
 @Composable
 private fun choiceText(row: KindExtra, choice: String, yesNo: ExportStrings): String =
-    if (row.type == "bool") yesNo[choice] else stringResource(kindStringResource(row.options.first { it.id == choice }.label))
+    if (row.type == "bool") yesNo[choice] else stringResource(kindWord(row.options.first { it.id == choice }.label))

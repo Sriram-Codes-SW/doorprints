@@ -116,7 +116,9 @@ sealed interface DeepLink {
 }
 
 /** One tab of the bottom bar. */
-private data class NavTab(val route: String, val label: StringResource, val icon: ImageVector)
+private data class NavTab(val route: String, val label: UiWord, val icon: ImageVector) {
+    constructor(route: String, label: StringResource, icon: ImageVector) : this(route, UiWord.Res(label), icon)
+}
 
 /** The bar's first three tabs; the list tab is named by the space's kind (*Houses*, *Schools*): the house's is the same word as `nav_houses`, as it always was. */
 private fun baseTabs(space: SpaceUi) = listOf(
