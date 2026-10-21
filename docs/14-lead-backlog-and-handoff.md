@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.209 |
+| Version | 0.210 |
 | Date | 2026-10-21 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..183); this file lists the lead-level items and points to the rest. |
@@ -217,13 +217,14 @@
 | 0.207 | 2026-10-20 | Claude (Code), engineer | **§1 and §2: the kinds leftovers are built, In review** (`feat/kinds-leftovers`; [03](03-design.md) §18.29): the *Not built* list of N21 and the *Planned* list lose the `zz_all` space on the phones (in tests only), filters on number and amount extras and reordering the copy blocks; user-authored kinds by JSON import stay Planned. |
 | 0.208 | 2026-10-21 | Claude (Code), engineer | **§1 and §2: kinds a person adds, the phones** ([03](03-design.md) ADR-39, `feat/user-authored-kinds-phones`). |
 | 0.209 | 2026-10-21 | Claude (Code), engineer | **§1 and §2:** AI over user-authored kinds recorded as decided, a deliberate non-goal; the #395 screenshot flake fix recorded as a hypothesis (no recurrence in the seven `android.yml` runs since); `copyOrder` covers every format; the voice checks are MT-127..MT-132. |
+| 0.210 | 2026-10-21 | Claude (Code), docs | **§1 and §2 brought to `main`:** the school on the phones (#391), the voice free-plan refusal (#388), kinds a person adds on the phones (#397) and the kinds leftovers (#396) are merged, no longer *in review*; the one open pull request is the old draft #375; the owner's ordered steps are the new [ops/owner-release-runbook.md](ops/owner-release-runbook.md). No sign-off is recorded. |
 
-## 1. Where things stand (2026-10-16, everything built is merged to `main`)
+## 1. Where things stand (2026-10-21, everything built is merged to `main`)
 
 The history of each merged pull request is in [10](10-sprint-log.md) (the S4b-BL rows say *Done* with the pull request and
 commit) and the [CHANGELOG](../CHANGELOG.md); the architecture is one page, [16](16-architecture-overview.md). Earlier versions
 of this section (git history, up to 0.199) carry the per-pull-request detail of 2026-09-24..10-14. This section is only
-today's state. No pull request is open apart from a docs one.
+today's state. No pull request of work is open: the only open one is the old draft #375 (the Survey of India boundary lines, S4b-BL-114), which is not on `main` and so not in `v0.1.1`.
 
 - **Shipped on `main`.**
   - **Website (live, https://doorprints.web.app, deployed by `web.yml`).** Houses with everything of N14 (criteria, rooms,
@@ -233,12 +234,12 @@ today's state. No pull request is open apart from a docs one.
     and the school, a house hunter sees a *Schools* row, off, and the tagline is "Remember every place you've seen.". Voice input (#352) with Gemini, OpenAI, Groq, OpenRouter and Sarvam.
   - **Android and iPhone: code complete.** Houses, Hunt mode (it ends when the person leaves the Houses space, #359), the
     path trace, offline maps, Drive, deletion safeguards, the chooser and *What you track*. The **school is released on the
-    phones too** in the pull request of `feat/school-release-phones` (owner approved going ahead, 2026-10-20; no Play release exists,
+    phones too** (#391, merged; owner approved going ahead, 2026-10-20; no Play release exists,
     so it changes only the built app; [03](03-design.md) ADR-13b): `KindSettingRules.RELEASED` is the house and the school, Settings >
     *What you track* has a *Schools* row, off, and no *Experimental* switch (it hides itself while no listed kind is unreleased;
     the mechanism stays), the preview marks are gone from the switch hint and the school listing tips, `app_tagline` (Settings >
     About) is "Remember every place you've seen." and the empty house list keeps its house words (`houses_first_run_title`), and
-    the iPhone's location strings say *places you save*. Before it merges the school is compiled in but off (#366). **Voice input** on Android (#355) and the iPhone (#354), with Sarvam as a provider (#364);
+    the iPhone's location strings say *places you save*. **Voice input** on Android (#355) and the iPhone (#354), with Sarvam as a provider (#364);
     *Stop* never blocks the main thread and a recording cut short keeps what was said (`VoiceFailure.ENDED_EARLY`, #367).
     The phones' words come from the kind files (#361) and the AI card's first sentence is one string everywhere (#360).
     The iPhone is built and launched on a simulator in CI; nothing of it has run on a device.
@@ -255,8 +256,8 @@ today's state. No pull request is open apart from a docs one.
     website and the server) with two tripwires, `tools/check-kind-literals.mjs` and `gen-kind-words --check` (§18.26). The house
     is byte-identical (its goldens, pins and screenshots show no diff). The school's question screen now has its own headings
     (this branch, §18.23). The school is still compiled in but off.
-  - **Kinds a person adds, by importing a kind file: the website built, the phones in review** ([03](03-design.md) ADR-39, §18.28; `feat/user-authored-kinds-web`): *Kinds you add (experimental)* in What you track, the import with its preview and refusals, removal that keeps the entries, `search.userKinds` in a full backup, the shared `user-kind-vectors.json` (website, phones and server); the phones in `feat/user-authored-kinds-phones` (the same rules in `:shared`, the words as `UiWord`, the Android and iPhone pickers). Not in the Drive sync file or on the server (their entries are).
-  - **Built after #373, In review** (`feat/kinds-leftovers`, [03](03-design.md) §18.29): filters on number and amount extras (a range), the order of a copy's blocks from the kind file (`copyOrder`; Markdown, readable, CSV, XLSX and the Android PDF since `chore/close-open-items`), a `zz_all` space on the phones **in tests only** (`@TestOnlyKinds`; its Compose screens are not rendered).
+  - **Kinds a person adds, by importing a kind file: merged on the website (#394) and the phones (#397)** ([03](03-design.md) ADR-39, §18.28): *Kinds you add (experimental)* in What you track, the import with its preview and refusals, removal that keeps the entries, `search.userKinds` in a full backup, the shared `user-kind-vectors.json` (website, phones and server); the phones (#397: the same rules in `:shared`, the words as `UiWord`, the Android and iPhone pickers; the iPhone's picker has not run on a device). Not in the Drive sync file or on the server (their entries are).
+  - **Built after #373, merged as #396** ([03](03-design.md) §18.29): filters on number and amount extras (a range), the order of a copy's blocks from the kind file (`copyOrder`; Markdown, readable, CSV, XLSX and the Android PDF since `chore/close-open-items`), a `zz_all` space on the phones **in tests only** (`@TestOnlyKinds`; its Compose screens are not rendered).
   - **A hypothesis, not a proof (#395).** The fix for the `ScreensScreenshotTest areas[hi-dark=false]` flake (#395) is a hypothesis about its cause. If the flake recurs, do not re-run and move on: root-cause it from the recorded CI logs of the failing run. Checked 2026-10-21 (`android.yml` runs on `main` and on pull requests since #395 merged at 2026-10-21 00:33 UTC): seven runs finished, all green, one cancelled by a newer push; no recurrence yet, which is too few runs to call it fixed.
   - **Docs and CI.** Architecture overview (#357), the README around the kinds model (#358), the gitleaks fingerprint for the
     made-up key of the Voice 7 test (#365), the Compose tests' main-thread flake fixed at its root (#368). The release
@@ -265,8 +266,8 @@ today's state. No pull request is open apart from a docs one.
   release candidate; it has not yet. The Survey of India boundary data is adopted (N16, ADR-22).
 - **Open and the owner's alone (nothing for a session to build).**
   - Real-device checks, none run: the kinds rows MT-104..MT-121 (MT-112 and MT-113, the phones with the school released,
-    and the Voice rows MT-104..MT-111 and MT-114 among them), MT-122 (photos coming back from the real Drive, TC-M-90) and TC-M-81, TC-M-82, TC-M-83, TC-M-84 and TC-M-89; Google sign-in on
-    a phone (the Drive real-phone run, N19); the school's wording read by eye; MT-127..MT-132.
+    and the Voice rows MT-104..MT-111 and MT-114 among them), MT-122 and MT-123 (photos coming back from the real Drive and the 30-day clean-up, TC-M-90, TC-M-91), MT-124..MT-126 (the free-plan refusal with real keys, TC-M-92..TC-M-94) and TC-M-81, TC-M-82, TC-M-83, TC-M-84 and TC-M-89; Google sign-in on
+    a phone (the Drive real-phone run, N19); the school's wording read by eye; MT-127..MT-132; J9 of [13](13-release-security-checklist.md) (kinds a person adds, on the website and both phones).
   - Native-speaker review of Hindi, Tamil and Telugu, the school's words and the Sarvam words included; they ship *under review*.
     **The owner's review of the drafts:** the school's checklist and Compare criteria, its question bank and headings, and its
     viewings words (visits and open days).
@@ -282,20 +283,20 @@ today's state. No pull request is open apart from a docs one.
 
 ## 2. Next, in order
 
-**Now (2026-10-16).** The kinds refactor is built and merged (#373). Nothing is left that a session must build before the owner's checks; what follows is the owner's, in this order.
-1. **Real-device checks** (§1): MT-104..MT-122 and TC-M-81, TC-M-82, TC-M-83, TC-M-84, TC-M-89 and TC-M-90 (none run); Google sign-in on a
-   phone; the school's wording by eye; MT-127..MT-132. A failure becomes a fix branch, as §7 says.
+**Now (2026-10-21).** The kinds refactor is built and merged (#373), and so are the school on the phones (#391), the voice free-plan refusal (#388) and kinds a person adds on the website and the phones (#394, #397). The owner's step-by-step for everything below, in order and with tick-lists, is [ops/owner-release-runbook.md](ops/owner-release-runbook.md). Nothing is left that a session must build before the owner's checks; what follows is the owner's, in this order.
+1. **Real-device checks** (§1): MT-104..MT-123 and TC-M-81..TC-M-84, TC-M-89, TC-M-90, TC-M-91 and TC-M-92..TC-M-94 (none run); Google sign-in on a
+   phone; the school's wording by eye; MT-127..MT-132; J9 of [13](13-release-security-checklist.md) for kinds a person adds. A failure becomes a fix branch, as §7 says.
 2. **Native-speaker review** of Hindi, Tamil and Telugu (the school's and Sarvam's words included), **and the owner's review of
    the draft school checklist and criteria, the school question bank and the school viewings words**, and the India outline
    geometry.
 3. **The release gate:** [13](13-release-security-checklist.md) on a release candidate, then cut `v0.1.1` and publish its draft (the owner then deletes the old `v0.1.0` draft and tag).
-4. **The school's release** (ADR-13b; S4b-BL-282): the website (#389) is on `main`; the phones follow in `feat/school-release-phones`.
+4. **The school's release** (ADR-13b; S4b-BL-282): the website (#389) and the phones (#391) are on `main`.
    The phone device checks (MT-96, MT-97, MT-101, MT-103, MT-112, MT-113, MT-115, MT-116, MT-118..MT-121, and TC-M-25 in the
    school's space) are the owner's and not run. Optional at
    any time: `SARVAM_EVAL_API_KEY` for the voice eval suite.
-5. **Kinds a person adds** ([03](03-design.md) ADR-39): the website built (`feat/user-authored-kinds-web`), the phones in review (`feat/user-authored-kinds-phones`); on the iPhone the picker is compiled but not yet run on a device; the owner's check is [13](13-release-security-checklist.md) J9. **Planned, when the owner asks** (not built): a `zz_all`
-   (A `zz_all` space on the phones in tests, filters on number and amount extras and the copy-block order are built, In review: [03](03-design.md) §18.29.) **Decided, not planned (owner, 2026-10-21):** AI over a kind a person adds is a deliberate non-goal: a user kind never reaches an AI prompt, because the house's and the school's prompts are pinned by hash and the redaction of personal data is tuned to them; reversible only by a future ADR ([03](03-design.md) ADR-39).
-6. **Voice input refuses a free-plan provider key: built, In review** (owner request 2026-10-16, decision 2026-10-19; branch `feat/voice-refuse-free-tier`; no new backlog row). A rule `ALLOW | REFUSE_FREE | REFUSE_UNKNOWN | CHECKING` on a shared vector file, on the website and both phones: a free Gemini key (a `FreeTier` quota id), an OpenRouter free key or a `:free` model is refused with no way round; Groq, Sarvam and a probe that said nothing are refused until the person confirms "my plan is paid" for that key (the fail-closed design with an acknowledgement; **the owner can choose *never allow unknown* by deleting that switch**); the microphone is disabled before any audio and the check is made again before the request ([03](03-design.md) ADR-37 §19, [ai/voice-input](ai/voice-input.md) §8). **RR-33 is accepted by the owner** ("I accept this", 2026-10-19; confirmed 2026-10-20) at Medium-Low, mitigated with residual, conditional on this control staying in the release (removed or weakened, it lapses and RR-33 returns to Proposed). The per-release re-check of the provider facts is [13](13-release-security-checklist.md) F11. Owner-only left: the real-key rows TC-M-92..TC-M-94 (MT-124..MT-126), not run.
+5. **Kinds a person adds** ([03](03-design.md) ADR-39): the website (#394) and the phones (#397) are merged; on the iPhone the picker is compiled but not yet run on a device; the owner's check is [13](13-release-security-checklist.md) J9. **Planned, when the owner asks** (not built): a `zz_all`
+   (A `zz_all` space on the phones in tests, filters on number and amount extras and the copy-block order are built and merged, #396: [03](03-design.md) §18.29.) **Decided, not planned (owner, 2026-10-21):** AI over a kind a person adds is a deliberate non-goal: a user kind never reaches an AI prompt, because the house's and the school's prompts are pinned by hash and the redaction of personal data is tuned to them; reversible only by a future ADR ([03](03-design.md) ADR-39).
+6. **Voice input refuses a free-plan provider key: built and merged, #388** (owner request 2026-10-16, decision 2026-10-19; no new backlog row). A rule `ALLOW | REFUSE_FREE | REFUSE_UNKNOWN | CHECKING` on a shared vector file, on the website and both phones: a free Gemini key (a `FreeTier` quota id), an OpenRouter free key or a `:free` model is refused with no way round; Groq, Sarvam and a probe that said nothing are refused until the person confirms "my plan is paid" for that key (the fail-closed design with an acknowledgement; **the owner can choose *never allow unknown* by deleting that switch**); the microphone is disabled before any audio and the check is made again before the request ([03](03-design.md) ADR-37 §19, [ai/voice-input](ai/voice-input.md) §8). **RR-33 is accepted by the owner** ("I accept this", 2026-10-19; confirmed 2026-10-20) at Medium-Low, mitigated with residual, conditional on this control staying in the release (removed or weakened, it lapses and RR-33 returns to Proposed). The per-release re-check of the provider facts is [13](13-release-security-checklist.md) F11. Owner-only left: the real-key rows TC-M-92..TC-M-94 (MT-124..MT-126), not run.
 
 The numbered items below keep their ids because other documents link them; their text is history unless it says *open*. N13's
 *Order from here* is superseded by the list above, and N21 (kinds) and its voice rows are Done as the sprint log records, the kinds refactor included (#373, `8bfc936`).
