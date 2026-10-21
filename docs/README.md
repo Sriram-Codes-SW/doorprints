@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | SSDLC document index |
-| Version | 0.145 |
+| Version | 0.146 |
 | Date | 2026-10-21 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -43,6 +43,7 @@
 | 0.143 | 2026-10-21 | Claude (Code), engineer | The self-run pentest's sandbox part (`fix/pentest-2026-10-21`): new session record [ops/pentest-2026-10-21.md](ops/pentest-2026-10-21.md); 02 v0.102 (section 12, T-T24), 06 v0.301 (TC-S-50, TC-S-54), 07 v0.80, 10 v0.364 (§12.5a). |
 | 0.144 | 2026-10-21 | Claude (Code), engineer | Versions: 02 v0.103, 03 v0.182, 06 v0.302, 10 v0.365, 13 v0.32, 14 v0.209, ops/manual-test-checklist v0.34 (`chore/close-open-items`; the checklist now runs to MT-132). |
 | 0.145 | 2026-10-21 | Claude (Code), docs | New [ops/owner-release-runbook.md](ops/owner-release-runbook.md) (the owner's manual-testing and release runbook, a plan and not a record); status words brought to `main`: 03 v0.183, 04 v0.33, 06 v0.303, 10 v0.366, 14 v0.210, ops/manual-test-checklist v0.35 (the manual checklist's reworded school rows and renumbered ids, TC-M-95 and MT-133; the school on the phones #391, the voice free-plan refusal #388, kinds a person adds on the phones #397 and the kinds leftovers #396 are merged). No sign-off recorded. |
+| 0.146 | 2026-10-21 | Claude (Code), engineer | The Dependabot triage (`fix/dependabot-alerts-2026-10-21`): new session record [ops/dependabot-triage-2026-10-21.md](ops/dependabot-triage-2026-10-21.md); 13 v0.33 (A6). |
 | 0.112 | 2026-10-06 | Claude | The review backlog: docs/01 v0.41, 06 v0.131 (section 10.1), 07 v0.60, 14 v0.89. |
 | 0.111 | 2026-10-06 | Claude | Full-system review fixes and the manual test checklist (`docs/ops/manual-test-checklist.md`): docs/07 v0.59, docs/14 v0.88. |
 | 0.110 | 2026-10-06 | Claude | Review fixes on PR #139: docs/10 v0.149, 06 v0.130, 15 v0.27. |
@@ -196,6 +197,7 @@ Everything must run on free tiers. These documents follow a Secure Software Deve
 | – | [ops/release-run-2026-10-19.md](ops/release-run-2026-10-19.md) | Session record: the release security checklist ([13](13-release-security-checklist.md)) run on the v0.1.0 candidate `11072090` and the live site, row by row: status, evidence, findings and the owner's list before the draft is published |
 | – | [ops/pentest-2026-10-21.md](ops/pentest-2026-10-21.md) | Session record: the deep self-run pentest of [13](13-release-security-checklist.md) section 5, the part a sandbox can run on local copies: every High threat and trust boundary with how it was tried, the findings (PT-1, PT-3, PT-4, PT-5, all Low and fixed) and the owner's steps for the rest |
 | – | [ops/owner-release-runbook.md](ops/owner-release-runbook.md) | The owner's runbook for the end of development, in order: prerequisites, install, the device checks as tick-lists in four sessions (computer, Android, iPhone, GitHub), the native-speaker and school-content reviews, the release gate's owner-only rows, cutting and publishing `v0.1.1`, deleting the stale `v0.1.0` draft, what a failure triggers and what to do after; a plan, it records no result or approval |
+| – | [ops/dependabot-triage-2026-10-21.md](ops/dependabot-triage-2026-10-21.md) | Session record: the 14 open Dependabot alerts (Bouncy Castle, jose4j, jdom2, httpclient, commons-lang3, OpenTelemetry, vite, source-map-js), each package traced to its classpath, shown not to ship, and pinned to the patched version; the owner's steps to confirm them closed |
 | – | [Shared schemas](schemas/) | `doorprints-backup/1`: the one backup format the server, Android and web all implement, plus the canonical `backup-sample.json` and the kind files of `kinds/` (ADR-36): the server and Android tests read it, and the web writer's golden copy is checked against it by the backend's `BackupParityTest` (S4-00, [03](03-design.md) ADR-20, [06](06-test-plan.md) TC-I-34). Section 0, "What an import is" (the approved definition, Sprint 4b S4b-00), is maintained by the Docs team | Backend (section 0: Docs team) |
 | – | [CHANGELOG](../CHANGELOG.md) (repo root) | Release notes in Keep a Changelog format: Unreleased + released versions | Docs team |
 | – | [SECURITY.md](../SECURITY.md) (repo root) | How to report a vulnerability privately | Owner |
