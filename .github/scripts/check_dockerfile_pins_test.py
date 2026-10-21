@@ -73,6 +73,15 @@ IMAGE_CASES = [
 ]
 
 
+# The Gradle wrapper (PT-4): (name, gradle-wrapper.properties text, problem expected)
+WRAPPER_CASES = [
+    ("with its checksum", "distributionUrl=https\\://x/g.zip\ndistributionSha256Sum=" + "ab12" * 16 + "\n", False),
+    ("without one", "distributionUrl=https\\://x/g.zip\n", True),
+    ("a short checksum", "distributionSha256Sum=abc\n", True),
+    ("a commented checksum", "#distributionSha256Sum=" + "ab12" * 16 + "\n", True),
+]
+
+
 def found(module, text: str) -> list[tuple[int, str]]:
     return [(p.line, p.image) for p in module.problems_in("Dockerfile", text)]
 
@@ -84,7 +93,7 @@ def found_images(module, text: str) -> list[tuple[int, str]]:
 def failures(module) -> list[str]:
     return [name for name, text, expected in CASES if found(module, text) != expected] + [
         name for name, text, expected in IMAGE_CASES if found_images(module, text) != expected
-    ]
+    ] + [name for name, text, expected in WRAPPER_CASES if bool(module.wrapper_problems_in("w", text)) != expected]
 
 
 class DockerfilePins(unittest.TestCase):
@@ -97,6 +106,15 @@ class DockerfilePins(unittest.TestCase):
         for name, text, expected in IMAGE_CASES:
             with self.subTest(name):
                 self.assertEqual(expected, found_images(pins, text))
+
+    def test_every_wrapper_case(self):
+        for name, text, expected in WRAPPER_CASES:
+            with self.subTest(name):
+                self.assertEqual(expected, bool(pins.wrapper_problems_in("w", text)))
+        self.assertEqual(
+            "android/gradle/wrapper/gradle-wrapper.properties:0: https://x/g.zip is downloaded with no distributionSha256Sum=<64 hex>",
+            str(pins.wrapper_problems_in("android/gradle/wrapper/gradle-wrapper.properties", "distributionUrl=https\\://x/g.zip\n")[0]),
+        )
 
     def test_the_walk_reads_workflows_and_ci_scripts(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -148,7 +166,9 @@ MUTATIONS = {
     "reads no workflow image": ("for image in IMAGE_REF.findall(line):", "for image in []:"),
     "forgets continuation lines": ("while start > 0 and", "while False and"),
     "reads comment lines": ('if line.lstrip().startswith("#"):', "if False:"),
-    "reads every line as an image line": ("if not any(IMAGE_LINE.search(", "if not all(True or IMAGE_LINE.search("),
+    "accepts a wrapper without its checksum": ("if WRAPPER_SUM.search(text):", "if True:"),
+    "accepts a short wrapper checksum": ("=[0-9a-f]{64}\\s*$", "=[0-9a-f]+\\s*$"),
+    "reads every line as an image line":("if not any(IMAGE_LINE.search(", "if not all(True or IMAGE_LINE.search("),
 }
 
 
