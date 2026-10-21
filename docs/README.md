@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | SSDLC document index |
-| Version | 0.143 |
+| Version | 0.144 |
 | Date | 2026-10-21 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -41,6 +41,7 @@
 | 0.141 | 2026-10-20 | Claude (Code), engineer | The kinds leftovers ([03](03-design.md) §18.29; `feat/kinds-leftovers`): versions 03 v0.180, 06 v0.299, 10 v0.362, 14 v0.207. |
 | 0.142 | 2026-10-21 | Claude (Code), engineer | **Kinds a person adds, the phones** ([03](03-design.md) ADR-39; `feat/user-authored-kinds-phones`): versions 01 v0.55, 02 v0.101, 03 v0.181, 04 v0.32, 05 v0.40, 06 v0.300, 10 v0.363, 13 v0.31, 14 v0.208, 16 v0.9. |
 | 0.143 | 2026-10-21 | Claude (Code), engineer | The self-run pentest's sandbox part (`fix/pentest-2026-10-21`): new session record [ops/pentest-2026-10-21.md](ops/pentest-2026-10-21.md); 02 v0.102 (section 12, T-T24), 06 v0.301 (TC-S-50, TC-S-54), 07 v0.80, 10 v0.364 (§12.5a). |
+| 0.144 | 2026-10-21 | Claude (Code), engineer | Versions: 02 v0.103, 03 v0.182, 06 v0.302, 10 v0.365, 13 v0.32, 14 v0.209, ops/manual-test-checklist v0.34 (`chore/close-open-items`; the checklist now runs to MT-132). |
 | 0.112 | 2026-10-06 | Claude | The review backlog: docs/01 v0.41, 06 v0.131 (section 10.1), 07 v0.60, 14 v0.89. |
 | 0.111 | 2026-10-06 | Claude | Full-system review fixes and the manual test checklist (`docs/ops/manual-test-checklist.md`): docs/07 v0.59, docs/14 v0.88. |
 | 0.110 | 2026-10-06 | Claude | Review fixes on PR #139: docs/10 v0.149, 06 v0.130, 15 v0.27. |
@@ -185,7 +186,7 @@ Everything must run on free tiers. These documents follow a Secure Software Deve
 | 16 | [Architecture overview](16-architecture-overview.md) | The map: what Doorprints is in ten minutes, one component diagram, every store with its current version (Room, IndexedDB, Flyway), entry files per stack, the data contracts, a reading path and where the recent designs live; the rule that keeps it current | Lead |
 | – | [ops/firebase-hosting-setup.md](ops/firebase-hosting-setup.md) | Pointer named by `web.yml`'s skip notice: the Firebase Hosting owner guide and its status live in [07 §6.3](07-secure-build-and-deploy.md#63-web-firebase-hosting) | Docs team |
 | – | [ops/firebase-test-lab-setup.md](ops/firebase-test-lab-setup.md) | Pointer to the Firebase Test Lab owner guide and its status (the `android-emulator.yml` Test Lab job is skipped until it is done); the guide lives in [07 §7.2](07-secure-build-and-deploy.md#72-firebase-test-lab-owner-setup-keyless) | Docs team |
-| – | [ops/manual-test-checklist.md](ops/manual-test-checklist.md) | The manual test checklist (MT-01..MT-85): every test, standalone, for real devices and accounts, with what was automated or reviewed and a Pass / Fail / Date line |
+| – | [ops/manual-test-checklist.md](ops/manual-test-checklist.md) | The manual test checklist (MT-01..MT-132): every test, standalone, for real devices and accounts, with what was automated or reviewed and a Pass / Fail / Date line |
 | – | [ops/ios-qr-scanner-notes.md](ops/ios-qr-scanner-notes.md) | Session record: the iPhone's QR scanner (AVFoundation, `QrScanSession`; S4b-BL-136), what CI proves and what only an iPhone proves; the decisions are in [15](15-google-drive-backup-and-sharing.md) §9.5 i |
 | – | [ops/screenshot-flake-notes.md](ops/screenshot-flake-notes.md) | Session record: why a screenshot test failed once in a full run and the `readyText` fix (S4b-BL-138, S4b-BL-100); the rule is in [06](06-test-plan.md) TC-U-145 |
 | – | [ops/path-trace-spec-review.md](ops/path-trace-spec-review.md) | Session record: the senior review of the path trace v2 design (2026-10-06); the decisions are in [11](11-feature-parity-and-export-spec.md) 5.27 |

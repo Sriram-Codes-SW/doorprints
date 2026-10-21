@@ -33,7 +33,7 @@ import kotlin.test.assertTrue
  * explains the microphone in all four languages; and no copy, backup, sync or Drive code can reach the recorder or a
  * clip. The behaviour of the shared parts (every exit lets the microphone go, the limits, the setting off) is the
  * common tests (`VoiceSessionTest`, `PcmVoiceRecorderTest`, `IosCapturePipelineTest`); the real microphone, the prompt and
- * an interruption are MT-82..MT-87 on a phone.
+ * an interruption are MT-127..MT-132 on a phone.
  */
 class IosVoiceSafetyTest {
     private val repo: File by lazy {

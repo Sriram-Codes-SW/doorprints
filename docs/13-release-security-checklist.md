@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | The manual part of the release security gate: the one-hour list per release, and the scope of the deep self-run pentest |
-| Version | 0.31 |
+| Version | 0.32 |
 | Date | 2026-10-21 |
 | Author | Claude (Code), lead |
 | Status | Draft. Written (story S4b-SEC-3); **not yet run on a release candidate**, which is the story's last acceptance item |
@@ -42,6 +42,7 @@
 | 0.29 | 2026-10-20 | Claude (Code), engineer | **J8 rewritten for the school's release on the phones** (owner approved going ahead, 2026-10-20, [03](03-design.md) ADR-13b; `feat/school-release-phones`): `RELEASED` is the house and the school, a *Schools* row (off) and no *Experimental* switch, no preview marks; the phone device checks are named as the owner's and not run. H2 applies in the school's space on the phones. |
 | 0.30 | 2026-10-20 | Claude (Code), engineer | **New J9**, kinds a person adds ([03](03-design.md) ADR-39, `feat/user-authored-kinds-web`). |
 | 0.31 | 2026-10-21 | Claude (Code), engineer | **J9 on the phones too** ([03](03-design.md) ADR-39, `feat/user-authored-kinds-phones`). |
+| 0.32 | 2026-10-21 | Claude (Code), engineer | C5 names the microphone check MT-127 (renumbered from MT-82, which the QR scanner row also held). |
 
 ## 1. What this is, and when it runs
 
@@ -121,7 +122,7 @@ On the release APK.
 | C2 | Signature (MASVS-RESILIENCE) | `apksigner verify --print-certs app-release.apk` | Verifies; the SHA-256 matches the published fingerprint (TC-S-15). *n/a* for an unsigned candidate |
 | C3 | Logs (MASVS-STORAGE) | `adb logcat` while adding, syncing and exporting the test houses | No contact name, phone, note text or exact location in the log |
 | C4 | Deep links (MASVS-PLATFORM) | The TC-S-12 `adb shell am start` commands | No crash; bad input ignored |
-| C5 | Permissions at use | Fresh install; walk to Hunt mode; turn on *Voice input* and tap the microphone | Location asked only when needed, with the rationale; *Only this time* and *Deny* both handled; **the microphone is not asked at install or start-up, only after the tap and the rationale; *Not now* and *Deny* leave the field working** (MT-82; on the iPhone iOS asks once, MT-104) |
+| C5 | Permissions at use | Fresh install; walk to Hunt mode; turn on *Voice input* and tap the microphone | Location asked only when needed, with the rationale; *Only this time* and *Deny* both handled; **the microphone is not asked at install or start-up, only after the tap and the rationale; *Not now* and *Deny* leave the field working** (MT-127; on the iPhone iOS asks once, MT-104) |
 | C6 | Files the user saves | *Save a copy* and the weekly backup | Written only where the user chose (the system picker), never to shared storage unasked |
 | C7 | Captive portal (TC-S-13) | Only when sync changed | As TC-S-13 |
 

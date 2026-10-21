@@ -26,6 +26,7 @@ import { holdsFor, spaceFileName } from '../core/space-scope';
 import { en } from '../i18n/en';
 import { resizeImage } from '../core/image-resize';
 import { buildBackupZip } from './backup-export';
+import { capabilitiesOf } from '../core/kind-capabilities';
 import { buildCsvTables } from './csv-export';
 import { buildHtml } from './html-export';
 import { buildMarkdown } from './markdown-export';
@@ -161,8 +162,10 @@ export class ExportService {
       }
       case 'csv': {
         const tables = buildCsvTables(bundle);
+        // The files go in by name, or, when the kind names a `copyOrder` (docs/03 §18.29), in the order of its tables.
+        const inOrder = capabilitiesOf(bundle.voice?.kind).copyOrder.length > 0;
         const entries = Object.entries(tables)
-          .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+          .sort(([a], [b]) => (inOrder ? 0 : a < b ? -1 : a > b ? 1 : 0))
           .map(([path, text]) => ({ path, data: utf8(text) }));
         return {
           format,
