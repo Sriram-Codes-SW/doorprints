@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | 05 UX, accessibility and i18n |
-| Version | 0.39 |
-| Date | 2026-10-20 |
+| Version | 0.40 |
+| Date | 2026-10-21 |
 | Author | Claude (Cowork) – Design team |
 | Status | Draft |
 | Scope | Web app (`web/`) and Android app (`android/`), both implemented |
@@ -52,6 +52,7 @@
 | 0.37 | 2026-10-20 | Claude (Code), engineer | §8: the language and the country are two things ([03](03-design.md) ADR-38, §21): the app language decides the words and the `Intl` locale of the screens; the **country pack** decides the currency, the digit grouping of exported files, the phone shapes and the geocoder's country. New §8.4. No string changed; hi, ta and te untouched. |
 | 0.38 | 2026-10-20 | Claude (Code), engineer | **Kinds you add** ([03](03-design.md) ADR-39, `feat/user-authored-kinds-web`): the settings, the preview and the refusals, in four languages; the neutral words of such a space. |
 | 0.39 | 2026-10-20 | Claude (Code), engineer | Glossary: `driveSync.photoRetention` (phones `drive_sync_photo_retention`), the one sentence under the Drive photo switch on how long a deleted photo stays in the person's Google Drive ([15](15-google-drive-backup-and-sharing.md) §5.1; `fix/flakes-and-retention-text`); hi, ta and te under review. |
+| 0.40 | 2026-10-21 | Claude (Code), engineer | **Kinds you add on the phones** ([03](03-design.md) ADR-39, `feat/user-authored-kinds-phones`): the settings, the preview, the refusals and the removal, in four languages; the neutral words of such a space. |
 
 ---
 
@@ -1082,6 +1083,8 @@ planned for Sprint 4b ([11](11-feature-parity-and-export-spec.md) §10, Android 
 
 
 **Kinds you add (website, [03](03-design.md) ADR-39).** In Your data > What you track: the switch *Kinds you add (experimental)* with its hint; while on, *Import a kind file* (a labelled native file input, its limits in the hint), a preview region with a heading that takes focus (name, fields, checklist, whether it replaces one), *Add this kind* and *Cancel*, a refusal as `role="alert"` with the reason in plain words and where in the file, a `role="status"` notice; each added kind's row says *Added by you* and has *Remove kind* (named for the kind). The person's own words are shown as written in every language (no translation, no markup); the app's words are in en, hi, ta and te (hi, ta, te under review); the space's words name no house (`ukind.*`).
+
+**Kinds you add (phones, [03](03-design.md) ADR-39).** Settings > What you track: the switch *Kinds you add (experimental)* with its hint (a `SwitchRow`, one TalkBack node); while on, a heading, the hint with the limits, *Import a kind file* (an outlined button, 48 dp), the refusal in an assertive live region (the reason in plain words, then *Where in the file*), the preview as a card whose heading takes focus (name, fields, checklist, whether it replaces one) with *Add this kind* or *Replace the kind* and *Cancel*, and a polite live region for *added* or *updated*; each added kind's row says *Added by you* and has *Remove kind* (its content description names the kind), which asks in a dialog with focus on *Cancel*, *Save a copy first* and the danger button, then says *removed* in a snackbar. The person's words are drawn as Compose `Text` in every language; the app's words are in en, hi, ta and te (hi, ta, te under review); the space's words name no house (`ukind_*`, `UserKindStringsTest`).
 
 ## 15. Appendix: Design and UX self-check
 

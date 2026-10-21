@@ -60,6 +60,7 @@ import app.doorprints.ui.res.kinds_heading
 import app.doorprints.ui.res.kinds_last_on
 import app.doorprints.ui.res.kinds_switch
 import app.doorprints.ui.res.kinds_switch_hint
+import app.doorprints.ui.res.userkinds_switch
 import app.doorprints.ui.res.school_add_tip_listing
 import app.doorprints.ui.res.school_add_tip_listing_a11y
 import kotlinx.coroutines.runBlocking
@@ -179,8 +180,10 @@ class KindsA11yTest(private val lang: String) {
         show(text(Res.string.kinds_heading)) { Column(Modifier.padding(16.dp).verticalScroll(rememberScrollState())) { KindsSettingsSection() } }
         audit("What you track, the school released and not shown")
         compose.onNode(heading and hasText(text(Res.string.kinds_heading))).assertExists()
-        // The switch hides itself while every listed kind is released: nothing named Experimental is left to read.
-        assertEquals(0, compose.onAllNodes(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Switch)).fetchSemanticsNodes().size)
+        // The Experimental switch hides itself while every listed kind is released: the one switch left is *Kinds you add* (docs/03 ADR-39).
+        val switches = compose.onAllNodes(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Switch)).fetchSemanticsNodes()
+        assertEquals(1, switches.size)
+        assertTrue(switches.single().config.getOrNull(SemanticsProperties.Text).orEmpty().any { it.text == text(Res.string.userkinds_switch) })
         assertEquals(0, compose.onAllNodes(hasText(text(Res.string.kinds_switch), substring = true)).fetchSemanticsNodes().size)
         // A Show box and a Default radio for each kind; the house is on (its box says why it stays), the school is off.
         val boxes = compose.onAllNodes(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Checkbox)).fetchSemanticsNodes()

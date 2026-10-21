@@ -65,70 +65,65 @@ class UserKindVectorsTest {
 
     // ----- The texts of the cases, as the file's note defines its `json`, `generate` and `patch` forms -----
 
-    /** A JSON tree that can be changed in place: maps keep their keys' order, as the website's objects do. */
-    private fun thaw(e: JsonElement): Any? = when (e) {
-        is JsonObject -> LinkedHashMap<String, Any?>().apply { e.forEach { (k, v) -> put(k, thaw(v)) } }
-        is JsonArray -> e.mapTo(ArrayList()) { thaw(it) }
-        else -> e
+    /**
+     * [root] with the value at [path] replaced by [value] (null: removed). Rebuilt, not changed in place: an object keeps its keys'
+     * order and a new key comes last, as the website's objects do; a list item is replaced or removed at its index.
+     */
+    private fun change(root: JsonElement, path: List<JsonElement>, value: JsonElement?): JsonElement {
+        val k = path.first().jsonPrimitive
+        val rest = path.drop(1)
+        return if (k.isString) {
+            val o = root.jsonObject
+            val out = LinkedHashMap<String, JsonElement>(o)
+            val next = if (rest.isEmpty()) value else change(o.getValue(k.content), rest, value)
+            if (next == null) out.remove(k.content) else out[k.content] = next
+            JsonObject(out)
+        } else {
+            val a = root.jsonArray.toMutableList()
+            val next = if (rest.isEmpty()) value else change(a[k.int], rest, value)
+            if (next == null) a.removeAt(k.int) else a[k.int] = next
+            JsonArray(a)
+        }
     }
 
-    @Suppress("UNCHECKED_CAST")
-    private fun freeze(v: Any?): JsonElement = when (v) {
-        is Map<*, *> -> JsonObject((v as Map<String, Any?>).mapValues { freeze(it.value) })
-        is List<*> -> JsonArray(v.map { freeze(it) })
-        is JsonElement -> v
-        else -> error("not JSON: $v")
-    }
+    private fun key(s: String) = JsonPrimitive(s)
+    private fun index(i: Int) = JsonPrimitive(i)
 
-    @Suppress("UNCHECKED_CAST")
-    private fun at(root: Any?, path: List<JsonElement>): Any? = path.fold(root) { o, k ->
-        val p = k.jsonPrimitive
-        if (p.isString) (o as Map<String, Any?>)[p.content] else (o as List<Any?>)[p.int]
-    }
+    private fun obj(vararg pairs: Pair<String, Any>): JsonObject = JsonObject(
+        pairs.associate { (k, v) -> k to (v as? JsonElement ?: if (v is Int) JsonPrimitive(v) else JsonPrimitive(v.toString())) },
+    )
 
-    private fun label(text: String): Map<String, Any?> = linkedMapOf("text" to JsonPrimitive(text))
+    private fun label(text: String) = obj("text" to text)
 
-    @Suppress("UNCHECKED_CAST")
     private fun caseText(c: JsonObject): String {
         c["json"]?.let { return it.jsonPrimitive.content }
         c["generate"]?.jsonObject?.let { g -> return g.text("prefix") + g.text("repeat").repeat(g.getValue("times").jsonPrimitive.int) + g.text("suffix") }
         val p = c.getValue("patch").jsonObject
-        val file = thaw(sample(p.text("base"))) as MutableMap<String, Any?>
-        p["set"]?.jsonArray?.forEach { pair ->
-            val path = pair.jsonArray[0].jsonArray
-            val parent = at(file, path.dropLast(1))
-            val last = path.last().jsonPrimitive
-            val value = thaw(pair.jsonArray[1])
-            if (last.isString) (parent as MutableMap<String, Any?>)[last.content] = value else (parent as MutableList<Any?>)[last.int] = value
-        }
-        p["remove"]?.jsonArray?.forEach { r ->
-            val path = r.jsonArray
-            val parent = at(file, path.dropLast(1))
-            val last = path.last().jsonPrimitive
-            if (last.isString) (parent as MutableMap<String, Any?>).remove(last.content) else (parent as MutableList<Any?>).removeAt(last.int)
-        }
+        var file: JsonElement = sample(p.text("base"))
+        p["set"]?.jsonArray?.forEach { pair -> file = change(file, pair.jsonArray[0].jsonArray, pair.jsonArray[1]) }
+        p["remove"]?.jsonArray?.forEach { r -> file = change(file, r.jsonArray, null) }
         p["manyExtras"]?.jsonPrimitive?.int?.let { n ->
-            file["extras"] = (1..n).mapTo(ArrayList()) { i ->
-                linkedMapOf("id" to JsonPrimitive("x$i"), "type" to JsonPrimitive("text"), "maxLength" to JsonPrimitive(10), "section" to JsonPrimitive("details"), "order" to JsonPrimitive(i), "label" to label("Field $i"))
-            }
+            file = change(file, listOf(key("extras")), JsonArray((1..n).map { i ->
+                obj("id" to "x$i", "type" to "text", "maxLength" to 10, "section" to "details", "order" to i, "label" to label("Field $i"))
+            }))
         }
         p["manyOptions"]?.jsonObject?.let { m ->
-            val extra = (file["extras"] as MutableList<Any?>)[m.getValue("extra").jsonPrimitive.int] as MutableMap<String, Any?>
-            extra["options"] = (1..m.getValue("count").jsonPrimitive.int).mapTo(ArrayList()) { i -> linkedMapOf("id" to JsonPrimitive("O$i"), "label" to label("Option $i")) }
+            val options = JsonArray((1..m.getValue("count").jsonPrimitive.int).map { i -> obj("id" to "O$i", "label" to label("Option $i")) })
+            file = change(file, listOf(key("extras"), index(m.getValue("extra").jsonPrimitive.int), key("options")), options)
         }
         p["manyEnums"]?.jsonObject?.let { m ->
             val options = m.getValue("options").jsonPrimitive.int
-            file["extras"] = (1..m.getValue("count").jsonPrimitive.int).mapTo(ArrayList()) { i ->
-                linkedMapOf(
-                    "id" to JsonPrimitive("e$i"), "type" to JsonPrimitive("enum"), "section" to JsonPrimitive("details"), "order" to JsonPrimitive(i), "label" to label("Field $i"),
-                    "options" to (1..options).mapTo(ArrayList()) { j -> linkedMapOf("id" to JsonPrimitive("O$j"), "label" to label("Option $j")) },
+            file = change(file, listOf(key("extras")), JsonArray((1..m.getValue("count").jsonPrimitive.int).map { i ->
+                obj(
+                    "id" to "e$i", "type" to "enum", "section" to "details", "order" to i, "label" to label("Field $i"),
+                    "options" to JsonArray((1..options).map { j -> obj("id" to "O$j", "label" to label("Option $j")) }),
                 )
-            }
+            }))
         }
         p["manyChecks"]?.jsonPrimitive?.int?.let { n ->
-            file["checklist"] = (1..n).mapTo(ArrayList()) { i -> linkedMapOf("key" to JsonPrimitive("c$i"), "label" to label("Check $i")) }
+            file = change(file, listOf(key("checklist")), JsonArray((1..n).map { i -> obj("key" to "c$i", "label" to label("Check $i")) }))
         }
-        return freeze(file).toString()
+        return file.toString()
     }
 
     /** The resolved capabilities in the vectors' shape: a feature left out is null. */
