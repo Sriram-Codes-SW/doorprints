@@ -78,7 +78,7 @@ describe('kind capabilities (docs/schemas/kinds, ADR-36 §18.19)', () => {
     expect(Object.keys(vectors.kinds).sort()).toEqual(Object.keys(FILES).sort());
   });
 
-  it('the synthetic kind of the conformance suite resolves to the set the vectors pin, and a number or an amount may be a filter (docs/03 §18.28)', () => {
+  it('the synthetic kind of the conformance suite resolves to the set the vectors pin, and a number or an amount may be a filter (docs/03 §18.29)', () => {
     const file = testAllJson as unknown as KindFile;
     expect(validate(file), JSON.stringify(validate.errors)).toBe(true);
     const resolved = parseCapabilities(file.capabilities);

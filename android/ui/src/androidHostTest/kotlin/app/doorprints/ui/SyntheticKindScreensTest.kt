@@ -38,7 +38,7 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 /**
- * A space of the synthetic kind of the conformance suite on the phone and the iPhone (docs/03 section 18.26, 18.28; the twin of the website's
+ * A space of the synthetic kind of the conformance suite on the phone and the iPhone (docs/03 section 18.26, 18.29; the twin of the website's
  * `forKind('zz_all')`): the kind of `docs/schemas/kinds/test-all.json`, with every capability on, is registered for each case only (the test
  * seam of `:shared`, [KindFileKinds]; no build lists it), and the screens' own rules run against it. Every Android key of the file is a Compose
  * string; the space shows every place a kind with every capability shows; the form lays its extras out and stores each value as one of the

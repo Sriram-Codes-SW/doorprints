@@ -51,7 +51,7 @@ data class KindCapabilities(
     val baseline: Boolean = false,
     /** The extras the list and the map can be filtered by, in the order the rows are shown (ids of enum, switch, number or amount extras of the kind). */
     val filters: List<String> = emptyList(),
-    /** The blocks of a copy that come first after the details, in this order; the rest follow in [COPY_BLOCKS]'s order (docs/03 section 18.28). None: the fixed order. */
+    /** The blocks of a copy that come first after the details, in this order; the rest follow in [COPY_BLOCKS]'s order (docs/03 section 18.29). None: the fixed order. */
     val copyOrder: List<String> = emptyList(),
 ) {
     /**
@@ -136,7 +136,7 @@ data class KindCapabilities(
         /** The kinds that have capabilities, for the tests. */
         val KINDS: Set<String> get() = BUILT_IN.keys
 
-        /** The blocks of a house's copy after its details, in the copies' fixed order (`kind.schema.json`, `capabilities.copyOrder`; docs/03 section 18.28). */
+        /** The blocks of a house's copy after its details, in the copies' fixed order (`kind.schema.json`, `capabilities.copyOrder`; docs/03 section 18.29). */
         val COPY_BLOCKS: List<String> =
             listOf("cost", "rooms", "questions", "viewings", "areaNotes", "distances", "moveIn", "checklist", "visits", "notes", "photos")
 

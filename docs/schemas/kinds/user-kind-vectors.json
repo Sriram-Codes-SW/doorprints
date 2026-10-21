@@ -1,0 +1,3491 @@
+{
+ "format": "doorprints-user-kind-vectors/1",
+ "note": "What the readers of a kind file a person adds answer (docs/03 ADR-39; docs/02 T-T25): the website (`web/src/app/core/user-kinds/user-kind-file.ts`, `user-kind-file.spec.ts`), the phones (`:shared` `UserKindFiles`, `UserKindVectorsTest`, the second pull request) and the server (`KindFiles.parse`, `UserKindVectorsTest`: the server stores no such kind, so it holds only the `base` column, that its reader of built-in files refuses what `base` says and takes the rest). `valid` are accepted by every reader and by `user-kind.schema.json` (with `kind.schema.json`), and resolve to `resolved` (the `search` a list reads: the file's own, then every typed extra it does not name; the capabilities as `capabilitiesOf` gives them). Each `invalid` case is one fault in an otherwise valid file: `code` and `path` are the first fault the apps' readers report; `schema` says whether the schema alone refuses it (null: there is no parsed document to give it), `base` whether the server's reader of built-in kind files does. A case is `json` (the text as it is), `generate` (`prefix`, then `repeat` written `times` times, then `suffix`) or `patch` (the valid file named `base`, with `set` [path, value] and `remove` [path] applied in order, a path a list of keys and indexes; then `manyExtras` n: the extras replaced by n text extras `x1`..`xn` {type text, maxLength 10, section details, order i, label {text \"Field i\"}}; `manyOptions` {extra, count}: that extra's options replaced by `count` options `O1`.. with labels \"Option i\"; `manyEnums` {count, options}: the extras replaced by `count` enum extras `e1`.. each with `options` options; `manyChecks` n: the checklist replaced by n items `c1`.. \"Check i\"), written back with no spaces. Expected values are written by hand from the rules, never computed by a reader.",
+ "limits": {
+  "maxBytes": 65536,
+  "maxDepth": 8,
+  "maxValues": 4000,
+  "maxString": 2000,
+  "maxText": 60,
+  "maxNote": 500,
+  "maxSections": 13,
+  "maxCore": 14,
+  "maxExtras": 30,
+  "maxOptions": 30,
+  "maxOptionsTotal": 300,
+  "maxChecklist": 20,
+  "maxSearch": 80,
+  "maxKinds": 8,
+  "idPattern": "^u_[a-z][a-z0-9_]{1,29}$"
+ },
+ "reserved": [
+  "house",
+  "school",
+  "zz_all"
+ ],
+ "forbiddenKeys": [
+  "__proto__",
+  "constructor",
+  "prototype"
+ ],
+ "codes": [
+  "tooBig",
+  "notJson",
+  "duplicateKey",
+  "tooDeep",
+  "tooMany",
+  "tooLong",
+  "prototypeKey",
+  "mapKey",
+  "unknownKey",
+  "notAllowed",
+  "required",
+  "type",
+  "format",
+  "id",
+  "reserved",
+  "textLength",
+  "textChars",
+  "range",
+  "limit",
+  "repeated",
+  "value",
+  "ref",
+  "capabilities"
+ ],
+ "valid": [
+  {
+   "name": "a gym with every field type, a checklist, Compare, filters, Hunt and an icon",
+   "file": {
+    "format": "doorprints-kind/1",
+    "id": "u_gym",
+    "version": 1,
+    "note": "A kind written by hand for the gyms near home.",
+    "labels": {
+     "new": {
+      "text": "New gym"
+     },
+     "many": {
+      "text": "Gyms"
+     },
+     "delete": {
+      "text": "Delete gym"
+     }
+    },
+    "statuses": [
+     {
+      "id": "NEW",
+      "label": {
+       "text": "New"
+      }
+     },
+     {
+      "id": "SHORTLISTED",
+      "label": {
+       "text": "Shortlisted"
+      }
+     },
+     {
+      "id": "REJECTED",
+      "label": {
+       "text": "Rejected"
+      }
+     },
+     {
+      "id": "TAKEN",
+      "label": {
+       "text": "Joined"
+      }
+     },
+     {
+      "id": "NOT_CHOSEN",
+      "label": {
+       "text": "Not chosen"
+      }
+     }
+    ],
+    "sections": [
+     {
+      "id": "details",
+      "label": {
+       "text": "Details"
+      }
+     },
+     {
+      "id": "cost",
+      "label": {
+       "text": "Fees"
+      }
+     },
+     {
+      "id": "checklist",
+      "label": {
+       "text": "Checklist"
+      }
+     },
+     {
+      "id": "visits",
+      "label": {
+       "text": "Visits"
+      }
+     },
+     {
+      "id": "photos",
+      "label": {
+       "text": "Photos"
+      }
+     },
+     {
+      "id": "areaNotes",
+      "label": {
+       "text": "Area notes"
+      }
+     },
+     {
+      "id": "distances",
+      "label": {
+       "text": "Distances"
+      }
+     },
+     {
+      "id": "location",
+      "label": {
+       "text": "Location"
+      }
+     },
+     {
+      "id": "walks",
+      "label": {
+       "text": "Walks"
+      }
+     }
+    ],
+    "core": [
+     {
+      "id": "label",
+      "section": "details",
+      "order": 10,
+      "label": {
+       "text": "Gym name"
+      }
+     },
+     {
+      "id": "status",
+      "section": "details",
+      "order": 20,
+      "label": {
+       "text": "Status"
+      }
+     },
+     {
+      "id": "rating",
+      "section": "details",
+      "order": 30,
+      "label": {
+       "text": "Rating"
+      }
+     },
+     {
+      "id": "address",
+      "section": "details",
+      "order": 80,
+      "label": {
+       "text": "Address"
+      }
+     },
+     {
+      "id": "street",
+      "section": "details",
+      "order": 90,
+      "label": {
+       "text": "Street"
+      }
+     },
+     {
+      "id": "locality",
+      "section": "details",
+      "order": 100,
+      "label": {
+       "text": "Area"
+      }
+     },
+     {
+      "id": "contactName",
+      "section": "details",
+      "order": 110,
+      "label": {
+       "text": "Front desk"
+      }
+     },
+     {
+      "id": "contactPhone",
+      "section": "details",
+      "order": 120,
+      "label": {
+       "text": "Phone"
+      }
+     },
+     {
+      "id": "listingUrl",
+      "section": "details",
+      "order": 140,
+      "label": {
+       "text": "Website"
+      }
+     },
+     {
+      "id": "notes",
+      "section": "details",
+      "order": 150,
+      "label": {
+       "text": "Notes"
+      }
+     },
+     {
+      "id": "location",
+      "section": "location",
+      "order": 10,
+      "label": {
+       "text": "Location"
+      }
+     },
+     {
+      "id": "locationSource",
+      "section": "location",
+      "order": 20,
+      "label": {
+       "text": "Approximate"
+      }
+     }
+    ],
+    "extras": [
+     {
+      "id": "focus",
+      "type": "enum",
+      "section": "details",
+      "order": 50,
+      "label": {
+       "text": "Focus"
+      },
+      "options": [
+       {
+        "id": "WEIGHTS",
+        "label": {
+         "text": "Weights"
+        }
+       },
+       {
+        "id": "CARDIO",
+        "label": {
+         "text": "Cardio"
+        }
+       },
+       {
+        "id": "YOGA",
+        "label": {
+         "text": "Yoga"
+        }
+       },
+       {
+        "id": "MIXED",
+        "label": {
+         "text": "Mixed"
+        }
+       }
+      ]
+     },
+     {
+      "id": "hours",
+      "type": "text",
+      "maxLength": 80,
+      "section": "details",
+      "order": 60,
+      "label": {
+       "text": "Opening hours"
+      }
+     },
+     {
+      "id": "trainer",
+      "type": "bool",
+      "section": "details",
+      "order": 70,
+      "label": {
+       "text": "Personal trainer"
+      }
+     },
+     {
+      "id": "walkMinutes",
+      "type": "number",
+      "integer": true,
+      "min": 0,
+      "max": 180,
+      "unit": "minute",
+      "better": "lower",
+      "section": "details",
+      "order": 72,
+      "label": {
+       "text": "Walk from home (minutes)"
+      }
+     },
+     {
+      "id": "trialOn",
+      "type": "date",
+      "section": "details",
+      "order": 74,
+      "label": {
+       "text": "Free trial on"
+      }
+     },
+     {
+      "id": "fee",
+      "type": "money",
+      "max": 1000000,
+      "cadences": [
+       "month"
+      ],
+      "better": "lower",
+      "section": "cost",
+      "order": 10,
+      "label": {
+       "text": "Monthly fee"
+      }
+     },
+     {
+      "id": "joining",
+      "type": "money",
+      "max": 1000000,
+      "cadences": [
+       "once"
+      ],
+      "section": "cost",
+      "order": 20,
+      "label": {
+       "text": "Joining fee"
+      }
+     }
+    ],
+    "checklist": [
+     {
+      "key": "clean",
+      "label": {
+       "text": "Clean and airy"
+      }
+     },
+     {
+      "key": "equipment",
+      "label": {
+       "text": "Equipment in good shape"
+      }
+     },
+     {
+      "key": "crowd",
+      "label": {
+       "text": "Not crowded at my time"
+      }
+     },
+     {
+      "key": "staff",
+      "label": {
+       "text": "Helpful staff"
+      }
+     }
+    ],
+    "questions": {
+     "seed": "docs/schemas/default-questions.json",
+     "scopes": [
+      {
+       "id": "BOTH",
+       "cadences": [
+        "month",
+        "once"
+       ]
+      }
+     ]
+    },
+    "search": [
+     "label",
+     "address",
+     "street",
+     "locality",
+     "notes",
+     "contactName",
+     "hours",
+     "focus"
+    ],
+    "ai": {
+     "extract": [],
+     "ask": [],
+     "plan": [],
+     "never": []
+    },
+    "capabilities": {
+     "map": true,
+     "hunt": {
+      "alertRadiusM": 50,
+      "stayCreates": true,
+      "streetMemory": false,
+      "areas": false
+     },
+     "rooms": false,
+     "moveIn": false,
+     "contacts": {
+      "role": "office",
+      "autoCreateFromPhone": false
+     },
+     "compare": {
+      "criteria": [
+       "clean",
+       "equipment",
+       "crowd",
+       "staff",
+       "fee",
+       "walkMinutes"
+      ]
+     },
+     "paths": true,
+     "filters": [
+      "focus",
+      "trainer"
+     ],
+     "identity": {
+      "icon": "gym",
+      "colour": "teal"
+     }
+    }
+   },
+   "resolved": {
+    "id": "u_gym",
+    "many": "Gyms",
+    "extras": [
+     "focus",
+     "hours",
+     "trainer",
+     "walkMinutes",
+     "trialOn",
+     "fee",
+     "joining"
+    ],
+    "checklist": [
+     "clean",
+     "equipment",
+     "crowd",
+     "staff"
+    ],
+    "search": [
+     "label",
+     "address",
+     "street",
+     "locality",
+     "notes",
+     "contactName",
+     "hours",
+     "focus",
+     "trainer",
+     "walkMinutes",
+     "trialOn",
+     "fee",
+     "joining"
+    ],
+    "capabilities": {
+     "map": true,
+     "hunt": {
+      "alertRadiusM": 50,
+      "stayCreates": true,
+      "streetMemory": false,
+      "areas": false
+     },
+     "rooms": false,
+     "moveIn": false,
+     "contacts": {
+      "role": "office",
+      "autoCreateFromPhone": false
+     },
+     "viewings": null,
+     "compare": {
+      "criteria": [
+       "clean",
+       "equipment",
+       "crowd",
+       "staff",
+       "fee",
+       "walkMinutes"
+      ]
+     },
+     "paths": true,
+     "identity": {
+      "icon": "gym",
+      "colour": "teal"
+     },
+     "baseline": false,
+     "filters": [
+      "focus",
+      "trainer"
+     ]
+    }
+   }
+  },
+  {
+   "name": "the smallest kind: a name and a place, no capabilities block",
+   "file": {
+    "format": "doorprints-kind/1",
+    "id": "u_cafe",
+    "version": 1,
+    "labels": {
+     "new": {
+      "text": "New cafe"
+     },
+     "many": {
+      "text": "Cafes"
+     },
+     "delete": {
+      "text": "Delete cafe"
+     }
+    },
+    "statuses": [
+     {
+      "id": "NEW",
+      "label": {
+       "text": "New"
+      }
+     },
+     {
+      "id": "SHORTLISTED",
+      "label": {
+       "text": "Shortlisted"
+      }
+     },
+     {
+      "id": "REJECTED",
+      "label": {
+       "text": "Rejected"
+      }
+     },
+     {
+      "id": "TAKEN",
+      "label": {
+       "text": "Joined"
+      }
+     },
+     {
+      "id": "NOT_CHOSEN",
+      "label": {
+       "text": "Not chosen"
+      }
+     }
+    ],
+    "sections": [
+     {
+      "id": "details",
+      "label": {
+       "text": "Details"
+      }
+     },
+     {
+      "id": "location",
+      "label": {
+       "text": "Location"
+      }
+     }
+    ],
+    "core": [
+     {
+      "id": "label",
+      "section": "details",
+      "order": 10,
+      "label": {
+       "text": "Name"
+      }
+     },
+     {
+      "id": "location",
+      "section": "location",
+      "order": 10,
+      "label": {
+       "text": "Location"
+      }
+     }
+    ],
+    "extras": [],
+    "checklist": [],
+    "questions": {
+     "seed": "docs/schemas/kinds/school-questions.json",
+     "scopes": [
+      {
+       "id": "BOTH",
+       "cadences": [
+        "once"
+       ]
+      }
+     ]
+    },
+    "search": [],
+    "ai": {
+     "extract": [],
+     "ask": [],
+     "plan": [],
+     "never": []
+    }
+   },
+   "resolved": {
+    "id": "u_cafe",
+    "many": "Cafes",
+    "extras": [],
+    "checklist": [],
+    "search": [],
+    "capabilities": {
+     "map": true,
+     "hunt": null,
+     "rooms": false,
+     "moveIn": false,
+     "contacts": null,
+     "viewings": null,
+     "compare": null,
+     "paths": true,
+     "identity": null,
+     "baseline": false,
+     "filters": []
+    }
+   }
+  },
+  {
+   "name": "an office in Hindi, Tamil and Telugu words, with money, rooms, moving in, a broker and viewings, and hidden places",
+   "file": {
+    "format": "doorprints-kind/1",
+    "id": "u_office_space",
+    "version": 3,
+    "labels": {
+     "new": {
+      "text": "नया दफ़्तर"
+     },
+     "many": {
+      "text": "அலுவலகங்கள்"
+     },
+     "delete": {
+      "text": "ఆఫీసు తొలగించు"
+     }
+    },
+    "statuses": [
+     {
+      "id": "NEW",
+      "label": {
+       "text": "New"
+      }
+     },
+     {
+      "id": "SHORTLISTED",
+      "label": {
+       "text": "Shortlisted"
+      }
+     },
+     {
+      "id": "REJECTED",
+      "label": {
+       "text": "Rejected"
+      }
+     },
+     {
+      "id": "TAKEN",
+      "label": {
+       "text": "Joined"
+      }
+     },
+     {
+      "id": "NOT_CHOSEN",
+      "label": {
+       "text": "Not chosen"
+      }
+     }
+    ],
+    "sections": [
+     {
+      "id": "details",
+      "label": {
+       "text": "Details"
+      }
+     },
+     {
+      "id": "cost",
+      "label": {
+       "text": "Rent"
+      }
+     },
+     {
+      "id": "rooms",
+      "label": {
+       "text": "Rooms"
+      }
+     },
+     {
+      "id": "questions",
+      "label": {
+       "text": "Questions"
+      }
+     },
+     {
+      "id": "viewings",
+      "label": {
+       "text": "Viewings"
+      }
+     },
+     {
+      "id": "moveIn",
+      "label": {
+       "text": "Moving in"
+      }
+     },
+     {
+      "id": "location",
+      "label": {
+       "text": "Location"
+      }
+     },
+     {
+      "id": "photos",
+      "label": {
+       "text": "Photos"
+      },
+      "visible": false
+     }
+    ],
+    "core": [
+     {
+      "id": "label",
+      "section": "details",
+      "order": 10,
+      "label": {
+       "text": "Office"
+      }
+     },
+     {
+      "id": "money",
+      "section": "details",
+      "order": 40,
+      "label": {
+       "text": "Rent or price"
+      },
+      "cadences": [
+       {
+        "id": "month",
+        "label": {
+         "text": "Rent"
+        }
+       },
+       {
+        "id": "once",
+        "label": {
+         "text": "Buy"
+        }
+       }
+      ]
+     },
+     {
+      "id": "brokerId",
+      "section": "details",
+      "order": 130,
+      "label": {
+       "text": "Broker"
+      }
+     },
+     {
+      "id": "notes",
+      "section": "details",
+      "order": 150,
+      "label": {
+       "text": "Notes"
+      },
+      "visible": false
+     },
+     {
+      "id": "location",
+      "section": "location",
+      "order": 10,
+      "label": {
+       "text": "Location"
+      }
+     }
+    ],
+    "extras": [
+     {
+      "id": "desks",
+      "type": "number",
+      "integer": true,
+      "min": 1,
+      "max": 500,
+      "unit": "count",
+      "section": "details",
+      "order": 50,
+      "label": {
+       "text": "Desks"
+      }
+     },
+     {
+      "id": "lease",
+      "type": "money",
+      "max": 1000000000,
+      "cadenceFrom": "money",
+      "section": "cost",
+      "order": 10,
+      "label": {
+       "text": "My offer"
+      }
+     },
+     {
+      "id": "parking",
+      "type": "bool",
+      "section": "details",
+      "order": 60,
+      "label": {
+       "text": "Parking"
+      },
+      "forCadences": [
+       "month"
+      ]
+     }
+    ],
+    "checklist": [
+     {
+      "key": "light",
+      "label": {
+       "text": "Daylight"
+      }
+     }
+    ],
+    "questions": {
+     "seed": "docs/schemas/default-questions.json",
+     "scopes": [
+      {
+       "id": "BOTH",
+       "cadences": [
+        "month",
+        "once"
+       ]
+      }
+     ]
+    },
+    "search": [
+     "label",
+     "desks",
+     "questions"
+    ],
+    "ai": {
+     "extract": [],
+     "ask": [],
+     "plan": [],
+     "never": []
+    },
+    "capabilities": {
+     "rooms": true,
+     "moveIn": true,
+     "contacts": {
+      "role": "broker",
+      "autoCreateFromPhone": true
+     },
+     "viewings": {
+      "questionsSeed": "house"
+     },
+     "filters": [
+      "parking"
+     ]
+    }
+   },
+   "resolved": {
+    "id": "u_office_space",
+    "many": "அலுவலகங்கள்",
+    "extras": [
+     "desks",
+     "lease",
+     "parking"
+    ],
+    "checklist": [
+     "light"
+    ],
+    "search": [
+     "label",
+     "desks",
+     "questions",
+     "lease",
+     "parking"
+    ],
+    "capabilities": {
+     "map": true,
+     "hunt": null,
+     "rooms": true,
+     "moveIn": true,
+     "contacts": {
+      "role": "broker",
+      "autoCreateFromPhone": true
+     },
+     "viewings": {
+      "questionsSeed": "house"
+     },
+     "compare": null,
+     "paths": true,
+     "identity": null,
+     "baseline": false,
+     "filters": [
+      "parking"
+     ]
+    }
+   }
+  },
+  {
+   "name": "words that look like a link, a formula or a query stay words (shown as text)",
+   "file": {
+    "format": "doorprints-kind/1",
+    "id": "u_gym_two",
+    "version": 1,
+    "note": "A kind written by hand for the gyms near home.",
+    "labels": {
+     "new": {
+      "text": "=HYPERLINK(\"http://x.example\",\"Open\")"
+     },
+     "many": {
+      "text": "javascript:alert(1)"
+     },
+     "delete": {
+      "text": "Delete & go \"now\""
+     }
+    },
+    "statuses": [
+     {
+      "id": "NEW",
+      "label": {
+       "text": "New"
+      }
+     },
+     {
+      "id": "SHORTLISTED",
+      "label": {
+       "text": "Shortlisted"
+      }
+     },
+     {
+      "id": "REJECTED",
+      "label": {
+       "text": "Rejected"
+      }
+     },
+     {
+      "id": "TAKEN",
+      "label": {
+       "text": "Joined"
+      }
+     },
+     {
+      "id": "NOT_CHOSEN",
+      "label": {
+       "text": "Not chosen"
+      }
+     }
+    ],
+    "sections": [
+     {
+      "id": "details",
+      "label": {
+       "text": "Details"
+      }
+     },
+     {
+      "id": "cost",
+      "label": {
+       "text": "Fees"
+      }
+     },
+     {
+      "id": "checklist",
+      "label": {
+       "text": "Checklist"
+      }
+     },
+     {
+      "id": "visits",
+      "label": {
+       "text": "Visits"
+      }
+     },
+     {
+      "id": "photos",
+      "label": {
+       "text": "Photos"
+      }
+     },
+     {
+      "id": "areaNotes",
+      "label": {
+       "text": "Area notes"
+      }
+     },
+     {
+      "id": "distances",
+      "label": {
+       "text": "Distances"
+      }
+     },
+     {
+      "id": "location",
+      "label": {
+       "text": "Location"
+      }
+     },
+     {
+      "id": "walks",
+      "label": {
+       "text": "Walks"
+      }
+     }
+    ],
+    "core": [
+     {
+      "id": "label",
+      "section": "details",
+      "order": 10,
+      "label": {
+       "text": "Gym name"
+      }
+     },
+     {
+      "id": "status",
+      "section": "details",
+      "order": 20,
+      "label": {
+       "text": "Status"
+      }
+     },
+     {
+      "id": "rating",
+      "section": "details",
+      "order": 30,
+      "label": {
+       "text": "Rating"
+      }
+     },
+     {
+      "id": "address",
+      "section": "details",
+      "order": 80,
+      "label": {
+       "text": "Address"
+      }
+     },
+     {
+      "id": "street",
+      "section": "details",
+      "order": 90,
+      "label": {
+       "text": "Street"
+      }
+     },
+     {
+      "id": "locality",
+      "section": "details",
+      "order": 100,
+      "label": {
+       "text": "Area"
+      }
+     },
+     {
+      "id": "contactName",
+      "section": "details",
+      "order": 110,
+      "label": {
+       "text": "Front desk"
+      }
+     },
+     {
+      "id": "contactPhone",
+      "section": "details",
+      "order": 120,
+      "label": {
+       "text": "Phone"
+      }
+     },
+     {
+      "id": "listingUrl",
+      "section": "details",
+      "order": 140,
+      "label": {
+       "text": "Website"
+      }
+     },
+     {
+      "id": "notes",
+      "section": "details",
+      "order": 150,
+      "label": {
+       "text": "Notes"
+      }
+     },
+     {
+      "id": "location",
+      "section": "location",
+      "order": 10,
+      "label": {
+       "text": "Location"
+      }
+     },
+     {
+      "id": "locationSource",
+      "section": "location",
+      "order": 20,
+      "label": {
+       "text": "Approximate"
+      }
+     }
+    ],
+    "extras": [
+     {
+      "id": "focus",
+      "type": "enum",
+      "section": "details",
+      "order": 50,
+      "label": {
+       "text": "Focus"
+      },
+      "options": [
+       {
+        "id": "WEIGHTS",
+        "label": {
+         "text": "Weights; DROP TABLE kinds"
+        }
+       },
+       {
+        "id": "CARDIO",
+        "label": {
+         "text": "Cardio"
+        }
+       },
+       {
+        "id": "YOGA",
+        "label": {
+         "text": "Yoga"
+        }
+       },
+       {
+        "id": "MIXED",
+        "label": {
+         "text": "Mixed"
+        }
+       }
+      ]
+     },
+     {
+      "id": "hours",
+      "type": "text",
+      "maxLength": 80,
+      "section": "details",
+      "order": 60,
+      "label": {
+       "text": "Opening hours"
+      }
+     },
+     {
+      "id": "trainer",
+      "type": "bool",
+      "section": "details",
+      "order": 70,
+      "label": {
+       "text": "Personal trainer"
+      }
+     },
+     {
+      "id": "walkMinutes",
+      "type": "number",
+      "integer": true,
+      "min": 0,
+      "max": 180,
+      "unit": "minute",
+      "better": "lower",
+      "section": "details",
+      "order": 72,
+      "label": {
+       "text": "Walk from home (minutes)"
+      }
+     },
+     {
+      "id": "trialOn",
+      "type": "date",
+      "section": "details",
+      "order": 74,
+      "label": {
+       "text": "Free trial on"
+      }
+     },
+     {
+      "id": "fee",
+      "type": "money",
+      "max": 1000000,
+      "cadences": [
+       "month"
+      ],
+      "better": "lower",
+      "section": "cost",
+      "order": 10,
+      "label": {
+       "text": "Monthly fee"
+      }
+     },
+     {
+      "id": "joining",
+      "type": "money",
+      "max": 1000000,
+      "cadences": [
+       "once"
+      ],
+      "section": "cost",
+      "order": 20,
+      "label": {
+       "text": "Joining fee"
+      }
+     }
+    ],
+    "checklist": [
+     {
+      "key": "clean",
+      "label": {
+       "text": "Clean and airy"
+      }
+     },
+     {
+      "key": "equipment",
+      "label": {
+       "text": "Equipment in good shape"
+      }
+     },
+     {
+      "key": "crowd",
+      "label": {
+       "text": "Not crowded at my time"
+      }
+     },
+     {
+      "key": "staff",
+      "label": {
+       "text": "Helpful staff"
+      }
+     }
+    ],
+    "questions": {
+     "seed": "docs/schemas/default-questions.json",
+     "scopes": [
+      {
+       "id": "BOTH",
+       "cadences": [
+        "month",
+        "once"
+       ]
+      }
+     ]
+    },
+    "search": [
+     "label",
+     "address",
+     "street",
+     "locality",
+     "notes",
+     "contactName",
+     "hours",
+     "focus"
+    ],
+    "ai": {
+     "extract": [],
+     "ask": [],
+     "plan": [],
+     "never": []
+    },
+    "capabilities": {
+     "map": true,
+     "hunt": {
+      "alertRadiusM": 50,
+      "stayCreates": true,
+      "streetMemory": false,
+      "areas": false
+     },
+     "rooms": false,
+     "moveIn": false,
+     "contacts": {
+      "role": "office",
+      "autoCreateFromPhone": false
+     },
+     "compare": {
+      "criteria": [
+       "clean",
+       "equipment",
+       "crowd",
+       "staff",
+       "fee",
+       "walkMinutes"
+      ]
+     },
+     "paths": true,
+     "filters": [
+      "focus",
+      "trainer"
+     ],
+     "identity": {
+      "icon": "gym",
+      "colour": "teal"
+     }
+    }
+   },
+   "resolved": {
+    "id": "u_gym_two",
+    "many": "javascript:alert(1)",
+    "extras": [
+     "focus",
+     "hours",
+     "trainer",
+     "walkMinutes",
+     "trialOn",
+     "fee",
+     "joining"
+    ],
+    "checklist": [
+     "clean",
+     "equipment",
+     "crowd",
+     "staff"
+    ],
+    "search": [
+     "label",
+     "address",
+     "street",
+     "locality",
+     "notes",
+     "contactName",
+     "hours",
+     "focus",
+     "trainer",
+     "walkMinutes",
+     "trialOn",
+     "fee",
+     "joining"
+    ],
+    "capabilities": {
+     "map": true,
+     "hunt": {
+      "alertRadiusM": 50,
+      "stayCreates": true,
+      "streetMemory": false,
+      "areas": false
+     },
+     "rooms": false,
+     "moveIn": false,
+     "contacts": {
+      "role": "office",
+      "autoCreateFromPhone": false
+     },
+     "viewings": null,
+     "compare": {
+      "criteria": [
+       "clean",
+       "equipment",
+       "crowd",
+       "staff",
+       "fee",
+       "walkMinutes"
+      ]
+     },
+     "paths": true,
+     "identity": {
+      "icon": "gym",
+      "colour": "teal"
+     },
+     "baseline": false,
+     "filters": [
+      "focus",
+      "trainer"
+     ]
+    }
+   }
+  }
+ ],
+ "invalid": [
+  {
+   "name": "larger than 64 KiB (a padded note)",
+   "generate": {
+    "prefix": "{\"note\":\"",
+    "repeat": "a",
+    "times": 70000,
+    "suffix": "\"}"
+   },
+   "code": "tooBig",
+   "path": "$",
+   "schema": null,
+   "base": true
+  },
+  {
+   "name": "larger than 64 KiB in UTF-8 bytes though fewer characters",
+   "generate": {
+    "prefix": "{\"note\":\"",
+    "repeat": "é",
+    "times": 33000,
+    "suffix": "\"}"
+   },
+   "code": "tooBig",
+   "path": "$",
+   "schema": null,
+   "base": true
+  },
+  {
+   "name": "not JSON",
+   "json": "{\"format\": ",
+   "code": "notJson",
+   "path": "$",
+   "schema": null,
+   "base": true
+  },
+  {
+   "name": "two documents",
+   "json": "{} {}",
+   "code": "notJson",
+   "path": "$",
+   "schema": null,
+   "base": true
+  },
+  {
+   "name": "a text, not an object",
+   "json": "\"u_gym\"",
+   "code": "type",
+   "path": "$",
+   "schema": true,
+   "base": true
+  },
+  {
+   "name": "a list, not an object",
+   "json": "[]",
+   "code": "type",
+   "path": "$",
+   "schema": true,
+   "base": true
+  },
+  {
+   "name": "a key twice at the top",
+   "json": "{\"id\":\"u_a\",\"id\":\"u_b\"}",
+   "code": "duplicateKey",
+   "path": "$.id",
+   "schema": null,
+   "base": true
+  },
+  {
+   "name": "a key twice, once escaped",
+   "json": "{\"id\":\"u_a\",\"\\u0069d\":\"u_b\"}",
+   "code": "duplicateKey",
+   "path": "$.id",
+   "schema": null,
+   "base": true
+  },
+  {
+   "name": "a key twice in a label",
+   "json": "{\"labels\":{\"new\":{\"text\":\"a\",\"text\":\"b\"}}}",
+   "code": "duplicateKey",
+   "path": "$.labels.new.text",
+   "schema": null,
+   "base": true
+  },
+  {
+   "name": "nested nine deep",
+   "json": "{\"a\":[[[[[[[[1]]]]]]]]}",
+   "code": "tooDeep",
+   "path": "$.a[0][0][0][0][0][0][0]",
+   "schema": null,
+   "base": true
+  },
+  {
+   "name": "nested five thousand deep",
+   "generate": {
+    "prefix": "",
+    "repeat": "[",
+    "times": 5000,
+    "suffix": ""
+   },
+   "code": "tooDeep",
+   "path": "$[0][0][0][0][0][0][0][0]",
+   "schema": null,
+   "base": true
+  },
+  {
+   "name": "more than 4,000 values",
+   "generate": {
+    "prefix": "[",
+    "repeat": "0,",
+    "times": 4000,
+    "suffix": "0]"
+   },
+   "code": "tooMany",
+   "path": "$[3999]",
+   "schema": null,
+   "base": true
+  },
+  {
+   "name": "a text over 2,000 characters",
+   "generate": {
+    "prefix": "{\"note\":\"",
+    "repeat": "a",
+    "times": 2001,
+    "suffix": "\"}"
+   },
+   "code": "tooLong",
+   "path": "$.note",
+   "schema": null,
+   "base": true
+  },
+  {
+   "name": "a prototype key at the top",
+   "json": "{\"__proto__\":{\"isAdmin\":true}}",
+   "code": "prototypeKey",
+   "path": "$.__proto__",
+   "schema": true,
+   "base": true
+  },
+  {
+   "name": "a constructor key",
+   "json": "{\"constructor\":{\"prototype\":{\"polluted\":true}}}",
+   "code": "prototypeKey",
+   "path": "$.constructor",
+   "schema": true,
+   "base": true
+  },
+  {
+   "name": "a prototype key inside a label",
+   "json": "{\"format\":\"doorprints-kind/1\",\"labels\":{\"new\":{\"text\":\"a\",\"prototype\":\"x\"}}}",
+   "code": "prototypeKey",
+   "path": "$.labels.new.prototype",
+   "schema": true,
+   "base": true
+  },
+  {
+   "name": "a prototype key inside an extra",
+   "json": "{\"extras\":[{\"id\":\"x\",\"__proto__\":{\"toString\":1}}]}",
+   "code": "prototypeKey",
+   "path": "$.extras[0].__proto__",
+   "schema": true,
+   "base": true
+  },
+  {
+   "name": "a map style at the top",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "style"
+      ],
+      "https://tiles.example/style.json"
+     ]
+    ]
+   },
+   "code": "mapKey",
+   "path": "$.style",
+   "schema": true,
+   "base": true
+  },
+  {
+   "name": "tiles in the capabilities",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "capabilities",
+       "tiles"
+      ],
+      [
+       "https://tiles.example/{z}/{x}/{y}.png"
+      ]
+     ]
+    ]
+   },
+   "code": "mapKey",
+   "path": "$.capabilities.tiles",
+   "schema": true,
+   "base": true
+  },
+  {
+   "name": "boundaries in the identity",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "capabilities",
+       "identity",
+       "boundaries"
+      ],
+      {
+       "type": "FeatureCollection"
+      }
+     ]
+    ]
+   },
+   "code": "mapKey",
+   "path": "$.capabilities.identity.boundaries",
+   "schema": true,
+   "base": true
+  },
+  {
+   "name": "GeoJSON in an extra",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "extras",
+       1,
+       "geojson"
+      ],
+      {
+       "type": "LineString"
+      }
+     ]
+    ]
+   },
+   "code": "mapKey",
+   "path": "$.extras[1].geojson",
+   "schema": true,
+   "base": true
+  },
+  {
+   "name": "a map style address in a section",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "sections",
+       0,
+       "mapStyleUrl"
+      ],
+      "https://x.example/s.json"
+     ]
+    ]
+   },
+   "code": "mapKey",
+   "path": "$.sections[0].mapStyleUrl",
+   "schema": true,
+   "base": true
+  },
+  {
+   "name": "a map object instead of a switch",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "capabilities",
+       "map"
+      ],
+      {
+       "center": [
+        77.2,
+        28.6
+       ]
+      }
+     ]
+    ]
+   },
+   "code": "mapKey",
+   "path": "$.capabilities.map.center",
+   "schema": true,
+   "base": true
+  },
+  {
+   "name": "a key the format does not have (a script)",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "script"
+      ],
+      "alert(1)"
+     ]
+    ]
+   },
+   "code": "unknownKey",
+   "path": "$.script",
+   "schema": true,
+   "base": true
+  },
+  {
+   "name": "an event handler on an extra",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "extras",
+       1,
+       "onclick"
+      ],
+      "alert(1)"
+     ]
+    ]
+   },
+   "code": "unknownKey",
+   "path": "$.extras[1].onclick",
+   "schema": true,
+   "base": true
+  },
+  {
+   "name": "words of the built-in format",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "words"
+      ],
+      {
+       "heading": {
+        "web": "map.heading",
+        "android": "houses_title"
+       }
+      }
+     ]
+    ]
+   },
+   "code": "notAllowed",
+   "path": "$.words",
+   "schema": true,
+   "base": false
+  },
+  {
+   "name": "another format",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "format"
+      ],
+      "doorprints-kind/2"
+     ]
+    ]
+   },
+   "code": "format",
+   "path": "$.format",
+   "schema": true,
+   "base": true
+  },
+  {
+   "name": "no format",
+   "patch": {
+    "base": "u_gym",
+    "remove": [
+     [
+      "format"
+     ]
+    ]
+   },
+   "code": "required",
+   "path": "$.format",
+   "schema": true,
+   "base": true
+  },
+  {
+   "name": "the house id",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "id"
+      ],
+      "house"
+     ]
+    ]
+   },
+   "code": "id",
+   "path": "$.id",
+   "schema": true,
+   "base": false
+  },
+  {
+   "name": "the school id",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "id"
+      ],
+      "school"
+     ]
+    ]
+   },
+   "code": "id",
+   "path": "$.id",
+   "schema": true,
+   "base": false
+  },
+  {
+   "name": "the test kind id",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "id"
+      ],
+      "zz_all"
+     ]
+    ]
+   },
+   "code": "id",
+   "path": "$.id",
+   "schema": true,
+   "base": false
+  },
+  {
+   "name": "an id without the prefix",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "id"
+      ],
+      "gym"
+     ]
+    ]
+   },
+   "code": "id",
+   "path": "$.id",
+   "schema": true,
+   "base": false
+  },
+  {
+   "name": "the prefix alone",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "id"
+      ],
+      "u_"
+     ]
+    ]
+   },
+   "code": "id",
+   "path": "$.id",
+   "schema": true,
+   "base": false
+  },
+  {
+   "name": "a capital letter",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "id"
+      ],
+      "u_Gym"
+     ]
+    ]
+   },
+   "code": "id",
+   "path": "$.id",
+   "schema": true,
+   "base": true
+  },
+  {
+   "name": "a hyphen",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "id"
+      ],
+      "u-gym"
+     ]
+    ]
+   },
+   "code": "id",
+   "path": "$.id",
+   "schema": true,
+   "base": true
+  },
+  {
+   "name": "33 characters",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "id"
+      ],
+      "u_ggggggggggggggggggggggggggggggg"
+     ]
+    ]
+   },
+   "code": "id",
+   "path": "$.id",
+   "schema": true,
+   "base": true
+  },
+  {
+   "name": "a letter outside a to z",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "id"
+      ],
+      "u_gÿm"
+     ]
+    ]
+   },
+   "code": "id",
+   "path": "$.id",
+   "schema": true,
+   "base": true
+  },
+  {
+   "name": "a long id that nearly matches (no slow pattern)",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "id"
+      ],
+      "u_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa!"
+     ]
+    ]
+   },
+   "code": "id",
+   "path": "$.id",
+   "schema": true,
+   "base": true
+  },
+  {
+   "name": "an id that is a number",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "id"
+      ],
+      7
+     ]
+    ]
+   },
+   "code": "type",
+   "path": "$.id",
+   "schema": true,
+   "base": true
+  },
+  {
+   "name": "version 0",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "version"
+      ],
+      0
+     ]
+    ]
+   },
+   "code": "range",
+   "path": "$.version",
+   "schema": true,
+   "base": true
+  },
+  {
+   "name": "version 1001",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "version"
+      ],
+      1001
+     ]
+    ]
+   },
+   "code": "range",
+   "path": "$.version",
+   "schema": true,
+   "base": true
+  },
+  {
+   "name": "a version with a fraction",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "version"
+      ],
+      1.5
+     ]
+    ]
+   },
+   "code": "type",
+   "path": "$.version",
+   "schema": true,
+   "base": true
+  },
+  {
+   "name": "a note of 501 characters",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "note"
+      ],
+      "nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn"
+     ]
+    ]
+   },
+   "code": "textLength",
+   "path": "$.note",
+   "schema": true,
+   "base": false
+  },
+  {
+   "name": "a key label instead of words",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "labels",
+       "new"
+      ],
+      {
+       "web": "house.newTitle",
+       "android": "house_new_title"
+      }
+     ]
+    ]
+   },
+   "code": "notAllowed",
+   "path": "$.labels.new",
+   "schema": true,
+   "base": false
+  },
+  {
+   "name": "words and a key",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "labels",
+       "new"
+      ],
+      {
+       "text": "New gym",
+       "web": "house.newTitle"
+      }
+     ]
+    ]
+   },
+   "code": "notAllowed",
+   "path": "$.labels.new",
+   "schema": true,
+   "base": false
+  },
+  {
+   "name": "a label that is a bare text",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "labels",
+       "new"
+      ],
+      "New gym"
+     ]
+    ]
+   },
+   "code": "type",
+   "path": "$.labels.new",
+   "schema": true,
+   "base": false
+  },
+  {
+   "name": "an empty label",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "labels",
+       "many",
+       "text"
+      ],
+      ""
+     ]
+    ]
+   },
+   "code": "textLength",
+   "path": "$.labels.many.text",
+   "schema": true,
+   "base": false
+  },
+  {
+   "name": "a label of 61 characters",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "labels",
+       "many",
+       "text"
+      ],
+      "GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG"
+     ]
+    ]
+   },
+   "code": "textLength",
+   "path": "$.labels.many.text",
+   "schema": true,
+   "base": false
+  },
+  {
+   "name": "markup in a label (an image with a handler)",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "labels",
+       "many",
+       "text"
+      ],
+      "<img src=x onerror=alert(1)>"
+     ]
+    ]
+   },
+   "code": "textChars",
+   "path": "$.labels.many.text",
+   "schema": true,
+   "base": false
+  },
+  {
+   "name": "a script tag in an option",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "extras",
+       0,
+       "options",
+       1,
+       "label",
+       "text"
+      ],
+      "<script>alert(1)</script>"
+     ]
+    ]
+   },
+   "code": "textChars",
+   "path": "$.extras[0].options[1].label.text",
+   "schema": true,
+   "base": false
+  },
+  {
+   "name": "a template placeholder",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "core",
+       0,
+       "label",
+       "text"
+      ],
+      "{{constructor.constructor('alert(1)')()}}"
+     ]
+    ]
+   },
+   "code": "textChars",
+   "path": "$.core[0].label.text",
+   "schema": true,
+   "base": false
+  },
+  {
+   "name": "a placeholder of the dictionaries",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "labels",
+       "delete",
+       "text"
+      ],
+      "Delete {n}"
+     ]
+    ]
+   },
+   "code": "textChars",
+   "path": "$.labels.delete.text",
+   "schema": true,
+   "base": false
+  },
+  {
+   "name": "a right-to-left override",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "labels",
+       "many",
+       "text"
+      ],
+      "Gyms‮gpj.exe"
+     ]
+    ]
+   },
+   "code": "textChars",
+   "path": "$.labels.many.text",
+   "schema": true,
+   "base": false
+  },
+  {
+   "name": "a zero-width space",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "statuses",
+       3,
+       "label",
+       "text"
+      ],
+      "Join​ed"
+     ]
+    ]
+   },
+   "code": "textChars",
+   "path": "$.statuses[3].label.text",
+   "schema": true,
+   "base": false
+  },
+  {
+   "name": "a control character",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "checklist",
+       0,
+       "label",
+       "text"
+      ],
+      "Clean\u0007"
+     ]
+    ]
+   },
+   "code": "textChars",
+   "path": "$.checklist[0].label.text",
+   "schema": true,
+   "base": false
+  },
+  {
+   "name": "a line break",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "sections",
+       1,
+       "label",
+       "text"
+      ],
+      "Fees\nand more"
+     ]
+    ]
+   },
+   "code": "textChars",
+   "path": "$.sections[1].label.text",
+   "schema": true,
+   "base": false
+  },
+  {
+   "name": "a space at the start",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "labels",
+       "many",
+       "text"
+      ],
+      " Gyms"
+     ]
+    ]
+   },
+   "code": "textChars",
+   "path": "$.labels.many.text",
+   "schema": true,
+   "base": false
+  },
+  {
+   "name": "a lone surrogate",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "labels",
+       "many",
+       "text"
+      ],
+      "Gyms\ud800"
+     ]
+    ]
+   },
+   "code": "textChars",
+   "path": "$.labels.many.text",
+   "schema": false,
+   "base": false
+  },
+  {
+   "name": "no delete label",
+   "patch": {
+    "base": "u_gym",
+    "remove": [
+     [
+      "labels",
+      "delete"
+     ]
+    ]
+   },
+   "code": "required",
+   "path": "$.labels.delete",
+   "schema": true,
+   "base": false
+  },
+  {
+   "name": "four statuses",
+   "patch": {
+    "base": "u_gym",
+    "remove": [
+     [
+      "statuses",
+      4
+     ]
+    ]
+   },
+   "code": "limit",
+   "path": "$.statuses",
+   "schema": true,
+   "base": false
+  },
+  {
+   "name": "the statuses out of order",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "statuses",
+       0,
+       "id"
+      ],
+      "SHORTLISTED"
+     ],
+     [
+      [
+       "statuses",
+       1,
+       "id"
+      ],
+      "NEW"
+     ]
+    ]
+   },
+   "code": "value",
+   "path": "$.statuses[0].id",
+   "schema": true,
+   "base": false
+  },
+  {
+   "name": "a section the app does not have",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "sections",
+       1,
+       "id"
+      ],
+      "gallery"
+     ]
+    ]
+   },
+   "code": "value",
+   "path": "$.sections[1].id",
+   "schema": true,
+   "base": false
+  },
+  {
+   "name": "a section twice",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "sections",
+       1,
+       "id"
+      ],
+      "details"
+     ]
+    ]
+   },
+   "code": "repeated",
+   "path": "$.sections[1].id",
+   "schema": false,
+   "base": false
+  },
+  {
+   "name": "no section",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "sections"
+      ],
+      []
+     ]
+    ]
+   },
+   "code": "limit",
+   "path": "$.sections",
+   "schema": true,
+   "base": false
+  },
+  {
+   "name": "no location field",
+   "patch": {
+    "base": "u_gym",
+    "remove": [
+     [
+      "core",
+      10
+     ]
+    ]
+   },
+   "code": "required",
+   "path": "$.core",
+   "schema": true,
+   "base": true
+  },
+  {
+   "name": "a core field the app does not have",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "core",
+       2,
+       "id"
+      ],
+      "price"
+     ]
+    ]
+   },
+   "code": "value",
+   "path": "$.core[2].id",
+   "schema": true,
+   "base": true
+  },
+  {
+   "name": "a core field twice",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "core",
+       2,
+       "id"
+      ],
+      "status"
+     ]
+    ]
+   },
+   "code": "repeated",
+   "path": "$.core[2].id",
+   "schema": false,
+   "base": true
+  },
+  {
+   "name": "a core field with a backup place (was)",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "core",
+       0,
+       "was"
+      ],
+      "label"
+     ]
+    ]
+   },
+   "code": "notAllowed",
+   "path": "$.core[0].was",
+   "schema": true,
+   "base": false
+  },
+  {
+   "name": "a core field without its section",
+   "patch": {
+    "base": "u_gym",
+    "remove": [
+     [
+      "core",
+      1,
+      "section"
+     ]
+    ]
+   },
+   "code": "required",
+   "path": "$.core[1].section",
+   "schema": true,
+   "base": false
+  },
+  {
+   "name": "money without its cadences",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "core",
+       2
+      ],
+      {
+       "id": "money",
+       "section": "details",
+       "order": 40,
+       "label": {
+        "text": "Fee"
+       }
+      }
+     ]
+    ]
+   },
+   "code": "required",
+   "path": "$.core[2].cadences",
+   "schema": true,
+   "base": true
+  },
+  {
+   "name": "31 extras",
+   "patch": {
+    "base": "u_gym",
+    "manyExtras": 31
+   },
+   "code": "limit",
+   "path": "$.extras",
+   "schema": true,
+   "base": false
+  },
+  {
+   "name": "an extra named as a core field",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "extras",
+       1,
+       "id"
+      ],
+      "label"
+     ]
+    ]
+   },
+   "code": "reserved",
+   "path": "$.extras[1].id",
+   "schema": true,
+   "base": false
+  },
+  {
+   "name": "an extra named as a house field",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "extras",
+       5,
+       "id"
+      ],
+      "deposit"
+     ]
+    ]
+   },
+   "code": "reserved",
+   "path": "$.extras[5].id",
+   "schema": true,
+   "base": false
+  },
+  {
+   "name": "an extra twice",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "extras",
+       1,
+       "id"
+      ],
+      "focus"
+     ]
+    ]
+   },
+   "code": "repeated",
+   "path": "$.extras[1].id",
+   "schema": false,
+   "base": true
+  },
+  {
+   "name": "an extra id with a hyphen",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "extras",
+       1,
+       "id"
+      ],
+      "open-hours"
+     ]
+    ]
+   },
+   "code": "value",
+   "path": "$.extras[1].id",
+   "schema": true,
+   "base": true
+  },
+  {
+   "name": "a type the format does not have",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "extras",
+       1,
+       "type"
+      ],
+      "file"
+     ]
+    ]
+   },
+   "code": "value",
+   "path": "$.extras[1].type",
+   "schema": true,
+   "base": true
+  },
+  {
+   "name": "an extra with a backup place (was)",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "extras",
+       1,
+       "was"
+      ],
+      "notes"
+     ]
+    ]
+   },
+   "code": "notAllowed",
+   "path": "$.extras[1].was",
+   "schema": true,
+   "base": false
+  },
+  {
+   "name": "a number without a unit",
+   "patch": {
+    "base": "u_gym",
+    "remove": [
+     [
+      "extras",
+      3,
+      "unit"
+     ]
+    ]
+   },
+   "code": "required",
+   "path": "$.extras[3].unit",
+   "schema": true,
+   "base": true
+  },
+  {
+   "name": "a number with a fraction for its least",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "extras",
+       3,
+       "min"
+      ],
+      0.5
+     ]
+    ]
+   },
+   "code": "type",
+   "path": "$.extras[3].min",
+   "schema": true,
+   "base": true
+  },
+  {
+   "name": "a number whose least is above its most",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "extras",
+       3,
+       "min"
+      ],
+      200
+     ]
+    ]
+   },
+   "code": "range",
+   "path": "$.extras[3].min",
+   "schema": false,
+   "base": false
+  },
+  {
+   "name": "a number bound past a trillion",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "extras",
+       3,
+       "max"
+      ],
+      10000000000000
+     ]
+    ]
+   },
+   "code": "range",
+   "path": "$.extras[3].max",
+   "schema": true,
+   "base": false
+  },
+  {
+   "name": "a text of no length",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "extras",
+       1,
+       "maxLength"
+      ],
+      0
+     ]
+    ]
+   },
+   "code": "range",
+   "path": "$.extras[1].maxLength",
+   "schema": true,
+   "base": true
+  },
+  {
+   "name": "a text of 5,000 characters",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "extras",
+       1,
+       "maxLength"
+      ],
+      5000
+     ]
+    ]
+   },
+   "code": "range",
+   "path": "$.extras[1].maxLength",
+   "schema": true,
+   "base": true
+  },
+  {
+   "name": "money of no amount",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "extras",
+       5,
+       "max"
+      ],
+      0
+     ]
+    ]
+   },
+   "code": "range",
+   "path": "$.extras[5].max",
+   "schema": true,
+   "base": true
+  },
+  {
+   "name": "money with both cadences and cadenceFrom",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "extras",
+       5,
+       "cadenceFrom"
+      ],
+      "money"
+     ]
+    ]
+   },
+   "code": "value",
+   "path": "$.extras[5].cadenceFrom",
+   "schema": true,
+   "base": true
+  },
+  {
+   "name": "an enum of one option",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "extras",
+       0,
+       "options"
+      ],
+      [
+       {
+        "id": "ONLY",
+        "label": {
+         "text": "Only"
+        }
+       }
+      ]
+     ]
+    ]
+   },
+   "code": "limit",
+   "path": "$.extras[0].options",
+   "schema": true,
+   "base": true
+  },
+  {
+   "name": "an enum of 31 options",
+   "patch": {
+    "base": "u_gym",
+    "manyOptions": {
+     "extra": 0,
+     "count": 31
+    }
+   },
+   "code": "limit",
+   "path": "$.extras[0].options",
+   "schema": true,
+   "base": true
+  },
+  {
+   "name": "330 options in all",
+   "patch": {
+    "base": "u_gym",
+    "manyEnums": {
+     "count": 11,
+     "options": 30
+    }
+   },
+   "code": "limit",
+   "path": "$.extras",
+   "schema": false,
+   "base": false
+  },
+  {
+   "name": "an option id in small letters",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "extras",
+       0,
+       "options",
+       1,
+       "id"
+      ],
+      "cardio"
+     ]
+    ]
+   },
+   "code": "value",
+   "path": "$.extras[0].options[1].id",
+   "schema": true,
+   "base": true
+  },
+  {
+   "name": "an option twice",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "extras",
+       0,
+       "options",
+       1,
+       "id"
+      ],
+      "WEIGHTS"
+     ]
+    ]
+   },
+   "code": "repeated",
+   "path": "$.extras[0].options[1].id",
+   "schema": false,
+   "base": true
+  },
+  {
+   "name": "an option with a key label",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "extras",
+       0,
+       "options",
+       1,
+       "label"
+      ],
+      {
+       "web": "school.board.CBSE",
+       "android": "school_board_CBSE"
+      }
+     ]
+    ]
+   },
+   "code": "notAllowed",
+   "path": "$.extras[0].options[1].label",
+   "schema": true,
+   "base": false
+  },
+  {
+   "name": "21 checklist items",
+   "patch": {
+    "base": "u_gym",
+    "manyChecks": 21
+   },
+   "code": "limit",
+   "path": "$.checklist",
+   "schema": true,
+   "base": false
+  },
+  {
+   "name": "a checklist key with a capital",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "checklist",
+       0,
+       "key"
+      ],
+      "Clean"
+     ]
+    ]
+   },
+   "code": "value",
+   "path": "$.checklist[0].key",
+   "schema": true,
+   "base": false
+  },
+  {
+   "name": "a checklist key twice",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "checklist",
+       1,
+       "key"
+      ],
+      "clean"
+     ]
+    ]
+   },
+   "code": "repeated",
+   "path": "$.checklist[1].key",
+   "schema": false,
+   "base": false
+  },
+  {
+   "name": "a question seed that is an address",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "questions",
+       "seed"
+      ],
+      "https://evil.example/questions.json"
+     ]
+    ]
+   },
+   "code": "value",
+   "path": "$.questions.seed",
+   "schema": true,
+   "base": false
+  },
+  {
+   "name": "a question seed outside the banks",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "questions",
+       "seed"
+      ],
+      "docs/schemas/kinds/other-questions.json"
+     ]
+    ]
+   },
+   "code": "value",
+   "path": "$.questions.seed",
+   "schema": true,
+   "base": false
+  },
+  {
+   "name": "a rent scope",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "questions",
+       "scopes",
+       0,
+       "id"
+      ],
+      "RENT"
+     ]
+    ]
+   },
+   "code": "value",
+   "path": "$.questions.scopes[0].id",
+   "schema": true,
+   "base": false
+  },
+  {
+   "name": "two scopes",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "questions",
+       "scopes"
+      ],
+      [
+       {
+        "id": "BOTH",
+        "cadences": [
+         "month"
+        ]
+       },
+       {
+        "id": "BOTH",
+        "cadences": [
+         "once"
+        ]
+       }
+      ]
+     ]
+    ]
+   },
+   "code": "limit",
+   "path": "$.questions.scopes",
+   "schema": true,
+   "base": false
+  },
+  {
+   "name": "search names a field the kind does not have",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "search",
+       1
+      ],
+      "price"
+     ]
+    ]
+   },
+   "code": "ref",
+   "path": "$.search[1]",
+   "schema": false,
+   "base": false
+  },
+  {
+   "name": "search names a field twice",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "search",
+       1
+      ],
+      "label"
+     ]
+    ]
+   },
+   "code": "repeated",
+   "path": "$.search[1]",
+   "schema": true,
+   "base": true
+  },
+  {
+   "name": "search names a malformed id",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "search",
+       1
+      ],
+      "Bad-id"
+     ]
+    ]
+   },
+   "code": "value",
+   "path": "$.search[1]",
+   "schema": true,
+   "base": true
+  },
+  {
+   "name": "the listing extract slot filled",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "ai",
+       "extract"
+      ],
+      [
+       "label"
+      ]
+     ]
+    ]
+   },
+   "code": "notAllowed",
+   "path": "$.ai.extract",
+   "schema": true,
+   "base": false
+  },
+  {
+   "name": "the Ask slot filled",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "ai",
+       "ask"
+      ],
+      [
+       "label",
+       "notes"
+      ]
+     ]
+    ]
+   },
+   "code": "notAllowed",
+   "path": "$.ai.ask",
+   "schema": true,
+   "base": false
+  },
+  {
+   "name": "AI words (a prompt) given",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "ai",
+       "words"
+      ],
+      {
+       "noun": "Gym",
+       "records": "gyms"
+      }
+     ]
+    ]
+   },
+   "code": "notAllowed",
+   "path": "$.ai.words",
+   "schema": true,
+   "base": false
+  },
+  {
+   "name": "a Hunt radius of 29 m",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "capabilities",
+       "hunt",
+       "alertRadiusM"
+      ],
+      29
+     ]
+    ]
+   },
+   "code": "capabilities",
+   "path": "$.capabilities",
+   "schema": true,
+   "base": true
+  },
+  {
+   "name": "a Hunt radius of 301 m",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "capabilities",
+       "hunt",
+       "alertRadiusM"
+      ],
+      301
+     ]
+    ]
+   },
+   "code": "capabilities",
+   "path": "$.capabilities",
+   "schema": true,
+   "base": true
+  },
+  {
+   "name": "a capability the format does not have",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "capabilities",
+       "autoplay"
+      ],
+      true
+     ]
+    ]
+   },
+   "code": "capabilities",
+   "path": "$.capabilities",
+   "schema": true,
+   "base": true
+  },
+  {
+   "name": "an icon off the list",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "capabilities",
+       "identity",
+       "icon"
+      ],
+      "skull"
+     ]
+    ]
+   },
+   "code": "capabilities",
+   "path": "$.capabilities",
+   "schema": true,
+   "base": true
+  },
+  {
+   "name": "a question bank that does not exist",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "capabilities",
+       "viewings"
+      ],
+      {
+       "questionsSeed": "garden"
+      }
+     ]
+    ]
+   },
+   "code": "capabilities",
+   "path": "$.capabilities",
+   "schema": true,
+   "base": true
+  },
+  {
+   "name": "eleven Compare criteria",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "capabilities",
+       "compare",
+       "criteria"
+      ],
+      [
+       "clean",
+       "equipment",
+       "crowd",
+       "staff",
+       "fee",
+       "walkMinutes",
+       "joining",
+       "hours",
+       "trainer",
+       "focus",
+       "trialOn"
+      ]
+     ]
+    ]
+   },
+   "code": "capabilities",
+   "path": "$.capabilities",
+   "schema": true,
+   "base": true
+  },
+  {
+   "name": "the baseline kind",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "capabilities",
+       "baseline"
+      ],
+      true
+     ]
+    ]
+   },
+   "code": "notAllowed",
+   "path": "$.capabilities.baseline",
+   "schema": true,
+   "base": false
+  },
+  {
+   "name": "a Compare criterion the kind does not have",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "capabilities",
+       "compare",
+       "criteria",
+       5
+      ],
+      "price"
+     ]
+    ]
+   },
+   "code": "ref",
+   "path": "$.capabilities.compare.criteria[5]",
+   "schema": false,
+   "base": false
+  },
+  {
+   "name": "a filter on a text field",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "capabilities",
+       "filters",
+       1
+      ],
+      "hours"
+     ]
+    ]
+   },
+   "code": "ref",
+   "path": "$.capabilities.filters[1]",
+   "schema": false,
+   "base": false
+  },
+  {
+   "name": "a filter on a field the kind does not have",
+   "patch": {
+    "base": "u_gym",
+    "set": [
+     [
+      [
+       "capabilities",
+       "filters",
+       1
+      ],
+      "board"
+     ]
+    ]
+   },
+   "code": "ref",
+   "path": "$.capabilities.filters[1]",
+   "schema": false,
+   "base": false
+  }
+ ]
+}

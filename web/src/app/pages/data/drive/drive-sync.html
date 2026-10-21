@@ -58,6 +58,7 @@
     <span>{{ 'driveSync.wifiOnly' | t }}</span>
   </label>
   <p>{{ 'driveSync.websitePhotos' | t }}</p>
+  <p>{{ 'driveSync.photoRetention' | t }}</p>
 
   @if (photoLabel(); as size) {
     <button type="button" class="btn" (click)="uploadPhotosNowOverMobile()" [disabled]="busy()">

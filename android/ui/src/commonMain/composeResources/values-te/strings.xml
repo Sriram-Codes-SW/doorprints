@@ -1323,6 +1323,8 @@
     <string name="drive_sync_not_now">ఇప్పుడు కాదు</string>
     <string name="drive_sync_upload_now">మొబైల్ డేటా ఉపయోగించి ఇప్పుడు ఫోటోలను అప్‌లోడ్ చేయండి (%1$s)</string>
     <string name="drive_sync_photo_error">ఫోటో సెట్టింగ్‌లను నవీకరించలేకపోయాం</string>
+    <!-- S4b-BL-293 (2026-10-20): how long a deleted photo stays in Drive, the website's driveSync.photoRetention: under review. -->
+    <string name="drive_sync_photo_retention">మీరు తొలగించిన ఫోటోలు 30 రోజుల తర్వాత మీ Google Drive నుండి వెళ్లిపోతాయి, ఆ తర్వాత మీరు ఉంచిన బ్యాకప్ ఇంకా వాటిని కలిగి ఉంటేనే అవి ఉంటాయి.</string>
     <string name="drive_delete_heading">Google Drive నుండి డేటాను తొలగించండి</string>
     <string name="drive_delete_older_backups">పాత బ్యాకప్‌లను తొలగించండి</string>
     <string name="drive_delete_all_backups">అన్ని బ్యాకప్‌లను తొలగించండి</string>
@@ -1824,7 +1826,7 @@
 
     <!-- kinds PR 21 (S4b-BL-265, -291, -292, 2026-10-15): under review. -->
     <string name="list_filter_any">ఏదైనా</string>
-    <!-- docs/03 §18.28 (2026-10-20): a range for a number or an amount. Under review (owner rule: hi/ta/te ship marked under review). -->
+    <!-- docs/03 §18.29 (2026-10-20): a range for a number or an amount. Under review (owner rule: hi/ta/te ship marked under review). -->
     <string name="list_filter_range_min">%1$s: కనీసం</string>
     <string name="list_filter_range_max">%1$s: గరిష్ఠం</string>
     <string name="export_copy_of">దీని కాపీని సేవ్ చేయండి</string>

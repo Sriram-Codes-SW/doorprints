@@ -18,6 +18,7 @@
 
 import { en } from './en';
 import type { Dict } from './en';
+import { withUserTexts } from './user-text';
 
 export type Lang = 'en' | 'hi' | 'ta' | 'te';
 
@@ -42,7 +43,8 @@ export const LANGUAGES: readonly LanguageInfo[] = [
  * language's strings instead of all four (about 220 KB less for English). The service worker precaches the chunks,
  * so switching language works offline too. Tests that need every language import `all-dictionaries.ts`.
  */
-const loaded: Partial<Record<Lang, Dict>> = { en };
+// Every dictionary also holds the words of the kinds a person added (`user-text.ts`, docs/03 ADR-39), as it is loaded.
+const loaded: Partial<Record<Lang, Dict>> = { en: withUserTexts(en) };
 const loaders: Record<Exclude<Lang, 'en'>, () => Promise<Dict>> = {
   hi: () => import('./hi').then((m) => m.hi),
   ta: () => import('./ta').then((m) => m.ta),
@@ -58,7 +60,7 @@ export function dictionary(lang: Lang): Dict | undefined {
 export async function loadDictionary(lang: Lang): Promise<Dict> {
   const have = loaded[lang];
   if (have) return have;
-  const dict = await loaders[lang as Exclude<Lang, 'en'>]();
+  const dict = withUserTexts(await loaders[lang as Exclude<Lang, 'en'>]());
   loaded[lang] = dict;
   return dict;
 }
@@ -75,6 +77,7 @@ export function forgetDictionaries(): void {
 
 /** Makes [dicts] available at once, without loading (all-dictionaries.ts, for tests). */
 export function registerDictionaries(dicts: Partial<Record<Lang, Dict>>): void {
+  for (const d of Object.values(dicts)) if (d) withUserTexts(d);
   Object.assign(loaded, dicts);
 }
 

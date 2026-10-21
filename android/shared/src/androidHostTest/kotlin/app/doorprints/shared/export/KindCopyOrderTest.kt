@@ -29,7 +29,7 @@ import org.junit.Test
 import java.io.File
 
 /**
- * The order of a copy's blocks follows the kind file (docs/03 section 18.28), the twin of the website's `copy-order.spec.ts`: the
+ * The order of a copy's blocks follows the kind file (docs/03 section 18.29), the twin of the website's `copy-order.spec.ts`: the
  * synthetic kind of the conformance suite (registered for the run only) lists `visits`, `notes`, `cost` first, and its Markdown and
  * readable copy write those three in that order; without a `copyOrder` the fixed order is back (cost, visits, notes). The house's
  * copies are byte for byte what they were (`HouseCopyPinsTest`). Not in commonTest: it reads a repository file.

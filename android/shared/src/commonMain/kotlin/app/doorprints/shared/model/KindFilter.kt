@@ -25,9 +25,9 @@ import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.doubleOrNull
 
 /**
- * The list's filter by a kind's typed extra (S4b-BL-265; docs/03 §18.10, §18.16, §18.28), the twin of the website's
+ * The list's filter by a kind's typed extra (S4b-BL-265; docs/03 §18.10, §18.16, §18.29), the twin of the website's
  * `shared/extra-filter.ts`: one chip row per enum or switch the kind has with no house field, the choice of an option (or
- * `yes` or `no` for a switch) or nothing (*Any*), and, since §18.28, a minimum and a maximum for a number or an amount. A house has
+ * `yes` or `no` for a switch) or nothing (*Any*), and, since §18.29, a minimum and a maximum for a number or an amount. A house has
  * none, so its list is as it was. `docs/schemas/kinds/kind-filter-vectors.json` holds both stacks to the same rules
  * (`KindFilterVectorsTest`).
  *

@@ -93,7 +93,7 @@ class KindCapabilitiesVectorsTest {
         }
     }
 
-    /** The synthetic kind of the conformance suite resolves to the set the vectors pin, and its copy order is the vectors' (docs/03 section 18.26, 18.28). */
+    /** The synthetic kind of the conformance suite resolves to the set the vectors pin, and its copy order is the vectors' (docs/03 section 18.26, 18.29). */
     @Test
     @OptIn(TestOnlyKinds::class)
     fun theSyntheticKindResolvesToTheSetTheVectorsPinAndTheCopyOrderIsTheirs() {

@@ -17,7 +17,8 @@
  */
 
 import type { TKey } from '../i18n/en';
-import { kindWordKinds, kindWordPairs } from './kind-word-table';
+import { kindWordKinds, kindWordPairs, userWordFor } from './kind-word-table';
+import { isUserKindId } from './user-kinds/user-kind-ids';
 
 /*
  * The words of Compare, Ask, Plan, the copies and the share target in a space other than the house (kinds PR B,
@@ -90,6 +91,7 @@ TABLES['*'] = ANY;
 
 /** The key to show for `key` in the space of `kind`: the kind's own where it has one, else `key` (the house's). */
 export function toolWord(kind: string | null | undefined, key: TKey): TKey {
+  if (isUserKindId(kind)) return userWordFor(kind, key) ?? key;
   const table = kind && Object.prototype.hasOwnProperty.call(TABLES, kind) ? TABLES[kind] : undefined;
   return table?.[key] ?? key;
 }

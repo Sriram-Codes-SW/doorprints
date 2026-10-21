@@ -85,7 +85,7 @@ internal fun ExtraFilterRows(fields: KindFields, filter: Map<String, String?>, o
 }
 
 /**
- * The two fields of a number or an amount (docs/03 §18.28): at least and at most, each named after the row for TalkBack, blank for no
+ * The two fields of a number or an amount (docs/03 §18.29): at least and at most, each named after the row for TalkBack, blank for no
  * limit. [value] is the row's range text (`min:max`); [onChange] gets the new text (the ends swapped when the minimum is above the
  * maximum) or null once both are blank, which is *Any*.
  */

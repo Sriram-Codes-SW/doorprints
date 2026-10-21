@@ -89,7 +89,7 @@ class KindFilterVectorsTest {
     }
 
     /**
-     * A number and an amount are range rows (docs/03 section 18.28) of the synthetic kind of the conformance suite, registered for the
+     * A number and an amount are range rows (docs/03 section 18.29) of the synthetic kind of the conformance suite, registered for the
      * run: the rows, which candidates a set of ranges keeps, how a range text is read and what two typed ends make of it.
      */
     @Test

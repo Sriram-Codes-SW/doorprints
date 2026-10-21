@@ -2,7 +2,7 @@
  "$schema": "https://json-schema.org/draft/2020-12/schema",
  "$id": "https://doorprints.web.app/schemas/kinds/kind.schema.json",
  "title": "Doorprints kind file, doorprints-kind/1",
- "description": "What a kind of candidate is (docs/03 ADR-36 and §18; S4b-BL-205): its labels, which of the fixed core fields and sections it shows, its typed extras and where they go, its statuses' labels, its checklist, its question scopes, what search reads and the AI contract slots. Built-in kinds only: the files ship embedded in both apps and the server, and one test per stack reads them (the default-questions.json pattern). Labels are always keys into the apps' dictionaries, never inline text, so the four languages and their review marks stay where they are. `format` names the file format (this schema); `version` is the kind's own revision, raised when a kind changes in a way a reader must know (a field's type, unit or cadence), never for a label key. A reader refuses a format it does not know and reads a lower or equal `version`.",
+ "description": "What a kind of candidate is (docs/03 ADR-36 and §18; S4b-BL-205): its labels, which of the fixed core fields and sections it shows, its typed extras and where they go, its statuses' labels, its checklist, its question scopes, what search reads and the AI contract slots. The built-in kinds' files ship embedded in both apps and the server, and one test per stack reads them (the default-questions.json pattern); their labels are always keys into the apps' dictionaries, never inline text, so the four languages and their review marks stay where they are. A kind a person adds by importing a file (docs/03 ADR-39) is this same format under the stricter profile `user-kind.schema.json`: an id starting `u_`, its own words (`textLabel`) in place of keys, no `words`, empty `ai` slots, smaller limits. `format` names the file format (this schema); `version` is the kind's own revision, raised when a kind changes in a way a reader must know (a field's type, unit or cadence), never for a label key. A reader refuses a format it does not know and reads a lower or equal `version`.",
  "type": "object",
  "additionalProperties": false,
  "required": ["format", "id", "version", "labels", "statuses", "sections", "core", "extras", "checklist", "questions", "search", "ai"],
@@ -186,8 +186,8 @@
     },
     "paths": { "description": "Walks and paths (the walks section, path tracing, place checks).", "type": "boolean" },
     "baseline": { "description": "The kind whose paths, wire shape, copy file names and words are the app's original, from before there were kinds (the house; kinds PR 30): its pages keep their own addresses, its AI calls name no kind, its copies are not renamed. Only the house has it; false when absent.", "type": "boolean" },
-    "filters": { "description": "The extras of this kind the list and the map can be filtered by (kinds PR 30): ids of enum, switch, number or amount extras of the kind (a number or an amount is a range, a minimum and a maximum, since docs/03 section 18.28), at most six, no repeats, in the order the rows are shown. None when absent.", "type": "array", "maxItems": 6, "uniqueItems": true, "items": { "type": "string", "pattern": "^[a-z][A-Za-z0-9_]{0,39}$" } },
-    "copyOrder": { "description": "The order of the blocks of a copy (Markdown and HTML), after the details: some of the block ids below, no repeats; the ones listed come first in that order and the rest follow in the copies' fixed order (cost, rooms, questions, viewings, areaNotes, distances, moveIn, checklist, visits, notes, photos). None when absent: the fixed order (docs/03 section 18.28).", "type": "array", "maxItems": 11, "uniqueItems": true, "items": { "enum": ["cost", "rooms", "questions", "viewings", "areaNotes", "distances", "moveIn", "checklist", "visits", "notes", "photos"] } },
+    "filters": { "description": "The extras of this kind the list and the map can be filtered by (kinds PR 30): ids of enum, switch, number or amount extras of the kind (a number or an amount is a range, a minimum and a maximum, since docs/03 section 18.29), at most six, no repeats, in the order the rows are shown. None when absent.", "type": "array", "maxItems": 6, "uniqueItems": true, "items": { "type": "string", "pattern": "^[a-z][A-Za-z0-9_]{0,39}$" } },
+    "copyOrder": { "description": "The order of the blocks of a copy (Markdown and HTML), after the details: some of the block ids below, no repeats; the ones listed come first in that order and the rest follow in the copies' fixed order (cost, rooms, questions, viewings, areaNotes, distances, moveIn, checklist, visits, notes, photos). None when absent: the fixed order (docs/03 section 18.29).", "type": "array", "maxItems": 11, "uniqueItems": true, "items": { "enum": ["cost", "rooms", "questions", "viewings", "areaNotes", "distances", "moveIn", "checklist", "visits", "notes", "photos"] } },
     "identity": {
      "description": "How the kind looks in the chooser: an icon and a colour from the bundled lists. Not drawn yet.",
      "type": "object",
@@ -242,6 +242,24 @@
   "webKey": { "type": "string", "pattern": "^[a-z][A-Za-z0-9]*(\\.[A-Za-z0-9_]+)+$" },
   "androidKey": { "type": "string", "pattern": "^[a-z][A-Za-z0-9_]*$" },
   "label": {
+   "description": "A built-in kind's label is a key per stack (`keyLabel`); a kind a person adds (an id starting `u_`, docs/03 ADR-39, `user-kind.schema.json`) gives its own words instead (`textLabel`), shown as they are in every language. Additive since 2026-10-20: a reader of built-in files never meets a `textLabel`, and the built-in files' tests refuse one.",
+   "oneOf": [{ "$ref": "#/$defs/keyLabel" }, { "$ref": "#/$defs/textLabel" }]
+  },
+  "textLabel": {
+   "description": "A user-authored kind's own words for one place (docs/03 ADR-39): `text` is shown as written, as text (never markup), in every language; no key, no translation.",
+   "type": "object",
+   "additionalProperties": false,
+   "required": ["text"],
+   "properties": { "text": { "$ref": "#/$defs/userText" } }
+  },
+  "userText": {
+   "description": "A person's own words in a kind file (docs/03 ADR-39, docs/02 T-T25): 1 to 60 characters, no space at either end, and none of < > { } (so a word can carry no markup and no placeholder), no control character, no zero-width space or direction mark, no line or paragraph separator, override or isolate, and no byte-order mark (the zero-width non-joiner and joiner stay: Indian scripts need them). The apps also refuse a lone surrogate, which a schema cannot name.",
+   "type": "string",
+   "minLength": 1,
+   "maxLength": 60,
+   "pattern": "^(?![\\s])(?!.*[\\s]$)[^\\u0000-\\u001F\\u007F-\\u009F<>{}\\u200B\\u200E\\u200F\\u2028-\\u202E\\u2066-\\u2069\\uFEFF]+$"
+  },
+  "keyLabel": {
    "description": "A key per stack into today's dictionaries: `web` in web/src/app/i18n (four languages), `android` in the Compose resources (four languages). null: that stack shows no text there. `byCadence`: another key while the money cadence is that one.",
    "type": "object",
    "additionalProperties": false,

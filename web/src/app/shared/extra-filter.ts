@@ -21,8 +21,8 @@ import type { KindExtra, KindFields } from '../core/kind-fields';
 import type { HouseDto } from '../core/models';
 
 /**
- * The list's filter by a kind's typed extra (S4b-BL-265; docs/03 §18.10, §18.28): one chip row per enum or switch the kind has with
- * no house field, the choice of an option (or Yes/No for a switch) or nothing, and, since §18.28, a minimum and a maximum for a number
+ * The list's filter by a kind's typed extra (S4b-BL-265; docs/03 §18.10, §18.29): one chip row per enum or switch the kind has with
+ * no house field, the choice of an option (or Yes/No for a switch) or nothing, and, since §18.29, a minimum and a maximum for a number
  * or an amount. A house has none, so its list, its address and its saved state are as they were. The Kotlin twin is `KindFilter`;
  * `docs/schemas/kinds/kind-filter-vectors.json` holds both to the same rules.
  *

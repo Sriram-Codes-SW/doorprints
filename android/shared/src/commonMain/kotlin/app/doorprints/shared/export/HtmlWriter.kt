@@ -138,7 +138,7 @@ object HtmlWriter {
         for ((term, value) in ExportRows.detailLines(h, bundle)) row(out, term, value)
         out.append("</dl>\n")
 
-        // The blocks after the details, written in the order the kind's `copyOrder` gives (docs/03 section 18.28), the house's fixed order by default; each writes into [out] when it runs, so the photos still stream.
+        // The blocks after the details, written in the order the kind's `copyOrder` gives (docs/03 section 18.29), the house's fixed order by default; each writes into [out] when it runs, so the photos still stream.
         val costBlock = block {
             val cost = ExportRows.costBlock(h, bundle)
             if (cost.isNotEmpty()) {

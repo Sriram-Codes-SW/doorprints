@@ -16,6 +16,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  */
 import { isDevMode } from '@angular/core';
+import { userKindFacts } from './user-kinds/user-kind-ids';
 
 /**
  * What a kind can do beyond its fields (docs/03 ADR-36 §18.19): the `capabilities` block of a kind file
@@ -63,7 +64,7 @@ export interface KindCapabilities {
   readonly baseline: boolean;
   /** The extras the list and the map can be filtered by, in the order the rows are shown (ids of enum, switch, number or amount extras of the kind). */
   readonly filters: readonly string[];
-  /** The blocks of a copy (Markdown and HTML) that come first after the details, in this order; the rest follow in {@link COPY_BLOCKS}'s order (docs/03 §18.28). None: the fixed order. */
+  /** The blocks of a copy (Markdown and HTML) that come first after the details, in this order; the rest follow in {@link COPY_BLOCKS}'s order (docs/03 §18.29). None: the fixed order. */
   readonly copyOrder: readonly CopyBlock[];
 }
 
@@ -242,10 +243,15 @@ export function registerTestCapabilities(kindId: string, capabilities: KindCapab
   return () => void TEST_CAPABILITIES.delete(kindId);
 }
 
-/** The capabilities of a kind by its id: the built-in set, or {@link DEFAULT_CAPABILITIES} for a kind this build does not know. */
+/**
+ * The capabilities of a kind by its id: the built-in set, a kind this browser added from a kind file (its own block, read
+ * by {@link parseCapabilities} and the user profile; docs/03 ADR-39), or {@link DEFAULT_CAPABILITIES} for a kind this build
+ * does not know.
+ */
 export function capabilitiesOf(kindId: string | null | undefined): KindCapabilities {
   if (typeof kindId !== 'string') return DEFAULT_CAPABILITIES;
-  return Object.hasOwn(BUILT_IN, kindId) ? BUILT_IN[kindId] : (TEST_CAPABILITIES.get(kindId) ?? DEFAULT_CAPABILITIES);
+  if (Object.hasOwn(BUILT_IN, kindId)) return BUILT_IN[kindId];
+  return TEST_CAPABILITIES.get(kindId) ?? userKindFacts(kindId)?.capabilities ?? DEFAULT_CAPABILITIES;
 }
 
 /** The built-in kind ids that have capabilities, for the spec. */
