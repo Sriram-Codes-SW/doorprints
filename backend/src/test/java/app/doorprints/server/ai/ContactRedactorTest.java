@@ -178,6 +178,17 @@ class ContactRedactorTest {
         assertThat(ContactRedactor.scrubStoredText(null, null, null)).isNull();
     }
 
+    // Pentest of 2026-10-21, PT-5; the website's and the phones' tests have the same lines.
+    @Test
+    void aPhoneInFullWidthDigitsOrSplitByAnInvisibleCharacterIsRemoved() {
+        assertThat(ContactRedactor.redactGeneric("call ９８４００１１１１１ now")).isEqualTo("call [phone] now");
+        assertThat(ContactRedactor.redactGeneric("call 98400​11111 now")).isEqualTo("call [phone] now");
+        assertThat(ContactRedactor.redactGeneric("call 98400⁠11111, 98400﻿11111 or 984­0011111"))
+                .isEqualTo("call [phone], [phone] or [phone]");
+        assertThat(ContactRedactor.forContact(null, "+91 98400 11111").freeText("ring 9​8400​11111")).isEqualTo("ring [phone]");
+        assertThat(ContactRedactor.redactGeneric("क्‍ष flat 2​3")).isEqualTo("क्‍ष flat 2​3");
+    }
+
     // S4b-BL-179: email addresses go whole, before the name rules; the shared vectors pin the same cases.
     @Test
     void emailAddressesAreRemovedWholeInEveryFieldAndBeforeTheNameParts() {

@@ -125,9 +125,25 @@ public final class ContactRedactor {
         return out.toString();
     }
 
+    /**
+     * What the phone patterns read: {@link #asciiDigits}, then full-width digits (U+FF10..FF19) as 0-9 and the invisible
+     * characters that can sit inside a pasted number (zero-width space, word joiner, zero-width no-break space, soft
+     * hyphen) as a space, one character for one character (pentest of 2026-10-21, PT-5). Zero-width joiner and non-joiner
+     * are left alone: Indic scripts use them inside words. The website's and the phones' {@code phoneView} are the same.
+     */
+    static String phoneView(String s) {
+        var out = new StringBuilder(asciiDigits(s));
+        for (int i = 0; i < out.length(); i++) {
+            char c = out.charAt(i);
+            if (c >= '０' && c <= '９') out.setCharAt(i, (char) ('0' + (c - '０')));
+            else if (c == '​' || c == '⁠' || c == '﻿' || c == '­') out.setCharAt(i, ' ');
+        }
+        return out.toString();
+    }
+
     /** {@code s} with every match of {@code p} replaced by {@link #PHONE}; the matching reads native digits as 0-9, the rest of {@code s} is kept. */
     private static String replaceInDigits(Pattern p, String s) {
-        var m = p.matcher(asciiDigits(s));
+        var m = p.matcher(phoneView(s));
         if (!m.find()) return s;
         var out = new StringBuilder();
         int last = 0;
