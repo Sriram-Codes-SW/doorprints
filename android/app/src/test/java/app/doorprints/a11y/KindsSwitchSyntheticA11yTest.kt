@@ -196,8 +196,8 @@ class KindsSwitchSyntheticA11yTest(private val lang: String) {
         kinds!!.close()
         kinds = TwoKinds(app, available = listOf("house", "school", "zz_all"), released = listOf("house", "school", "zz_all"))
         show(null) { Column(Modifier.padding(16.dp).verticalScroll(rememberScrollState())) { KindsSettingsSection() } }
-        assertEquals("the section is not drawn at all: nothing is unreleased", 0, count(isSwitch))
-        assertEquals(0, count(heading and hasText(text(Res.string.kinds_heading))))
+        assertEquals("no switch: nothing is unreleased", 0, count(isSwitch))
+        assertEquals("the section stays, with a Show box for each of the three released kinds", 3, count(isCheckbox))
     }
 
     companion object {
