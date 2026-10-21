@@ -58,12 +58,33 @@ CASES = [
 ]
 
 
+# The images CI runs (pentest of 2026-10-21, PT-3): (name, workflow or CI script text, expected problems as (line, image))
+IMAGE_CASES = [
+    ("docker run with a tag only", "run: docker run --rm semgrep/semgrep:1.177.0 scan\n", [(1, "semgrep/semgrep:1.177.0")]),
+    ("docker run pinned", f"run: docker run --rm semgrep/semgrep:1.177.0@{D} scan\n", []),
+    ("a registry host", "docker run ghcr.io/g/g:v8.30.1 git /repo\n", [(1, "ghcr.io/g/g:v8.30.1")]),
+    ("on a continuation line", 'docker run --rm \\\n  -v "$W:/src:ro" \\\n  aquasec/trivy:0.74.0 fs .\n', [(3, "aquasec/trivy:0.74.0")]),
+    ("an IMAGE env value", "    env:\n      TRIVY_IMAGE: aquasec/trivy:0.74.0\n", [(2, "aquasec/trivy:0.74.0")]),
+    ("an image= line in a script", f"zap_image=ghcr.io/z/z:2.17.0@{D}\nimage=${{X:-o/m@{D}}}\nimg=o/m:1\n", []),
+    ("a short digest", "docker pull a/b:1@sha256:abc\n", [(1, "a/b:1@sha256:abc")]),
+    ("comments and lines that run no image", "# docker run a/b:1\nrun: echo docs/a.md:12\ncp backend/target:/x .\n", []),
+    ("a volume and a path are not images", 'docker run -v "$HOME/.cache/trivy:/cache" -v "${W}/backend/target:/sbom:ro" x\n', []),
+    ("a local image without a namespace", "docker run -d --name db doorprints-db:ci\n", []),
+]
+
+
 def found(module, text: str) -> list[tuple[int, str]]:
     return [(p.line, p.image) for p in module.problems_in("Dockerfile", text)]
 
 
+def found_images(module, text: str) -> list[tuple[int, str]]:
+    return [(p.line, p.image) for p in module.image_problems_in("ci.yml", text)]
+
+
 def failures(module) -> list[str]:
-    return [name for name, text, expected in CASES if found(module, text) != expected]
+    return [name for name, text, expected in CASES if found(module, text) != expected] + [
+        name for name, text, expected in IMAGE_CASES if found_images(module, text) != expected
+    ]
 
 
 class DockerfilePins(unittest.TestCase):
@@ -71,6 +92,24 @@ class DockerfilePins(unittest.TestCase):
         for name, text, expected in CASES:
             with self.subTest(name):
                 self.assertEqual(expected, found(pins, text))
+
+    def test_every_image_case(self):
+        for name, text, expected in IMAGE_CASES:
+            with self.subTest(name):
+                self.assertEqual(expected, found_images(pins, text))
+
+    def test_the_walk_reads_workflows_and_ci_scripts(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / ".github" / "workflows").mkdir(parents=True)
+            (root / "android" / "ci").mkdir(parents=True)
+            (root / "web" / "node_modules" / "ci").mkdir(parents=True)
+            (root / ".github" / "workflows" / "a.yml").write_text(f"run: docker run a/b:1@{D}\n")
+            (root / "android" / "ci" / "scan.sh").write_text("docker run a/b:1\n")
+            (root / "web" / "node_modules" / "ci" / "x.sh").write_text("docker run bad/b:1\n")
+            names = [p.relative_to(root).as_posix() for p in pins.ci_files(root)]
+            self.assertEqual([".github/workflows/a.yml", "android/ci/scan.sh"], names)
+            self.assertEqual(1, pins.main(["x", str(root)]))
 
     def test_the_message_names_file_line_and_image(self):
         problem = pins.problems_in("backend/Dockerfile", "FROM a:1\n")[0]
@@ -106,6 +145,10 @@ MUTATIONS = {
     "drops the scratch exemption": ('image.lower() == "scratch"', "False"),
     "forgets the platform flag": ("(?:--\\S+\\s+)*", ""),
     "ignores lower-case from": ("re.IGNORECASE", "0"),
+    "reads no workflow image": ("for image in IMAGE_REF.findall(line):", "for image in []:"),
+    "forgets continuation lines": ("while start > 0 and", "while False and"),
+    "reads comment lines": ('if line.lstrip().startswith("#"):', "if False:"),
+    "reads every line as an image line": ("if not any(IMAGE_LINE.search(", "if not all(True or IMAGE_LINE.search("),
 }
 
 
