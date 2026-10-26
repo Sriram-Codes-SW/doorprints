@@ -26,7 +26,7 @@ kotlin = "2.4.21"
 ksp = "2.3.12"
 ktor = "3.6.0"
 kotlinx-coroutines = "1.11.0"
-kotlinx-serialization = "1.11.0"
+kotlinx-serialization = "1.12.0"
 # The version Ktor 3.6.0 is built against (header note); :shared names it directly for CommonRepository's photo files.
 kotlinx-io = "0.9.1"
 compose-bom = "2026.09.00"
@@ -61,7 +61,7 @@ androidx-room = "2.8.5"
 # framework SQLite through Room's SupportSQLite open helper, as before.
 androidx-sqlite = "2.6.2"
 androidx-work = "2.12.0"
-androidx-datastore = "1.1.7"
+androidx-datastore = "1.3.0"
 androidx-exifinterface = "1.4.2"
 play-services-location = "21.4.0"
 # Google Play services Authorization API (AuthorizationClient) for the Drive token on Android (docs/15 §5.5 fallback row,
@@ -79,7 +79,7 @@ robolectric = "4.17"
 # The Android image the screenshot tests run on (ScreensScreenshotTest @Config(sdk = [35])); Robolectric 4.17 asks
 # for exactly this artifact for SDK 35. Move it with the sdk or the Robolectric version (app/build.gradle.kts).
 robolectric-android-all = "15-robolectric-13954326-i7"
-roborazzi = "1.76.0"
+roborazzi = "1.77.0"
 androidx-test-ext-junit = "1.3.0"
 androidx-test-runner = "1.7.0"
 androidx-test-core = "1.7.0"
