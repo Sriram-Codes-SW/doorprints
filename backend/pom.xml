@@ -25,7 +25,7 @@
   <parent>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-parent</artifactId>
-    <version>4.1.1</version>
+    <version>4.1.2</version>
     <relativePath/>
   </parent>
 
@@ -38,7 +38,7 @@
   <properties>
     <java.version>25</java.version>
     <!-- Spring AI 2.0.1 is built against Spring Boot 4.1.1 (see spring-ai v2.0.1 root pom). -->
-    <spring-ai.version>2.0.1</spring-ai.version>
+    <spring-ai.version>2.0.2</spring-ai.version>
     <!-- Security override: Spring Boot 4.1.1 manages Tomcat 11.0.24 (tomcatVersion in spring-boot-dependencies),
          which has CRITICAL CVE-2026-65182, CVE-2026-65905 and CVE-2026-68525, all fixed in 11.0.25.
          Drop this property once the Spring Boot parent manages 11.0.25 or later. -->
@@ -147,7 +147,7 @@
     <dependency>
       <groupId>org.springdoc</groupId>
       <artifactId>springdoc-openapi-starter-webmvc-api</artifactId>
-      <version>3.1.1</version>
+      <version>3.2.0</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
