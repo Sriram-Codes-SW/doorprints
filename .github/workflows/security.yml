@@ -204,6 +204,9 @@ jobs:
         run: |
           python3 .github/scripts/check_dockerfile_pins_test.py
           python3 .github/scripts/check-dockerfile-pins.py
+      # Dependabot auto-merge (docs/07 section 3.3): the allowlist that decides which Dependabot pull requests get auto-merge.
+      - name: The Dependabot auto-merge allowlist holds
+        run: python3 .github/scripts/dependabot_auto_merge_test.py
       - name: Only allowlisted author and committer emails in the new commits
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
@@ -400,7 +403,7 @@ jobs:
           distribution: temurin
           java-version: "21"
       - name: Submit Gradle dependency graph (android/)
-        uses: gradle/actions/dependency-submission@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        uses: gradle/actions/dependency-submission@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
         with:
           build-root-directory: android
           dependency-graph: generate-and-submit

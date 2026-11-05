@@ -2,8 +2,8 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.211 |
-| Date | 2026-10-21 |
+| Version | 0.212 |
+| Date | 2026-11-05 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..183); this file lists the lead-level items and points to the rest. |
 
@@ -218,7 +218,8 @@
 | 0.208 | 2026-10-21 | Claude (Code), engineer | **§1 and §2: kinds a person adds, the phones** ([03](03-design.md) ADR-39, `feat/user-authored-kinds-phones`). |
 | 0.209 | 2026-10-21 | Claude (Code), engineer | **§1 and §2:** AI over user-authored kinds recorded as decided, a deliberate non-goal; the #395 screenshot flake fix recorded as a hypothesis (no recurrence in the seven `android.yml` runs since); `copyOrder` covers every format; the voice checks are MT-127..MT-132. |
 | 0.210 | 2026-10-21 | Claude (Code), docs | **§1 and §2 brought to `main`:** the school on the phones (#391), the voice free-plan refusal (#388), kinds a person adds on the phones (#397) and the kinds leftovers (#396) are merged, no longer *in review*; the one open pull request is the old draft #375; the owner's ordered steps are the new [ops/owner-release-runbook.md](ops/owner-release-runbook.md); the phones-with-the-school manual row is now TC-M-95 (it shared TC-M-81 with the Sarvam row). No sign-off is recorded. |
-| 0.211 | 2026-10-21 | Claude (Code), lead | N11 and §6: the Survey of India replied; S4b-BL-114 draws its lines on the web, Android and the iPhone (branch `feat/soi-boundary-data`); the owner's next steps are the review pack and the device look (TC-M-25). Synced with `main` on 2026-10-16 (the kinds refactor #373/#374 merged; the map-rules files stay kind-blind; web `india-boundaries.ts` now re-exports the Survey of India decoder from `india-boundaries-soi.ts`, split for the file-size budget); the pull request (#100) stays an open draft, not merged until the TC-M-25 device look and the Survey of India's answer. |
+| 0.211 | 2026-11-05 | Claude (Code), engineer | §7 step 5: the Dependabot auto-merge workflow ([07](07-secure-build-and-deploy.md) §3.3, owner request 2026-11-05) and what stays manual. |
+| 0.212 | 2026-11-05 | Claude (Code), lead | N11 and §6: the Survey of India replied; S4b-BL-114 draws its lines on the web, Android and the iPhone (branch `feat/soi-boundary-data`); the owner's next steps are the review pack and the device look (TC-M-25). Synced with `main` on 2026-10-16 (the kinds refactor #373/#374 merged; the map-rules files stay kind-blind; web `india-boundaries.ts` now re-exports the Survey of India decoder from `india-boundaries-soi.ts`, split for the file-size budget); the pull request (#100) stays an open draft, not merged until the TC-M-25 device look and the Survey of India's answer. |
 
 ## 1. Where things stand (2026-10-21, everything built is merged to `main`)
 
@@ -566,6 +567,7 @@ suite runs in a cloud session; CI is the second check, never the first:
    **enable auto-merge (squash) on it at once** (the ruleset requires every check, so it merges by itself the moment the
    last one is green; [07](07-secure-build-and-deploy.md) §3) and set one check-in about 20 minutes out to confirm
    the merge, act on a red check, and go on to the next item (50-60 minutes for a PR that waits on the owner).
+   Dependabot pull requests: a digest-only Docker move in the backend Dockerfiles and a minor or patch step of the guide's pip packages get auto-merge from `dependabot-auto-merge.yml` ([07](07-secure-build-and-deploy.md) §3.3); look at the list that merged. Every other Dependabot pull request is handled here, one at a time (each merge puts the next behind `main`), and a web one is followed by the live UI test.
 6. On CI red: find the cause in the job log, reproduce it locally, fix, push. Never skip a test.
 7. When green: merge (above). After a merge that runs the `Web` deploy, wait for the deploy, then run
    `tools/live-ui` (`npm ci && node live-ui.js`; Chromium at `/opt/pw-browsers/chromium` in cloud sessions) and report

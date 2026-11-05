@@ -22,7 +22,7 @@ RUN mvn -q -B dependency:go-offline
 COPY src src
 RUN mvn -q -B package -DskipTests
 
-FROM eclipse-temurin:25-jre@sha256:dbb43d81099eec91e0800226ed2296d03146ee7857165b95112372ad0d67e87f
+FROM eclipse-temurin:25-jre@sha256:ecdc0adb37bde1a281c4d245a3cd535004b1fc8322d560f5b09463b248c81df0
 WORKDIR /app
 # Take the distribution's security fixes that are newer than the base image (Trivy's HIGH gate, TC-S-05, failed on an
 # OpenSSL fix published the day before the image was rebuilt); the lists are removed again so the layer stays small.
