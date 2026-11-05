@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.212 |
+| Version | 0.213 |
 | Date | 2026-11-05 |
 | Owner | Sriram (product owner); lead: Claude |
 | Purpose | Everything pending at the end of the Cowork sessions of 2026-09-22..24, in one place, so a new Claude Code session (web or CLI) can continue without the old session's notes. Team-level tickets stay in [10](10-sprint-log.md) §12.7 (S4b-BL-1..183); this file lists the lead-level items and points to the rest. |
@@ -220,6 +220,7 @@
 | 0.210 | 2026-10-21 | Claude (Code), docs | **§1 and §2 brought to `main`:** the school on the phones (#391), the voice free-plan refusal (#388), kinds a person adds on the phones (#397) and the kinds leftovers (#396) are merged, no longer *in review*; the one open pull request is the old draft #375; the owner's ordered steps are the new [ops/owner-release-runbook.md](ops/owner-release-runbook.md); the phones-with-the-school manual row is now TC-M-95 (it shared TC-M-81 with the Sarvam row). No sign-off is recorded. |
 | 0.211 | 2026-11-05 | Claude (Code), engineer | §7 step 5: the Dependabot auto-merge workflow ([07](07-secure-build-and-deploy.md) §3.3, owner request 2026-11-05) and what stays manual. |
 | 0.212 | 2026-11-05 | Claude (Code), lead | N11 and §6: the Survey of India replied; S4b-BL-114 draws its lines on the web, Android and the iPhone (branch `feat/soi-boundary-data`); the owner's next steps are the review pack and the device look (TC-M-25). Synced with `main` on 2026-10-16 (the kinds refactor #373/#374 merged; the map-rules files stay kind-blind; web `india-boundaries.ts` now re-exports the Survey of India decoder from `india-boundaries-soi.ts`, split for the file-size budget); the pull request (#100) stays an open draft, not merged until the TC-M-25 device look and the Survey of India's answer. |
+| 0.213 | 2026-11-05 | Claude (Code), engineer | N16 and §6: the Survey of India review pack was sent on 2026-11-05 (owner; five-page PDF, follow-up mail in the same thread; see [ops/soi-review-pack.md](ops/soi-review-pack.md) v0.5); the mail says the lines will be published from 2026-11-20 on the basis of its reply of 2026-10-01 unless it asks for a change. The TC-M-25 device look stays the owner's. |
 
 ## 1. Where things stand (2026-10-21, everything built is merged to `main`)
 
@@ -411,8 +412,9 @@ The numbered items below keep their ids because other documents link them; their
   comes; (3) sign off the acknowledgement wording
   ("Boundary: Survey of India") and run TC-M-25 on the live site and a phone when P5 is built.
 - **The Survey of India lines on the map are built** (S4b-BL-114, branch `feat/soi-boundary-data`): the web, Android and
-  iPhone maps draw the Himalayan states and the Assam-Arunachal Pradesh line from OVSF/1M/7. **Next for you:** send the
-  review pack ([ops/soi-review-pack.md](ops/soi-review-pack.md), not yet sent) and look at the Android and iPhone maps
+  iPhone maps draw the Himalayan states and the Assam-Arunachal Pradesh line from OVSF/1M/7. **The review pack was sent
+  on 2026-11-05** ([ops/soi-review-pack.md](ops/soi-review-pack.md) v0.5, a five-page PDF with a follow-up mail in the same thread; no answer yet, and the
+  mail says the lines will be published from **2026-11-20** on the basis of the Survey of India's reply of 2026-10-01 unless it asks for a change). **Next for you:** look at the Android and iPhone maps
   (TC-M-25): the credit is in the "i" dialog on Android and in the attribution sheet on the iPhone.
 - **GitHub contributor list** ([10](10-sprint-log.md) S4b-BL-53): `noreply` is listed because of 17 commits of
   2026-09-23 made as `noreply@users.noreply.github.com`. Decide whether it is worth a history rewrite (costly, see the

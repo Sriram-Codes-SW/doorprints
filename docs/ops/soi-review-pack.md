@@ -3,15 +3,16 @@
 | Field | Value |
 |---|---|
 | Document | Statement for the Survey of India's reviewers: the data used, what was done to it, how to check it, and our questions |
-| Version | 0.4 |
-| Date | 2026-10-16 |
+| Version | 0.5 |
+| Date | 2026-11-05 |
 | Author | Claude (Code), lead, for the owner (Sriram, maintainer of Doorprints) |
-| Status | Draft, not sent. Branch `feat/soi-boundary-data`; since S4b-BL-114 the compact file (Himalayan states and the Assam-Arunachal Pradesh line) is drawn by the web, Android and iPhone maps |
+| Status | Sent to the Survey of India on 2026-11-05 as a five-page PDF note with a follow-up mail in the same thread (the owner sent it). Branch `feat/soi-boundary-data`; since S4b-BL-114 the compact file (Himalayan states and the Assam-Arunachal Pradesh line) is drawn by the web, Android and iPhone maps |
 
 ## Change log
 
 | Version | Date | Author | Change |
 |---|---|---|---|
+| 0.5 | 2026-11-05 | Claude (Code), lead | **Sent.** The owner sent the follow-up mail with this note as a five-page PDF (the internal header and change log left out, the sections and figures unchanged) to the Survey of India's team in the thread of 2026-09-28, reminding them of the seventeen questions of 2026-10-01 and saying the app will publish these lines from 2026-11-20 on the basis of their reply of 2026-10-01 unless they ask for a change. No answer yet. |
 | 0.4 | 2026-10-16 | Claude (Code), lead | Synced with `main` after the kinds refactor (#373, #374); no change to the data, the build, the questions or the statement. The draft stays unmerged until the Survey of India answers and the TC-M-25 device look is done. |
 | 0.3 | 2026-10-01 | Claude (Code), lead | The owner sent the second letter to the Survey of India (the 17 questions below, as a reply in the same thread). Waiting for the answer; record its date and gist in docs/10 S4b-BL-114. |
 | 0.2 | 2026-10-01 | Claude (Code), lead | The apps draw the compact file (S4b-BL-114): §3 says what is shipped and how the apps use it (decoded unaltered, MapLibre's screen generalisation only, the corridor mask, the credit); §4's rebuild names the selection reference (`--ne`, commit 52453f7). |

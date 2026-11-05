@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | SSDLC document index |
-| Version | 0.153 |
+| Version | 0.154 |
 | Date | 2026-11-05 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -51,6 +51,7 @@
 | 0.151 | 2026-11-05 | Claude (Code), engineer | Dependabot auto-merge, the known limit (`docs/dependabot-auto-merge-limits`): 07 v0.82 (§3.3), 02 v0.105 (T-T25). |
 | 0.152 | 2026-11-05 | Claude (Code), lead | New [ops/soi-review-pack.md](ops/soi-review-pack.md) (the Survey of India review pack for the OVSF/1M/7 boundary file `web/public/geo/in-boundaries-soi.json`, built by `web/scripts/geo/build_in_boundaries_soi.py` and checked by `tools/soi-verify.py`), with its index row. |
 | 0.153 | 2026-11-05 | Claude (Code), lead | **The Survey of India's lines on the map** (S4b-BL-114, branch `feat/soi-boundary-data`): 02 v0.106 (RR-16), 03 v0.184 (ADR-22: the SoI lines, the corridor rule, Natural Earth for the world lines only), 06 v0.304 (TC-M-25 spots and the web run of 2026-10-01; TC-U-54, -55, -73), 10 v0.367 (S4b-BL-114; S4b-BL-10), 14 v0.212, [ops/soi-review-pack.md](ops/soi-review-pack.md) v0.4, NOTICE, the root and web READMEs, the guide, the CHANGELOG. Synced with `main` on 2026-10-16 (the kinds refactor #373/#374 merged; the map-rules files stay kind-blind; web `india-boundaries.ts` now re-exports the Survey of India decoder from `india-boundaries-soi.ts`, split for the file-size budget); the pull request (#100) stays an open draft, not merged until the TC-M-25 device look and the Survey of India's answer. |
+| 0.154 | 2026-11-05 | Claude (Code), engineer | The Survey of India review pack was sent (2026-11-05): ops/soi-review-pack.md v0.5, 14 v0.213. |
 | 0.112 | 2026-10-06 | Claude | The review backlog: docs/01 v0.41, 06 v0.131 (section 10.1), 07 v0.60, 14 v0.89. |
 | 0.111 | 2026-10-06 | Claude | Full-system review fixes and the manual test checklist (`docs/ops/manual-test-checklist.md`): docs/07 v0.59, docs/14 v0.88. |
 | 0.110 | 2026-10-06 | Claude | Review fixes on PR #139: docs/10 v0.149, 06 v0.130, 15 v0.27. |
