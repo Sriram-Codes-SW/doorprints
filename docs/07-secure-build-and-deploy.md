@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | Secure build, CI/CD and deployment guide |
-| Version | 0.80 |
-| Date | 2026-10-15 |
+| Version | 0.81 |
+| Date | 2026-11-05 |
 | Author | Claude (Cowork) |
 | Status | Draft |
 
@@ -92,6 +92,7 @@
 | 0.78 | 2026-10-15 | Claude (Code), engineer | **Headers:** the website's `Permissions-Policy` is `microphone=(self)` (voice input, S4b-BL-221, [03](03-design.md) ADR-37); `check-firebase-json.sh` refuses a `*` or a value other than `()` or `(self)` for the microphone, camera and location, and `check-live-headers.sh` requires `microphone=(self)` live (TC-S-23). |
 | 0.79 | 2026-10-19 | Claude (Code), engineer | §2 Pinning: the rule now says what the workflows do and why. Third-party actions are pinned by SHA (all of them, `check-action-pins.py`); GitHub-owned `actions/*` and `github/codeql-action/*` stay on a major tag, an exception recorded with its reasons ([02](02-threat-model.md) T-T5). No SHA was changed. |
 | 0.80 | 2026-10-21 | Claude (Code), engineer | §2 supply chain (the self-run pentest, [ops/pentest-2026-10-21.md](ops/pentest-2026-10-21.md) PT-3, PT-4): the scanner images (Trivy, Semgrep, the secret scanner) are pinned by digest, as planned once their tags had run, and `check-dockerfile-pins.py` checks the images CI runs and the Gradle wrapper's `distributionSha256Sum`. |
+| 0.81 | 2026-11-05 | Claude (Code), engineer | **Dependabot auto-merge** (owner, 2026-11-05; `chore/dependabot-auto-merge`): new §3.3 and the `contents: write` exception in the workflows row. The workflow `dependabot-auto-merge.yml` and `.github/scripts/dependabot_auto_merge.py` turn on auto-merge for a digest-only Docker move in the two backend Dockerfiles and a minor or patch step of the guide's pip packages, and ask Dependabot to rebase the ones that fall behind `main`; `dependabot.yml` gets a 3-day cooldown for Docker and pip. |
 
 Related: [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Runbook](08-operations-runbook.md) · [AI docs](ai/)
 
@@ -283,7 +284,7 @@ reporting** (Security → Report a vulnerability).
 | Required status checks | **Deliberately not enabled yet** (product-owner decision 2026-09-22). The workflows use path filters (for example `backend.yml` runs only when its own inputs change: `backend/**` and the files outside it that its tests read, section 1), so a required check such as `backend` would never report on a docs-only PR and the PR could not merge. They are enabled together with a PR flow (3.1). **Still off after the 2026-09-23 branch-run decision** ([10](10-sprint-log.md) §12.5 Decision 5): every workflow runs on the pull request (§1 *Branch runs*; from 2026-09-23 to 2026-09-29 also on every branch push), so work in a pull request gets a CI result for the paths it changed **before** it is merged, but nothing enforces a green result; the owner checks the branch's runs before merging (3.1 says how, and what a branch run does not test). |
 | Require PR, linear history, conversation resolution | Planned with the PR flow (3.1). Today the owner pushes to `main` directly. |
 | Reviews | Solo developer: allow self-merge, but keep required checks once they exist. |
-| Workflows | Top-level `permissions: {}`, per job `contents: read`. Grant `contents: write` / `packages: write` only in `release.yml`'s `publish` job (done: that job alone, with no signing secret in it). **Never** use `pull_request_target` with a checkout of PR code (fork PRs on a public repository must not see secrets). Don't interpolate `${{ github.event.* }}` text into `run:`. Pass it through `env:`. |
+| Workflows | Top-level `permissions: {}`, per job `contents: read`. Grant `contents: write` / `packages: write` only in `release.yml`'s `publish` job (done: that job alone, with no signing secret in it) and in the `enable` job of `dependabot-auto-merge.yml` (§3.3, no secret either). **Never** use `pull_request_target` with a checkout of PR code (fork PRs on a public repository must not see secrets). Don't interpolate `${{ github.event.* }}` text into `run:`. Pass it through `env:`. |
 | Fork PR workflows | Settings → Actions → General → "Approval for running fork pull request workflows from contributors": require approval for all external contributors, so an outside PR cannot run workflows before review. |
 | Secret scanning | Enable GitHub secret scanning + push protection (free for public repos). gitleaks in CI either way. |
 | Private vulnerability reporting | Enabled; `SECURITY.md` asks reporters not to open public issues. Triage in [08](08-operations-runbook.md) §7 IR-8. |
@@ -317,6 +318,26 @@ After the merge, check the `main` run as well.
 | Real user data never goes to the free AI Studio tier; the free key is for evals with synthetic data | [01](01-requirements.md) PRV-022 |
 | Security reports go through private vulnerability reporting, not public issues | `SECURITY.md` |
 | GitHub Actions minutes are free and unlimited for public repositories on standard runners (CON-04) | Cost |
+
+### 3.3 Dependabot auto-merge (owner, 2026-11-05)
+
+A small workflow, `.github/workflows/dependabot-auto-merge.yml`, turns on GitHub auto-merge (squash) for the Dependabot updates that CI alone can judge. GitHub then merges the pull request by itself once the ruleset's required checks are green and the branch is current; a failing check leaves it open. The decision is `decide()` in `.github/scripts/dependabot_auto_merge.py`, with its tests in `dependabot_auto_merge_test.py` (run by `security.yml`).
+
+| Allowed | Condition |
+|---|---|
+| Docker base images | A **digest-only** move of the same tag (the commit message has no `update-type`), changing only `backend/Dockerfile` or `backend/db/Dockerfile` |
+| The user guide's pip packages | A **minor or patch** step, changing only `guide/requirements.txt` |
+
+Everything else stays for a person: npm (Angular, `maplibre-gl`: a web merge deploys to production and the India boundary rule wants a look), Gradle, Maven, GitHub Actions and `firebase-tools` (the release and deploy path), every major, Docker version steps and the security-update groups. A new ecosystem or path is an owner decision: it is a change to `POLICY` in the script, with a test.
+
+How it is kept small and safe:
+
+- `pull_request`, never `pull_request_target`; no third-party action (the script reads the metadata Dependabot writes into its commit messages) and no secret beyond the workflow's own token; only the `enable` job has `contents: write` and `pull-requests: write`.
+- The workflow checks out the **base commit**, so the script that decides is `main`'s, not the pull request's.
+- All of these must hold: opened by `dependabot[bot]`, from this repository (no fork), not a draft, branch `dependabot/<ecosystem>/…`, **every** commit authored by `dependabot[bot]` (a person's commit on the branch stops it) and carrying the `updated-dependencies` block, and **every** changed path inside the allowlist for that ecosystem.
+- `dependabot.yml` gives Docker and pip a 3-day `cooldown`: a version released today is not proposed (so not merged) today.
+- The ruleset still requires every check and a current branch. Dependabot only rebases on conflicts, so after a push to `main` the `rebase` job comments `@dependabot rebase` on each open Dependabot pull request that has auto-merge on and is behind; Dependabot's own push starts CI (a push with the workflow token would not).
+- To switch it off: delete the workflow file, or turn off *Allow auto-merge* in the repository settings. A bad merge is reverted by an ordinary pull request.
 
 ## 4. Secrets handling
 
