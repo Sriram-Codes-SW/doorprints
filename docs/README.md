@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | SSDLC document index |
-| Version | 0.148 |
+| Version | 0.149 |
 | Date | 2026-11-05 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -46,6 +46,7 @@
 | 0.146 | 2026-10-21 | Claude (Code), engineer | The Dependabot triage (`fix/dependabot-alerts-2026-10-21`): new session record [ops/dependabot-triage-2026-10-21.md](ops/dependabot-triage-2026-10-21.md); 13 v0.33 (A6). |
 | 0.147 | 2026-10-21 | Claude (Code), docs | The Dependabot triage records the outcome (all 14 alerts closed after the graph re-submit; secret scanning on); 13 v0.34 (A6). |
 | 0.148 | 2026-11-05 | Claude (Code), engineer | The backend pins `com.google.guava:guava` to 33.7.2-android (CVE-2026-102554; the scheduled `Security` run's Trivy SBOM step failed on 33.4.0-android): recorded in [ops/dependabot-triage-2026-10-21.md](ops/dependabot-triage-2026-10-21.md) section 7. |
+| 0.149 | 2026-11-05 | Claude (Code), engineer | The backend Maven bumps of Dependabot #409 (Spring Boot 4.1.2, Spring AI 2.0.2, springdoc 3.2.0) with the one contract test they change: [ai/ai-design.md](ai/ai-design.md) v0.83 (15.3). |
 | 0.112 | 2026-10-06 | Claude | The review backlog: docs/01 v0.41, 06 v0.131 (section 10.1), 07 v0.60, 14 v0.89. |
 | 0.111 | 2026-10-06 | Claude | Full-system review fixes and the manual test checklist (`docs/ops/manual-test-checklist.md`): docs/07 v0.59, docs/14 v0.88. |
 | 0.110 | 2026-10-06 | Claude | Review fixes on PR #139: docs/10 v0.149, 06 v0.130, 15 v0.27. |
