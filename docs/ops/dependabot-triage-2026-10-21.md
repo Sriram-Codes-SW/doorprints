@@ -89,3 +89,13 @@ The repository has no `gradle.lockfile` and no `verification-metadata.xml`, so t
 - Security > Dependabot then showed **no open alerts**: all 14 closed, #7 `opentelemetry-api` included (the precautionary
   1.62.0 pin was enough, so there is no unpinnable build tool to decide on). Secret scanning was enabled the same day.
 - Sections 4 and 5 are the state before this check and are kept as they were written.
+
+## 7. Later findings (2026-11-05)
+
+- The scheduled `Security` run on `main` has failed since 2026-11-02 at `trivy sbom (backend Java dependencies, blocking)`:
+  `com.google.guava:guava` 33.4.0-android, CVE-2026-102554 (HIGH, denial of service through unthrottled memory allocation
+  during deserialization), fixed in 33.7.2. It is transitive, not in `backend/pom.xml`: `spring-ai-starter-model-google-genai`
+  2.0.1 > `spring-ai-google-genai` > `google-genai` 1.65.0 > `google-auth-library-oauth2-http` 1.33.0 > guava.
+- Fix (`fix/backend-guava-cve-2026-102554`): `backend/pom.xml` `<dependencyManagement>` pins guava to `33.7.2-android`
+  (the flavour that was resolved; the artifact exists on Maven Central). `mvn dependency:tree` shows 33.7.2-android and
+  the CycloneDX `bom.json` no longer lists 33.4.0. Not run locally: Trivy itself and the PostGIS tests (CI does).

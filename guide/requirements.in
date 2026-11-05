@@ -14,4 +14,4 @@
 #
 # SPDX-License-Identifier: AGPL-3.0-only
 
-mkdocs-material==9.7.7
+mkdocs-material==9.8.0
