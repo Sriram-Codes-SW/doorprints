@@ -60,6 +60,14 @@
         <type>pom</type>
         <scope>import</scope>
       </dependency>
+      <!-- CVE-2026-102554 (HIGH, denial of service on deserialization) in guava 33.4.0-android, which comes in through
+           google-auth-library-oauth2-http (spring-ai-google-genai). Fixed in 33.7.2; same android flavour. Drop this pin
+           once the Spring AI / google-genai line resolves 33.7.2 or later by itself. -->
+      <dependency>
+        <groupId>com.google.guava</groupId>
+        <artifactId>guava</artifactId>
+        <version>33.7.2-android</version>
+      </dependency>
     </dependencies>
   </dependencyManagement>
 
