@@ -62,7 +62,9 @@ optional server, with the contracts pinned by shared vector files ([docs/schemas
 | Board, medium, school bus, fees and commute as extras; its own statuses, words and AI prompts | Compiled in, off | Compiled in, off | Compiled in, off | No |
 
 The map uses OpenFreeMap vector tiles (OpenStreetMap data, ODbL). **India's boundaries are shown as the Government of
-India depicts them**, the only view, on every platform; the rules, the data source and the known limits are in
+India depicts them**, the only view, on every platform; on the branch `feat/soi-boundary-data` (draft PR #100, not merged until
+the Survey of India answers) India's northern and north-eastern lines are the Survey of India's own, credited "Boundary: Survey of India" in
+four languages. The rules, the data source and the known limits are in
 [ADR-22](docs/03-design.md#14-architecture-decision-records) and [docs/03 §11.1](docs/03-design.md).
 Screenshots are in the user guide, for example the [map](guide/docs/images/android-map.png) and the
 [Ask screen](guide/docs/images/web-ai-ask-answer.png).

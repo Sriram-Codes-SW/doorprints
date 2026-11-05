@@ -22,6 +22,7 @@ import app.doorprints.ui.IndiaViewRules.CLAIM_LAYER
 import app.doorprints.ui.IndiaViewRules.COUNTRY_LAYER
 import app.doorprints.ui.IndiaViewRules.DISPUTED_LAYER
 import app.doorprints.ui.IndiaViewRules.Placement
+import app.doorprints.ui.IndiaViewRules.SOI_SOURCE_ID
 import app.doorprints.ui.IndiaViewRules.SOURCE_ID
 import app.doorprints.ui.IndiaViewRules.STATE_LINE_LAYER
 import app.doorprints.ui.IndiaViewRules.STATE_OVERLAY_LAYER
@@ -103,6 +104,13 @@ class IndiaViewOpsTest {
             fail("source:$id")
             sources += id
         }
+        /** The sources added from text: id to (text, attribution). */
+        val texts = mutableMapOf<String, Pair<String, String>>()
+        override fun addGeoJsonSourceText(id: String, geoJson: String, attribution: String) {
+            fail("source:$id")
+            sources += id
+            texts[id] = geoJson to attribution
+        }
         override fun linePaint(layerId: String, paint: LinePaint): PaintValue? {
             fail("paint:$layerId:${paint.property}")
             return PaintValue.Copied("$layerId ${paint.property}")
@@ -124,8 +132,15 @@ class IndiaViewOpsTest {
                 Placement.Top -> layers.add(new)
             }
         }
-        /** The app's bundled files by path; the held areas' polygon by default (a square around Gilgit). */
-        val assets = mutableMapOf(IndiaViewRules.HELD_AREAS_ASSET_PATH to HELD_FILE)
+        /**
+         * The app's bundled files by path: the held areas' polygon (a square around Gilgit), a Survey of India file of
+         * two short runs and a one-polygon corridor by default.
+         */
+        val assets = mutableMapOf(
+            IndiaViewRules.HELD_AREAS_ASSET_PATH to HELD_FILE,
+            IndiaViewRules.SOI_ASSET_PATH to SOI_FILE,
+            IndiaViewRules.SOI_CORRIDOR_ASSET_PATH to CORRIDOR_FILE,
+        )
         override fun readAsset(path: String): String {
             fail("asset:$path")
             return assets[path] ?: throw IllegalStateException("no asset $path")
@@ -162,10 +177,11 @@ class IndiaViewOpsTest {
         applyIndiaView(style)
 
         assertTrue(style.layer(DISPUTED_LAYER).hidden)
-        // Rule 2: the country lines' own filter ANDed with the adm0 / Pakistan-China rule, then the tile-zoom guard.
+        // Rule 2: the country lines' own filter ANDed with the adm0 / Pakistan-China rule, then the tile-zoom guard,
+        // then the Survey of India corridor (S4b-BL-114).
         assertEquals(
-            "[\"all\", [\"all\", [\"==\", [\"get\", \"admin_level\"], 2], ${IndiaViewRules.COUNTRY_LINE_EXTRA_FILTER}], " +
-                "${IndiaViewRules.TILE_ZOOM_GUARD}]",
+            "[\"all\", [\"all\", [\"all\", [\"==\", [\"get\", \"admin_level\"], 2], ${IndiaViewRules.COUNTRY_LINE_EXTRA_FILTER}], " +
+                "${IndiaViewRules.TILE_ZOOM_GUARD}], ${IndiaViewRules.soiCorridorFilter(listOf(CORRIDOR_GEOMETRY))}]",
             style.layer(COUNTRY_LAYER).filter,
         )
         assertEquals(5f, style.layer(COUNTRY_LAYER).minZoom)
@@ -178,9 +194,11 @@ class IndiaViewOpsTest {
         // The disputed lines are hidden, not guarded.
         assertEquals("[\"==\", [\"get\", \"disputed\"], 1]", style.layer(DISPUTED_LAYER).filter)
 
-        // Rule 3: the outline source, 'world' directly above boundary_2 up to just below 5, 'claim' directly above it,
-        // both drawn like boundary_2 with round joins and caps.
+        // Rule 3: the two sources (Natural Earth's world lines from the asset, the Survey of India's decoded, with its
+        // credit), 'world' directly above boundary_2 up to just below 5, 'claim' directly above it, both drawn like
+        // boundary_2 with round joins and caps.
         assertTrue(SOURCE_ID in style.sources)
+        assertEquals<Pair<String?, String>?>(SoiPolyline.geoJson(SOI_FILE) to IndiaViewRules.SOI_ATTRIBUTION, style.texts[SOI_SOURCE_ID])
         val ids = style.ids()
         assertEquals(ids.indexOf(COUNTRY_LAYER) + 1, ids.indexOf(WORLD_LAYER))
         assertEquals(ids.indexOf(WORLD_LAYER) + 1, ids.indexOf(CLAIM_LAYER))
@@ -313,6 +331,7 @@ class IndiaViewOpsTest {
                 "filter $COUNTRY_LAYER failed; skipped",
                 "reading the minzoom of $STATE_LINE_LAYER failed; taken as none",
                 "guard $COUNTRY_LAYER failed; skipped",
+                "filter $COUNTRY_LAYER by the Survey of India corridor failed; skipped",
                 "reading line-width of $COUNTRY_LAYER failed; Liberty's value used",
                 "placing $WORLD_LAYER failed; added on top",
                 "reading the filter of label_other failed; left as it is",
@@ -338,16 +357,64 @@ class IndiaViewOpsTest {
     }
 
     @Test
-    fun theOutlineSourceIsNotAddedTwiceAndAMissingSourceSkipsTheStateLine() {
+    fun aMissingSourceSkipsTheLayersThatNeedIt() {
+        // Natural Earth's source refused: the outline step fails as a whole (no world or claim layer); the state line
+        // is the Survey of India's, so it is still added.
         val style = liberty()
         style.failing += "source:$SOURCE_ID"
         applyIndiaView(style)
-        // The outline step failed as a whole; the state line needs the source, so it is not added either.
         assertFalse(WORLD_LAYER in style.ids())
-        assertFalse(STATE_OVERLAY_LAYER in style.ids())
+        assertTrue(STATE_OVERLAY_LAYER in style.ids())
         assertTrue(style.warnings.contains("add the outline failed; skipped"))
         // The label rule still ran after them.
         assertTrue(style.layer("label_state").filter!!.endsWith("${IndiaViewRules.STATE_LABEL_EXTRA_FILTER}]"))
+
+        // The Survey of India's source refused: no state line; the outline step still adds its layers.
+        val noSoi = liberty()
+        noSoi.failing += "source:$SOI_SOURCE_ID"
+        applyIndiaView(noSoi)
+        assertFalse(STATE_OVERLAY_LAYER in noSoi.ids())
+        assertTrue(WORLD_LAYER in noSoi.ids())
+        assertEquals(listOf("add the Survey of India's lines failed; skipped"), noSoi.warnings)
+    }
+
+    @Test
+    fun aMalformedSurveyOfIndiaFileLeavesItsSourceEmptyAndTheLayersInPlace() {
+        val style = liberty()
+        style.assets[IndiaViewRules.SOI_ASSET_PATH] = SOI_FILE.replace("\"vertices\":2", "\"vertices\":3")
+        applyIndiaView(style, soiAttribution = "सीमा: भारतीय सर्वेक्षण विभाग")
+        assertEquals<Pair<String, String>?>(
+            "{\"type\":\"FeatureCollection\",\"features\":[]}" to "सीमा: भारतीय सर्वेक्षण विभाग",
+            style.texts[SOI_SOURCE_ID],
+        )
+        assertEquals(
+            listOf("the Survey of India's lines are missing or malformed; India's northern boundary is not drawn"),
+            style.warnings,
+        )
+        assertTrue(CLAIM_LAYER in style.ids())
+        assertTrue(STATE_OVERLAY_LAYER in style.ids())
+    }
+
+    @Test
+    fun aMalformedCorridorOrADeprecatedCountryFilterLeavesTheCountryLinesWithoutIt() {
+        val malformed = liberty()
+        malformed.assets[IndiaViewRules.SOI_CORRIDOR_ASSET_PATH] = "{\"type\":\"FeatureCollection\",\"features\":[]}"
+        applyIndiaView(malformed)
+        assertFalse(malformed.layer(COUNTRY_LAYER).filter!!.contains("within"))
+        assertEquals(
+            listOf("the Survey of India corridor is malformed; $COUNTRY_LAYER keeps its lines beside the Survey of India's"),
+            malformed.warnings,
+        )
+        val deprecated = liberty()
+        deprecated.layer(COUNTRY_LAYER).filter = "[\"!in\", \"admin_level\", 3]"
+        applyIndiaView(deprecated)
+        assertFalse(deprecated.layer(COUNTRY_LAYER).filter!!.contains("within"))
+        assertTrue(
+            deprecated.warnings.contains(
+                "the filter of $COUNTRY_LAYER is in the deprecated syntax, which has no within; " +
+                    "its lines beside the Survey of India's are kept",
+            ),
+        )
     }
 
     @Test
@@ -412,5 +479,22 @@ class IndiaViewOpsTest {
             "{\"type\":\"FeatureCollection\",\"features\":[{\"type\":\"Feature\",\"properties\":{\"kind\":\"held\"}," +
                 "\"geometry\":{\"type\":\"Polygon\",\"coordinates\":[[[74,35],[75,35],[75,36],[74,36],[74,35]]]}}]}"
         const val HELD_GEOMETRY = "{\"type\":\"Polygon\",\"coordinates\":[[[74,35],[75,35],[75,36],[74,36],[74,35]]]}"
+
+        /** A corridor file as the build writes it (one square around Uttarakhand's border); the real one: IndiaBoundaryDataTest. */
+        const val CORRIDOR_FILE =
+            "{\"type\":\"FeatureCollection\",\"features\":[{\"type\":\"Feature\",\"properties\":{\"kind\":\"corridor\"}," +
+                "\"geometry\":{\"type\":\"Polygon\",\"coordinates\":[[[80,29],[81,29],[81,31],[80,31],[80,29]]]}}]}"
+        const val CORRIDOR_GEOMETRY = "{\"type\":\"Polygon\",\"coordinates\":[[[80,29],[81,29],[81,31],[80,31],[80,29]]]}"
+
+        /**
+         * A Survey of India file of two runs of two vertices (Google's documented example, read at 1e-7 degree); the
+         * real one: IndiaBoundaryDataTest and SoiPolylineTest.
+         */
+        const val SOI_FILE =
+            "{\"type\":\"FeatureCollection\",\"features\":[" +
+                "{\"type\":\"Feature\",\"properties\":{\"kind\":\"claim\",\"state\":\"A\",\"vertices\":2," +
+                "\"polyline7\":\"_p~iF~ps|U_ulLnnqC\"},\"geometry\":null}," +
+                "{\"type\":\"Feature\",\"properties\":{\"kind\":\"state\",\"state\":\"B\",\"vertices\":2," +
+                "\"polyline7\":\"_p~iF~ps|U_ulLnnqC\"},\"geometry\":null}]}"
     }
 }

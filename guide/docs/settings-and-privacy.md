@@ -22,7 +22,9 @@ Light and dark themes follow your device's setting on all three.
   left out.
 - Doorprints does not filter, censor or scan what you type or say. If the AI service itself declines a text, you see one short message and nothing is changed; the service's own words are not shown or kept.
 - Hunt mode's location stays on your phone.
-- India's boundaries on the map are shown as the Government of India depicts them.
+- India's boundaries on the map are shown as the Government of India depicts them. The northern and north-eastern
+  boundary is the Survey of India's own line: the map credits **Boundary: Survey of India**, and **About** gives the
+  full acknowledgement.
 
 ## Save an area of the map for offline
 

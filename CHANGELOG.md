@@ -602,6 +602,17 @@ The finishing batch of 2026-10-01 (built on stacked branches, not yet merged or 
 
 ### Changed
 
+- **Maps: India's northern and north-eastern boundary is the Survey of India's own line** (S4b-BL-114, branch
+  `feat/soi-boundary-data`; [design](docs/03-design.md) ADR-22). On the web, Android and the iPhone the land boundary along
+  Jammu and Kashmir, Ladakh, Himachal Pradesh, Uttarakhand, Sikkim and Arunachal Pradesh, and the Assam-Arunachal
+  Pradesh line, come from the Survey of India's Administrative Boundary Database OVSF/1M/7
+  (`web/public/geo/in-boundaries-soi.json`, 28 751 + 8 252 vertices, unaltered; decoded from its compact polyline
+  encoding on each platform), at every zoom. The base map's own lines along them are hidden (a corridor polygon,
+  `in-soi-corridor.geojson`), so the border is drawn once. Natural Earth now only draws the world's land boundaries
+  below zoom 5; its claim outline, its Assam-Arunachal line and the shared stretches with their connectors are gone.
+  The map credits "Boundary: Survey of India" and About gives the full acknowledgement, in all four languages
+  (Hindi, Tamil and Telugu under review). The rest of India's land border is unchanged (the base map's line); Sir Creek,
+  the Sundarbans and Dahagram-Angarpota are open questions with the Survey of India.
 - **Android: the Drive deletion check now signs the operation** (S4b-BL-135, Android half; draft PR #145): the proof in the deletion token is the HMAC the device check made for that one operation (Keystore on Android 11 and newer), shared by the screen's controller and the deletion service through one authorizer; the unused `DeviceAuthorizationGate` is gone. A prompt that timed out is still shown as a cancel (follow-up S4b-BL-140). The iPhone's proof is still open.
 - **A timed-out device check and a refused camera are told apart** (S4b-BL-140, S4b-BL-141): Android's prompt timeout is its own answer with its own words ("timed out", not "cancelled"; the iPhone and the website cannot report a timeout apart from a cancel); the iPhone's scanner says "allow the camera in Settings" with an *Open settings* button when the camera is refused. Four languages, hi, ta, te under review; not run on a phone.
 - **Android: the regular Drive sync backs off while nothing moves** (O11): the 30-minute wake waits 30 minutes, then 1 hour, then 2 hours after passes that wrote and read nothing, and goes back to 30 minutes after a change, a pass that moved something or the app coming to the front; the 6-hourly backup worker no longer repeats the regular sync.
