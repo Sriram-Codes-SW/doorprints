@@ -84,6 +84,7 @@
 | v0.80   | 2026-10-15 | Claude (Code), engineer       | **8.4 and 8.5: numbers in native digits** (S4b-BL-174b, [10](../10-sprint-log.md) v0.337, [06](../06-test-plan.md) TC-U-257): `DraftSanitizer` in Java, Kotlin and TypeScript and the no-AI listing parsers read a price, a bedroom count, an area and a phone written in the digits of Indian scripts as 0-9 (the `asciiDigits` of the contact redactor, now public on the server), so the model's copy of `४५,०००` is 45,000 and not a dropped field; the parity vectors gain `sanitizeNative` (3), kept apart from `sanitize` so the house pins are unchanged. The redactor already removed native-digit phones in all three ports (6 more vectors). `hard-extract-03` keeps its KNOWN GAP label until a real-model run. |
 | v0.81   | 2026-10-15 | Claude (Code), engineer       | **8.9: the audio clip suite** (S4b-BL-224, voice PR 7): the eight CC0 clips, the manual `voice` suite, its metrics and the stop-rule line; [06](../06-test-plan.md) TC-AI-53. |
 | v0.82   | 2026-10-15 | Claude (Code), engineer       | **16.13: the server reads every kind, the house too, from its kind file** (kinds PR 28, [03](../03-design.md) §18.22, [06](../06-test-plan.md) TC-U-272..277; `feat/kinds-28-server-kind-reader`): the Extract, Ask and planner texts, the Extract answer's fields and the Ask document lines of the house and the school are data read by one code path; the house's output is the pinned bytes. 16.1 and 16.8 say where the house stands. |
+| v0.83   | 2026-11-05 | Claude (Code), engineer       | 15.3: the Vertex candidate-`SAFETY` shape under Spring AI 2.0.2 (`MismatchedInputException`, cause `model`); `VertexGenerateContentContractTest` updated with the Maven bumps. |
 
 Status: implemented in `backend/` (package `app.doorprints.server.ai`), **off by default**. Not yet compiled in this
 sandbox (no Maven Central access) — CI compiles and runs the tests. Provider: AI Studio by default, Vertex AI with
@@ -1957,7 +1958,7 @@ generic, retryable 503 ("unavailable or its free quota is exhausted"), which is 
 contract tests (CI, 2026-10-10), each after exactly one request and with no cause `ProviderErrors.cause` can classify:
 
 - **Vertex AI** (`VertexGenerateContentContractTest`): a blocked prompt (`promptFeedback.blockReason` `SAFETY`, no candidates)
-  throws a `NullPointerException`; a candidate with `finishReason` `SAFETY` throws a `NoSuchElementException`.
+  throws a `NullPointerException`; a candidate with `finishReason` `SAFETY` threw a `NoSuchElementException` (since Spring AI 2.0.2 it throws a Jackson `MismatchedInputException` on the empty text, which `ProviderErrors.cause` classifies as `model`; still one request, still not a block the advisor sees).
 - **AI Studio / OpenAI-compatible** (`GeminiOpenAiChatContractTest`): `finish_reason` `content_filter` with no content gives an
   empty answer carrying that finish reason, and the structured call (`responseEntity`) throws a `RuntimeException`; an HTTP 400
   `content_policy_violation` throws a `RuntimeException`, quota is false and `ProviderErrors.cause` is null (a 400 is "ours").
