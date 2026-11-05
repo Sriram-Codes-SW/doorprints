@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Document | Secure build, CI/CD and deployment guide |
-| Version | 0.81 |
+| Version | 0.82 |
 | Date | 2026-11-05 |
 | Author | Claude (Cowork) |
 | Status | Draft |
@@ -93,6 +93,7 @@
 | 0.79 | 2026-10-19 | Claude (Code), engineer | §2 Pinning: the rule now says what the workflows do and why. Third-party actions are pinned by SHA (all of them, `check-action-pins.py`); GitHub-owned `actions/*` and `github/codeql-action/*` stay on a major tag, an exception recorded with its reasons ([02](02-threat-model.md) T-T5). No SHA was changed. |
 | 0.80 | 2026-10-21 | Claude (Code), engineer | §2 supply chain (the self-run pentest, [ops/pentest-2026-10-21.md](ops/pentest-2026-10-21.md) PT-3, PT-4): the scanner images (Trivy, Semgrep, the secret scanner) are pinned by digest, as planned once their tags had run, and `check-dockerfile-pins.py` checks the images CI runs and the Gradle wrapper's `distributionSha256Sum`. |
 | 0.81 | 2026-11-05 | Claude (Code), engineer | **Dependabot auto-merge** (owner, 2026-11-05; `chore/dependabot-auto-merge`): new §3.3 and the `contents: write` exception in the workflows row. The workflow `dependabot-auto-merge.yml` and `.github/scripts/dependabot_auto_merge.py` turn on auto-merge for a digest-only Docker move in the two backend Dockerfiles and a minor or patch step of the guide's pip packages, and ask Dependabot to rebase the ones that fall behind `main`; `dependabot.yml` gets a 3-day cooldown for Docker and pip. |
+| 0.82 | 2026-11-05 | Claude (Code), engineer | §3.3: the known limit found on the first run (an auto-merge made by `github-actions[bot]` starts no push-triggered workflow on `main`). |
 
 Related: [Threat model](02-threat-model.md) · [Test plan](06-test-plan.md) · [Runbook](08-operations-runbook.md) · [AI docs](ai/)
 
@@ -337,6 +338,7 @@ How it is kept small and safe:
 - All of these must hold: opened by `dependabot[bot]`, from this repository (no fork), not a draft, branch `dependabot/<ecosystem>/…`, **every** commit authored by `dependabot[bot]` (a person's commit on the branch stops it) and carrying the `updated-dependencies` block, and **every** changed path inside the allowlist for that ecosystem.
 - `dependabot.yml` gives Docker and pip a 3-day `cooldown`: a version released today is not proposed (so not merged) today.
 - The ruleset still requires every check and a current branch. Dependabot only rebases on conflicts, so after a push to `main` the `rebase` job comments `@dependabot rebase` on each open Dependabot pull request that has auto-merge on and is behind; Dependabot's own push starts CI (a push with the workflow token would not).
+- **Known limit (seen on the first run, 2026-11-05):** GitHub makes the auto-merge as `github-actions[bot]`, and events caused by the workflow token start no workflows. So the push to `main` from an auto-merged pull request runs none of the push-triggered workflows (Security, CodeQL, Backend, User guide site) and not the `rebase` job either. The checks that gate the merge already ran on the exact merged tree (the branch must be current); the weekly schedules of Security and CodeQL cover `main`; the guide site is rebuilt on the next push that touches `guide/`. Dependabot rebased the next pull request by itself within two minutes on the first run; if that stops, run the update by hand. A merge made by a person or a session is unaffected.
 - To switch it off: delete the workflow file, or turn off *Allow auto-merge* in the repository settings. A bad merge is reverted by an ordinary pull request.
 
 ## 4. Secrets handling
