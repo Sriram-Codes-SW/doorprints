@@ -23,14 +23,14 @@
 buildscript {
     dependencies {
         constraints {
-            classpath("org.bouncycastle:bcprov-jdk18on:1.85") { because("GHSA-9pwp-9qqc-pr26, GHSA-qp49-qgx5-5m26") }
-            classpath("org.bouncycastle:bcpkix-jdk18on:1.85") { because("GHSA-wg6q-6289-32hp") }
-            classpath("org.bouncycastle:bcutil-jdk18on:1.85") { because("same release train as bcprov and bcpkix") }
-            classpath("org.bitbucket.b_c:jose4j:0.9.6") { because("GHSA-3677-xxcr-wjqv") }
+            classpath("org.bouncycastle:bcprov-jdk18on:1.86") { because("GHSA-9pwp-9qqc-pr26, GHSA-qp49-qgx5-5m26") }
+            classpath("org.bouncycastle:bcpkix-jdk18on:1.86") { because("GHSA-wg6q-6289-32hp") }
+            classpath("org.bouncycastle:bcutil-jdk18on:1.86") { because("same release train as bcprov and bcpkix") }
+            classpath("org.bitbucket.b_c:jose4j:0.9.7") { because("GHSA-3677-xxcr-wjqv") }
             classpath("org.jdom:jdom2:2.0.6.1") { because("GHSA-2363-cqg2-863c") }
             classpath("org.apache.httpcomponents:httpclient:4.5.14") { because("GHSA-7r82-7xv7-xcpj") }
-            classpath("org.apache.commons:commons-lang3:3.18.0") { because("GHSA-j288-q9x7-2f5v") }
-            classpath("io.opentelemetry:opentelemetry-api:1.62.0") { because("GHSA-rcgg-9c38-7xpx") }
+            classpath("org.apache.commons:commons-lang3:3.21.0") { because("GHSA-j288-q9x7-2f5v") }
+            classpath("io.opentelemetry:opentelemetry-api:1.67.0") { because("GHSA-rcgg-9c38-7xpx") }
         }
     }
 }
@@ -56,16 +56,16 @@ subprojects {
     configurations.configureEach {
         // Not on any APK or test classpath here (checked); if a tool configuration brings it in, it gets the patched API.
         resolutionStrategy.eachDependency {
-            if (requested.group == "io.opentelemetry" && requested.name == "opentelemetry-api") useVersion("1.62.0")
+            if (requested.group == "io.opentelemetry" && requested.name == "opentelemetry-api") useVersion("1.67.0")
         }
         if (name == "androidLintTool") {
             resolutionStrategy.eachDependency {
                 when ("${requested.group}:${requested.name}") {
                     "org.apache.httpcomponents:httpclient" -> useVersion("4.5.14")
-                    "org.apache.commons:commons-lang3" -> useVersion("3.18.0")
+                    "org.apache.commons:commons-lang3" -> useVersion("3.21.0")
                     "org.bouncycastle:bcprov-jdk18on", "org.bouncycastle:bcpkix-jdk18on", "org.bouncycastle:bcutil-jdk18on" ->
                         useVersion("1.85")
-                    "org.bitbucket.b_c:jose4j" -> useVersion("0.9.6")
+                    "org.bitbucket.b_c:jose4j" -> useVersion("0.9.7")
                     "org.jdom:jdom2" -> useVersion("2.0.6.1")
                 }
             }

@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | SSDLC document index |
-| Version | 0.149 |
-| Date | 2026-10-21 |
+| Version | 0.151 |
+| Date | 2026-11-05 |
 | Author | Claude (Cowork) |
 | Status | Draft |
 
@@ -45,8 +45,10 @@
 | 0.145 | 2026-10-21 | Claude (Code), docs | New [ops/owner-release-runbook.md](ops/owner-release-runbook.md) (the owner's manual-testing and release runbook, a plan and not a record); status words brought to `main`: 03 v0.183, 04 v0.33, 06 v0.303, 10 v0.366, 14 v0.210, ops/manual-test-checklist v0.35 (the manual checklist's reworded school rows and renumbered ids, TC-M-95 and MT-133; the school on the phones #391, the voice free-plan refusal #388, kinds a person adds on the phones #397 and the kinds leftovers #396 are merged). No sign-off recorded. |
 | 0.146 | 2026-10-21 | Claude (Code), engineer | The Dependabot triage (`fix/dependabot-alerts-2026-10-21`): new session record [ops/dependabot-triage-2026-10-21.md](ops/dependabot-triage-2026-10-21.md); 13 v0.33 (A6). |
 | 0.147 | 2026-10-21 | Claude (Code), docs | The Dependabot triage records the outcome (all 14 alerts closed after the graph re-submit; secret scanning on); 13 v0.34 (A6). |
-| 0.148 | 2026-10-21 | Claude (Code), lead | New [ops/soi-review-pack.md](ops/soi-review-pack.md) (the Survey of India review pack for the OVSF/1M/7 boundary file `web/public/geo/in-boundaries-soi.json`, built by `web/scripts/geo/build_in_boundaries_soi.py` and checked by `tools/soi-verify.py`), with its index row. |
-| 0.149 | 2026-10-21 | Claude (Code), lead | **The Survey of India's lines on the map** (S4b-BL-114, branch `feat/soi-boundary-data`): 02 v0.104 (RR-16), 03 v0.184 (ADR-22: the SoI lines, the corridor rule, Natural Earth for the world lines only), 06 v0.304 (TC-M-25 spots and the web run of 2026-10-01; TC-U-54, -55, -73), 10 v0.367 (S4b-BL-114; S4b-BL-10), 14 v0.211, [ops/soi-review-pack.md](ops/soi-review-pack.md) v0.4, NOTICE, the root and web READMEs, the guide, the CHANGELOG. Synced with `main` on 2026-10-16 (the kinds refactor #373/#374 merged; the map-rules files stay kind-blind; web `india-boundaries.ts` now re-exports the Survey of India decoder from `india-boundaries-soi.ts`, split for the file-size budget); the pull request (#100) stays an open draft, not merged until the TC-M-25 device look and the Survey of India's answer. |
+| 0.148 | 2026-11-05 | Claude (Code), engineer | The backend pins `com.google.guava:guava` to 33.7.2-android (CVE-2026-102554; the scheduled `Security` run's Trivy SBOM step failed on 33.4.0-android): recorded in [ops/dependabot-triage-2026-10-21.md](ops/dependabot-triage-2026-10-21.md) section 7. |
+| 0.149 | 2026-11-05 | Claude (Code), engineer | The backend Maven bumps of Dependabot #409 (Spring Boot 4.1.2, Spring AI 2.0.2, springdoc 3.2.0) with the one contract test they change: [ai/ai-design.md](ai/ai-design.md) v0.83 (15.3). |
+| 0.150 | 2026-11-05 | Claude (Code), lead | New [ops/soi-review-pack.md](ops/soi-review-pack.md) (the Survey of India review pack for the OVSF/1M/7 boundary file `web/public/geo/in-boundaries-soi.json`, built by `web/scripts/geo/build_in_boundaries_soi.py` and checked by `tools/soi-verify.py`), with its index row. |
+| 0.151 | 2026-11-05 | Claude (Code), lead | **The Survey of India's lines on the map** (S4b-BL-114, branch `feat/soi-boundary-data`): 02 v0.104 (RR-16), 03 v0.184 (ADR-22: the SoI lines, the corridor rule, Natural Earth for the world lines only), 06 v0.304 (TC-M-25 spots and the web run of 2026-10-01; TC-U-54, -55, -73), 10 v0.367 (S4b-BL-114; S4b-BL-10), 14 v0.211, [ops/soi-review-pack.md](ops/soi-review-pack.md) v0.4, NOTICE, the root and web READMEs, the guide, the CHANGELOG. Synced with `main` on 2026-10-16 (the kinds refactor #373/#374 merged; the map-rules files stay kind-blind; web `india-boundaries.ts` now re-exports the Survey of India decoder from `india-boundaries-soi.ts`, split for the file-size budget); the pull request (#100) stays an open draft, not merged until the TC-M-25 device look and the Survey of India's answer. |
 | 0.112 | 2026-10-06 | Claude | The review backlog: docs/01 v0.41, 06 v0.131 (section 10.1), 07 v0.60, 14 v0.89. |
 | 0.111 | 2026-10-06 | Claude | Full-system review fixes and the manual test checklist (`docs/ops/manual-test-checklist.md`): docs/07 v0.59, docs/14 v0.88. |
 | 0.110 | 2026-10-06 | Claude | Review fixes on PR #139: docs/10 v0.149, 06 v0.130, 15 v0.27. |

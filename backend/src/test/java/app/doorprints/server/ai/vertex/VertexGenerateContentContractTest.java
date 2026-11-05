@@ -389,11 +389,15 @@ class VertexGenerateContentContractTest {
         }
         // Order is the loop's: first PROMPT_BLOCKED (promptFeedback.blockReason SAFETY, no candidates), then ANSWER_BLOCKED
         // (candidate finishReason SAFETY). This pins TODAY's behaviour (observed in CI): both fail inside Spring AI with an
-        // internal exception, after one request and with no cause ProviderErrors can classify. A change in
+        // internal exception, after one request, and neither reaches SafetyBlockAdvisor or a ProviderBlockedException. The prompt
+        // block is a NullPointerException without a classifiable cause. The candidate with no content was a
+        // NoSuchElementException up to Spring AI 2.0.1; from 2.0.2 the structured-output converter reads the empty text and
+        // Jackson throws a MismatchedInputException, which ProviderErrors.cause classifies as "model" (output that could not be
+        // read), as it does for any unreadable answer. A change in
         // Spring AI that exposes the block reason (S4b-BL-233, docs/ai/ai-design.md 15.3) must change this test on purpose.
         assertThat(seen).as("observed outcomes").containsExactly(
                 "threw java.lang.NullPointerException cause=null requests=1",
-                "threw java.util.NoSuchElementException cause=null requests=1");
+                "threw tools.jackson.databind.exc.MismatchedInputException cause=model requests=1");
     }
 
     /**
