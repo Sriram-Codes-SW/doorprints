@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Document | Threat model (STRIDE) |
-| Version | 0.103 |
-| Date | 2026-10-21 |
+| Version | 0.104 |
+| Date | 2026-11-05 |
 | Author | Claude (Cowork) |
 | Status | Draft |
 
@@ -114,6 +114,7 @@
 | 0.101 | 2026-10-21 | Claude (Code), engineer | **T-T23 on the phones** ([03](03-design.md) ADR-39, `feat/user-authored-kinds-phones`): the reader, the registry and the store in `:shared`, the pickers, the person's words drawn as text; tests TC-U-295 to TC-U-297. |
 | 0.102 | 2026-10-21 | Claude (Code), engineer | **Section 12 new, the self-run pentest's sandbox part** ([ops/pentest-2026-10-21.md](ops/pentest-2026-10-21.md), `fix/pentest-2026-10-21`): every High threat and boundary tried on local copies; no Critical, High or Medium; four Low findings fixed with tests (PT-1 an extra named like an object member read as a newer backup, T-T8/T-T21; PT-3 CI tool images by tag, PT-4 the Gradle wrapper without its checksum, T-T5; PT-5 full-width digits and invisible characters inside a phone passed the redactor, T-I7); new **T-T24**, the map style's credit text from the tile provider. No RR- row and no acceptance. |
 | 0.103 | 2026-10-21 | Claude (Code), engineer | Voice manual-check ids in T-I45..T-I48 renumbered MT-127..MT-132 (the old MT-82..MT-87 were also used by the QR scanner and iPhone Drive rows; [ops/manual-test-checklist](ops/manual-test-checklist.md) v0.34). |
+| 0.104 | 2026-11-05 | Claude (Code), engineer | New **T-T25** (Dependabot auto-merge, [07](07-secure-build-and-deploy.md) §3.3; `chore/dependabot-auto-merge`): the allowlist, the cooldown and what still gates a merge. No acceptance recorded. |
 
 Related: [Requirements](01-requirements.md) · [DFDs](04-data-flow-diagrams.md) · [Design](03-design.md) · [Test plan](06-test-plan.md) · [AI docs](ai/)
 
@@ -642,4 +643,5 @@ dynamic, the real OAuth flows and Drive, ZAP active on a test host), are in
 | ID | STRIDE | Element | Threat | L | I | Risk | Mitigations | Status |
 |---|---|---|---|---|---|---|---|---|
 | T-T24 | Tampering | TB6: the map style fetched from `tiles.openfreemap.org` at run time | **A changed style puts its own credit text in the page**: MapLibre writes a source's attribution into the map's credits, so whoever controls the style chooses that text and its links | 1 | 1 | 1 Low | MapLibre's `DOM.sanitize` on every attribution (maplibre-gl 6.14, past GHSA-jrc7-96c5-q579, F-27); the CSP leaves it no script, no image from another host and no form (`script-src 'self'`, `img-src` limited, `form-action 'self'`); the links are credits the person opens on purpose. Tile hosts stay out of the pentest's scope | Mitigated |
+| T-T25 | Tampering, Elevation | The Dependabot auto-merge workflow ([07](07-secure-build-and-deploy.md) §3.3) | **A dependency update reaches `main` without a person reading it**: a compromised or malicious new release of a package on the allowlist (the base-image digests, the guide's pip packages), or a pull request made to look like Dependabot's, is merged by GitHub on green checks alone. | 2 | 2 | 4 Medium | Allowlist of two ecosystems and their paths only (the app, the backend code, GitHub Actions, `firebase-tools` and every major stay manual); the decision script is `main`'s copy; the pull request must be opened by `dependabot[bot]` from this repository, with every commit Dependabot's and the metadata block present; a 3-day cooldown for new releases; digest pins and the file-path allowlist limit what a merge can change; all required checks, Trivy included, still gate it; no third-party action, no secret, write permission in one job; a revert is an ordinary pull request. | Mitigated; residual: a malicious release that passes the checks within 3 days of publication |
 

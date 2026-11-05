@@ -1,0 +1,81 @@
+# Copyright 2026 Sriram (Sriram-Codes-SW)
+#
+# This file is part of Doorprints.
+#
+# Doorprints is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General
+# Public License as published by the Free Software Foundation, version 3 of the License.
+#
+# Doorprints is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+# warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Affero General Public License along with Doorprints (the file LICENSE;
+# the file NOTICE has additional permissions under section 7). If not, see <https://www.gnu.org/licenses/>.
+#
+# SPDX-License-Identifier: AGPL-3.0-only
+# Dependabot auto-merge (docs/07 section 3.3). Two small jobs, both running .github/scripts/dependabot_auto_merge.py as it is
+# on main (the pull request's own copy is never executed):
+#
+#   enable  On a Dependabot pull request: when decide() passes (a digest-only move of the same Docker tag in the two backend
+#           Dockerfiles, or a minor or patch step of the user guide's pip packages) turn auto-merge on. GitHub then merges it
+#           by itself once the ruleset's required checks are green. Everything else is left for a person.
+#   rebase  After a push to main: ask Dependabot to rebase each open Dependabot pull request that has auto-merge on and is
+#           now behind (the ruleset wants a current branch). Dependabot's own push starts CI; a push made with this
+#           workflow's GITHUB_TOKEN would not.
+#
+# `pull_request`, never `pull_request_target`: nothing here runs code from the pull request. No third-party action (the
+# metadata Dependabot writes into its commit messages is read by the script) and no secret beyond the workflow's own token.
+# Only the two jobs below get write permissions. Not a required check: the job is skipped on every other pull request.
+name: Dependabot auto-merge
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
+  push:
+    branches: [main]
+
+permissions: {}
+
+concurrency:
+  group: dependabot-auto-merge-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  enable:
+    name: Enable auto-merge on an allowlisted Dependabot update
+    if: github.event_name == 'pull_request' && github.event.pull_request.user.login == 'dependabot[bot]'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      # The base commit, not the pull request's merge commit: the script that decides is main's.
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+      - name: Decide, and turn auto-merge on when the update is on the allowlist
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: python3 .github/scripts/dependabot_auto_merge.py enable
+
+  rebase:
+    name: Ask Dependabot to rebase pull requests that fell behind main
+    if: github.event_name == 'push'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Comment "@dependabot rebase" on the ones behind with auto-merge on
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: python3 .github/scripts/dependabot_auto_merge.py rebase
