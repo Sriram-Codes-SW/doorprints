@@ -3,15 +3,16 @@
 | Field | Value |
 |---|---|
 | Document | Statement for the Survey of India's reviewers: the data used, what was done to it, how to check it, and our questions |
-| Version | 0.5 |
-| Date | 2026-11-05 |
+| Version | 0.6 |
+| Date | 2026-11-20 |
 | Author | Claude (Code), lead, for the owner (Sriram, maintainer of Doorprints) |
-| Status | Sent to the Survey of India on 2026-11-05 as a five-page PDF note with a follow-up mail in the same thread (the owner sent it). Branch `feat/soi-boundary-data`; since S4b-BL-114 the compact file (Himalayan states and the Assam-Arunachal Pradesh line) is drawn by the web, Android and iPhone maps |
+| Status | Sent to the Survey of India on 2026-11-05; on 2026-11-09 its Online Maps Portal team forwarded it to the International Boundary Directorate, Delhi, for examination (no answer to the questions yet) as a five-page PDF note with a follow-up mail in the same thread (the owner sent it). Branch `feat/soi-boundary-data`; since S4b-BL-114 the compact file (Himalayan states and the Assam-Arunachal Pradesh line) is drawn by the web, Android and iPhone maps |
 
 ## Change log
 
 | Version | Date | Author | Change |
 |---|---|---|---|
+| 0.6 | 2026-11-20 | Claude (Code), lead | **Forwarded for examination.** On 2026-11-09 the Team Online Maps Portal (NGDR & UGI Directorate, Dehradun) forwarded the owner's mail of 2026-11-05 and this note (the PDF arrived intact) to the **International Boundary Directorate, Delhi**, "for examination and further necessary disposal", with the owner and the four Dehradun addresses in copy; its cover note names Sir Creek, the Sundarbans, generalisation, masking and redistribution among the 17 points. It is neither an answer to the questions nor a request to change anything. No answer from the International Boundary Directorate as of 2026-11-20. |
 | 0.5 | 2026-11-05 | Claude (Code), lead | **Sent.** The owner sent the follow-up mail with this note as a five-page PDF (the internal header and change log left out, the sections and figures unchanged) to the Survey of India's team in the thread of 2026-09-28, reminding them of the seventeen questions of 2026-10-01 and saying the app will publish these lines from 2026-11-20 on the basis of their reply of 2026-10-01 unless they ask for a change. No answer yet. |
 | 0.4 | 2026-10-16 | Claude (Code), lead | Synced with `main` after the kinds refactor (#373, #374); no change to the data, the build, the questions or the statement. The draft stays unmerged until the Survey of India answers and the TC-M-25 device look is done. |
 | 0.3 | 2026-10-01 | Claude (Code), lead | The owner sent the second letter to the Survey of India (the 17 questions below, as a reply in the same thread). Waiting for the answer; record its date and gist in docs/10 S4b-BL-114. |
