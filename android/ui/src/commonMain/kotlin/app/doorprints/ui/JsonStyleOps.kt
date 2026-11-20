@@ -114,6 +114,17 @@ class JsonStyleOps(
         sources[id] = JsonObject(mapOf("type" to JsonPrimitive("geojson"), "data" to data))
     }
 
+    override fun addGeoJsonSourceText(id: String, geoJson: String, attribution: String) {
+        check(!sources.containsKey(id)) { "source $id already in the style" }
+        sources[id] = JsonObject(
+            mapOf(
+                "type" to JsonPrimitive("geojson"),
+                "data" to Json.parseToJsonElement(geoJson),
+                "attribution" to JsonPrimitive(attribution),
+            ),
+        )
+    }
+
     override fun linePaint(layerId: String, paint: LinePaint): PaintValue? {
         val layer = layer(layerId)
         if (kindOf(layer) != StyleOps.Kind.LINE) return null
