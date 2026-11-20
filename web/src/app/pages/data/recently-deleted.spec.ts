@@ -128,7 +128,6 @@ describe('Recently deleted', () => {
     await store.deleteHouse('h2', NOW - DAY);
     const { host, fixture } = await render();
     host.querySelectorAll<HTMLButtonElement>('button.restore')[0].click();
-    vi.useRealTimers();
     await settle(fixture);
     expect(await store.getHouse('h2')).toMatchObject({ deleted: false, dirty: true });
     expect(await store.getHouse('h1')).toBeUndefined();
@@ -148,7 +147,6 @@ describe('Recently deleted', () => {
     const buttons = host.querySelectorAll<HTMLButtonElement>('button.restore');
     expect([...buttons].map((b) => b.getAttribute('aria-label'))).toEqual(['Restore Name h3', 'Restore Name h2', 'Restore Name h1']);
     buttons[2].click();
-    vi.useRealTimers();
     await settle(fixture);
     expect(document.activeElement?.getAttribute('aria-label')).toBe('Restore Name h2');
   });
@@ -159,7 +157,6 @@ describe('Recently deleted', () => {
     await store.deleteHouse('h1', NOW - DAY);
     const { host, fixture } = await render();
     host.querySelector<HTMLButtonElement>('button.restore')!.click();
-    vi.useRealTimers();
     await settle(fixture);
     expect(document.activeElement).toBe(host.querySelector('h2'));
     expect(text(host.querySelector('.empty'))).toBe('Nothing deleted in the last 30 days.');
@@ -175,7 +172,6 @@ describe('Recently deleted', () => {
     const { host, fixture } = await render();
     expect(text(host.querySelector('li'))).toContain('Photos: 1');
     host.querySelector<HTMLButtonElement>('button.restore')!.click();
-    vi.useRealTimers();
     await settle(fixture);
     expect(text(host.querySelector('[role="status"]'))).toBe('Restored Blue gate. Its photos could not be restored: Google Drive is not connected on this device.');
     expect(await store.getHouse('h1')).toBeDefined();
@@ -202,7 +198,6 @@ describe('Recently deleted', () => {
       await deletedWithPhotos(photos);
       const { host, fixture } = await render();
       host.querySelector<HTMLButtonElement>('button.restore')!.click();
-      vi.useRealTimers();
       await settle(fixture);
       return { host, status: text(host.querySelector('[role="status"]')) };
     };
@@ -246,7 +241,6 @@ describe('Recently deleted', () => {
       await store.photos.put({ id: 'kept', houseId: 'h1', blob: jpeg(), contentType: 'image/jpeg', sizeBytes: 3, createdAt: null, updatedAt: new Date(NOW - DAY).toISOString(), deleted: true, syncVersion: 0, uploaded: false });
       const { host, fixture } = await render();
       host.querySelector<HTMLButtonElement>('button.restore')!.click();
-      vi.useRealTimers();
       await settle(fixture);
       expect(text(host.querySelector('[role="status"]'))).toBe('Restored Blue gate');
       expect(await store.photos.ofHouse('h1')).toHaveLength(1);
@@ -258,7 +252,6 @@ describe('Recently deleted', () => {
       await store.deleteHouse('h1', NOW - DAY);
       const { host, fixture } = await render();
       host.querySelector<HTMLButtonElement>('button.restore')!.click();
-      vi.useRealTimers();
       await settle(fixture);
       expect(text(host.querySelector('[role="status"]'))).toBe('Restored Blue gate');
     });
@@ -294,7 +287,6 @@ describe('Recently deleted', () => {
     expect(text(host.querySelector('h3'))).toBe('Schools');
     expect([...host.querySelectorAll('li .name')].map((n) => text(n))).toEqual(['Pine Hill']);
     host.querySelector<HTMLButtonElement>('button.restore')!.click();
-    vi.useRealTimers();
     await settle(fixture);
     expect(await store.getHouse('s1')).toBeDefined();
     expect(JSON.stringify((await store.allHouses()).find((h) => h.id === 'h1'))).toBe(before);
@@ -315,7 +307,6 @@ describe('Recently deleted', () => {
     const { host, fixture } = await render();
     vi.spyOn(store, 'restoreHouse').mockRejectedValue(new Error('disk'));
     host.querySelector<HTMLButtonElement>('button.restore')!.click();
-    vi.useRealTimers();
     await settle(fixture);
     expect(text(host.querySelector('[role="alert"]'))).toBe('Could not restore: disk');
     expect(host.querySelectorAll('li')).toHaveLength(1);
